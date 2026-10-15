@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Secret
+metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+type: Opaque
+stringData:
+  database-url: {{ lookup('ansible.builtin.file', change_control_database_url_file) | trim | to_json }}
+  environment.json: >-
+    {{ {'name': environment_name, 'governance': 'GOVERNANCE_APPROVAL', 'approvalUrl': approval_url} | to_json }}
+  coordinator-token: {{ zammad_coordinator_token | to_json }}
+  approver-role: '{{ zammad_approver_role }}'
+  toolsets.yaml: |
+{{ toolsets | to_nice_yaml(indent=2) | indent(4, true) }}
+  platform-tools.yaml: '{}'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: change-control}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: change-control}
+      annotations:
+        checksum/config: {{ (zammad_coordinator_token + zammad_approver_role | string + approval_url + (toolsets | to_json)) | hash('sha256') }}
+    spec:
+      automountServiceAccountToken: false
+{% if registry_config_file | length > 0 %}
+      imagePullSecrets: [{name: agentos-registry}]
+{% endif %}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: change-control
+          image: {{ change_control_image }}
+          command: [node, build/server/change-control/main.js]
+          env:
+            - {name: AGENTOS_HOST, value: '0.0.0.0'}
+            - {name: ZAMMAD_URL, value: {{ zammad_url | to_json }}}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: change-control, key: database-url}
+          ports: [{name: http, containerPort: 8080}, {name: grpc, containerPort: 9090}]
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /etc/agentos/change, readOnly: true}
+      volumes:
+        - name: config
+          secret: {secretName: change-control}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+spec:
+  selector: {app.kubernetes.io/name: change-control}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+    - {name: grpc, port: 9090, targetPort: grpc, appProtocol: kubernetes.io/h2c}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: change-control}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {agentos.dev/gateway: environment}
+      ports: [{port: 8080}, {port: 9090}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+spec:
+  parentRefs: [{name: mcp-gateway, sectionName: http}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /agentos.governance.v1.ChangeControlService/}
+      backendRefs: [{name: change-control, port: 8080}]
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+spec:
+  targetSelectors:
+    - {group: agentgateway.dev, kind: AgentgatewayBackend, matchLabels: {agentos.dev/component: environment-tool}}
+  backend:
+    mcp:
+      guardrails:
+        processors:
+          - methods: {tools/call: Request}
+            remote:
+              backendRef: {name: change-control, port: 9090}
+              failureMode: FailClosed
+              metadata:
+                engineer: apiKey.engineer

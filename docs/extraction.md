@@ -26,7 +26,7 @@
 | `runtime/jumpserver-mcp`、`runtime/keycloak-mcp`、`runtime/zammad-mcp` | 方案包 | 连接器 |
 | `deploy/`（不含历史迁移剧本） | 平台 | 单节点参考部署；清单、域名、注册表、OIDC、模型与应用值改为部署时传入的站点变量 |
 | `deploy/migrate.yaml`、`deploy/cleanup-migration.yaml`、`deploy/database/*-migration.yaml`、`deploy/values/app.yaml` | 方案包 | 历史迁移与站点值 |
-| `environments/templates` 的 `gateway*`、`platform-*`、`change-control`，`environments/connect.yaml` | 平台环境套件 | 环境网关、change-control 与平台接入 |
+| `environments/templates` 的 `gateway*`、`platform-*`、`change-control`，`environments/connect.yaml`，`bootstrap/zammad.rb` 的审批部分 | 平台环境套件 `environments/` | 连接器后端改为 `environment_connectors` 数据描述；团队配置读方案 Chart 的 `global.agentos`；Zammad 审批对象由套件引导，协调账号令牌由 Zammad 生成 |
 | `environments/` 其余（NetBox、JumpServer、Zammad、Keycloak、观测、存储、虚机、历史迁移） | 方案包 | 目标系统栈 |
 | `tests/fake-kagent`、`tests/e2e` 与通用夹具 | 平台 | 业务夹具随方案包 |
 | `ci/`（不含连接器镜像与 `ci/runner`） | 平台 | 构建 console、kagent / Substrate 补丁与 Harness 镜像并发布平台 Chart；runner 标签、BuildKit 镜像与镜像源改为 CI/CD 变量 |

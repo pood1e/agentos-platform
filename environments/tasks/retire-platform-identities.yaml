@@ -1,0 +1,82 @@
+- name: Index retired engineer MCP registrations
+  ansible.builtin.set_fact:
+    retired_engineer_servers: >-
+      {{ toolsets.keys() | product(retired_engineer_identities | map(attribute='name') | list)
+        | map('join', '-') | map('regex_replace', '^', environment_name + '-')
+        | product(['', '-changes']) | map('join') | list }}
+
+- name: Read engineer bindings before retiring access
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    api_version: api.kagent.dev/v1alpha3
+    kind: AgentTemplate
+    namespace: "{{ agentos_namespace }}"
+  register: retiring_templates
+
+- name: Remove tool bindings outside the environment scope
+  kubernetes.core.k8s_json_patch:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    api_version: api.kagent.dev/v1alpha3
+    kind: AgentTemplate
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ role_resource.metadata.name }}"
+    patch:
+      - {op: test, path: /metadata/resourceVersion, value: "{{ role_resource.metadata.resourceVersion }}"}
+      - {op: replace, path: /spec/tools, value: "{{ pruned_tools }}"}
+  vars:
+    pruned_tools: "{{ lookup('ansible.builtin.template', 'templates/prune-engineer-tools.yaml.j2') | from_yaml }}"
+  loop: "{{ retiring_templates.resources }}"
+  loop_control:
+    loop_var: role_resource
+    label: "{{ role_resource.metadata.name }}"
+  when: pruned_tools != role_resource.spec.tools | default([])
+
+- name: Remove retired engineer platform routes and registrations
+  kubernetes.core.k8s:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    api_version: "{{ item.1.api_version }}"
+    kind: "{{ item.1.kind }}"
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ item.1.prefix }}{{ item.0 }}"
+    state: absent
+  loop: >-
+    {{ retired_engineer_servers | product([
+      {'api_version': 'gateway.networking.k8s.io/v1', 'kind': 'HTTPRoute', 'prefix': 'mcp-'},
+      {'api_version': 'api.kagent.dev/v1alpha3', 'kind': 'RemoteMCPServer', 'prefix': ''},
+      {'api_version': 'agentgateway.dev/v1alpha1', 'kind': 'AgentgatewayBackend', 'prefix': ''}]) | list }}
+  loop_control: {label: "{{ item.0 }} / {{ item.1.kind }}"}
+
+- name: Read platform engineer key registrations
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ environment_name }}-engineer-keys"
+  register: platform_engineer_keys
+  no_log: true
+
+- name: Revoke retired platform gateway keys
+  kubernetes.core.k8s_json_patch:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ environment_name }}-engineer-keys"
+    patch: [{op: remove, path: "/data/{{ item }}"}]
+  loop: >-
+    {{ (platform_engineer_keys.resources | first | default({})).get('data', {}).keys()
+      | difference(engineer_identities | map(attribute='name')
+        | map('regex_replace', '^', environment_name + '-') | list) | list }}
+  no_log: true
+
+- name: Remove retired platform credentials
+  kubernetes.core.k8s:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ environment_name }}-{{ item.name }}"
+    state: absent
+  loop: "{{ retired_engineer_identities }}"
+  loop_control: {label: "{{ item.name }}"}

@@ -13,6 +13,7 @@ global:
         readOnly: [tickets_search]
         write: [tickets_update]
     identities:
+      - {name: catalog, services: {kubernetes: read, tickets: read}}
       - {name: assistant, environments: [env-approval], services: {kubernetes: read}}
       - {name: coordinator, services: {kubernetes: read, tickets: read}}
       - {name: inspection, services: {kubernetes: read}}

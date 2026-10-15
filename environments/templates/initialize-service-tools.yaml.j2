@@ -1,0 +1,21 @@
+{% set bindings = role_resource.spec.tools | default([]) | list %}
+{% set bound_servers = bindings | map(attribute='mcp.server.name') | list %}
+{% set engineer = role_resource.metadata.name %}
+{% set identity = engineer_identities | selectattr('name', 'equalto', engineer) | first | default({}) %}
+{% for project, tools in toolsets.items() if identity and project in identity.services %}
+{% set service = environment_name + '-' + project %}
+{% set server = service + '-' + engineer %}
+{% set access = identity.services[project] %}
+{% set writes = tools.write | default([]) + (tools.management | default([]) if access == 'manage' else []) %}
+{% set reads = tools.readOnly | default([]) + (tools.managementReadOnly | default([]) if access == 'manage' else []) %}
+{% if (service not in existing_services or server not in existing_engineer_servers) and server not in bound_servers %}
+{% for view in ['readOnly', 'write'] %}
+{% set allowed = reads if view == 'readOnly' else writes %}
+{% if allowed and (view == 'readOnly' or access in ['operate', 'manage']) %}
+{% set selected = allowed | map('regex_replace', '^', service + '_') | list %}
+{% set unused = bindings.append({'mcp': {'server': {'kind': 'RemoteMCPServer', 'name': server + ('-changes' if view == 'write' else '')}, 'tools': selected, 'requireApproval': view == 'write' and environment_governance == 'approval'}}) %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{{ bindings | to_nice_yaml(indent=2) }}

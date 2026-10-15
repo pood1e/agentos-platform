@@ -1,0 +1,117 @@
+- name: Deploy AgentOS access in managed environments
+  hosts: environments
+  connection: local
+  gather_facts: false
+  environment:
+    PATH: "{{ ansible_playbook_python | dirname }}:{{ lookup('ansible.builtin.env', 'PATH') }}"
+  vars_files: [vars.yaml]
+  pre_tasks:
+    - name: Use the controller Python environment
+      tags: [always]
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+    - name: Require a declared environment
+      tags: [always]
+      ansible.builtin.assert:
+        that:
+          - environment_name in (agentos_config.environments | map(attribute='name'))
+          - "'catalog' in (engineer_identities | map(attribute='name'))"
+        fail_msg: The environment must be declared in global.agentos.environments with a catalog identity in scope.
+        quiet: true
+
+    - name: Create private environment state directory
+      tags: [always]
+      ansible.builtin.file:
+        path: "{{ environment_cache }}/secrets"
+        state: directory
+        mode: "0700"
+
+    - name: Load persistent gateway credentials
+      tags: [always]
+      ansible.builtin.set_fact:
+        gateway_credentials: >-
+          {{ gateway_credentials | default({}) | combine({item: lookup('ansible.builtin.password',
+            environment_cache + '/secrets/gateway-' + item, length=64, chars=['ascii_letters', 'digits'])}) }}
+      loop: >-
+        {{ (engineer_identities | map(attribute='name') | list)
+          + (['change-control'] if environment_governance == 'approval' else []) }}
+      no_log: true
+
+    - name: Create gateway chart cache
+      tags: [always]
+      ansible.builtin.file:
+        path: "{{ chart_cache }}"
+        state: directory
+        mode: "0755"
+      when: inventory_hostname == groups['environments'][0]
+
+    - name: Fetch pinned gateway charts
+      tags: [always]
+      kubernetes.core.helm_pull:
+        binary_path: "{{ helm_binary }}"
+        chart_ref: "oci://cr.agentgateway.dev/charts/{{ item.name }}"
+        chart_version: "{{ agentgateway_version }}"
+        destination: "{{ chart_cache }}"
+      loop: "{{ gateway_charts }}"
+      when: inventory_hostname == groups['environments'][0]
+
+    - name: Inspect gateway chart checksums
+      tags: [always]
+      ansible.builtin.stat:
+        path: "{{ chart_cache }}/{{ item.name }}-{{ agentgateway_version }}.tgz"
+        checksum_algorithm: sha256
+      loop: "{{ gateway_charts }}"
+      register: gateway_artifacts
+      when: inventory_hostname == groups['environments'][0]
+
+    - name: Verify gateway chart checksums
+      tags: [always]
+      ansible.builtin.assert:
+        that: item.stat.checksum == item.item.checksum
+        quiet: true
+      loop: "{{ gateway_artifacts.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      when: inventory_hostname == groups['environments'][0]
+
+    - name: Create gateway namespace
+      tags: [always]
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ gateway_namespace }}"
+            labels: {agentos.dev/environment: "{{ environment_name }}", agentos.dev/governance: "{{ environment_governance }}"}
+
+    - name: Configure image pull credentials
+      tags: [always]
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata: {name: agentos-registry, namespace: "{{ gateway_namespace }}"}
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ lookup('ansible.builtin.file', registry_config_file) | b64encode }}"
+      when: registry_config_file | length > 0
+      no_log: true
+  tasks:
+    - name: Configure environment MCP gateway
+      ansible.builtin.import_tasks: tasks/gateway.yaml
+      tags: [gateway]
+
+    - name: Configure environment change control
+      ansible.builtin.import_tasks: tasks/change-control.yaml
+      when: environment_governance == 'approval'
+      tags: [change-control]
+
+    - name: Connect environment gateway backends
+      ansible.builtin.import_tasks: tasks/backends.yaml
+      tags: [backends]
+  handlers:
+    - name: Load Zammad handlers
+      ansible.builtin.import_tasks: handlers/zammad.yaml
