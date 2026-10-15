@@ -1,0 +1,33 @@
+{% for project in toolsets %}
+{% set name = environment_name + '-' + project %}
+{% if name not in existing_services %}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ name }}
+  namespace: {{ agentos_namespace }}
+  annotations:
+    agentos.dev/system-connection: 'false'
+    agentos.dev/display-name: {{ environment_connectors[project].title | default(project) | to_json }}
+  labels: {agentos.dev/environment: {{ environment_name }}, agentos.dev/project: {{ project }}, agentos.dev/governance: {{ environment_governance }}}
+spec:
+  mcp:
+    prefixMode: Always
+    targets:
+      - name: {{ name }}
+        static:
+          host: {{ ansible_host }}
+          port: {{ gateway_node_port }}
+          path: /mcp/{{ project }}
+          protocol: StreamableHTTP
+  policies:
+    http: {requestTimeout: 10m}
+    auth:
+      secretRef: {name: {{ environment_name }}-catalog, key: gateway}
+      credentials:
+        - secretRef: {name: {{ environment_name }}-catalog, key: engineer}
+          location:
+            header: {name: X-Agentos-Engineer}
+{% endif %}
+{% endfor %}

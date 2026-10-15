@@ -1,0 +1,28 @@
+- name: Refresh Zammad schema caches
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: {name: "zammad-{{ item }}", namespace: "{{ zammad_namespace }}"}
+      spec:
+        template:
+          metadata:
+            annotations: {agentos.dev/schema-refreshed: "{{ now(utc=true).isoformat() }}"}
+  loop: [railsserver, scheduler, websocket]
+
+- name: Wait for refreshed Zammad applications
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: "zammad-{{ item }}"
+    namespace: "{{ zammad_namespace }}"
+  register: zammad_rollout
+  until:
+    - zammad_rollout.resources[0].status.observedGeneration | default(0) == zammad_rollout.resources[0].metadata.generation
+    - zammad_rollout.resources[0].status.updatedReplicas | default(0) == zammad_rollout.resources[0].spec.replicas
+    - zammad_rollout.resources[0].status.readyReplicas | default(0) == zammad_rollout.resources[0].spec.replicas
+  retries: 60
+  delay: 3
+  loop: [railsserver, scheduler, websocket]

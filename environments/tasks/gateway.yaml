@@ -1,0 +1,82 @@
+- name: Install environment agentgateway CRDs
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    binary_path: "{{ helm_binary }}"
+    name: agentgateway-crds
+    chart_ref: "{{ chart_cache }}/agentgateway-crds-{{ agentgateway_version }}.tgz"
+    release_namespace: agentgateway-system
+    create_namespace: true
+    reset_values: true
+    wait: true
+    timeout: 10m
+
+- name: Install environment agentgateway controller
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    binary_path: "{{ helm_binary }}"
+    name: agentgateway
+    chart_ref: "{{ chart_cache }}/agentgateway-{{ agentgateway_version }}.tgz"
+    release_namespace: agentgateway-system
+    reset_values: true
+    release_values:
+      controller:
+        image:
+          tag: v1.6.0@sha256:d84259a7e2d87f8f39bae385d4b032d823c0a4450aecb32e0e31e2258449645b
+      rbac:
+        gatewayNamespaces: ["{{ gateway_namespace }}"]
+      discoveryNamespaceSelectors:
+        - matchLabels: {kubernetes.io/metadata.name: "{{ gateway_namespace }}"}
+        - matchLabels: {kubernetes.io/metadata.name: agentgateway-system}
+      istio: {enabled: false}
+      resources:
+        requests: {cpu: 100m, memory: 128Mi}
+        limits: {memory: 512Mi}
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: {drop: [ALL]}
+        seccompProfile: {type: RuntimeDefault}
+    wait: true
+    timeout: 10m
+
+- name: Configure environment gateway and authentication
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition: "{{ lookup('ansible.builtin.template', 'templates/gateway.yaml.j2') | from_yaml_all | list }}"
+  no_log: true
+
+- name: Read environment gateway keys
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ gateway_namespace }}"
+    name: gateway-keys
+  register: environment_gateway_keys
+  no_log: true
+
+- name: Revoke gateway keys outside the environment scope
+  kubernetes.core.k8s_json_patch:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ gateway_namespace }}"
+    name: gateway-keys
+    patch: [{op: remove, path: "/data/{{ item }}"}]
+  loop: >-
+    {{ (environment_gateway_keys.resources | first | default({})).get('data', {}).keys()
+      | difference((engineer_identities | map(attribute='name') | list)
+        + (['change-control'] if environment_governance == 'approval' else [])) | list }}
+  no_log: true
+
+- name: Wait for environment gateway programming
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    name: mcp-gateway
+    namespace: "{{ gateway_namespace }}"
+    wait: true
+    wait_condition: {type: Programmed, status: 'True'}
+    wait_timeout: 300

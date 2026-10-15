@@ -27,4 +27,6 @@
 | `runtime` | kagent、Agent Substrate 的固定版本补丁与 Harness 工具箱镜像 |
 | `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |
 | `deploy` | 单节点参考部署的 Ansible 剧本、运行时 Helm 值与 post-renderer |
+| `environments` | 环境套件：环境网关、连接器后端、change-control、Zammad 审批引导与平台接入 |
+| `tests/fixtures/environments` | 环境套件的示例清单与变量，供渲染校验使用 |
 | `third_party` | 上游协议、CRD 与组件来源 |

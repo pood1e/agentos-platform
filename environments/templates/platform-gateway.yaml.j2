@@ -1,0 +1,109 @@
+{% for service in service_resources.resources if service.metadata.labels['agentos.dev/project'] in toolsets %}
+{% set name = service.metadata.name %}
+{% set project = service.metadata.labels['agentos.dev/project'] %}
+{% set owner = {'apiVersion': 'agentgateway.dev/v1alpha1', 'kind': 'AgentgatewayBackend', 'name': name, 'uid': service.metadata.uid} %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ name }}-mcp-gateway
+  namespace: {{ agentos_namespace }}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  selector: {gateway.networking.k8s.io/gateway-name: {{ platform_gateway }}}
+  ports: [{name: http, port: 8080, targetPort: 8080, protocol: TCP}]
+{% for identity in engineer_identities if identity.name != 'catalog' and project in identity.services %}
+{% set access = identity.services[project] %}
+{% set writes = toolsets[project].write | default([]) + (toolsets[project].management | default([]) if access == 'manage' else []) %}
+{% set reads = toolsets[project].readOnly | default([]) + (toolsets[project].managementReadOnly | default([]) if access == 'manage' else []) %}
+{% for view in ['readOnly', 'write'] if view == 'readOnly' or (access in ['operate', 'manage'] and writes) %}
+{% set selected_tools = reads if view == 'readOnly' else writes %}
+{% set profile = name + '-' + identity.name + ('-changes' if view == 'write' else '') %}
+{% set route_path = '/mcp/' + name + ('/changes' if view == 'write' else '/readonly') %}
+{% set authentication = {'secretRef': {'name': environment_name + '-' + identity.name, 'key': 'gateway'}, 'credentials': [{'secretRef': {'name': environment_name + '-' + identity.name, 'key': 'engineer'}, 'location': {'header': {'name': 'X-Agentos-Engineer'}}}]} %}
+{% set target = service.spec.mcp.targets[0].static %}
+{% set policies = service.spec.policies | default({}) | combine(target.policies | default({})) | combine({'auth': authentication}) %}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ profile }}
+  namespace: {{ agentos_namespace }}
+  labels: {agentos.dev/environment: {{ environment_name }}, agentos.dev/engineer: {{ identity.name }}, agentos.dev/access: engineer, agentos.dev/tool-access: {{ view }}}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  mcp:
+    prefixMode: Always
+    targets:
+      - name: {{ name }}
+        static: {{ target | combine({'policies': policies}) | to_json }}
+  policies:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+            - {{ ('mcp.tool.name in ' + (selected_tools | to_json)) | to_json }}
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: RemoteMCPServer
+metadata:
+  name: {{ profile }}
+  namespace: {{ agentos_namespace }}
+  labels: {agentos.dev/environment: {{ environment_name }}, agentos.dev/engineer: {{ identity.name }}, agentos.dev/toolset-revision: '{{ toolset_revision }}'}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  description: {{ (service.metadata.annotations['agentos.dev/display-name'] | default(name) + '; ' + identity.name) | to_json }}
+  protocol: STREAMABLE_HTTP
+  url: http://{{ name }}-mcp-gateway.{{ agentos_namespace }}.svc.cluster.local:8080{{ route_path }}
+  timeout: 10m
+  headersFrom:
+    - name: Authorization
+      valueFrom: {type: Secret, name: {{ environment_name }}-{{ identity.name }}, key: authorization}
+    - {name: X-Agentos-Engineer, value: {{ identity.name }}}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-{{ profile }}
+  namespace: {{ agentos_namespace }}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  parentRefs: [{name: {{ platform_gateway }}, sectionName: http}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: {{ route_path }}}
+          headers: [{name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}]
+      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ profile }}}]
+{% endfor %}
+{% endfor %}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-{{ name }}
+  namespace: {{ agentos_namespace }}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  parentRefs: [{name: {{ platform_gateway }}, sectionName: http}]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /mcp/{{ name }}}}]
+      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ name }}}]
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ name }}-engineer-auth
+  namespace: {{ agentos_namespace }}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ name }}}
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - >-
+            has(apiKey.service) && apiKey.service == 'agentos' && !('x-agentos-engineer' in request.headers)
+{% endfor %}

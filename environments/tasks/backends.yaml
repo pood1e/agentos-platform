@@ -1,0 +1,29 @@
+- name: Require connector definitions
+  ansible.builtin.assert:
+    that: toolsets.keys() | difference(environment_connectors.keys()) | length == 0
+    fail_msg: Every service in global.agentos.toolsets requires an entry in environment_connectors.
+    quiet: true
+
+- name: Configure engineer MCP routes
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition: "{{ lookup('ansible.builtin.template', 'templates/backends.yaml.j2') | from_yaml_all | list }}"
+
+- name: Wait for engineer MCP routes
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    namespace: "{{ gateway_namespace }}"
+    name: "{{ item.0 }}-{{ item.1.name }}"
+  register: environment_mcp_route
+  until: >-
+    environment_mcp_route.resources[0].status.parents | default([]) | length > 0
+    and environment_mcp_route.resources[0].status.parents[0].conditions
+      | selectattr('type', 'equalto', 'Accepted') | selectattr('status', 'equalto', 'True') | list | length > 0
+  retries: 30
+  delay: 2
+  loop: "{{ toolsets.keys() | product(engineer_identities) | list }}"
+  loop_control:
+    label: "{{ item.0 }} / {{ item.1.name }}"
+  when: not ansible_check_mode and item.0 in item.1.services

@@ -11,7 +11,7 @@
 | 工具分级 | `global.agentos.toolsets` | 环境网关的读写视图与原生暂停绑定，未知工具按写处理 | 各连接器的分级 |
 | 身份档案 | `global.agentos.identities` | 生成各角色的 RemoteMCPServer 绑定与环境侧账号清单 | 各角色的环境范围与访问级别 |
 | 环境 | `global.agentos.environments` 与 `Environment`（proto） | 环境页、审批协调、凭据绑定 | 环境清单、治理模式与门户链接 |
-| 连接器 | 环境内带统一标签的 MCP Service | 汇聚、身份映射、读写视图、ExtMCP 守卫 | MCP 服务与其目标系统 |
+| 连接器 | 环境内的 MCP 服务与 `environment_connectors` 后端描述 | 环境网关、身份映射、读写视图、ExtMCP 守卫 | MCP 服务、目标系统与各身份的后端凭据 |
 | 审批提供方 | change-control 的 `ApprovalProvider` | Zammad 参考实现 | 其他 ITSM 的适配 |
 | 模型 | agentgateway 原生 `AgentgatewayModel` | 管理页与 `ModelConfig` 同步 | 上游地址、协议与密钥 |
 | 展示 | `pack.json` 与资源文件（proto `Pack`） | 平台通用文案、通用头像与工具图标 | 标题、角色头像、工具图标与业务文案 |
@@ -58,7 +58,7 @@ global:
 | `operate` | `readOnly` | `write` |
 | `manage` | `readOnly`、`managementReadOnly` | `write`、`management` |
 
-写绑定在 `approval` 环境以 kagent 原生 `requireApproval` 暂停。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
+身份 `catalog` 为平台保留，用于发现各服务的工具，须对每个服务有只读访问。写绑定在 `approval` 环境以 kagent 原生 `requireApproval` 暂停。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
 `skillRepository` 设置后，平台的只读 Skill 网关代理该 Git 仓库并由 agentgateway 注入凭据，Agent 不持有仓库凭据。
 
 业务角色以模板文件提供，方案包 Chart 调用平台模板渲染，预置中可用 `agentos.presetSkill` 引用目录中的 Skill，完整示例见
@@ -100,6 +100,7 @@ message Environment {
 
 审批模式的环境须同时提供 change-control 的地址与平台协调身份的凭据，凭据以 Kubernetes Secret 挂载。环境接入时，平台侧为每个连接器生成的
 网关后端带 `agentos.dev/environment`、`agentos.dev/project` 与 `agentos.dev/governance`（`approval` 或 `direct`）标签，服务端据此选择凭据与暂停策略。
+接入步骤与连接器约定见[环境接入](environments.md)。
 
 ## 审批提供方
 

@@ -1,0 +1,130 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata: {name: mcp-gateway, namespace: {{ gateway_namespace }}}
+spec:
+  image:
+    registry: cr.agentgateway.dev
+    repository: agentgateway
+    tag: v1.6.0
+    digest: sha256:9d3e6044ddcdc0878b1787f77bd401252b95e22684203fb5e874c4c42d2ed90c
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {memory: 512Mi}
+  logging: {format: json, level: info}
+  service:
+    spec:
+      type: NodePort
+      externalTrafficPolicy: Local
+      ports:
+        - {name: http, port: 8080, targetPort: 8080, nodePort: {{ gateway_node_port }}, protocol: TCP}
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels: {agentos.dev/gateway: environment}
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: agentgateway
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mcp-gateway
+  namespace: {{ gateway_namespace }}
+  labels: {agentos.dev/environment: {{ environment_name }}}
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef: {group: agentgateway.dev, kind: AgentgatewayParameters, name: mcp-gateway}
+  listeners:
+    - name: http
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces: {from: Same}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-keys
+  namespace: {{ gateway_namespace }}
+  labels: {agentos.dev/gateway-keys: environment}
+data:
+{% if environment_governance == 'approval' %}
+  change-control: {{ {'keyHash': 'sha256:' + (gateway_credentials['change-control'] | hash('sha256')), 'metadata': {'engineer': 'change-coordinator', 'environment': environment_name}} | to_json | to_json }}
+{% endif %}
+{% for identity in engineer_identities %}
+  {{ identity.name }}: {{ {'keyHash': 'sha256:' + (gateway_credentials[identity.name] | hash('sha256')), 'metadata': {'engineer': identity.name, 'services': identity.services | dict2items | selectattr('key', 'in', toolsets.keys() | list) | items2dict, 'environment': environment_name}} | to_json | to_json }}
+{% endfor %}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata: {name: gateway-auth, namespace: {{ gateway_namespace }}}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: mcp-gateway}
+  traffic:
+    apiKeyAuthentication:
+      mode: Strict
+      configMapSelector:
+        matchLabels: {agentos.dev/gateway-keys: environment}
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - >-
+{% if environment_governance == 'approval' %}
+            (apiKey.engineer == 'change-coordinator' && request.path.startsWith('/agentos.governance.v1.ChangeControlService/')) ||
+{% endif %}
+{% for rule in gateway_rules %}
+            ({{ rule }}) ||
+{% endfor %}
+            (request.path.startsWith('/mcp/') && 'x-agentos-engineer' in request.headers && apiKey.engineer == request.headers['x-agentos-engineer'])
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata: {name: environment-mcp-handshake, namespace: {{ gateway_namespace }}}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: mcp-gateway}
+  traffic:
+    directResponse:
+      conditional:
+        - condition: >-
+            request.path.startsWith('/mcp/') &&
+            'mcp-method' in request.headers && request.headers['mcp-method'] == 'server/discover'
+          policy:
+            status: 404
+            body: 'Use initialize.'
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: gateway-ingress, namespace: {{ gateway_namespace }}}
+spec:
+  podSelector:
+    matchLabels: {agentos.dev/gateway: environment}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: {cidr: {{ platform_cidr }}}
+      ports: [{port: 8080, protocol: TCP}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: mcp-backends, namespace: {{ gateway_namespace }}}
+spec:
+  podSelector:
+    matchLabels: {agentos.dev/component: mcp-server}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {agentos.dev/gateway: environment}

@@ -1,0 +1,19 @@
+{% set connections = [] %}
+{% for target in groups['environments'] %}
+{% set settings = hostvars[target] %}
+{% set governance = (agentos_config.environments | selectattr('name', 'equalto', settings.environment_name) | first).governance %}
+{% set environment = {'name': settings.environment_name, 'governance': 'GOVERNANCE_' + governance | upper, 'links': settings.environment_links | default([])} %}
+{% if governance == 'approval' %}
+{% set environment = environment | combine({'approvalUrl': settings.approval_url}) %}
+{% set credential = lookup('ansible.builtin.file', playbook_dir ~ '/../.cache/environments/' ~ settings.environment_name ~ '/secrets/gateway-change-control') %}
+{% set unused = connections.append({'environment': environment, 'controlUrl': 'http://' ~ settings.ansible_host ~ ':' ~ gateway_node_port, 'authorization': 'Bearer ' ~ credential}) %}
+{% else %}
+{% set unused = connections.append({'environment': environment}) %}
+{% endif %}
+{% endfor %}
+apiVersion: v1
+kind: Secret
+metadata: {name: agentos-operations, namespace: {{ agentos_namespace }}}
+type: Opaque
+stringData:
+  connections.json: {{ {'environments': connections} | to_json | to_json }}

@@ -8,7 +8,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | 作业 | 内容 |
 | --- | --- |
 | `verify` | 生成、构建、Biome / buf lint / tsc、单元测试（临时 PostgreSQL）与浏览器测试 |
-| `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试 |
+| `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
 | `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness 镜像，推送到 `$CI_REGISTRY_IMAGE` |
 | `release` | 仅默认分支：打包带镜像摘要的平台 Chart，发布到项目的 Helm Package Registry，已发布版本不覆盖 |

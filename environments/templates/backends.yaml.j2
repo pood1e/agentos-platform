@@ -1,0 +1,52 @@
+{% for identity in engineer_identities %}
+{% for project, tools in toolsets.items() if project in identity.services %}
+{% set access = identity.services[project] %}
+{% set writes = tools.write | default([]) + (tools.management | default([]) if access == 'manage' else []) %}
+{% set reads = tools.readOnly | default([]) + (tools.managementReadOnly | default([]) if access == 'manage' else []) %}
+{% set allowed = reads + (writes if access in ['operate', 'manage'] else []) %}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ project }}-{{ identity.name }}
+  namespace: {{ gateway_namespace }}
+  labels: {agentos.dev/component: environment-tool}
+spec:
+  mcp:
+    prefixMode: Never
+    targets:
+{% for target in environment_connectors[project].targets if target.access is not defined or access in target.access %}
+      - name: {{ target.name | default(project) }}
+        static:
+          host: {{ target.host }}
+          port: {{ target.port }}
+{% if target.path is defined %}
+          path: {{ target.path }}
+{% endif %}
+          protocol: {{ target.protocol | default('StreamableHTTP') }}
+{% if target.auth is defined %}
+          policies:
+            auth: {{ target.auth | to_json | replace('<identity>', identity.name) }}
+{% endif %}
+{% endfor %}
+  policies:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+            - {{ ('mcp.tool.name in ' + (allowed | to_json)) | to_json }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: {{ project }}-{{ identity.name }}, namespace: {{ gateway_namespace }}}
+spec:
+  parentRefs: [{name: mcp-gateway, sectionName: http}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /mcp/{{ project }}}
+          headers: [{name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}]
+      backendRefs:
+        - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ project }}-{{ identity.name }}}
+{% endfor %}
+{% endfor %}

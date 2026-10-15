@@ -1,0 +1,8 @@
+{% set bindings = [] %}
+{% for binding in role_resource.spec.tools | default([]) %}
+{% set server = binding.get('mcp', {}).get('server', {}) %}
+{% if server.get('name') not in retired_engineer_servers or server.get('namespace', agentos_namespace) != agentos_namespace %}
+{% set unused = bindings.append(binding) %}
+{% endif %}
+{% endfor %}
+{{ bindings | to_nice_yaml(indent=2) }}
