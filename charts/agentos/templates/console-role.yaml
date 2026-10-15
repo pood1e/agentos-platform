@@ -1,0 +1,35 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "agentos.name" . }}-console
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [api.kagent.dev]
+    resources: [agenttemplates]
+    verbs: [create, update]
+  - apiGroups: [api.kagent.dev]
+    resources: [agents, agenttemplates, harnesses, modelconfigs, remotemcpservers]
+    verbs: [get, list]
+  - apiGroups: [api.kagent.dev]
+    resources: [agents]
+    verbs: [update]
+  - apiGroups: [api.kagent.dev]
+    resources: [harnesses]
+    verbs: [create, update, delete]
+  - apiGroups: [api.kagent.dev]
+    resources: [modelconfigs, remotemcpservers]
+    verbs: [create, update]
+  - apiGroups: [agentgateway.dev]
+    resources: [agentgatewaymodels, agentgatewaybackends]
+    verbs: [get, list, create, update, delete]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes]
+    verbs: [get, create, update]
+  - apiGroups: ['']
+    resources: [secrets]
+    verbs: [get, create, update]
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [{{ include "agentos.name" . }}-skills]
+    verbs: [get, update]

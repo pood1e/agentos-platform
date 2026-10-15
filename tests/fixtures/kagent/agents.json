@@ -1,0 +1,986 @@
+[
+  {
+    "ref": { "namespace": "agentos", "name": "assistant" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "spec": { "templateRef": { "name": "assistant" }, "harnessRef": { "name": "standard" } },
+        "status": {
+          "observedGeneration": 1,
+          "desiredRevision": "b1a900f92e512240f0c32b5dd73a7b56043d6711c2fcc6f4c4827d08eaaffef5",
+          "latestSuccessfulRevision": "b1a900f92e512240f0c32b5dd73a7b56043d6711c2fcc6f4c4827d08eaaffef5",
+          "conditions": [
+            {
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:38:53Z",
+              "reason": "Accepted",
+              "message": "Agent explicitly selects its template and harness",
+              "type": "Accepted",
+              "status": "True"
+            },
+            {
+              "reason": "Resolved",
+              "message": "All runtime references resolved",
+              "type": "ResolvedRefs",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:38:53Z"
+            },
+            {
+              "message": "Resolved configuration is compatible with the Harness",
+              "type": "Compatible",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:38:53Z",
+              "reason": "Compatible"
+            },
+            {
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready",
+              "type": "Ready",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T03:09:18Z"
+            }
+          ]
+        },
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "labels": { "agentos.dev/role": "assistant" },
+          "annotations": {
+            "agentos.dev/description": "通用聊天入口",
+            "agentos.dev/display-name": "小助"
+          },
+          "managedFields": [
+            {
+              "manager": "OpenAPI-Generator",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:metadata": {
+                  "f:annotations": {
+                    ".": {},
+                    "f:agentos.dev/description": {},
+                    "f:agentos.dev/display-name": {}
+                  },
+                  "f:labels": { "f:agentos.dev/role": {}, ".": {} }
+                },
+                "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} }
+              }
+            },
+            {
+              "manager": "app",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:19Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:status": {
+                  "f:conditions": {
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {}
+                    },
+                    "k:{\"type\":\"Compatible\"}": {
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {}
+                    },
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {}
+                    }
+                  },
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {},
+                  "f:observedGeneration": {},
+                  ".": {}
+                }
+              },
+              "subresource": "status"
+            }
+          ],
+          "name": "assistant",
+          "resourceVersion": "84151",
+          "creationTimestamp": "2026-10-13T01:38:53Z",
+          "uid": "554a072e-7183-432d-93df-2333c102f04d",
+          "generation": 1,
+          "namespace": "agentos"
+        }
+      }
+    }
+  },
+  {
+    "ref": { "namespace": "agentos", "name": "diagnosis" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "status": {
+          "latestSuccessfulRevision": "1a401a92a82c0dd92558084be861d4fdb04ca7d133343731cdc295ab54675c29",
+          "conditions": [
+            {
+              "type": "Accepted",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:02:02Z",
+              "reason": "Accepted",
+              "message": "Agent explicitly selects its template and harness"
+            },
+            {
+              "type": "ResolvedRefs",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Resolved",
+              "message": "All runtime references resolved"
+            },
+            {
+              "message": "Resolved configuration is compatible with the Harness",
+              "type": "Compatible",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Compatible"
+            },
+            {
+              "type": "Ready",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T16:52:48Z",
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready"
+            }
+          ],
+          "observedGeneration": 1,
+          "desiredRevision": "1a401a92a82c0dd92558084be861d4fdb04ca7d133343731cdc295ab54675c29"
+        },
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "creationTimestamp": "2026-10-12T09:02:02Z",
+          "labels": { "agentos.dev/role": "diagnosis" },
+          "uid": "d91696cb-0019-4824-9a7b-f72e8d526bcb",
+          "namespace": "agentos",
+          "resourceVersion": "84132",
+          "annotations": {
+            "agentos.dev/description": "关联资源、事件与日志，验证根因",
+            "agentos.dev/display-name": "诊断工程师"
+          },
+          "managedFields": [
+            {
+              "time": "2026-10-12T16:52:48Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:status": {
+                  "f:observedGeneration": {},
+                  ".": {},
+                  "f:conditions": {
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {}
+                    },
+                    "k:{\"type\":\"Compatible\"}": {
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {}
+                    },
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {}
+                    }
+                  },
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {}
+                }
+              },
+              "subresource": "status",
+              "manager": "app",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3"
+            },
+            {
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} },
+                "f:metadata": {
+                  "f:annotations": {
+                    "f:agentos.dev/display-name": {},
+                    ".": {},
+                    "f:agentos.dev/description": {}
+                  },
+                  "f:labels": { ".": {}, "f:agentos.dev/role": {} }
+                }
+              },
+              "manager": "OpenAPI-Generator"
+            }
+          ],
+          "name": "diagnosis",
+          "generation": 1
+        },
+        "spec": { "templateRef": { "name": "diagnosis" }, "harnessRef": { "name": "standard" } }
+      }
+    }
+  },
+  {
+    "ref": { "namespace": "agentos", "name": "inspection" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "creationTimestamp": "2026-10-12T09:02:02Z",
+          "annotations": {
+            "agentos.dev/display-name": "巡检工程师",
+            "agentos.dev/description": "检查工作负载、资源与事件"
+          },
+          "namespace": "agentos",
+          "uid": "d025f929-27b8-4447-a9d8-73a39f3affea",
+          "resourceVersion": "84133",
+          "generation": 1,
+          "labels": { "agentos.dev/role": "inspection" },
+          "managedFields": [
+            {
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:status": {
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {},
+                  "f:observedGeneration": {},
+                  ".": {},
+                  "f:conditions": {
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {}
+                    },
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {}
+                    },
+                    "k:{\"type\":\"Compatible\"}": {
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {}
+                    }
+                  }
+                }
+              },
+              "subresource": "status",
+              "manager": "app",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-12T15:40:19Z"
+            },
+            {
+              "fieldsV1": {
+                "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} },
+                "f:metadata": {
+                  "f:annotations": {
+                    ".": {},
+                    "f:agentos.dev/description": {},
+                    "f:agentos.dev/display-name": {}
+                  },
+                  "f:labels": { "f:agentos.dev/role": {}, ".": {} }
+                }
+              },
+              "manager": "OpenAPI-Generator",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z",
+              "fieldsType": "FieldsV1"
+            }
+          ],
+          "name": "inspection"
+        },
+        "spec": { "templateRef": { "name": "inspection" }, "harnessRef": { "name": "standard" } },
+        "status": {
+          "desiredRevision": "609d17fbc5c75799da3a138b2ee14c2aeab50b918b820a3cf30f7e5a8b0cc3bd",
+          "latestSuccessfulRevision": "609d17fbc5c75799da3a138b2ee14c2aeab50b918b820a3cf30f7e5a8b0cc3bd",
+          "conditions": [
+            {
+              "reason": "Accepted",
+              "message": "Agent explicitly selects its template and harness",
+              "type": "Accepted",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:02:02Z"
+            },
+            {
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Resolved",
+              "message": "All runtime references resolved",
+              "type": "ResolvedRefs",
+              "status": "True"
+            },
+            {
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Compatible",
+              "message": "Resolved configuration is compatible with the Harness",
+              "type": "Compatible",
+              "status": "True",
+              "observedGeneration": 1
+            },
+            {
+              "type": "Ready",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T15:40:19Z",
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready"
+            }
+          ],
+          "observedGeneration": 1
+        }
+      }
+    }
+  },
+  {
+    "ref": { "namespace": "agentos", "name": "knowledge" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "status": {
+          "desiredRevision": "91f62d10c561c260d57799d2db1e899f96a09b1c5b467a87e1222da1818ba40e",
+          "latestSuccessfulRevision": "91f62d10c561c260d57799d2db1e899f96a09b1c5b467a87e1222da1818ba40e",
+          "conditions": [
+            {
+              "status": "True",
+              "observedGeneration": 2,
+              "lastTransitionTime": "2026-10-12T09:02:02Z",
+              "reason": "Accepted",
+              "message": "Agent explicitly selects its template and harness",
+              "type": "Accepted"
+            },
+            {
+              "observedGeneration": 2,
+              "lastTransitionTime": "2026-10-12T15:49:32Z",
+              "reason": "Resolved",
+              "message": "All runtime references resolved",
+              "type": "ResolvedRefs",
+              "status": "True"
+            },
+            {
+              "status": "True",
+              "observedGeneration": 2,
+              "lastTransitionTime": "2026-10-12T15:49:32Z",
+              "reason": "Compatible",
+              "message": "Resolved configuration is compatible with the Harness",
+              "type": "Compatible"
+            },
+            {
+              "type": "Ready",
+              "status": "True",
+              "observedGeneration": 2,
+              "lastTransitionTime": "2026-10-12T16:52:48Z",
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready"
+            }
+          ],
+          "observedGeneration": 2
+        },
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "generation": 2,
+          "managedFields": [
+            {
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-12T16:52:48Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:status": {
+                  ".": {},
+                  "f:conditions": {
+                    "k:{\"type\":\"Compatible\"}": {
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {}
+                    },
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {}
+                    },
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {}
+                    }
+                  },
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {},
+                  "f:observedGeneration": {}
+                }
+              },
+              "subresource": "status",
+              "manager": "app",
+              "operation": "Update"
+            },
+            {
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:metadata": {
+                  "f:annotations": {
+                    "f:agentos.dev/description": {},
+                    "f:agentos.dev/display-name": {},
+                    ".": {}
+                  },
+                  "f:labels": { ".": {}, "f:agentos.dev/role": {} }
+                },
+                "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} }
+              },
+              "manager": "OpenAPI-Generator",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z"
+            }
+          ],
+          "labels": { "agentos.dev/role": "knowledge" },
+          "uid": "78db25a7-4c01-4710-9f54-8afc6e2df87f",
+          "annotations": {
+            "agentos.dev/description": "语义检索历史经验，沉淀已核验结论并引用来源",
+            "agentos.dev/display-name": "知识工程师"
+          },
+          "name": "knowledge",
+          "namespace": "agentos",
+          "resourceVersion": "84134",
+          "creationTimestamp": "2026-10-12T09:02:02Z"
+        },
+        "spec": { "templateRef": { "name": "knowledge" }, "harnessRef": { "name": "memory" } }
+      }
+    }
+  },
+  {
+    "ref": { "namespace": "agentos", "name": "remediation" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "spec": {
+          "templateRef": { "name": "remediation" },
+          "harnessRef": { "name": "standard" }
+        },
+        "status": {
+          "observedGeneration": 1,
+          "desiredRevision": "2b9c9ff89cc37953503cfff2ebf28ad615a1efb5e00243cb34268f7809dc94b6",
+          "latestSuccessfulRevision": "2b9c9ff89cc37953503cfff2ebf28ad615a1efb5e00243cb34268f7809dc94b6",
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-12T09:02:02Z",
+              "reason": "Accepted",
+              "message": "Agent explicitly selects its template and harness",
+              "type": "Accepted",
+              "status": "True",
+              "observedGeneration": 1
+            },
+            {
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Resolved",
+              "message": "All runtime references resolved",
+              "type": "ResolvedRefs"
+            },
+            {
+              "reason": "Compatible",
+              "message": "Resolved configuration is compatible with the Harness",
+              "type": "Compatible",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z"
+            },
+            {
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T16:52:47Z",
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready",
+              "type": "Ready"
+            }
+          ]
+        },
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "resourceVersion": "84135",
+          "name": "remediation",
+          "creationTimestamp": "2026-10-12T09:02:02Z",
+          "labels": { "agentos.dev/role": "remediation" },
+          "annotations": {
+            "agentos.dev/description": "审批后执行变更，并读取结果验证",
+            "agentos.dev/display-name": "处置工程师"
+          },
+          "uid": "76391c44-b1b4-4b3c-b168-8ba143453f72",
+          "generation": 1,
+          "managedFields": [
+            {
+              "fieldsV1": {
+                "f:status": {
+                  ".": {},
+                  "f:conditions": {
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {}
+                    },
+                    "k:{\"type\":\"Compatible\"}": {
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {}
+                    },
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {}
+                    }
+                  },
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {},
+                  "f:observedGeneration": {}
+                }
+              },
+              "subresource": "status",
+              "manager": "app",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-12T16:52:47Z",
+              "fieldsType": "FieldsV1"
+            },
+            {
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:metadata": {
+                  "f:annotations": {
+                    ".": {},
+                    "f:agentos.dev/description": {},
+                    "f:agentos.dev/display-name": {}
+                  },
+                  "f:labels": { ".": {}, "f:agentos.dev/role": {} }
+                },
+                "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} }
+              },
+              "manager": "OpenAPI-Generator",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z"
+            }
+          ],
+          "namespace": "agentos"
+        }
+      }
+    }
+  },
+  {
+    "ref": { "namespace": "agentos", "name": "role-builder" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "resourceVersion": "84152",
+          "annotations": {
+            "agentos.dev/description": "将角色需求转换为可编辑的职责与工具配置",
+            "agentos.dev/display-name": "角色构建助手"
+          },
+          "name": "role-builder",
+          "namespace": "agentos",
+          "uid": "b0cc10da-9514-43ce-ad5d-b34c38e049bb",
+          "creationTimestamp": "2026-10-13T01:38:53Z",
+          "labels": { "agentos.dev/role": "role-builder" },
+          "managedFields": [
+            {
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} },
+                "f:metadata": {
+                  "f:annotations": {
+                    ".": {},
+                    "f:agentos.dev/description": {},
+                    "f:agentos.dev/display-name": {}
+                  },
+                  "f:labels": { ".": {}, "f:agentos.dev/role": {} }
+                }
+              },
+              "manager": "OpenAPI-Generator"
+            },
+            {
+              "fieldsV1": {
+                "f:status": {
+                  ".": {},
+                  "f:conditions": {
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {}
+                    },
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {}
+                    },
+                    "k:{\"type\":\"Compatible\"}": {
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {}
+                    }
+                  },
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {},
+                  "f:observedGeneration": {}
+                }
+              },
+              "subresource": "status",
+              "manager": "app",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:19Z",
+              "fieldsType": "FieldsV1"
+            }
+          ],
+          "generation": 1
+        },
+        "spec": {
+          "harnessRef": { "name": "standard" },
+          "templateRef": { "name": "role-builder" }
+        },
+        "status": {
+          "latestSuccessfulRevision": "508780d4545b8791de2974ebf9a2d7ede323ec9f2fbb5f51cde3c9f1552d9d9d",
+          "conditions": [
+            {
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:38:53Z",
+              "reason": "Accepted",
+              "message": "Agent explicitly selects its template and harness",
+              "type": "Accepted",
+              "status": "True"
+            },
+            {
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:38:53Z",
+              "reason": "Resolved",
+              "message": "All runtime references resolved",
+              "type": "ResolvedRefs"
+            },
+            {
+              "type": "Compatible",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:47:21Z",
+              "reason": "Compatible",
+              "message": "Resolved configuration is compatible with the Harness"
+            },
+            {
+              "lastTransitionTime": "2026-10-13T03:09:19Z",
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready",
+              "type": "Ready",
+              "status": "True",
+              "observedGeneration": 1
+            }
+          ],
+          "observedGeneration": 1,
+          "desiredRevision": "508780d4545b8791de2974ebf9a2d7ede323ec9f2fbb5f51cde3c9f1552d9d9d"
+        }
+      }
+    }
+  },
+  {
+    "ref": { "namespace": "agentos", "name": "coordinator" },
+    "resource": {
+      "apiVersion": "api.kagent.dev/v1alpha3",
+      "kind": "Agent",
+      "value": {
+        "spec": {
+          "templateRef": { "name": "coordinator" },
+          "harnessRef": { "name": "standard" }
+        },
+        "status": {
+          "conditions": [
+            {
+              "message": "Agent explicitly selects its template and harness",
+              "type": "Accepted",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:02:01Z",
+              "reason": "Accepted"
+            },
+            {
+              "type": "ResolvedRefs",
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Resolved",
+              "message": "All runtime references resolved"
+            },
+            {
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-12T09:30:30Z",
+              "reason": "Compatible",
+              "message": "Resolved configuration is compatible with the Harness",
+              "type": "Compatible",
+              "status": "True"
+            },
+            {
+              "status": "True",
+              "observedGeneration": 1,
+              "lastTransitionTime": "2026-10-13T01:38:58Z",
+              "reason": "Ready",
+              "message": "ActorTemplate golden snapshot is ready",
+              "type": "Ready"
+            }
+          ],
+          "observedGeneration": 1,
+          "desiredRevision": "6aa859c6b740993ab98f9199fa6a9ca0f5fb7ddf58a54a3b97b805304bb81c56",
+          "latestSuccessfulRevision": "6aa859c6b740993ab98f9199fa6a9ca0f5fb7ddf58a54a3b97b805304bb81c56"
+        },
+        "kind": "Agent",
+        "apiVersion": "api.kagent.dev/v1alpha3",
+        "metadata": {
+          "generation": 1,
+          "labels": { "agentos.dev/role": "coordinator" },
+          "annotations": {
+            "agentos.dev/description": "自主调度、跟进审批、汇总执行结果",
+            "agentos.dev/display-name": "值班长",
+            "agentos.dev/delegates": "inspection,diagnosis,remediation,knowledge"
+          },
+          "uid": "8244c7ee-878d-472c-8bf4-966141d4e24e",
+          "creationTimestamp": "2026-10-12T09:02:01Z",
+          "name": "coordinator",
+          "namespace": "agentos",
+          "resourceVersion": "84136",
+          "managedFields": [
+            {
+              "time": "2026-10-13T01:38:58Z",
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:status": {
+                  "f:desiredRevision": {},
+                  "f:latestSuccessfulRevision": {},
+                  "f:observedGeneration": {},
+                  ".": {},
+                  "f:conditions": {
+                    ".": {},
+                    "k:{\"type\":\"Accepted\"}": {
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {}
+                    },
+                    "k:{\"type\":\"Compatible\"}": {
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {}
+                    },
+                    "k:{\"type\":\"Ready\"}": {
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {},
+                      "f:reason": {}
+                    },
+                    "k:{\"type\":\"ResolvedRefs\"}": {
+                      "f:reason": {},
+                      "f:status": {},
+                      "f:type": {},
+                      ".": {},
+                      "f:lastTransitionTime": {},
+                      "f:message": {},
+                      "f:observedGeneration": {}
+                    }
+                  }
+                }
+              },
+              "subresource": "status",
+              "manager": "app",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3"
+            },
+            {
+              "fieldsType": "FieldsV1",
+              "fieldsV1": {
+                "f:metadata": {
+                  "f:annotations": {
+                    "f:agentos.dev/description": {},
+                    "f:agentos.dev/display-name": {},
+                    ".": {},
+                    "f:agentos.dev/delegates": {}
+                  },
+                  "f:labels": { ".": {}, "f:agentos.dev/role": {} }
+                },
+                "f:spec": { "f:harnessRef": {}, "f:templateRef": {}, ".": {} }
+              },
+              "manager": "OpenAPI-Generator",
+              "operation": "Update",
+              "apiVersion": "api.kagent.dev/v1alpha3",
+              "time": "2026-10-13T03:09:09Z"
+            }
+          ]
+        }
+      }
+    }
+  }
+]

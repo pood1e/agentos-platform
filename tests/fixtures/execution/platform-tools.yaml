@@ -1,0 +1,15 @@
+kagent-tool-server:
+  readOnly: [k8s_get_resources, k8s_describe_resource, k8s_get_events, k8s_get_pod_logs, k8s_get_resource_yaml]
+  write: []
+remediation-tools:
+  readOnly: []
+  write: [k8s_apply_manifest]
+team-sessions:
+  readOnly: [delegate_coordinator, list_agents, create_session, dispatch_session, list_role_tools, prepare_role, search_knowledge]
+  write: []
+kagent-collaboration:
+  readOnly: [list_sessions, invoke_session]
+  write: []
+grafana-mcp:
+  readOnly: [grafana_query_loki]
+  write: []

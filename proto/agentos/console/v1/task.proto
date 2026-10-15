@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+import "agentos/console/v1/engineer.proto";
+import "agentos/console/v1/state.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Root operation started by a person or delegated from a conversation.
+message TaskSummary {
+  string id = 1;
+  string title = 2;
+  string prompt = 3;
+  ActivityState state = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// Operation tree rooted at one task. Runs omit prompt, output and calls.
+message TaskDetail {
+  TaskSummary summary = 1;
+  repeated Engineer participants = 2;
+  repeated Delegation delegations = 3;
+  repeated Interaction interactions = 4;
+  repeated TaskRun runs = 5;
+  string answer = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+
+// One A2A task executed by one engineer inside an operation tree.
+message TaskRun {
+  string task_id = 1;
+  string agent_id = 2;
+  ActivityState state = 3;
+  bool background = 4;
+  string prompt = 5;
+  string output = 6;
+  repeated ToolCall calls = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message ToolCall {
+  string id = 1;
+  string task_id = 2;
+  string agent_id = 3;
+  string name = 4;
+  string intent = 5;
+  ActivityState state = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp ended_at = 8;
+  google.protobuf.Value args = 9;
+  google.protobuf.Value output = 10;
+}
+
+enum DelegationKind {
+  DELEGATION_KIND_UNSPECIFIED = 0;
+  DELEGATION_KIND_INVOKE = 1;
+  DELEGATION_KIND_BACKGROUND = 2;
+  DELEGATION_KIND_HANDOFF = 3;
+  DELEGATION_KIND_RESUME = 4;
+  DELEGATION_KIND_REVIEW = 5;
+}
+
+message Delegation {
+  string id = 1;
+  DelegationKind kind = 2;
+  string source_agent_id = 3;
+  string target_agent_id = 4;
+  string source_task_id = 5;
+  string target_task_id = 6;
+  string call_id = 7;
+  ActivityState state = 8;
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp returned_at = 10;
+  google.protobuf.Timestamp finished_at = 11;
+  // Native approval request reviewed by this task.
+  string request_id = 12;
+}
+
+enum InteractionKind {
+  INTERACTION_KIND_UNSPECIFIED = 0;
+  INTERACTION_KIND_APPROVAL = 1;
+  INTERACTION_KIND_QUESTION = 2;
+}
+
+message ApprovalTool {
+  string name = 1;
+  google.protobuf.Value args = 2;
+  string id = 3;
+  string call_id = 4;
+}
+
+message Question {
+  string question = 1;
+  repeated string choices = 2;
+  bool multiple = 3;
+}
+
+message Answer {
+  repeated string values = 1;
+}
+
+// Native kagent human-in-the-loop request and its recorded decision.
+message Interaction {
+  string id = 1;
+  string task_id = 2;
+  string agent_id = 3;
+  string request_id = 4;
+  InteractionKind kind = 5;
+  repeated ApprovalTool tools = 6;
+  repeated Question questions = 7;
+  string explanation = 8;
+  ActivityState state = 9;
+  google.protobuf.Timestamp requested_at = 10;
+  google.protobuf.Timestamp answered_at = 11;
+  repeated Answer answers = 12;
+  string rejection_reason = 13;
+}

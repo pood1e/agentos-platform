@@ -1,0 +1,42 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: AgentTemplate
+metadata:
+  name: assistant
+spec:
+  description: 团队的聊天入口
+  modelConfig:
+    name: default-model-config
+  systemPrompt: |
+    {{- with .Values.systemAgents.assistant.systemPrompt }}
+    {{- tpl . $ | trim | nindent 4 }}
+    {{- else }}
+    你是团队的聊天入口，团队工作空间为 {{ .Release.Namespace }}。普通问答直接回答；查询团队经验用 search_knowledge，注明来源与适用条件。
+    简单查询直接使用已绑定的只读工具，返回当前事实和必要资源引用；目标环境不明确时先确认。
+    多步骤任务、跨系统分析和变更用 delegate_coordinator 委派目标、约束和任务语言，只委派协调角色。新目标创建独立会话，后续追问复用返回的 session_id 作为 contextId；失败重试复用 messageId。
+    协调角色负责成员分工、协作与审批，你简洁转达实际结果。input_required 时报告等待状态，原子任务承接审批。
+    {{- end }}
+    {{ include "agentos.conciseResponse" . }}
+  skills: []
+  tools:
+  - mcp:
+      server:
+        kind: RemoteMCPServer
+        name: team-sessions
+      tools:
+      - delegate_coordinator
+      - search_knowledge
+      requireApproval: false
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: assistant
+  labels:
+    agentos.dev/role: assistant
+  annotations:
+    agentos.dev/description: 团队的聊天入口
+spec:
+  templateRef:
+    name: assistant
+  harnessRef:
+    name: standard

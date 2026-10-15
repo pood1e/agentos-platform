@@ -1,0 +1,14 @@
+node_modules/
+__pycache__/
+*.py[cod]
+dist/
+build/
+gen/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+.cache/
+.npm/
+charts/*/charts/

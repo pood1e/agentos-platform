@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "agentos.name" . }}-login
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  errors:
+    status: ['401']
+    # oauth2-proxy answers sign_in with a redirect; the middleware would otherwise keep 401.
+    statusRewrites: {'401': 302}
+    query: /oauth2/sign_in?rd={url}
+    service:
+      name: {{ include "agentos.authService" . }}
+      port: {{ index .Values "oauth2-proxy" "service" "portNumber" }}

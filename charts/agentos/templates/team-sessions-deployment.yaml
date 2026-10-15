@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "agentos.name" . }}-team-sessions
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+    app.kubernetes.io/name: agentos
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: team-sessions
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agentos
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: team-sessions
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agentos
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: team-sessions
+      annotations:
+        checksum/tools: {{ include (print $.Template.BasePath "/execution-tools.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "agentos.name" . }}-team-sessions
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "agentos.securityContext" . | nindent 8 }}
+      containers:
+        - name: team-sessions
+          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          command: [node, build/server/team-sessions/main.js]
+          ports: [{name: http, containerPort: 8081}]
+          env:
+            {{- if .Values.global.agentos.environments }}
+            - {name: AGENTOS_OPERATIONS_CONFIG, value: /etc/agentos-operations/connections.json}
+            {{- end }}
+            - {name: AGENTOS_HOST, value: '0.0.0.0'}
+            - {name: AGENTOS_PORT, value: '8081'}
+            - {name: KAGENT_URL, value: {{ .Values.kagent.endpoint | quote }}}
+            - {name: KAGENT_NAMESPACE, value: {{ .Release.Namespace | quote }}}
+            - {name: KAGENT_USER_ID, value: {{ .Values.kagent.userId | quote }}}
+            - {name: AGENTOS_GATEWAY_URL, value: 'http://{{ include "agentos.name" . }}-gateway.{{ .Release.Namespace }}.svc:8080'}
+            - {name: AGENTOS_EMBEDDING_MODEL, value: {{ .Values.embedding.model | quote }}}
+            - {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
+            - name: AGENTOS_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef: {name: {{ include "agentos.name" . }}-gateway, key: api-key}
+            - name: AGENTOS_MCP_TOKEN
+              valueFrom:
+                secretKeyRef: {name: {{ include "agentos.name" . }}-mcp, key: token}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.teamSessions.resources | nindent 12 }}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: tools, mountPath: /etc/agentos, readOnly: true}
+            {{- if .Values.global.agentos.environments }}
+            - {name: operations, mountPath: /etc/agentos-operations, readOnly: true}
+            {{- end }}
+      volumes:
+        - name: tools
+          configMap: {name: {{ include "agentos.name" . }}-tools}
+      {{- if .Values.global.agentos.environments }}
+        - name: operations
+          secret: {secretName: agentos-operations}
+      {{- end }}

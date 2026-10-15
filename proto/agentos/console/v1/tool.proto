@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+// Execution confirmation is separate from the target system's resource permissions.
+message ToolRequirement {
+  string server = 1;
+  string tool = 2;
+  bool require_approval = 3;
+}

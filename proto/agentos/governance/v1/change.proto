@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package agentos.governance.v1;
+
+import "agentos/kagent/v1/wire.proto";
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Whether write tools in an environment wait for an approval.
+enum Governance {
+  GOVERNANCE_UNSPECIFIED = 0;
+  // Each write call is registered with change control and decided in the approval system.
+  GOVERNANCE_APPROVAL = 1;
+  // Write calls run with the engineer's native permissions and stay in the task history.
+  GOVERNANCE_DIRECT = 2;
+}
+
+message Link {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  string url = 2 [(buf.validate.field).string.uri = true];
+}
+
+message Environment {
+  option (buf.validate.message).cel = {
+    id: "environment.approval_url"
+    message: "Approval environments require an approval URL"
+    expression: "this.governance != 1 || has(this.approval_url)"
+  };
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  Governance governance = 2 [(buf.validate.field).enum = {defined_only: true, not_in: [0]}];
+  optional string approval_url = 3 [(buf.validate.field).string.uri = true];
+  repeated Link links = 4 [(buf.validate.field).repeated.max_items = 16];
+}
+
+// Private connection settings, mounted from a Kubernetes Secret.
+message EnvironmentConnection {
+  option (buf.validate.message).cel = {
+    id: "connection.change_control"
+    message: "Approval environments require change-control credentials"
+    expression: "this.environment.governance != 1 || (has(this.control_url) && has(this.authorization))"
+  };
+  Environment environment = 1 [(buf.validate.field).required = true];
+  optional string control_url = 2 [(buf.validate.field).string.uri = true];
+  optional string authorization = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message OperationsConfig {
+  repeated EnvironmentConnection environments = 1;
+}
+
+message ChangeRequest {
+  string engineer = 1 [(buf.validate.field).string.min_len = 1];
+  string task_id = 2 [(buf.validate.field).string.min_len = 1];
+  string context_id = 3 [(buf.validate.field).string.min_len = 1];
+  string request_id = 4 [(buf.validate.field).string.min_len = 1];
+  agentos.kagent.v1.HitlTool tool = 5 [(buf.validate.field).required = true];
+  string intent = 6 [(buf.validate.field).string.max_len = 8000];
+  string prompt = 7 [(buf.validate.field).string.max_len = 24000];
+  repeated agentos.kagent.v1.ToolActivity evidence = 8 [(buf.validate.field).repeated.max_items = 6];
+}
+
+enum ChangeState {
+  CHANGE_STATE_UNSPECIFIED = 0;
+  CHANGE_STATE_PENDING = 1;
+  CHANGE_STATE_APPROVED = 2;
+  CHANGE_STATE_REJECTED = 3;
+  CHANGE_STATE_EXECUTING = 4;
+  CHANGE_STATE_SUCCEEDED = 5;
+  CHANGE_STATE_FAILED = 6;
+  CHANGE_STATE_EXPIRED = 7;
+}
+
+message Change {
+  string id = 1;
+  Environment environment = 2;
+  ChangeRequest request = 3;
+  string ticket_id = 4;
+  string ticket_url = 5;
+  ChangeState state = 6;
+  string reason = 7;
+  string decided_by = 8;
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+
+service ChangeControlService {
+  rpc RegisterChange(RegisterChangeRequest) returns (RegisterChangeResponse);
+  rpc GetChange(GetChangeRequest) returns (GetChangeResponse);
+  rpc PrepareExecution(PrepareExecutionRequest) returns (PrepareExecutionResponse);
+  rpc RecordResult(RecordResultRequest) returns (RecordResultResponse);
+}
+
+message RegisterChangeRequest {
+  ChangeRequest request = 1 [(buf.validate.field).required = true];
+}
+
+message GetChangeRequest {
+  string id = 1 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+}
+
+message ChangeResult {
+  Change change = 1;
+  string plan_hash = 2;
+}
+
+message GetChangeResponse { ChangeResult result = 1; }
+message RegisterChangeResponse { ChangeResult result = 1; }
+message RecordResultResponse { ChangeResult result = 1; }
+message PrepareExecutionResponse { ChangeResult result = 1; }
+
+message PrepareExecutionRequest {
+  string id = 1 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+}
+
+
+message RecordResultRequest {
+  string id = 1 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+  bool failed = 2;
+  google.protobuf.Value output = 3;
+}

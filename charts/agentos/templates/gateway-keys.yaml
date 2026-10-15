@@ -1,0 +1,10 @@
+{{- $token := include "agentos.gatewayToken" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agentos.name" . }}-gateway-keys
+  labels:
+    agentos.dev/gateway-keys: {{ include "agentos.name" . }}
+    {{- include "agentos.labels" . | nindent 4 }}
+data:
+  agentos: {{ dict "keyHash" (printf "sha256:%s" ($token | sha256sum)) "metadata" (dict "service" "agentos") | toJson | quote }}

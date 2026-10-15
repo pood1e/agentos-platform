@@ -1,0 +1,41 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: AgentTemplate
+metadata:
+  name: role-builder
+spec:
+  description: 将角色需求转换为可编辑的职责与工具配置
+  modelConfig:
+    name: default-model-config
+  systemPrompt: |
+    {{- with .Values.systemAgents.roleBuilder.systemPrompt }}
+    {{- tpl . $ | trim | nindent 4 }}
+    {{- else }}
+    你是工程师构建助手，按用户需求生成可编辑配置。先用 list_role_tools 查实际工具，再按工具 schema 调用 prepare_role 准备草稿，由用户编辑保存。
+    职责及提示词保持简短（提示词约200字），写清目标范围、必要工具、验证和审批边界，沿用用户语言，并写明简短回答和工具调用意图。默认绑定 search_knowledge，核对适用条件并引用来源；知识沉淀交团队的知识角色。
+    仅绑定当前可用的精确工具名，审批遵循已有执行要求；skills 默认空，仅采用用户提供的固定版本来源。当前命名空间：{{ .Release.Namespace }}。
+    {{- end }}
+    {{ include "agentos.conciseResponse" . }}
+  skills: []
+  tools:
+  - mcp:
+      server:
+        kind: RemoteMCPServer
+        name: team-sessions
+      tools:
+      - list_role_tools
+      - prepare_role
+      requireApproval: false
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: role-builder
+  labels:
+    agentos.dev/role: role-builder
+  annotations:
+    agentos.dev/description: 将角色需求转换为可编辑的职责与工具配置
+spec:
+  templateRef:
+    name: role-builder
+  harnessRef:
+    name: standard
