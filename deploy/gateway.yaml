@@ -1,0 +1,71 @@
+- name: Install agentgateway control plane
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  vars:
+    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+  module_defaults:
+    kubernetes.core.helm:
+      binary_path: "{{ helm_binary }}"
+      kubeconfig: "{{ kubeconfig_path }}"
+      release_namespace: agentgateway-system
+      create_namespace: true
+      reset_values: true
+      wait: true
+      timeout: 10m
+  tasks:
+    - name: Discover Gateway API
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path }}"
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: gateways.gateway.networking.k8s.io
+      register: gateway_api
+
+    - name: Fetch missing Gateway API CRDs
+      ansible.builtin.get_url:
+        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway_api_version }}/standard-install.yaml"
+        dest: "{{ playbook_dir }}/../.cache/gateway-api-{{ gateway_api_version }}.yaml"
+        mode: "0600"
+      when: gateway_api.resources | length == 0
+
+    - name: Install missing Gateway API CRDs
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        src: "{{ playbook_dir }}/../.cache/gateway-api-{{ gateway_api_version }}.yaml"
+        apply: true
+        server_side_apply:
+          field_manager: agentos-platform
+      when: gateway_api.resources | length == 0
+
+    - name: Install agentgateway CRDs
+      kubernetes.core.helm:
+        name: agentgateway-crds
+        chart_ref: oci://cr.agentgateway.dev/charts/agentgateway-crds
+        chart_version: "{{ agentgateway_version }}"
+
+    - name: Install agentgateway controller
+      kubernetes.core.helm:
+        name: agentgateway
+        chart_ref: oci://cr.agentgateway.dev/charts/agentgateway
+        chart_version: "{{ agentgateway_version }}"
+        release_values:
+          controller:
+            image:
+              tag: v1.6.0@sha256:d84259a7e2d87f8f39bae385d4b032d823c0a4450aecb32e0e31e2258449645b
+          rbac:
+            gatewayNamespaces: ["{{ agentos_namespace }}"]
+          discoveryNamespaceSelectors:
+            - matchLabels: {kubernetes.io/metadata.name: "{{ agentos_namespace }}"}
+            - matchLabels: {kubernetes.io/metadata.name: agentgateway-system}
+          istio: {enabled: false}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}

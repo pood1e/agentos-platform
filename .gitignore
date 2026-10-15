@@ -12,3 +12,5 @@ playwright-report/
 .cache/
 .npm/
 charts/*/charts/
+tests/fixtures/solution-chart/charts/
+tests/fixtures/solution-chart/Chart.lock

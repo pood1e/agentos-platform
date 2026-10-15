@@ -34,6 +34,7 @@ npm run test:e2e    # 浏览器测试，使用 fake kagent 与示例方案包
 
 - [架构](docs/architecture.md)：组件、调用链路、部署形态与安全边界
 - [代码导航](docs/code-navigation.md)：目录与模块职责
+- [构建与部署](docs/delivery.md)：CI、发布与单节点参考部署
 - [扩展契约](docs/extension.md)：方案包可提供的内容与格式
 - [抽取方案](docs/extraction.md)：aiops-mvp 的路径映射、泛化改动与一次性切换步骤
 

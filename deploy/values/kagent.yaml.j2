@@ -1,0 +1,48 @@
+global:
+  watchNamespaces: ["{{ agentos_namespace }}"]
+providers: null
+database:
+  postgres:
+    vectorEnabled: true
+controller:
+  imagePullSecrets: [{name: agentos-registry}]
+  sandbox:
+    guestImage:
+      digest: sha256:fb1218d5bdc397ecb514c5aa81d7958843635ca090c1419b191051f7bb01a3e2
+    cpu: "1"
+    memory: 1Gi
+    defaultTTL: 1h
+    maxTTL: 24h
+  grpc:
+    reflection: false
+  substrate:
+    enabled: true
+    ateApiEndpoint: dns:///api.ate-system.svc:443
+    atenetRouterURL: http://atenet-router.ate-system.svc:80
+substrateWorkerPool:
+  create: true
+  replicas: 3
+  sandboxClass: microvm
+  workerImage: "{{ substrate_microvm_image }}"
+  template:
+    serviceAccountName: kagent-workers
+    nodeSelector:
+      ate.dev/substrate-version: v0.5.0-alpha2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+ui:
+  enabled: true
+kmcp:
+  enabled: false
+kagent-tools:
+  enabled: false
+grafana-mcp:
+  enabled: false
+otel:
+  traces:
+    enabled: false

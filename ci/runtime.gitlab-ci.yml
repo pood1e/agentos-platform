@@ -1,0 +1,119 @@
+.go-verify:
+  extends: .shell
+  stage: verify
+  tags: [$AGENTOS_COMPILER_RUNNER]
+  retry:
+    max: 2
+    when: [runner_system_failure]
+
+controller-verify:
+  extends: .go-verify
+  rules: &controller-rules
+    - changes:
+        - runtime/kagent/**/*
+        - runtime/harness-toolbox/**/*
+        - runtime/substrate/**/*
+        - third_party/kagent/**/*
+        - ci/verify-controller.sh
+        - ci/prepare-substrate.sh
+        - ci/shell-env.sh
+        - ci/with-postgres.sh
+        - ci/runtime.gitlab-ci.yml
+        - ci/build.gitlab-ci.yml
+        - ci/build-image.sh
+  script: [ci/with-postgres.sh ci/verify-controller.sh]
+  artifacts:
+    paths: [.cache/controller-image/, .cache/claude-image/]
+    expire_in: 1 day
+
+substrate-verify:
+  extends: .go-verify
+  rules: &substrate-rules
+    - changes:
+        - runtime/substrate/**/*
+        - ci/verify-substrate.sh
+        - ci/prepare-substrate.sh
+        - ci/shell-env.sh
+        - ci/with-postgres.sh
+        - ci/runtime.gitlab-ci.yml
+        - ci/build.gitlab-ci.yml
+        - ci/build-image.sh
+  script: [ci/with-postgres.sh ci/verify-substrate.sh]
+  artifacts:
+    paths: [.cache/substrate-image/]
+    expire_in: 1 day
+
+build-controller:
+  extends: .build-image
+  rules: *controller-rules
+  needs: [controller-verify]
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/controller-image
+    AGENTOS_DOCKERFILE_DIR: runtime/kagent
+    AGENTOS_IMAGE_SUFFIX: /kagent-controller
+    AGENTOS_BUILD_METADATA: .cache/controller-build-metadata.json
+  artifacts:
+    paths: [.cache/controller-build-metadata.json]
+    expire_in: 1 day
+
+build-substrate-api:
+  extends: .build-image
+  rules: *substrate-rules
+  needs: [substrate-verify]
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/substrate-image
+    AGENTOS_DOCKERFILE_DIR: runtime/substrate/ateapi
+    AGENTOS_IMAGE_SUFFIX: /substrate/ateapi
+    AGENTOS_BUILD_METADATA: .cache/substrate-api-build-metadata.json
+  artifacts:
+    paths: [.cache/substrate-api-build-metadata.json]
+    expire_in: 1 day
+
+build-substrate-microvm:
+  extends: build-substrate-api
+  variables:
+    AGENTOS_DOCKERFILE_DIR: runtime/substrate/microvm
+    AGENTOS_IMAGE_SUFFIX: /substrate/ateom-microvm
+    AGENTOS_BUILD_METADATA: .cache/substrate-microvm-build-metadata.json
+  artifacts:
+    paths: [.cache/substrate-microvm-build-metadata.json]
+    expire_in: 1 day
+
+build-claude-harness:
+  extends: .build-image
+  rules: *controller-rules
+  needs: [controller-verify]
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/claude-image
+    AGENTOS_DOCKERFILE_DIR: runtime/kagent/claude
+    AGENTOS_IMAGE_SUFFIX: /claude-harness
+    AGENTOS_BUILD_METADATA: .cache/claude-harness-build-metadata.json
+  artifacts:
+    paths: [.cache/claude-harness-build-metadata.json]
+    expire_in: 1 day
+
+build-standard-harness:
+  extends: .build-image
+  needs: []
+  rules: &toolbox-rules
+    - changes: [runtime/harness-toolbox/**/*, ci/runtime.gitlab-ci.yml, ci/build-image.sh]
+  variables:
+    AGENTOS_BUILD_CONTEXT: runtime/harness-toolbox
+    AGENTOS_DOCKERFILE_DIR: runtime/harness-toolbox
+    AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/golang-adk:1.0.0-alpha11@sha256:29409dfe1a030b50da3ff3f72599752cb5824a50f6aa136c16bf2b1678aa89b8
+    AGENTOS_IMAGE_SUFFIX: /standard-harness
+    AGENTOS_BUILD_METADATA: .cache/standard-harness-build-metadata.json
+  artifacts:
+    paths: [.cache/standard-harness-build-metadata.json]
+    expire_in: 1 day
+
+build-codex-harness:
+  extends: build-standard-harness
+  rules: *toolbox-rules
+  variables:
+    AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/codex-harness:1.0.0-alpha11@sha256:bb01f2dcf7e07d39f5ce88e97953b7ff849f8cf4e6957640923630e9f8c1952e
+    AGENTOS_IMAGE_SUFFIX: /codex-harness
+    AGENTOS_BUILD_METADATA: .cache/codex-harness-build-metadata.json
+  artifacts:
+    paths: [.cache/codex-harness-build-metadata.json]
+    expire_in: 1 day

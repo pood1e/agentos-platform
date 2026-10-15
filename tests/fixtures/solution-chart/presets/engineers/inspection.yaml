@@ -1,0 +1,33 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: AgentTemplate
+metadata:
+  name: inspection
+spec:
+  description: Checks service health
+  modelConfig:
+    name: default-model-config
+  systemPrompt: |
+    Checks service health.
+    {{ include "agentos.conciseResponse" . }}
+  skills:
+    - {{ include "agentos.presetSkill" (dict "root" . "name" "service-checks") | nindent 6 | trim }}
+  tools:
+  - mcp:
+      server:
+        kind: RemoteMCPServer
+        name: team-sessions
+      tools:
+      - search_knowledge
+      requireApproval: false
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: inspection
+  labels:
+    agentos.dev/role: inspection
+spec:
+  templateRef:
+    name: inspection
+  harnessRef:
+    name: standard

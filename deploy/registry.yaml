@@ -1,0 +1,26 @@
+- name: Configure image pull credentials
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata: {name: agentos-registry, namespace: "{{ agentos_namespace }}"}
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: "{{ lookup('file', registry_config_file) | b64encode }}"
+  when: registry_config_file | length > 0
+  no_log: true
+
+- name: Discover image pull credentials
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: agentos-registry
+    namespace: "{{ agentos_namespace }}"
+  register: image_pull_credentials
+  no_log: true
+
+- name: Require image pull credentials
+  ansible.builtin.assert:
+    that: image_pull_credentials.resources | length > 0 or ansible_check_mode
+  no_log: true

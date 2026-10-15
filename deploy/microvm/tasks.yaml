@@ -1,0 +1,72 @@
+- name: Discover object storage configuration
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: rustfs
+    namespace: ate-system
+  register: rustfs_deployment
+  no_log: true
+
+- name: Configure asset upload credentials
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata: {name: substrate-rustfs, namespace: ate-system}
+      type: Opaque
+      data:
+        accessKey: >-
+          {{ rustfs_deployment.resources[0].spec.template.spec.containers[0].env
+             | selectattr('name', 'equalto', 'RUSTFS_ACCESS_KEY') | map(attribute='value') | first | b64encode }}
+        secretKey: >-
+          {{ rustfs_deployment.resources[0].spec.template.spec.containers[0].env
+             | selectattr('name', 'equalto', 'RUSTFS_SECRET_KEY') | map(attribute='value') | first | b64encode }}
+  no_log: true
+
+- name: Pin node to installed Substrate build
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Node
+      metadata:
+        name: "{{ agentos_node }}"
+        labels:
+          ate.dev/substrate-version: "v{{ substrate_version }}"
+
+
+- name: Publish microVM asset manifest
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: microvm-assets
+        namespace: ate-system
+      data:
+        assets.json: "{{ lookup('file', 'microvm/assets.json') }}"
+        stage.py: "{{ lookup('file', 'microvm/stage.py') }}"
+
+- name: Stage verified microVM assets in object storage
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'microvm/assets-job.yaml.j2') | from_yaml }}"
+
+- name: Wait for microVM assets
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    name: "microvm-assets-{{ lookup('file', 'microvm/assets.json') | hash('sha256') | truncate(8, true, '') }}"
+    namespace: ate-system
+    wait: true
+    wait_timeout: 1800
+    wait_condition:
+      type: Complete
+      status: "True"
+
+- name: Configure microVM sandbox
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', 'microvm/sandbox-config.yaml') | from_yaml }}"

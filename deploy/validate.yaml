@@ -1,0 +1,21 @@
+- name: Validate platform resources against the target API
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  tasks:
+    - name: Validate native microVM resources
+      tags: [native]
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, kubectl, apply, --dry-run=server, --validate=strict, -f, -]
+        stdin: "{{ lookup('template', item) }}"
+      loop:
+        - microvm/assets-job.yaml.j2
+        - microvm/sandbox-config.yaml
+        - microvm/verify-template.yaml
+      delegate_to: "{{ agentos_node }}"
+      become: true
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+      changed_when: false
+      check_mode: false

@@ -23,4 +23,8 @@
 | `charts/agentos` | 平台 Chart：console、team-sessions、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent |
 | `tests` | 单元与集成测试；`tests/fake-kagent` 是录制驱动的 kagent 替身，`tests/e2e` 是浏览器测试 |
 | `tests/fixtures/pack` | 示例方案包，供测试使用 |
+| `tests/fixtures/solution-chart` | 依赖平台 Chart 的示例方案 Chart，供 Chart 校验使用 |
+| `runtime` | kagent、Agent Substrate 的固定版本补丁与 Harness 工具箱镜像 |
+| `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |
+| `deploy` | 单节点参考部署的 Ansible 剧本、运行时 Helm 值与 post-renderer |
 | `third_party` | 上游协议、CRD 与组件来源 |

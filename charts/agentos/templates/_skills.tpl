@@ -1,5 +1,5 @@
 {{- define "agentos.skillRepositoryURL" -}}
-{{- printf "http://%s-skill-gateway.%s.svc.cluster.local:8080%s" (include "agentos.name" .) .Release.Namespace .Values.gateway.skillRepository.path -}}
+{{- printf "http://%s-skill-gateway.%s.svc.cluster.local:8080%s" (include "agentos.name" .) .Release.Namespace .Values.global.agentos.skillRepository.path -}}
 {{- end -}}
 
 {{/* Catalog entries from global.agentos.skills; Git sources without a URL use the skill gateway. */}}
