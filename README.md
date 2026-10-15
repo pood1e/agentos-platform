@@ -22,3 +22,7 @@ Skill 目录、模型接入与控制台；业务以方案包提供团队、Skill
 - [架构](docs/architecture.md)：组件、调用链路、部署形态与安全边界
 - [扩展契约](docs/extension.md)：方案包可提供的内容与格式
 - [抽取方案](docs/extraction.md)：aiops-mvp 的路径映射、泛化改动与一次性切换步骤
+
+## 许可证
+
+[Apache-2.0](LICENSE)

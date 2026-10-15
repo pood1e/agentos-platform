@@ -41,21 +41,15 @@
 | `identity_url`、`asset_access_url` 固定指向 Keycloak 与 JumpServer | `repeated Link links`，名称与地址由方案包提供 |
 | 协调角色固定为名为 `supervisor` 的 Agent，系统角色固定为 `assistant`、`role-builder` | 按 `agentos.dev/coordinator` 与 `agentos.dev/system-role` 标签识别 |
 | change-control 直接调用 Zammad | 审批提供方接口，Zammad 为参考实现 |
-| Chart 名、资源名与网关服务名带 `aiops-mvp` 前缀 | 平台 Chart `agentos`，前缀可配置 |
+| Chart 名、资源名与网关服务名带 `aiops-mvp` 前缀 | 平台 Chart 与资源统一使用 `agentos` 前缀 |
 
 ## 切换步骤
 
 1. 平台仓库迁入通用代码，完成改名与泛化，补齐 fake kagent、单元与浏览器测试，发布镜像与平台 Chart。
 2. aiops-mvp 同步切换为 AIOps 方案包：删除已迁出代码，Chart 依赖平台 Chart 并提供预置、分级、身份档案、Skill、文案与连接器；
-   Kubernetes 资源改名与 Helm release 迁移用一次性 playbook 完成。
+   `aiops-mvp` 前缀的 Kubernetes 资源、网关服务名与 Helm release 由一次性 playbook 迁移为 `agentos`。aiops-mvp 侧的改动在其仓库单独跟踪。
 3. 在开发环境部署两者，按 aiops-mvp 现有验收（聊天委派、真实环境审批执行、仿真环境直接执行、知识检索、Harness 切换）通过后合并发布。
 
 ## 构建与发布
 
 本仓库公开，由 GitLab 侧拉取后沿用现有 GitLab CI、Runner 与内部镜像仓库构建并发布镜像与 Chart。
-
-## 待定
-
-| 事项 | 选项 |
-| --- | --- |
-| 资源前缀 | 默认 `agentos`，aiops 部署沿用 `aiops-mvp` 以免迁移资源名 |
