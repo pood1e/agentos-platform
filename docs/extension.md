@@ -48,7 +48,8 @@ global:
         environments: [<environment>, ...]            # 省略时为全部环境
         services: {<service>: read}                   # read | operate | manage
     skills:
-      - skill: {name: <skill>, git: {commit: <sha>, path: skills/<skill>}}   # 省略 git.url 时使用平台 Skill 网关
+      - skill: {name: <skill>, git: {commit: <sha>}, path: skills/<skill>}   # 省略 git.url 时使用平台 Skill 网关
+    skillRepository: {host: <git-host>, path: /<group>/<repo>.git, secretRef: agentos-skill-repository}
 ```
 
 | 访问级别 | 只读绑定 | 写绑定 |
@@ -58,8 +59,10 @@ global:
 | `manage` | `readOnly`、`managementReadOnly` | `write`、`management` |
 
 写绑定在 `approval` 环境以 kagent 原生 `requireApproval` 暂停。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
+`skillRepository` 设置后，平台的只读 Skill 网关代理该 Git 仓库并由 agentgateway 注入凭据，Agent 不持有仓库凭据。
 
-业务角色以模板文件提供，方案包 Chart 调用平台模板渲染：
+业务角色以模板文件提供，方案包 Chart 调用平台模板渲染，预置中可用 `agentos.presetSkill` 引用目录中的 Skill，完整示例见
+[示例方案 Chart](../tests/fixtures/solution-chart)：
 
 ```yaml
 {{ include "agentos.presets" (dict "root" . "files" (.Files.Glob "presets/engineers/*.yaml")) }}

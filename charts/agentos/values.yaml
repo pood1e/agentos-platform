@@ -4,8 +4,12 @@ global:
     toolsets: {}
     identities: []
     skills: []
+    skillRepository:
+      host: ''
+      path: ''
+      secretRef: agentos-skill-repository
 image:
-  repository: registry.example.com/agentos/agentos
+  repository: registry.example.com/agentos
   digest: ''
 imagePullSecrets: []
 pack:
@@ -141,10 +145,6 @@ oauth2-proxy:
     repository: oauth2-proxy/oauth2-proxy
     tag: v7.15.5@sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916
 gateway:
-  skillRepository:
-    host: ''
-    path: ''
-    secretRef: agentos-skill-repository
   parameters:
     image:
       registry: cr.agentgateway.dev

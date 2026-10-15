@@ -1,0 +1,4 @@
+ansible-core==2.21.4
+ansible-lint==26.8.0
+kubernetes==37.0.1
+cloudflare==5.9.0

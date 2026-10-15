@@ -1,0 +1,32 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: AgentTemplate
+metadata:
+  name: remediation
+spec:
+  description: Applies approved changes
+  modelConfig:
+    name: default-model-config
+  systemPrompt: |
+    Applies approved changes.
+    {{ include "agentos.conciseResponse" . }}
+  skills: []
+  tools:
+  - mcp:
+      server:
+        kind: RemoteMCPServer
+        name: team-sessions
+      tools:
+      - search_knowledge
+      requireApproval: false
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: remediation
+  labels:
+    agentos.dev/role: remediation
+spec:
+  templateRef:
+    name: remediation
+  harnessRef:
+    name: standard

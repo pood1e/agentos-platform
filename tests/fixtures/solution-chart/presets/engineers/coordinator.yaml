@@ -1,0 +1,35 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: AgentTemplate
+metadata:
+  name: coordinator
+spec:
+  description: Plans work and coordinates team members
+  modelConfig:
+    name: default-model-config
+  systemPrompt: |
+    Plans work and coordinates team members.
+    {{ include "agentos.conciseResponse" . }}
+  skills: []
+  tools:
+  - mcp:
+      server:
+        kind: RemoteMCPServer
+        name: team-sessions
+      tools:
+      - list_agents
+      - create_session
+      - dispatch_session
+      - search_knowledge
+      requireApproval: false
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: coordinator
+  labels:
+    agentos.dev/role: coordinator
+spec:
+  templateRef:
+    name: coordinator
+  harnessRef:
+    name: standard

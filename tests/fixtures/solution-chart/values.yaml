@@ -1,0 +1,37 @@
+global:
+  agentos:
+    environments:
+      - {name: env-approval, governance: approval}
+      - {name: env-direct, governance: direct}
+    toolsets:
+      kubernetes:
+        readOnly: [pods_list, events_list]
+        write: [resources_create_or_update]
+        managementReadOnly: [nodes_list]
+        management: [nodes_drain]
+      tickets:
+        readOnly: [tickets_search]
+        write: [tickets_update]
+    identities:
+      - {name: assistant, environments: [env-approval], services: {kubernetes: read}}
+      - {name: coordinator, services: {kubernetes: read, tickets: read}}
+      - {name: inspection, services: {kubernetes: read}}
+      - {name: remediation, services: {kubernetes: manage, tickets: operate}}
+    skills:
+      - skill:
+          name: service-checks
+          git: {commit: 0123456789abcdef0123456789abcdef01234567}
+          path: skills/service-checks
+        description: Service health checks
+    skillRepository:
+      host: git.example.test
+      path: /team/skills.git
+      secretRef: example-skill-repository
+agentos:
+  image:
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  ingress:
+    host: agentos.example.test
+  oauth2-proxy:
+    extraArgs:
+      oidc-issuer-url: https://id.example.test/realms/agentos

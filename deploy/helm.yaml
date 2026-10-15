@@ -1,0 +1,24 @@
+- name: Prepare Helm client
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  tasks:
+    - name: Create Helm cache
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/../.cache/helm"
+        state: directory
+        mode: "0755"
+
+    - name: Download Helm 3
+      ansible.builtin.get_url:
+        url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+        dest: "{{ playbook_dir }}/../.cache/helm.tar.gz"
+        checksum: "{{ helm_checksum }}"
+        mode: "0644"
+
+    - name: Extract Helm
+      ansible.builtin.unarchive:
+        src: "{{ playbook_dir }}/../.cache/helm.tar.gz"
+        dest: "{{ playbook_dir }}/../.cache/helm"
+        creates: "{{ helm_binary }}"

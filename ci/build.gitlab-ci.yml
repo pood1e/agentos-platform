@@ -1,0 +1,14 @@
+.build-image:
+  stage: package
+  retry:
+    max: 2
+    when: [runner_system_failure, script_failure]
+  tags: [$AGENTOS_BUILDKIT_RUNNER]
+  image:
+    name: $AGENTOS_BUILDKIT_IMAGE
+    entrypoint: [""]
+  resource_group: agentos-image
+  script: [ci/build-image.sh]
+  artifacts:
+    paths: [.cache/build-metadata.json]
+    expire_in: 1 day

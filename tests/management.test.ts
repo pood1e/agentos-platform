@@ -283,7 +283,7 @@ describe("native knowledge memory", () => {
     });
     const record = env.fake.memory.records.get(id);
     expect(record?.input).toMatchObject({
-      agentName: "agentos_mvp__NS__knowledge",
+      agentName: "agentos__NS__knowledge",
       userId: "agentos",
       ttlDays: 3650,
     });

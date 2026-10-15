@@ -1,0 +1,34 @@
+images:
+  agentgateway: gsoci.azurecr.io/giantswarm/agentgateway-upstream/agentgateway:2.3.6@sha256:c399a3c2b5f4c9cbd10bb76399aaea6ff229e47ce86602c722ac3459e74c0649
+postgres:
+  readWriteConnectionStringSecretRef:
+    name: substrate-postgres
+    key: connectionString
+  ownerConnectionStringSecretRef:
+    name: substrate-postgres
+    key: connectionString
+  readWriteRole: kagent_owner
+  ownerRole: kagent_owner
+  schema: substrate
+credentialProvider:
+  namespacePolicies:
+    - atespace: "{{ agentos_namespace }}"
+      allowedNamespaces: ["{{ agentos_namespace }}"]
+atelet:
+  imageCredentialProviderBinDir: /var/lib/agentos/image-credential-provider/bin
+  imageCredentialProviderConfigYAML: |
+    apiVersion: kubelet.config.k8s.io/v1
+    kind: CredentialProviderConfig
+    providers:
+      - name: busybox
+        apiVersion: credentialprovider.kubelet.k8s.io/v1
+        matchImages: ["{{ agentos_image_registry }}"]
+        defaultCacheDuration: 0s
+        args: [cat, /run/image-credentials/response.json]
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi

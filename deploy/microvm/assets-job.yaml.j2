@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: microvm-assets-{{ lookup('file', 'microvm/assets.json') | hash('sha256') | truncate(8, true, '') }}
+  namespace: ate-system
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 1800
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: stage
+          image: python:3.14.8-slim-trixie@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
+          command: [python3, /manifest/stage.py, /manifest/assets.json, /assets]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - {name: manifest, mountPath: /manifest, readOnly: true}
+            - {name: assets, mountPath: /assets}
+      containers:
+        - name: upload
+          image: rclone/rclone:1.75.1@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+          args: [copy, --checksum, -v, /assets, rustfs:ate-snapshots/kata-assets]
+          env:
+            - {name: HOME, value: /tmp}
+            - {name: RCLONE_CONFIG_RUSTFS_TYPE, value: s3}
+            - {name: RCLONE_CONFIG_RUSTFS_PROVIDER, value: Other}
+            - {name: RCLONE_CONFIG_RUSTFS_ENDPOINT, value: "http://rustfs.ate-system.svc:9000"}
+            - name: RCLONE_CONFIG_RUSTFS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef: {name: substrate-rustfs, key: accessKey}
+            - name: RCLONE_CONFIG_RUSTFS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: {name: substrate-rustfs, key: secretKey}
+          resources:
+            requests: {cpu: 100m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - {name: assets, mountPath: /assets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: manifest
+          configMap: {name: microvm-assets}
+        - name: assets
+          emptyDir: {sizeLimit: 2Gi}
+        - name: tmp
+          emptyDir: {}

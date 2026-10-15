@@ -22,13 +22,15 @@
 | `charts/aiops-mvp/presets/system`、`presets/platform-tools.yaml` | 平台 | 入口与角色构建 Agent、平台服务分级 |
 | `charts/aiops-mvp/presets/engineers`、`identities.yaml`、`toolsets.yaml`、`skills.yaml` | 方案包 | 经 `global.agentos` 与 `agentos.presets` 提供 |
 | `skills/` | 方案包 | |
-| `runtime/kagent`、`runtime/substrate`、`runtime/harness-toolbox` | 平台 | 固定上游版本与补丁 |
+| `runtime/kagent`、`runtime/substrate`、`runtime/harness-toolbox` | 平台 | 固定上游版本与补丁；镜像标签指向本仓库 |
 | `runtime/jumpserver-mcp`、`runtime/keycloak-mcp`、`runtime/zammad-mcp` | 方案包 | 连接器 |
-| `deploy/` | 平台 | 域名、DNS、OIDC 提供方、注册表与模型改为变量 |
+| `deploy/`（不含历史迁移剧本） | 平台 | 单节点参考部署；清单、域名、注册表、OIDC、模型与应用值改为部署时传入的站点变量 |
+| `deploy/migrate.yaml`、`deploy/cleanup-migration.yaml`、`deploy/database/*-migration.yaml`、`deploy/values/app.yaml` | 方案包 | 历史迁移与站点值 |
 | `environments/templates` 的 `gateway*`、`platform-*`、`change-control`，`environments/connect.yaml` | 平台环境套件 | 环境网关、change-control 与平台接入 |
 | `environments/` 其余（NetBox、JumpServer、Zammad、Keycloak、观测、存储、虚机、历史迁移） | 方案包 | 目标系统栈 |
 | `tests/fake-kagent`、`tests/e2e` 与通用夹具 | 平台 | 业务夹具随方案包 |
-| `ci/` | 平台与方案包分拆 | 平台构建 console 镜像、kagent / Substrate 补丁镜像、Harness 镜像与平台 Chart |
+| `ci/`（不含连接器镜像与 `ci/runner`） | 平台 | 构建 console、kagent / Substrate 补丁与 Harness 镜像并发布平台 Chart；runner 标签、BuildKit 镜像与镜像源改为 CI/CD 变量 |
+| `ci/keycloak.gitlab-ci.yml`、`ci/zammad.gitlab-ci.yml`、`ci/runner/` | 方案包 | 连接器镜像与构建机置备 |
 | `third_party/` | 平台 | 官方协议与 CRD |
 
 标签与注解前缀 `aiops.dev/` 改为 `agentos.dev/`；环境变量 `AIOPS_*` 改为 `AGENTOS_*`。
@@ -55,4 +57,4 @@
 
 ## 构建与发布
 
-本仓库公开，由 GitLab 侧拉取后沿用现有 GitLab CI、Runner 与内部镜像仓库构建并发布镜像与 Chart。
+本仓库公开，由 GitLab 侧拉取后沿用现有 GitLab CI、Runner 与内部镜像仓库构建并发布镜像与 Chart，见[构建与部署](delivery.md)。

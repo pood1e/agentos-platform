@@ -1,0 +1,10 @@
+apiVersion: v2
+name: example-solution
+description: Minimal solution chart used to test the platform extension contract
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+dependencies:
+  - name: agentos
+    version: 0.1.0
+    repository: file://../../../charts/agentos
