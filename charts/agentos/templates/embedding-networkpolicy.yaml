@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: knowledge-embedding
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: knowledge-embedding}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {agentos.dev/gateway: business}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/component: embedding-verify}
+      ports: [{port: 11434, protocol: TCP}]

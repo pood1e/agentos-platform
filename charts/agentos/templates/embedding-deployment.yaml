@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-embedding
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: knowledge-embedding}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: knowledge-embedding}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "agentos.securityContext" . | nindent 8 }}
+        fsGroup: 1000
+      containers:
+        - name: ollama
+          image: {{ .Values.embedding.image }}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
+          ports: [{name: http, containerPort: 11434}]
+          env:
+            - {name: OLLAMA_HOST, value: '0.0.0.0:11434'}
+            - {name: OLLAMA_MODELS, value: /models}
+            - {name: OLLAMA_KEEP_ALIVE, value: 30m}
+            - {name: OLLAMA_NUM_PARALLEL, value: '1'}
+          resources:
+            {{- toYaml .Values.embedding.resources | nindent 12 }}
+          startupProbe:
+            httpGet: {path: /api/tags, port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/tags, port: http}
+          livenessProbe:
+            httpGet: {path: /api/tags, port: http}
+            periodSeconds: 20
+          volumeMounts:
+            - {name: models, mountPath: /models}
+            - {name: state, mountPath: /home/ubuntu}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: models
+          persistentVolumeClaim: {claimName: knowledge-embedding}
+        - {name: state, emptyDir: {sizeLimit: 16Mi}}
+        - {name: tmp, emptyDir: {sizeLimit: 256Mi}}

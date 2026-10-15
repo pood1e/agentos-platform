@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// Presentation supplied by a solution pack. Every field is optional and falls back to the platform default.
+message Pack {
+  string title = 1 [(buf.validate.field).string.max_len = 40];
+  repeated RolePresentation roles = 2 [(buf.validate.field).repeated.max_items = 64];
+  repeated ToolBrand tools = 3 [(buf.validate.field).repeated.max_items = 64];
+  // i18next resources by language code, merged over the platform resources by namespace.
+  map<string, google.protobuf.Struct> locales = 4 [(buf.validate.field).map.max_pairs = 8];
+}
+
+message RolePresentation {
+  string role = 1 [(buf.validate.field).string.min_len = 1];
+  // Image path relative to the pack directory.
+  string avatar = 2 [(buf.validate.field).string.pattern = "^(([a-zA-Z0-9_-][a-zA-Z0-9_.-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_.-]*)?$"];
+  // Cut-out rig that animates parts of the avatar; without it the whole image is shown.
+  AvatarRig rig = 3;
+}
+
+// SVG geometry over the 256x342 avatar canvas.
+message AvatarRig {
+  string torso = 1;
+  double neck = 2;
+  string head = 3;
+  string gesture = 4;
+  string gesture_cut = 5;
+  string tool = 6;
+  string tool_cut = 7;
+  string gesture_origin = 8;
+  string tool_origin = 9;
+  AvatarMotion motion = 10;
+}
+
+// CSS values for the idle and working motion of a rigged avatar.
+message AvatarMotion {
+  string tool_angle = 1;
+  string gesture_angle = 2;
+  string head_angle = 3;
+  string tool_duration = 4;
+  string phase = 5;
+}
+
+message ToolBrand {
+  // Regular expression matched against tool and server names.
+  string match = 1 [(buf.validate.field).string.min_len = 1];
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+  // Icon path relative to the pack directory.
+  string icon = 3 [(buf.validate.field).string.pattern = "^([a-zA-Z0-9_-][a-zA-Z0-9_.-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$"];
+  bool monochrome = 4;
+}

@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+import "agentos/console/v1/pack.proto";
+import "agentos/console/v1/conversation.proto";
+import "agentos/console/v1/engineer.proto";
+import "agentos/console/v1/tool.proto";
+import "agentos/console/v1/role.proto";
+import "agentos/console/v1/task.proto";
+import "buf/validate/validate.proto";
+import "agentos/governance/v1/change.proto";
+import "kagent/api/v1alpha1/tools.proto";
+import "kagent/api/v1alpha1/models.proto";
+import "kagent/api/v1alpha1/agents.proto";
+import "kagent/api/v1alpha1/harnesses.proto";
+import "kagent/api/v1alpha1/common.proto";
+
+// Workbench API. google.rpc.ErrorInfo.reason carries localization keys.
+service ConsoleService {
+  rpc ListEngineers(ListEngineersRequest) returns (ListEngineersResponse);
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  // Sends the current operation tree, then again whenever it changes.
+  rpc WatchTask(WatchTaskRequest) returns (stream WatchTaskResponse);
+  rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
+  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  // Sends the current conversation, then again whenever it changes.
+  rpc WatchConversation(WatchConversationRequest) returns (stream WatchConversationResponse);
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc RespondInteraction(RespondInteractionRequest) returns (RespondInteractionResponse);
+  rpc GetConfiguration(GetConfigurationRequest) returns (GetConfigurationResponse);
+  rpc GetPack(GetPackRequest) returns (GetPackResponse);
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
+  // Tool bindings and execution confirmation requirements.
+  rpc ExplainTools(ExplainToolsRequest) returns (ExplainToolsResponse);
+  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+}
+
+message ListEngineersRequest {}
+
+message ListEngineersResponse {
+  repeated Engineer engineers = 1;
+}
+
+message ListTasksRequest {
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  string page_token = 2 [(buf.validate.field).string.max_len = 2048];
+  string query = 3 [(buf.validate.field).string.max_len = 200];
+}
+
+message ListTasksResponse {
+  repeated TaskSummary tasks = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message WatchTaskRequest {
+  string task_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message WatchTaskResponse {
+  TaskDetail task = 1;
+}
+
+message GetTaskRunRequest {
+  string task_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetTaskRunResponse {
+  TaskRun run = 1;
+}
+
+message ListConversationsRequest {
+  ConversationKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  string page_token = 3 [(buf.validate.field).string.max_len = 2048];
+  string query = 4 [(buf.validate.field).string.max_len = 200];
+}
+
+message ListConversationsResponse {
+  repeated ConversationSummary conversations = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message WatchConversationRequest {
+  ConversationKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string context_id = 2 [(buf.validate.field).string.max_len = 128];
+}
+
+message WatchConversationResponse {
+  Conversation conversation = 1;
+}
+
+message SendMessageRequest {
+  ConversationKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string context_id = 2 [(buf.validate.field).string.max_len = 128];
+  string message_id = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  string text = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 8000
+  }];
+}
+
+message SendMessageResponse {
+  string context_id = 1;
+  string task_id = 2;
+}
+
+message RespondInteractionRequest {
+  string task_id = 1 [(buf.validate.field).string.min_len = 1];
+  string request_id = 2 [(buf.validate.field).string.min_len = 1];
+  reserved 3;
+  oneof decision {
+    option (buf.validate.oneof).required = true;
+    AnswerDecision answer = 4;
+  }
+}
+
+message AnswerDecision {
+  repeated Answer answers = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message RespondInteractionResponse {}
+
+message GetPackRequest {}
+message GetPackResponse { Pack pack = 1; }
+
+message GetConfigurationRequest {}
+
+message GetConfigurationResponse {
+  repeated RoleDefinition roles = 1;
+  repeated kagent.api.v1alpha1.ToolServer tool_servers = 2;
+  reserved 3;
+  repeated kagent.api.v1alpha1.ModelConfig model_configs = 4;
+  repeated EngineerTools engineer_tools = 5;
+  repeated kagent.api.v1alpha1.Agent agents = 6;
+  repeated kagent.api.v1alpha1.Harness harnesses = 7;
+  kagent.api.v1alpha1.ResourceReference default_harness = 8;
+}
+
+message CreateRoleRequest {
+  RoleDefinition role = 1 [(buf.validate.field).required = true];
+  kagent.api.v1alpha1.ResourceReference harness = 2;
+}
+
+message CreateRoleResponse {
+  RoleDefinition role = 1;
+}
+
+message UpdateRoleRequest {
+  option (buf.validate.message).cel = {
+    id: "role.resource_version.required"
+    message: "resource_version is required for an update"
+    expression: "has(this.role) && this.role.resource_version != ''"
+  };
+  RoleDefinition role = 1 [(buf.validate.field).required = true];
+}
+
+message UpdateRoleResponse {
+  RoleDefinition role = 1;
+}
+
+message ExplainToolsRequest {
+  string engineer = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+  }];
+}
+
+message ExplainToolsResponse {
+  repeated ToolRequirement requirements = 1;
+}
+
+message ListChangesRequest {
+  string task_id = 1 [(buf.validate.field).string.min_len = 1];
+  string request_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+message ListChangesResponse { repeated agentos.governance.v1.Change changes = 1; }

@@ -1,0 +1,311 @@
+{
+  "navigation": {
+    "workbench": "工作台",
+    "home": "AgentOS 工作台首页",
+    "main": "主导航",
+    "tasks": "任务",
+    "chat": "聊天",
+    "advanced": "高级"
+  },
+  "status": {
+    "live": "实时连接",
+    "connecting": "连接中",
+    "unreported": "未上报",
+    "summarized": "已汇总",
+    "dispatched": "已调度"
+  },
+  "background": {
+    "working": "{{count}} 个后台任务执行中",
+    "waiting": "{{count}} 个后台任务等待输入",
+    "failed": "{{count}} 个后台任务失败",
+    "canceled": "{{count}} 个后台任务已取消",
+    "completed": "{{count}} 个后台任务已完成"
+  },
+  "connection": {
+    "reconnecting": "工作台连接已断开，正在重连；保留最后一次观测。",
+    "failed": "连接失败，请检查 kagent 连接配置。"
+  },
+  "theme": {
+    "label": "外观主题",
+    "light": "亮色",
+    "dark": "暗色",
+    "system": "跟随系统"
+  },
+  "locale": {
+    "label": "语言"
+  },
+  "team": {
+    "searchLabel": "搜索团队成员",
+    "searchPlaceholder": "搜索成员名称、标识或职责",
+    "filterRole": "筛选职责",
+    "allRoles": "全部职责",
+    "memberCount": "{{visible}} / {{total}} 位工程师",
+    "activeTasks": "进行中",
+    "noMembers": "没有匹配的团队成员",
+    "unassignedRole": "未分配角色"
+  },
+  "tool": {
+    "calls": "工具调用",
+    "empty": "还没有观测到工具调用",
+    "arguments": "输入参数",
+    "result": "返回结果",
+    "missingArguments": "运行时未上报输入参数",
+    "missingResult": "运行时未上报返回结果",
+    "awaitingResult": "等待工具返回…",
+    "details": "调用详情",
+    "unreportedIntent": "运行时未说明调用目的"
+  },
+  "role": {
+    "coordinator": {
+      "name": "协调者",
+      "shortName": "协调",
+      "description": "调度团队成员、跟进审批并汇总结果"
+    }
+  },
+  "approval": {
+    "pending": "等待审批",
+    "title": "变更审批",
+    "userInput": "用户输入",
+    "approved": "批准",
+    "rejected": "拒绝",
+    "answered": "已回答",
+    "operationNotice": "审批由所属环境处理。",
+    "rejectionReason": "拒绝原因（可选）",
+    "approveAndExecute": "批准并执行",
+    "reject": "拒绝执行",
+    "submitAnswer": "提交回答",
+    "answerPlaceholder": "请输入回答",
+    "submitFailed": "审批已过期或提交失败，请刷新后核对当前状态。",
+    "operationsApproved": "操作已批准",
+    "operationsRejected": "操作已拒绝"
+  },
+  "task": {
+    "prompt": "任务内容",
+    "conclusion": "任务结论",
+    "executionDetails": "查看{{name}}的执行详情",
+    "listTitle": "任务",
+    "searchLabel": "搜索任务",
+    "searchPlaceholder": "搜索任务…",
+    "noMatches": "没有匹配的任务",
+    "noTasks": "还没有任务",
+    "notFound": "任务不存在或已不可见。"
+  },
+  "graph": {
+    "title": "协作过程",
+    "fit": "适应画布",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "return": "返回",
+    "transfer": "移交",
+    "delegate": "委派",
+    "backgroundDispatch": "后台委派",
+    "continue": "继续",
+    "requestApproval": "请求审批",
+    "review": "提交审核",
+    "resumeExecution": "继续执行",
+    "requestInput": "请求输入"
+  },
+  "drawer": {
+    "title": "执行详情",
+    "close": "关闭详情",
+    "result": "执行结果",
+    "loading": "正在加载执行详情…",
+    "unavailable": "暂时无法加载执行详情。",
+    "retry": "重试"
+  },
+  "common": {
+    "close": "关闭"
+  },
+  "chat": {
+    "title": "聊天",
+    "new": "新对话",
+    "history": "聊天记录",
+    "welcome": "有什么需要帮忙的？",
+    "you": "你",
+    "message": "消息",
+    "placeholder": "发送消息…",
+    "send": "发送",
+    "processing": "正在处理…",
+    "notReady": "聊天助手尚未就绪，请稍后再试。",
+    "busy": "团队正在处理当前消息，请等待回复。",
+    "pendingApproval": "请先处理对话中的审批或补充信息。",
+    "invalidConversation": "对话已不可用，请开始新对话。",
+    "invalidMessage": "消息无效，请检查内容后重试。",
+    "sendFailed": "消息发送失败，请重试。",
+    "assistant": "助手",
+    "noConversations": "暂无聊天",
+    "search": "搜索聊天",
+    "viewTask": "查看任务：{{title}}",
+    "scrollLatest": "回到最新消息"
+  },
+  "pagination": {
+    "previous": "上一页",
+    "next": "下一页",
+    "label": "{{title}}分页",
+    "invalidPage": "分页已失效，请重新搜索。"
+  },
+  "configuration": {
+    "title": "团队",
+    "newRole": "新增工程师",
+    "editRole": "配置工程师",
+    "roleDescription": "配置工程师的职责和可用工具。",
+    "builder": "工程师构建助手",
+    "requirement": "工程师需求",
+    "builderPlaceholder": "例如：一个巡检工程师，定期检查服务健康并报告异常",
+    "generate": "生成草稿",
+    "generating": "正在构建工程师…",
+    "name": "名称",
+    "identifier": "标识",
+    "description": "简介",
+    "instructions": "职责与工作方式",
+    "searchTools": "搜索工具",
+    "approvalRequired": "需要审批",
+    "save": "保存",
+    "close": "关闭工程师配置",
+    "configure": "配置",
+    "refresh": "重新获取",
+    "toolCount": "工具 {{count}}",
+    "unavailable": "暂时无法获取团队配置，请重试。",
+    "invalidRole": "请检查工程师标识、名称和职责。",
+    "invalidTools": "包含不可用的 MCP 工具，请重新选择。",
+    "roleExists": "该工程师标识已存在。",
+    "missingRole": "该工程师已不存在，请刷新。",
+    "saveFailed": "保存失败，请重试。",
+    "buildFailed": "工程师构建失败，请重试。",
+    "sections": "工程师配置分区",
+    "promptTab": "提示词",
+    "skillsTab": "技能",
+    "noTools": "没有匹配的工具",
+    "selectedTools": "已选 {{selected}} / {{total}}",
+    "addSkill": "添加技能",
+    "removeSkill": "移除技能",
+    "skillCount": "{{count}} 个技能",
+    "noSkills": "尚未配置技能",
+    "newSkill": "新技能",
+    "skillName": "技能名称",
+    "skillSource": "技能来源",
+    "skillSources": {
+      "oci": "OCI 镜像",
+      "git": "Git 仓库",
+      "bucket": "S3 对象"
+    },
+    "skillFields": {
+      "image": "镜像地址（含 SHA-256）",
+      "repository": "仓库地址",
+      "commit": "完整提交 ID",
+      "endpoint": "S3 服务地址",
+      "bucket": "存储桶",
+      "objectKey": "对象路径",
+      "version": "对象版本 ID",
+      "region": "区域（可选）",
+      "path": "技能目录（可选）"
+    },
+    "skillPlaceholders": {
+      "image": "registry.example.com/skills/triage@sha256:…",
+      "repository": "https://github.com/team/skills.git",
+      "commit": "40 或 64 位完整提交哈希",
+      "endpoint": "https://s3.example.com",
+      "bucket": "team-skills",
+      "objectKey": "skills/triage.zip",
+      "version": "不可变对象版本",
+      "region": "us-east-1",
+      "path": "如 skills/incident-triage；留空使用根目录",
+      "name": "incident-triage"
+    },
+    "conflict": "该工程师已被其他人修改，请关闭后重新打开再编辑。",
+    "toolsTab": "工具",
+    "builtinTools": "内置工具"
+  },
+  "activity": {
+    "submitted": "已提交",
+    "working": "执行中",
+    "awaitingApproval": "等待审批",
+    "awaitingInput": "等待输入",
+    "succeeded": "已完成",
+    "failed": "失败",
+    "rejected": "已拒绝",
+    "canceled": "已取消",
+    "idle": "空闲",
+    "unavailable": "未就绪",
+    "unobserved": "状态未上报"
+  },
+  "interaction": {
+    "stale": "该请求已被处理或已过期，请核对当前状态。",
+    "invalidAnswer": "回答与当前问题不匹配，请检查后重试。"
+  },
+  "request": {
+    "invalid": "请求内容无效，请检查后重试。"
+  },
+  "operations": {
+    "environment": "环境",
+    "governance": "审批方式",
+    "human": "人工审批",
+    "none": "无需审批",
+    "approvalPortal": "审批入口",
+    "links": "环境入口",
+    "states": {
+      "PENDING": "等待审批",
+      "APPROVED": "已批准",
+      "REJECTED": "已拒绝",
+      "EXECUTING": "执行中",
+      "SUCCEEDED": "已完成",
+      "FAILED": "执行失败",
+      "EXPIRED": "已过期"
+    }
+  },
+  "harness": {
+    "title": "Harness 管理",
+    "tab": "运行时",
+    "label": "Harness",
+    "runtime": "执行引擎",
+    "image": "运行镜像",
+    "add": "新增 Harness",
+    "edit": "配置 Harness",
+    "apply": "应用运行时",
+    "applied": "运行时已保存",
+    "newSessions": "更换后用于新会话，现有会话继续使用原运行时。",
+    "deleteConfirm": "删除 Harness「{{name}}」？",
+    "invalidReference": "Harness 或工程师引用无效。",
+    "invalidEngineer": "该对象不是可配置的工程师。",
+    "presetProtected": "预置 Harness 可以配置，不能删除。",
+    "inUse": "此 Harness 仍有工程师使用，请先更换其运行时。",
+    "incompatibleModel": "模型接口不匹配：Codex 使用 OpenAI Responses，Claude Code 使用 Anthropic Messages。",
+    "selectModel": "选择兼容的模型接入",
+    "noCompatibleModel": "暂无兼容接入，请在模型管理中配置此运行时使用的接口。",
+    "sharedModel": "同角色的其他工程师仍在使用不兼容的运行时，请先统一其运行时配置。",
+    "partialSave": "模型已更新，但运行时保存失败且配置发生了并发修改，请刷新后核对运行时与模型。",
+    "responsesRequired": "Codex 需要使用 Responses 协议的模型接入。",
+    "modelOptions": "此 Harness 不支持当前模型的附加请求参数，请使用匹配的模型配置。",
+    "fields": {
+      "workload": "执行镜像",
+      "image": "镜像（含 SHA256）",
+      "command": "启动命令",
+      "args": "启动参数",
+      "env": "环境变量",
+      "name": "名称",
+      "value": "值",
+      "substrate": "执行环境",
+      "workerPoolRef": "工作池",
+      "snapshotPolicy": "快照存储",
+      "location": "存储地址",
+      "kagent": "kagent 配置",
+      "memory": "长期记忆",
+      "modelConfigRef": "模型配置",
+      "ttlDays": "保留天数",
+      "compaction": "上下文压缩",
+      "compactionInterval": "压缩间隔",
+      "overlapSize": "重叠条数",
+      "tokenThreshold": "Token 阈值",
+      "eventRetentionSize": "保留事件数",
+      "summarizer": "摘要模型",
+      "promptTemplate": "摘要提示词",
+      "target": "项目"
+    },
+    "presets": {
+      "standard": "标准运行时",
+      "memory": "知识记忆运行时",
+      "codex": "Codex",
+      "claude": "Claude Code"
+    }
+  }
+}

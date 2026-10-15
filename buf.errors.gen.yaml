@@ -1,0 +1,8 @@
+version: v2
+inputs:
+  - module: buf.build/googleapis/googleapis:c17df5b2beca46928cc87d5656bd5343
+    types: [google.rpc.ErrorInfo]
+plugins:
+  - local: protoc-gen-es
+    out: gen
+    opt: [target=ts, import_extension=js]

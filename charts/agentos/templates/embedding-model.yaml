@@ -1,0 +1,13 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: ModelConfig
+metadata:
+  name: knowledge-embedding
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  provider: OpenAI
+  model: {{ .Values.embedding.model | quote }}
+  apiKeySecret: {{ include "agentos.name" . }}-gateway
+  apiKeySecretKey: api-key
+  openAI:
+    baseUrl: http://{{ include "agentos.name" . }}-gateway.{{ .Release.Namespace }}.svc:8080/v1

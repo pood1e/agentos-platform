@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+import "agentos/console/v1/state.proto";
+import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1alpha1/tools.proto";
+
+// kagent Agent identified by namespace/name; role comes from its label or template.
+message Engineer {
+  string id = 1;
+  string name = 2;
+  string role = 3;
+  string description = 4;
+  ActivityState state = 5;
+  string unavailable_reason = 6;
+  string unavailable_message = 7;
+  int32 active_tasks = 8;
+  int32 tool_calls = 9;
+}
+
+// Runtime-provided tools are observed per engineer, independently of editable MCP bindings.
+message EngineerTools {
+  kagent.api.v1alpha1.ResourceReference engineer = 1;
+  repeated kagent.api.v1alpha1.DiscoveredTool builtin_tools = 2;
+}

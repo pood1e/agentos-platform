@@ -14,12 +14,26 @@ Skill 目录、模型接入与控制台；业务以方案包提供团队、Skill
 
 ## 状态
 
-设计阶段。代码从内部仓库 aiops-mvp（基线 `3ad31c1`）抽取，AIOps 成为首个方案包；映射与切换步骤见
-[抽取方案](docs/extraction.md)。
+抽取中。代码从内部仓库 aiops-mvp（基线 `3ad31c1`）抽取，AIOps 成为首个方案包；映射与切换步骤见
+[抽取方案](docs/extraction.md)，进度见 [#2](https://github.com/pood1e/agentos-platform/issues/2)。
+
+## 开发
+
+需要 Node.js 24.13 或更高版本。
+
+```sh
+npm ci
+npm run verify      # 生成代码、构建、Biome / buf lint / tsc 检查与单元测试
+npm run test:e2e    # 浏览器测试，使用 fake kagent 与示例方案包
+```
+
+变更控制的集成测试需要 PostgreSQL，设置 `CHANGE_TEST_DATABASE_URL` 后执行，未设置时跳过。本地调试参考 `.env.example`：
+`npm run dev:kagent` 启动 fake kagent，`npm run server` 启动控制台服务，`npm run dev` 启动前端。
 
 ## 文档
 
 - [架构](docs/architecture.md)：组件、调用链路、部署形态与安全边界
+- [代码导航](docs/code-navigation.md)：目录与模块职责
 - [扩展契约](docs/extension.md)：方案包可提供的内容与格式
 - [抽取方案](docs/extraction.md)：aiops-mvp 的路径映射、泛化改动与一次性切换步骤
 

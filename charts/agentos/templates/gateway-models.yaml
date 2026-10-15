@@ -1,0 +1,20 @@
+{{- range .Values.gateway.models }}
+{{- if not (lookup "agentgateway.dev/v1alpha1" "AgentgatewayModel" $.Release.Namespace .name) }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayModel
+metadata:
+  name: {{ .name }}
+  annotations:
+    helm.sh/resource-policy: keep
+    {{- if eq .name "knowledge-embedding" }}
+    agentos.dev/system-connection: "true"
+    {{- end }}
+  labels:
+    {{- include "agentos.labels" $ | nindent 4 }}
+spec:
+  parentRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" $ }}-gateway, sectionName: http}
+  {{- toYaml .spec | nindent 2 }}
+{{- end }}
+{{- end }}

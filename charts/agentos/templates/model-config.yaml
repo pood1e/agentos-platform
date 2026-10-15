@@ -1,0 +1,19 @@
+{{- $gatewayModel := lookup "agentgateway.dev/v1alpha1" "AgentgatewayModel" .Release.Namespace "default-model-config" }}
+{{- $client := lookup "api.kagent.dev/v1alpha3" "ModelConfig" .Release.Namespace "default-model-config" }}
+{{- $gatewayURL := printf "http://%s-gateway.%s.svc:8080/v1" (include "agentos.name" .) .Release.Namespace }}
+{{- if or (not $gatewayModel) (not $client) (ne (dig "spec" "openAI" "baseUrl" "" $client) $gatewayURL) }}
+{{- $spec := deepCopy .Values.modelConfig.spec }}
+{{- $_ := set $spec "provider" "OpenAI" }}
+{{- $_ := set $spec "apiKeySecret" (printf "%s-gateway" (include "agentos.name" .)) }}
+{{- $_ := set $spec "apiKeySecretKey" "api-key" }}
+{{- $_ := set $spec.openAI "baseUrl" (printf "http://%s-gateway.%s.svc:8080/v1" (include "agentos.name" .) .Release.Namespace) }}
+apiVersion: api.kagent.dev/v1alpha3
+kind: ModelConfig
+metadata:
+  name: default-model-config
+  annotations: {helm.sh/resource-policy: keep}
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  {{- toYaml $spec | nindent 2 }}
+{{- end }}

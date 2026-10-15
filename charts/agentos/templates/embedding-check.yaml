@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agentos.name" . }}-embedding-check
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+data:
+  embedding.mjs: |
+    {{- .Files.Get "files/verify-embedding.mjs" | nindent 4 }}

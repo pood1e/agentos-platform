@@ -1,0 +1,222 @@
+syntax = "proto3";
+
+package agentos.management.v1;
+
+import "agentos/console/v1/role.proto";
+import "buf/validate/validate.proto";
+import "agentos/governance/v1/change.proto";
+import "google/protobuf/struct.proto";
+import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1alpha1/memory.proto";
+import "kagent/api/v1alpha1/models.proto";
+import "kagent/api/v1alpha1/tools.proto";
+import "kagent/api/v1alpha1/agents.proto";
+import "kagent/api/v1alpha1/agent_templates.proto";
+import "kagent/api/v1alpha1/harnesses.proto";
+
+service ManagementService {
+  rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse);
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+  rpc SaveConnection(SaveConnectionRequest) returns (SaveConnectionResponse);
+  rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+  rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
+  rpc DeleteSkill(DeleteSkillRequest) returns (DeleteSkillResponse);
+  rpc ListKnowledge(ListKnowledgeRequest) returns (ListKnowledgeResponse);
+  rpc SearchKnowledge(SearchKnowledgeRequest) returns (SearchKnowledgeResponse);
+  rpc AddKnowledge(AddKnowledgeRequest) returns (AddKnowledgeResponse);
+  rpc DeleteKnowledge(DeleteKnowledgeRequest) returns (DeleteKnowledgeResponse);
+  rpc ClearKnowledge(ClearKnowledgeRequest) returns (ClearKnowledgeResponse);
+  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse);
+  rpc ListHarnesses(kagent.api.v1alpha1.ListHarnessesRequest) returns (kagent.api.v1alpha1.ListHarnessesResponse);
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc SaveHarness(SaveHarnessRequest) returns (kagent.api.v1alpha1.CreateHarnessResponse);
+  rpc DeleteHarness(DeleteHarnessRequest) returns (kagent.api.v1alpha1.DeleteHarnessResponse);
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  rpc GetEngineerRuntime(kagent.api.v1alpha1.GetAgentRequest) returns (GetEngineerRuntimeResponse);
+  rpc SetEngineerRuntime(SetEngineerRuntimeRequest) returns (SetEngineerRuntimeResponse);
+}
+
+enum ConnectionKind {
+  CONNECTION_KIND_UNSPECIFIED = 0;
+  CONNECTION_KIND_MODEL = 1;
+  CONNECTION_KIND_MCP = 2;
+}
+
+// Resource is the authoritative agentgateway Kubernetes resource. Its native
+// CRD schema validates the spec; model and tools are the kagent consumer view.
+message Connection {
+  ConnectionKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  kagent.api.v1alpha1.StructuredObject resource = 2 [(buf.validate.field).required = true];
+  kagent.api.v1alpha1.ModelConfig model = 3;
+  repeated kagent.api.v1alpha1.DiscoveredTool tools = 4;
+  repeated string used_by = 5;
+  bool system_managed = 6;
+  repeated MCPCredentialBinding credential_bindings = 7;
+}
+
+message MCPCredentialBinding {
+  string engineer = 1;
+  kagent.api.v1alpha1.ToolServer server = 2;
+}
+
+message GetSchemasRequest {}
+message GetSchemasResponse {
+  google.protobuf.Struct model = 1;
+  google.protobuf.Struct mcp = 2;
+  google.protobuf.Struct harness = 3;
+}
+
+message SaveHarnessRequest {
+  kagent.api.v1alpha1.Harness harness = 1 [(buf.validate.field).required = true];
+  bool create = 2;
+}
+
+message DeleteHarnessRequest {
+  kagent.api.v1alpha1.ResourceReference ref = 1 [(buf.validate.field).required = true];
+  string resource_version = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetEngineerRuntimeResponse {
+  kagent.api.v1alpha1.Agent agent = 1;
+  kagent.api.v1alpha1.AgentTemplate agent_template = 2;
+}
+
+message SetEngineerRuntimeRequest {
+  kagent.api.v1alpha1.ResourceReference engineer = 1 [(buf.validate.field).required = true];
+  kagent.api.v1alpha1.ResourceReference harness = 2 [(buf.validate.field).required = true];
+  reserved 3;
+  reserved "resource_version";
+  // Configuration generation ignores status-only controller updates.
+  uint64 generation = 4 [(buf.validate.field).uint64.gt = 0];
+  string expected_uid = 5 [(buf.validate.field).string.min_len = 1];
+  kagent.api.v1alpha1.ResourceReference model_config = 6 [(buf.validate.field).required = true];
+  optional string template_resource_version = 7 [(buf.validate.field).string.min_len = 1];
+}
+
+message SetEngineerRuntimeResponse {
+  kagent.api.v1alpha1.Agent agent = 1;
+  kagent.api.v1alpha1.AgentTemplate agent_template = 2;
+}
+
+message ListConnectionsRequest {
+  ConnectionKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  string page_token = 3 [(buf.validate.field).string.max_len = 2048];
+  string query = 4 [(buf.validate.field).string.max_len = 200];
+}
+message ListConnectionsResponse {
+  repeated Connection connections = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+message SaveConnectionRequest {
+  Connection connection = 1 [(buf.validate.field).required = true];
+  bool create = 2;
+  // Write-only provider/MCP credential. Omission retains the existing Secret.
+  optional string credential = 3 [(buf.validate.field).string.max_len = 8000];
+}
+message SaveConnectionResponse {
+  Connection connection = 1;
+}
+message DeleteConnectionRequest {
+  ConnectionKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+  string resource_version = 3 [(buf.validate.field).string.min_len = 1];
+}
+message DeleteConnectionResponse {}
+
+message SkillItem {
+  agentos.console.v1.Skill skill = 1 [(buf.validate.field).required = true];
+  string description = 2 [(buf.validate.field).string.max_len = 400];
+  string resource_version = 3;
+  repeated string used_by = 4;
+}
+// Persisted catalog uses the same Skill definition that an engineer binds.
+message SkillCatalog {
+  repeated SkillItem items = 1;
+}
+message ListSkillsRequest {
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  string page_token = 2 [(buf.validate.field).string.max_len = 2048];
+  string query = 3 [(buf.validate.field).string.max_len = 200];
+}
+message ListSkillsResponse {
+  repeated SkillItem skills = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+message SaveSkillRequest {
+  SkillItem item = 1 [(buf.validate.field).required = true];
+  bool create = 2;
+}
+message SaveSkillResponse {
+  SkillItem item = 1;
+}
+message DeleteSkillRequest {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  string resource_version = 2 [(buf.validate.field).string.min_len = 1];
+}
+message DeleteSkillResponse {}
+
+message ListKnowledgeRequest {
+  reserved 1;
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  string page_token = 3 [(buf.validate.field).string.max_len = 2048];
+  string query = 4 [(buf.validate.field).string.max_len = 200];
+}
+message ListKnowledgeResponse {
+  repeated kagent.api.v1alpha1.MemorySummary memories = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+message SearchKnowledgeRequest {
+  reserved 1;
+  string query = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 8000
+  }];
+}
+message SearchKnowledgeResponse {
+  repeated kagent.api.v1alpha1.MemorySearchResult memories = 1;
+}
+message AddKnowledgeRequest {
+  reserved 1;
+  string content = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 24000
+  }];
+}
+message AddKnowledgeResponse {
+  string id = 1;
+}
+message DeleteKnowledgeRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteKnowledgeResponse {}
+message ClearKnowledgeRequest {
+  reserved 1;
+  int32 expected_count = 2 [(buf.validate.field).int32.gte = 0];
+}
+message ClearKnowledgeResponse {}
+
+message ListEnvironmentsRequest {}
+message ListEnvironmentsResponse { repeated agentos.governance.v1.Environment environments = 1; }

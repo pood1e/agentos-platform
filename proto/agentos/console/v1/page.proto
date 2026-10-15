@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+// Internal cursor encoded into an opaque page_token. Collections are ordered by
+// time descending, then ID ascending.
+message PageCursor {
+  string scope = 1;
+  string query = 2;
+  string after_id = 3;
+  int64 after_time = 4;
+}

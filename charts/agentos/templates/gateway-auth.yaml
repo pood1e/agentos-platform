@@ -1,0 +1,32 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ include "agentos.name" . }}-gateway-auth
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" . }}-gateway}
+  traffic:
+    apiKeyAuthentication:
+      mode: Strict
+      location:
+        expression: >-
+          ('authorization' in request.headers && request.headers['authorization'].startsWith('Bearer ')) ?
+          request.headers['authorization'].replace('Bearer ', '') :
+          (request.path.startsWith('/v1/messages') && 'x-api-key' in request.headers ? request.headers['x-api-key'] : '')
+      configMapSelector:
+        matchLabels: {agentos.dev/gateway-keys: {{ include "agentos.name" . }}}
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - >-
+            (has(apiKey.service) && apiKey.service == 'agentos' && !('x-agentos-engineer' in request.headers)) ||
+            (has(apiKey.environment) &&
+              has(apiKey.engineer) && 'x-agentos-engineer' in request.headers &&
+              apiKey.engineer == request.headers['x-agentos-engineer'] &&
+              request.path.startsWith('/mcp/' + apiKey.environment + '-'))
+    headerModifiers:
+      request:
+        remove: [authorization, x-api-key]

@@ -1,0 +1,115 @@
+keycloak:
+  readOnly:
+    - keycloak_identity_get
+    - keycloak_client_service_account_get
+    - keycloak_user_search
+    - keycloak_user_get
+    - keycloak_user_roles_get
+    - keycloak_user_client_roles_get
+    - keycloak_user_groups_list
+    - keycloak_role_list
+    - keycloak_client_list
+    - keycloak_client_get
+    - keycloak_client_roles_list
+    - keycloak_group_list
+    - keycloak_group_members_list
+    - keycloak_events_login
+    - keycloak_events_admin
+  write:
+    - keycloak_user_role_assign
+    - keycloak_user_role_unassign
+kubernetes:
+  readOnly:
+    - events_list
+    - namespaces_list
+    - nodes_stats_summary
+    - nodes_top
+    - pods_get
+    - pods_list
+    - pods_list_in_namespace
+    - pods_log
+    - pods_top
+    - resources_get
+    - resources_list
+  write:
+    - resources_create_or_update
+    - resources_delete
+    - resources_scale
+    - pods_delete
+    - pods_exec
+netbox:
+  readOnly:
+    - netbox_get_objects
+    - netbox_get_object_by_id
+    - netbox_get_changelogs
+    - netbox_search_objects
+  write:
+    - dcim_manufacturers_create
+    - dcim_device_types_create
+    - dcim_device_roles_create
+    - dcim_platforms_create
+    - dcim_devices_create
+    - dcim_devices_partial_update
+    - dcim_interfaces_create
+    - dcim_interfaces_partial_update
+    - ipam_ip_addresses_create
+    - ipam_ip_addresses_partial_update
+    - virtualization_virtual_machines_create
+    - virtualization_virtual_machines_partial_update
+    - virtualization_interfaces_create
+    - virtualization_interfaces_partial_update
+grafana:
+  readOnly:
+    - list_datasources
+    - get_datasource
+    - query_prometheus
+    - list_prometheus_metric_names
+    - list_prometheus_label_names
+    - list_prometheus_label_values
+    - query_loki_logs
+    - query_loki_stats
+    - list_loki_label_names
+    - list_loki_label_values
+    - search_dashboards
+    - get_dashboard_by_uid
+    - get_dashboard_summary
+    - alerting_rules_read
+    - query_sql
+  write: []
+jumpserver:
+  readOnly:
+    - users_profile_retrieve
+    - perms_users_assets_list
+    - perms_users_assets_retrieve
+    - perms_users_nodes_list
+    - ops_jobs_list
+    - ops_jobs_retrieve
+    - ops_job_execution_task_detail_retrieve
+  managementReadOnly:
+    - assets_hosts_list
+    - assets_hosts_retrieve
+    - assets_platforms_list
+    - assets_nodes_list
+    - accounts_accounts_list
+  write:
+    - ops_jobs_create
+    - ops_jobs_update
+    - ops_jobs_partial_update
+  management:
+    - assets_hosts_create
+    - assets_hosts_partial_update
+    - accounts_accounts_create
+    - accounts_accounts_partial_update
+zammad:
+  readOnly:
+    - get_me
+    - list_ticket_options
+    - search_tickets
+    - get_ticket
+    - get_ticket_history
+    - list_ticket_articles
+    - get_ticket_article
+  write:
+    - create_ticket
+    - update_ticket
+    - add_ticket_note

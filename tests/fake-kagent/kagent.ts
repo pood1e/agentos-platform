@@ -1,0 +1,203 @@
+import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
+import { clone, create, fromJson, type JsonValue } from "@bufbuild/protobuf";
+import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
+import { Code, ConnectError } from "@connectrpc/connect";
+import {
+  ArtifactSchema,
+  type Message,
+  type StreamResponse,
+  StreamResponseSchema,
+  type Task,
+  TaskSchema,
+  TaskState,
+  TaskStatusSchema,
+} from "../../gen/a2a_pb.js";
+import {
+  type AgentTemplate,
+  AgentTemplateSchema,
+} from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import type { Agent } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
+import { type Session, SessionSchema } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { agentKey } from "../../server/read-model/agents.js";
+import { hitlPayload } from "../../server/read-model/decode/hitl.js";
+import { createdAtKey, object, partTypeKey } from "../../server/read-model/decode/messages.js";
+import { terminal } from "../../server/read-model/state.js";
+import { conflict } from "../../server/shared/errors.js";
+import { execute } from "./behavior.js";
+import { templates, toolServers } from "./catalog.js";
+import { FakeMemory } from "./memory.js";
+import { FakeResources } from "./resources.js";
+
+const part = (kind: "function_response", data: JsonValue) => ({
+  content: { case: "data" as const, value: fromJson(ValueSchema, data) },
+  metadata: { [partTypeKey]: kind },
+});
+const textPart = (value: string) => ({ content: { case: "text" as const, value } });
+
+/** In-memory kagent with deterministic agent behavior for tests and local development. */
+export class FakeKagent {
+  readonly agents: Agent[];
+  readonly sessions = new Map<string, Session>();
+  readonly tasks = new Map<string, Task>();
+  readonly templates = new Map(templates().map((item) => [item.ref?.name ?? "", item]));
+  readonly toolServers = toolServers();
+  readonly resources: FakeResources;
+  readonly memory = new FakeMemory();
+  readonly received: Message[] = [];
+  readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
+  readonly fetched: string[] = [];
+  private requests = new Map<string, string>();
+  private updates = new EventEmitter().setMaxListeners(0);
+  private clock = 0;
+
+  constructor(fixtures: { agents: Agent[]; sessions: Session[]; tasks: Task[] }) {
+    this.agents = fixtures.agents;
+    this.load(fixtures);
+    this.resources = new FakeResources(this);
+  }
+
+  /** Replaces sessions and tasks; restored tasks get a new status time so readers see a change. */
+  load(fixtures: { sessions: Session[]; tasks: Task[] }): void {
+    this.sessions.clear();
+    this.tasks.clear();
+    for (const session of fixtures.sessions) this.sessions.set(session.id, session);
+    for (const task of fixtures.tasks) {
+      if (task.status && !terminal(task.status.state))
+        task.status.timestamp = timestampFromMs(this.now());
+      this.tasks.set(task.id, task);
+    }
+  }
+
+  now(): number {
+    this.clock = Math.max(this.clock + 1, Date.now());
+    return this.clock;
+  }
+
+  tenantOf = (task: Task) => agentKey(this.sessions.get(task.contextId)?.agent);
+
+  task(id: string): Task {
+    const task = this.tasks.get(id);
+    if (!task) throw new ConnectError("task not found", Code.NotFound);
+    return task;
+  }
+
+  update(task: Task, state: TaskState, message?: Message): void {
+    task.status = create(TaskStatusSchema, {
+      state,
+      timestamp: timestampFromMs(this.now()),
+      message,
+    });
+    this.tasks.set(task.id, task);
+    this.updates.emit(task.id, task);
+  }
+
+  createSession(agent: { namespace: string; name: string }, requestId: string, name: string) {
+    const existing = this.sessions.get(this.requests.get(requestId) ?? "");
+    if (existing) return existing;
+    const session = create(SessionSchema, {
+      id: randomUUID(),
+      creator: "agentos",
+      agent,
+      name,
+      createdAt: timestampFromMs(this.now()),
+      updatedAt: timestampFromMs(this.now()),
+    });
+    this.requests.set(requestId, session.id);
+    this.sessions.set(session.id, session);
+    return session;
+  }
+
+  /** Accepts a message the way kagent does, deduplicating initial messages by ID. */
+  accept(message: Message): Task {
+    this.received.push(message);
+    if (message.taskId) return this.reply(this.task(message.taskId), message);
+    const accepted = [...this.tasks.values()].find(
+      (task) =>
+        task.contextId === message.contextId &&
+        task.history.some((item) => item.messageId === message.messageId),
+    );
+    if (accepted) return accepted;
+    const task = create(TaskSchema, {
+      id: randomUUID(),
+      contextId: message.contextId,
+      history: [message],
+      metadata: { [createdAtKey]: new Date(this.now()).toISOString() },
+    });
+    this.update(task, TaskState.WORKING);
+    setTimeout(() => execute(this, task, message), 200);
+    return task;
+  }
+
+  private reply(task: Task, message: Message): Task {
+    task.history.push(message);
+    const request = hitlPayload(task.status?.message);
+    const decision = hitlPayload(message);
+    const parts =
+      request?.type === "tool_approval_request" && decision?.type === "tool_approval_response"
+        ? request.value.tools.map((tool) =>
+            part("function_response", {
+              id: tool.callId,
+              name: tool.name,
+              response: decision.value.approvals.every((item) => item.approved)
+                ? { output: { output: "configmap/approval-smoke created\n" } }
+                : { error: `error tool "${tool.name}" call is rejected` },
+            }),
+          )
+        : [];
+    task.artifacts.push(
+      create(ArtifactSchema, {
+        artifactId: randomUUID(),
+        parts: [...parts, textPart("处置结果已核验。")],
+      }),
+    );
+    this.update(task, TaskState.WORKING);
+    setTimeout(() => this.update(task, TaskState.COMPLETED), 200);
+    return task;
+  }
+
+  /** Current task snapshot followed by every change until the task ends. */
+  async *follow(id: string, signal: AbortSignal): AsyncGenerator<StreamResponse> {
+    let task = this.task(id);
+    const snapshot = (value: Task) =>
+      create(StreamResponseSchema, { payload: { case: "task", value: clone(TaskSchema, value) } });
+    yield snapshot(task);
+    while (!terminal(task.status?.state) && !signal.aborted) {
+      task = await new Promise<Task>((resolve, reject) => {
+        const done = (next: Task) => {
+          signal.removeEventListener("abort", abort);
+          resolve(next);
+        };
+        const abort = () => {
+          this.updates.off(id, done);
+          reject(signal.reason);
+        };
+        this.updates.once(id, done);
+        signal.addEventListener("abort", abort, { once: true });
+      });
+      yield snapshot(task);
+    }
+  }
+
+  template(name: string): AgentTemplate {
+    const template = this.templates.get(name);
+    if (!template) throw new ConnectError("AgentTemplate not found", Code.NotFound);
+    return template;
+  }
+
+  replaceTemplate(incoming: AgentTemplate): AgentTemplate {
+    const existing = this.template(incoming.ref?.name ?? "");
+    const metadata = object(existing.resource?.value?.metadata);
+    const next = incoming.resource?.value ?? {};
+    if (metadata.resourceVersion !== object(next.metadata).resourceVersion)
+      throw conflict("configuration.conflict");
+    const template = clone(AgentTemplateSchema, incoming);
+    if (template.resource?.value)
+      template.resource.value.metadata = {
+        ...object(next.metadata),
+        resourceVersion: String(Number(metadata.resourceVersion) + 1),
+      };
+    this.templates.set(incoming.ref?.name ?? "", template);
+    return template;
+  }
+}

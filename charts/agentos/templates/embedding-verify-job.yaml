@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "agentos.name" . }}-embedding-{{ .Values.image.digest | trimPrefix "sha256:" | trunc 10 }}
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: 900
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: embedding-verify
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "agentos.securityContext" . | nindent 8 }}
+      containers:
+        - name: verify
+          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          command: [node, /checks/embedding.mjs]
+          env:
+            - {name: OLLAMA_URL, value: 'http://knowledge-embedding:11434'}
+            - {name: OLLAMA_MODEL, value: {{ .Values.embedding.model | quote }}}
+            - {name: OLLAMA_MODEL_DIGEST, value: {{ .Values.embedding.digest | quote }}}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 128Mi}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: checks, mountPath: /checks, readOnly: true}
+      volumes:
+        - name: checks
+          configMap: {name: {{ include "agentos.name" . }}-embedding-check}

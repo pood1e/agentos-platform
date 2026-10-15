@@ -1,0 +1,21 @@
+{{- $current := lookup "v1" "ConfigMap" .Release.Namespace (printf "%s-skills" (include "agentos.name" .)) -}}
+{{- $catalog := (get ($current.data | default dict) "catalog.json" | default "{}" | fromJson) -}}
+{{- $items := $catalog.items | default list -}}
+{{- $names := list -}}
+{{- range $items -}}
+{{- $names = append $names .skill.name -}}
+{{- end -}}
+{{- range (include "agentos.skills" . | fromYamlArray) -}}
+{{- if not (has .skill.name $names) -}}
+{{- $items = append $items . -}}
+{{- end -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agentos.name" . }}-skills
+  annotations: {helm.sh/resource-policy: keep}
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+data:
+  catalog.json: {{ dict "items" $items | toJson | quote }}

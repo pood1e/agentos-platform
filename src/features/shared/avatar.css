@@ -1,0 +1,131 @@
+@property --avatar-effort {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.18;
+}
+
+.avatar {
+  --avatar-effort: 0.18;
+  --tool-angle: 2.5deg;
+  --gesture-angle: 4deg;
+  --head-angle: 1deg;
+  --tool-duration: 6s;
+  --phase: -1.1s;
+  overflow: visible;
+  pointer-events: none;
+  transition:
+    --avatar-effort 900ms ease-in-out,
+    opacity 600ms ease;
+}
+.avatar[data-state="working"] {
+  --avatar-effort: 1;
+}
+.avatar[data-state="waiting"] {
+  --avatar-effort: 0.4;
+}
+.avatar[data-state="unavailable"],
+.avatar[data-state="unobserved"] {
+  --avatar-effort: 0.08;
+  opacity: 0.6;
+}
+.avatar-shadow {
+  fill: #44677d;
+  opacity: 0.12;
+  transform-origin: 128px 330px;
+}
+.avatar-breathe {
+  transform-origin: 128px 326px;
+}
+.avatar-gesture {
+  transform-origin: var(--gesture-origin);
+}
+.avatar-tool {
+  transform-origin: var(--tool-origin);
+}
+.avatar-head {
+  transform-origin: 137px 151px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .avatar[data-animated="true"] {
+    .avatar-breathe {
+      animation: avatar-breathe 4.8s ease-in-out infinite;
+    }
+    .avatar-head {
+      animation: avatar-attention 8.4s ease-in-out infinite;
+    }
+    .avatar-gesture {
+      animation: avatar-gesture 7.2s ease-in-out infinite;
+    }
+    .avatar-tool {
+      animation: avatar-work var(--tool-duration) ease-in-out infinite;
+    }
+    .avatar-shadow {
+      animation: avatar-ground 4.8s ease-in-out infinite;
+    }
+    g,
+    ellipse {
+      animation-delay: var(--phase);
+    }
+  }
+}
+@keyframes avatar-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.006, 1.009);
+  }
+}
+@keyframes avatar-attention {
+  0%,
+  100% {
+    transform: rotate(-0.2deg);
+  }
+  28% {
+    transform: rotate(calc(0.2deg + var(--head-angle) * var(--avatar-effort)));
+  }
+  66% {
+    transform: rotate(calc(-0.2deg - 0.8deg * var(--avatar-effort)));
+  }
+}
+@keyframes avatar-gesture {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  35% {
+    transform: rotate(calc(0.5deg + var(--gesture-angle) * var(--avatar-effort)));
+  }
+  70% {
+    transform: rotate(calc(-0.5deg - var(--gesture-angle) * var(--avatar-effort) * 0.4));
+  }
+}
+@keyframes avatar-work {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  42% {
+    transform: rotate(calc(var(--tool-angle) * var(--avatar-effort)));
+  }
+  76% {
+    transform: rotate(calc(var(--tool-angle) * var(--avatar-effort) * -0.2));
+  }
+}
+@keyframes avatar-ground {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.12;
+  }
+  50% {
+    transform: scaleX(1.025);
+    opacity: 0.1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar {
+    transition: none;
+  }
+}

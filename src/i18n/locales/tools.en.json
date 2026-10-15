@@ -1,0 +1,258 @@
+{
+  "catalog": {
+    "k8s_get_resources": {
+      "name": "List resources",
+      "description": "List live objects by namespace and resource type."
+    },
+    "k8s_describe_resource": {
+      "name": "Describe a resource",
+      "description": "Read resource state, related objects and events."
+    },
+    "k8s_get_events": {
+      "name": "Read Kubernetes events",
+      "description": "Read events in the selected namespace."
+    },
+    "k8s_get_pod_logs": {
+      "name": "Read pod logs",
+      "description": "Read container logs from a selected pod."
+    },
+    "k8s_get_resource_yaml": {
+      "name": "Read resource YAML",
+      "description": "Read the complete current YAML of a resource."
+    },
+    "k8s_get_available_api_resources": {
+      "name": "List API resource types",
+      "description": "List Kubernetes resource types supported by the cluster."
+    },
+    "k8s_get_cluster_configuration": {
+      "name": "Read cluster configuration",
+      "description": "Read cluster configuration and connection information."
+    },
+    "k8s_wait": {
+      "name": "Wait for a resource condition",
+      "description": "Wait until a resource meets a condition or the timeout expires."
+    },
+    "k8s_generate_resource": {
+      "name": "Generate resource YAML",
+      "description": "Generate Kubernetes YAML from a description."
+    },
+    "k8s_apply_manifest": {
+      "name": "Apply a manifest",
+      "description": "Create or update cluster resources from YAML."
+    },
+    "k8s_create_resource": {
+      "name": "Create a resource",
+      "description": "Create a resource from the supplied YAML."
+    },
+    "k8s_create_resource_from_url": {
+      "name": "Create resources from a URL",
+      "description": "Fetch YAML from a URL and create its resources."
+    },
+    "k8s_delete_resource": {
+      "name": "Delete a resource",
+      "description": "Delete a selected resource in a namespace."
+    },
+    "k8s_patch_resource": {
+      "name": "Patch a resource",
+      "description": "Update selected resource fields with a patch."
+    },
+    "k8s_patch_status": {
+      "name": "Patch resource status",
+      "description": "Patch the status fields of a resource."
+    },
+    "k8s_scale": {
+      "name": "Scale a deployment",
+      "description": "Change the desired replica count of a deployment."
+    },
+    "k8s_rollout": {
+      "name": "Manage a rollout",
+      "description": "Inspect, pause, restart, resume or undo a workload rollout."
+    },
+    "k8s_execute_command": {
+      "name": "Execute a command in a pod",
+      "description": "Execute a command inside a selected pod."
+    },
+    "k8s_check_service_connectivity": {
+      "name": "Check service connectivity",
+      "description": "Create a temporary probe pod to check service connectivity."
+    },
+    "k8s_annotate_resource": {
+      "name": "Set resource annotations",
+      "description": "Add or update annotations on a resource."
+    },
+    "k8s_label_resource": {
+      "name": "Set resource labels",
+      "description": "Add or update labels on a resource."
+    },
+    "k8s_remove_annotation": {
+      "name": "Remove a resource annotation",
+      "description": "Remove a selected annotation from a resource."
+    },
+    "k8s_remove_label": {
+      "name": "Remove a resource label",
+      "description": "Remove a selected label from a resource."
+    },
+    "delegate_coordinator": {
+      "name": "Delegate to coordinator",
+      "description": "Hand the goal to the coordinator to coordinate team members."
+    },
+    "list_agents": {
+      "name": "Discover engineers",
+      "description": "Discover engineers, capabilities and readiness."
+    },
+    "create_session": {
+      "name": "Create a collaboration session",
+      "description": "Create an independent task session for a selected engineer."
+    },
+    "invoke_session": {
+      "name": "Delegate and await results",
+      "description": "Delegate a goal to a session and await its result."
+    },
+    "dispatch_session": {
+      "name": "Dispatch background work",
+      "description": "Dispatch independent work for an engineer to handle in the background."
+    },
+    "list_sessions": {
+      "name": "List collaboration sessions",
+      "description": "List sessions accessible to the current user."
+    },
+    "list_role_tools": {
+      "name": "Discover configurable tools",
+      "description": "Discover MCP servers and available tools in the workspace."
+    },
+    "prepare_role": {
+      "name": "Prepare an engineer draft",
+      "description": "Validate the prompt, skills and tool bindings and return an editable draft."
+    },
+    "transfer_to_agent": {
+      "name": "Hand off to an engineer",
+      "description": "Hand the current work over to another engineer."
+    },
+    "list_sandbox_templates": {
+      "name": "List workspace templates",
+      "description": "Discover templates for creating temporary workspaces."
+    },
+    "create_sandbox": {
+      "name": "Create a temporary workspace",
+      "description": "Create an independent workspace from a prepared template."
+    },
+    "get_sandbox": {
+      "name": "Inspect a workspace",
+      "description": "Read workspace state, operation progress and expiration."
+    },
+    "list_sandboxes": {
+      "name": "List temporary workspaces",
+      "description": "List the current user’s temporary workspaces."
+    },
+    "suspend_sandbox": {
+      "name": "Suspend a workspace",
+      "description": "Suspend a workspace; running commands may be interrupted."
+    },
+    "resume_sandbox": {
+      "name": "Resume a workspace",
+      "description": "Resume a suspended workspace."
+    },
+    "delete_sandbox": {
+      "name": "Delete a workspace",
+      "description": "Delete a temporary workspace and its files."
+    },
+    "start_sandbox_process": {
+      "name": "Start a workspace command",
+      "description": "Start a command and return its process ID for tracking."
+    },
+    "get_sandbox_process": {
+      "name": "Inspect command execution",
+      "description": "Inspect a workspace process and its exit code."
+    },
+    "kill_sandbox_process": {
+      "name": "Terminate a workspace command",
+      "description": "Terminate a selected workspace process."
+    },
+    "read_sandbox_outputs": {
+      "name": "Read command output",
+      "description": "Read available standard output and standard error."
+    },
+    "read_sandbox_file": {
+      "name": "Read a workspace file",
+      "description": "Read file contents from a temporary workspace."
+    },
+    "write_sandbox_file": {
+      "name": "Write a workspace file",
+      "description": "Create or replace a file in a temporary workspace."
+    },
+    "list_session_checkpoints": {
+      "name": "List session checkpoints",
+      "description": "List checkpoints available for restoring or forking a session."
+    },
+    "create_session_checkpoint": {
+      "name": "Create a session checkpoint",
+      "description": "Save a checkpoint at a session turn boundary."
+    },
+    "fork_session": {
+      "name": "Fork a session",
+      "description": "Create an independent session from an existing checkpoint."
+    },
+    "save_memory": {
+      "name": "Store knowledge",
+      "description": "Store verified conclusions and sources as retrievable knowledge."
+    },
+    "load_memory": {
+      "name": "Retrieve knowledge",
+      "description": "Retrieve relevant experience and sources with semantic search."
+    },
+    "search_knowledge": {
+      "name": "Search team knowledge",
+      "description": "Search shared team experience and check applicability and sources."
+    },
+    "list_skills": {
+      "name": "List available skills",
+      "description": "List the engineer’s attached skills and their scope."
+    },
+    "load_skill": {
+      "name": "Load skill",
+      "description": "Read the selected skill’s execution instructions."
+    },
+    "load_skill_resource": {
+      "name": "Read skill resource",
+      "description": "Read a skill’s checklist, references or execution resources."
+    },
+    "ask_user": {
+      "name": "Ask the user",
+      "description": "Ask for missing information and wait for the user to respond."
+    },
+    "preload_memory": {
+      "name": "Automatically retrieve knowledge",
+      "description": "Retrieve and load relevant knowledge before answering."
+    },
+    "read_file": {
+      "name": "Read workspace file",
+      "description": "Read a file in the engineer's execution workspace."
+    },
+    "write_file": {
+      "name": "Write workspace file",
+      "description": "Create or write a file in the engineer's execution workspace."
+    },
+    "edit_file": {
+      "name": "Edit workspace file",
+      "description": "Replace specific content in an engineer's workspace file."
+    },
+    "bash": {
+      "name": "Run workspace command",
+      "description": "Run a skill script or command in the engineer's execution workspace."
+    },
+    "list_files": {
+      "name": "List workspace files",
+      "description": "List files in the engineer's workspace or skills directory."
+    },
+    "grep_file": {
+      "name": "Search workspace files",
+      "description": "Search file contents in the engineer's workspace or skills directory."
+    }
+  },
+  "servers": {
+    "kagent-api": "kagent workspaces",
+    "kagent-tool-server": "Kubernetes inspection",
+    "team-sessions": "Team collaboration",
+    "kagent-collaboration": "Sessions and workspaces"
+  }
+}

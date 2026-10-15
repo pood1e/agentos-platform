@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+import "buf/validate/validate.proto";
+import "kagent/api/v1alpha1/common.proto";
+
+// Editable subset of a kagent AgentTemplate. The AgentTemplate CRD validates
+// skill sources; rules here cover fields owned by the console.
+message RoleDefinition {
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"];
+  string display_name = 2 [(buf.validate.field).string.max_len = 80];
+  string description = 3 [(buf.validate.field).string.max_len = 400];
+  string system_prompt = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 24000
+  }];
+  repeated ToolBinding tools = 5;
+  repeated Skill skills = 6;
+  // Kubernetes resourceVersion read by the editor; required for updates.
+  string resource_version = 7;
+  kagent.api.v1alpha1.ResourceReference model_config = 8;
+}
+
+// Tools selected from one RemoteMCPServer in the workspace namespace.
+message ToolBinding {
+  string server = 1 [(buf.validate.field).string.min_len = 1];
+  repeated string tools = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+  }];
+  bool require_approval = 3;
+}
+
+message Skill {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  oneof source {
+    option (buf.validate.oneof).required = true;
+    string oci = 2;
+    GitSource git = 3;
+    S3Source bucket = 4;
+  }
+  string path = 5;
+}
+
+message GitSource {
+  string url = 1;
+  string commit = 2;
+}
+
+message S3Source {
+  string endpoint = 1;
+  string bucket = 2;
+  string key = 3;
+  string version_id = 4;
+  string region = 5;
+}

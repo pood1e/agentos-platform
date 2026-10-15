@@ -1,0 +1,984 @@
+{
+  "title": "示例方案",
+  "roles": [
+    {
+      "role": "coordinator",
+      "avatar": "avatars/coordinator.svg",
+      "rig": {
+        "torso": "M83 150Q145 137 198 155Q222 187 220 235Q216 284 182 294H103Q66 282 60 238Q57 198 83 150Z",
+        "neck": 151.0,
+        "head": "M58 0H225V144L205 175H92L72 148Z",
+        "gesture": "M0 126H67Q86 134 88 155Q112 163 115 180L111 202Q95 224 74 227H0Z",
+        "gestureCut": "M0 126H65Q82 134 82 155L104 179L102 203Q91 224 74 227H0Z",
+        "tool": "M207 153H256V235H212Q187 233 179 221L158 219L167 194L187 159Z",
+        "toolCut": "M216 157H256V235H213Q192 233 182 221L162 218L175 194L192 163Z",
+        "gestureOrigin": "97px 174px",
+        "toolOrigin": "207px 177px",
+        "motion": {
+          "toolAngle": "3deg",
+          "toolDuration": "4.8s",
+          "phase": "-0.6s"
+        }
+      }
+    },
+    {
+      "role": "inspection",
+      "avatar": "avatars/inspection.svg"
+    }
+  ],
+  "tools": [
+    {
+      "match": "k8s|kubernetes",
+      "name": "Kubernetes",
+      "icon": "icons/kubernetes.svg"
+    },
+    {
+      "match": "netbox",
+      "name": "NetBox",
+      "icon": "icons/netbox.svg"
+    },
+    {
+      "match": "grafana|loki",
+      "name": "Grafana",
+      "icon": "icons/grafana.svg"
+    }
+  ],
+  "locales": {
+    "zh": {
+      "translation": {
+        "role": {
+          "inspection": {
+            "shortName": "巡检",
+            "name": "巡检工程师",
+            "description": "检查工作负载、资源与事件"
+          },
+          "diagnosis": {
+            "shortName": "诊断",
+            "name": "诊断工程师",
+            "description": "关联资源、事件与日志，验证根因"
+          },
+          "remediation": {
+            "shortName": "处置",
+            "name": "处置工程师",
+            "description": "审批后执行变更，并读取结果验证"
+          },
+          "delivery": {
+            "shortName": "交付",
+            "name": "交付工程师",
+            "description": "RDMA 网络与智算集群交付、配置核验和性能验收"
+          },
+          "knowledge": {
+            "shortName": "知识",
+            "name": "知识工程师",
+            "description": "语义检索历史经验，沉淀已核验结论并引用来源"
+          },
+          "reviewer": {
+            "name": "审核工程师",
+            "shortName": "审核",
+            "description": "独立审核仿真变更的范围、证据与恢复方案"
+          },
+          "simulation": {
+            "name": "仿真工程师",
+            "shortName": "仿真",
+            "description": "数据中心模拟器故障演练、恢复与方案验证"
+          },
+          "asset": {
+            "shortName": "资产",
+            "name": "资产工程师",
+            "description": "设备纳管、资产维护与接入验证"
+          },
+          "coordinator": {
+            "name": "值班长",
+            "shortName": "值班长"
+          }
+        },
+        "chat": {
+          "assistant": "小助"
+        },
+        "configuration": {
+          "title": "示例团队"
+        },
+        "management": {
+          "tabs": {
+            "team": "示例团队"
+          }
+        }
+      },
+      "tools": {
+        "catalog": {
+          "grafana_query_loki": {
+            "name": "查询日志",
+            "description": "使用 Loki 查询日志，关联异常证据。"
+          },
+          "grafana_query_prometheus": {
+            "name": "查询监控指标",
+            "description": "使用 Prometheus 查询运行指标。"
+          },
+          "netbox_get_service_dependencies": {
+            "name": "查询服务依赖",
+            "description": "读取服务与基础设施的依赖关系。"
+          },
+          "kubernetes_get_workload_health": {
+            "name": "检查工作负载健康",
+            "description": "查询工作负载状态、事件与副本就绪情况。"
+          },
+          "runbook_find": {
+            "name": "查找处置手册",
+            "description": "检索与当前症状相关的处置步骤。"
+          },
+          "events_list": {
+            "name": "查看集群事件",
+            "description": "查询目标环境的 Kubernetes 事件。"
+          },
+          "namespaces_list": {
+            "name": "查看命名空间",
+            "description": "列出目标集群的命名空间。"
+          },
+          "nodes_stats_summary": {
+            "name": "查看节点统计",
+            "description": "读取节点和工作负载的资源统计。"
+          },
+          "nodes_top": {
+            "name": "查看节点用量",
+            "description": "查询节点的 CPU 和内存用量。"
+          },
+          "pods_get": {
+            "name": "查看工作负载详情",
+            "description": "读取指定 Pod 的配置和状态。"
+          },
+          "pods_list": {
+            "name": "查询工作负载",
+            "description": "列出目标集群的 Pod。"
+          },
+          "pods_list_in_namespace": {
+            "name": "查询命名空间工作负载",
+            "description": "列出指定命名空间中的 Pod。"
+          },
+          "pods_log": {
+            "name": "读取容器日志",
+            "description": "读取指定 Pod 的容器日志。"
+          },
+          "pods_top": {
+            "name": "查看工作负载用量",
+            "description": "查询 Pod 的 CPU 和内存用量。"
+          },
+          "resources_get": {
+            "name": "读取资源配置",
+            "description": "读取指定 Kubernetes 资源的配置和状态。"
+          },
+          "resources_list": {
+            "name": "查询资源列表",
+            "description": "按类型和命名空间查询 Kubernetes 资源。"
+          },
+          "resources_create_or_update": {
+            "name": "应用资源变更",
+            "description": "审批后创建或更新授权范围内的资源。"
+          },
+          "resources_delete": {
+            "name": "删除资源",
+            "description": "审批后删除指定 Kubernetes 资源。"
+          },
+          "resources_scale": {
+            "name": "调整工作负载副本",
+            "description": "审批后修改工作负载的副本数量。"
+          },
+          "pods_delete": {
+            "name": "删除工作负载实例",
+            "description": "审批后删除指定 Pod。"
+          },
+          "pods_exec": {
+            "name": "执行容器命令",
+            "description": "审批后在授权的 Pod 中执行命令。"
+          },
+          "netbox_get_objects": {
+            "name": "查询资产列表",
+            "description": "按资产类型和条件检索 NetBox 对象。"
+          },
+          "netbox_get_object_by_id": {
+            "name": "查看资产详情",
+            "description": "通过对象标识读取 NetBox 资产详情。"
+          },
+          "netbox_get_changelogs": {
+            "name": "查看资产变更",
+            "description": "查询 NetBox 中记录的资产变更。"
+          },
+          "netbox_search_objects": {
+            "name": "搜索资产",
+            "description": "在 NetBox 中搜索资产对象。"
+          },
+          "list_datasources": {
+            "name": "查看数据源",
+            "description": "列出当前环境的 Grafana 数据源。"
+          },
+          "get_datasource": {
+            "name": "查看数据源详情",
+            "description": "读取指定 Grafana 数据源的配置。"
+          },
+          "query_prometheus": {
+            "name": "查询监控指标",
+            "description": "通过 PromQL 查询当前环境的监控指标。"
+          },
+          "list_prometheus_metric_names": {
+            "name": "查看指标名称",
+            "description": "列出 Prometheus 可用的指标名称。"
+          },
+          "list_prometheus_label_names": {
+            "name": "查看指标标签",
+            "description": "列出 Prometheus 指标的标签名称。"
+          },
+          "list_prometheus_label_values": {
+            "name": "查看指标标签值",
+            "description": "查询指定 Prometheus 标签的可用值。"
+          },
+          "query_loki_logs": {
+            "name": "查询日志",
+            "description": "通过 LogQL 查询当前环境的日志。"
+          },
+          "query_loki_stats": {
+            "name": "查看日志统计",
+            "description": "查询 Loki 日志的范围和数量统计。"
+          },
+          "list_loki_label_names": {
+            "name": "查看日志标签",
+            "description": "列出 Loki 日志的标签名称。"
+          },
+          "list_loki_label_values": {
+            "name": "查看日志标签值",
+            "description": "查询指定 Loki 标签的可用值。"
+          },
+          "search_dashboards": {
+            "name": "搜索仪表盘",
+            "description": "根据名称和标签查找 Grafana 仪表盘。"
+          },
+          "get_dashboard_by_uid": {
+            "name": "查看仪表盘",
+            "description": "读取指定 Grafana 仪表盘的完整配置。"
+          },
+          "get_dashboard_summary": {
+            "name": "查看仪表盘概览",
+            "description": "读取仪表盘的面板和监控内容概览。"
+          },
+          "alerting_rules_read": {
+            "name": "查看告警规则",
+            "description": "查询 Grafana 告警规则和当前状态。"
+          },
+          "query_sql": {
+            "name": "查询数据",
+            "description": "通过只读数据源执行 SQL 查询。"
+          },
+          "users_profile_retrieve": {
+            "name": "核对堡垒机身份",
+            "description": "读取本次工具调用使用的 JumpServer 账号。"
+          },
+          "perms_users_assets_list": {
+            "name": "查看授权设备",
+            "description": "列出当前工程师获准访问的设备。"
+          },
+          "perms_users_assets_retrieve": {
+            "name": "查看授权设备详情",
+            "description": "读取当前工程师获准访问的设备详情。"
+          },
+          "perms_users_nodes_list": {
+            "name": "查看授权资产目录",
+            "description": "列出当前工程师可见的 JumpServer 资产目录。"
+          },
+          "ops_jobs_list": {
+            "name": "查看运维作业",
+            "description": "列出当前工程师的 JumpServer 运维作业。"
+          },
+          "ops_jobs_retrieve": {
+            "name": "查看作业详情",
+            "description": "读取指定运维作业的配置和状态。"
+          },
+          "ops_job_execution_task_detail_retrieve": {
+            "name": "查看作业执行结果",
+            "description": "读取授权作业的执行状态和输出。"
+          },
+          "ops_jobs_create": {
+            "name": "创建运维作业",
+            "description": "审批后创建 JumpServer 作业，可指定保存后执行。"
+          },
+          "ops_jobs_update": {
+            "name": "更新运维作业",
+            "description": "审批后更新 JumpServer 作业，可指定保存后执行。"
+          },
+          "ops_jobs_partial_update": {
+            "name": "修改运维作业",
+            "description": "审批后修改 JumpServer 作业的指定字段。"
+          },
+          "get_me": {
+            "name": "核对工单身份",
+            "description": "读取本次调用使用的 Zammad 账号和权限。"
+          },
+          "list_ticket_options": {
+            "name": "查看工单选项",
+            "description": "列出当前账号可用的工单分组、状态和优先级。"
+          },
+          "search_tickets": {
+            "name": "搜索工单",
+            "description": "按关键词、状态和分组搜索可访问的工单。"
+          },
+          "get_ticket": {
+            "name": "查看工单",
+            "description": "读取指定工单的详情和最近备注。"
+          },
+          "get_ticket_history": {
+            "name": "查看工单历史",
+            "description": "读取工单变更记录和实际操作人。"
+          },
+          "list_ticket_articles": {
+            "name": "查看工单记录",
+            "description": "分页读取工单中的消息和备注。"
+          },
+          "get_ticket_article": {
+            "name": "查看工单消息",
+            "description": "读取指定工单消息的正文。"
+          },
+          "create_ticket": {
+            "name": "创建工单",
+            "description": "审批后在授权分组中创建工单。"
+          },
+          "update_ticket": {
+            "name": "更新工单",
+            "description": "审批后更新工单的标题、状态或负责人。"
+          },
+          "add_ticket_note": {
+            "name": "添加工单备注",
+            "description": "审批后记录处理情况和执行结果。"
+          },
+          "keycloak_client_service_account_get": {
+            "name": "查看服务账号",
+            "description": "按客户端读取服务账号，以核验工程师的实际身份和原生角色权限。"
+          },
+          "keycloak_identity_get": {
+            "name": "查询当前身份",
+            "description": "读取当前环境服务账号及其 Keycloak 角色，不返回凭据。"
+          },
+          "keycloak_user_search": {
+            "name": "查找用户",
+            "description": "按名称或邮箱查找环境用户。"
+          },
+          "keycloak_user_get": {
+            "name": "查看用户",
+            "description": "读取指定用户的基本信息和启用状态。"
+          },
+          "keycloak_user_roles_get": {
+            "name": "查询用户角色",
+            "description": "读取用户直接分配的环境角色。"
+          },
+          "keycloak_user_client_roles_get": {
+            "name": "查询应用角色",
+            "description": "读取用户在指定应用中的角色。"
+          },
+          "keycloak_user_groups_list": {
+            "name": "查询用户组归属",
+            "description": "读取指定用户所属的用户组。"
+          },
+          "keycloak_role_list": {
+            "name": "查询环境角色",
+            "description": "列出目标环境中已定义的角色。"
+          },
+          "keycloak_client_list": {
+            "name": "查询应用接入",
+            "description": "列出环境中的身份认证客户端。"
+          },
+          "keycloak_client_get": {
+            "name": "查看应用接入",
+            "description": "读取指定应用的身份认证配置。"
+          },
+          "keycloak_client_roles_list": {
+            "name": "查询应用角色目录",
+            "description": "列出指定应用定义的角色。"
+          },
+          "keycloak_group_list": {
+            "name": "查询用户组",
+            "description": "列出环境中的用户组。"
+          },
+          "keycloak_group_members_list": {
+            "name": "查询用户组成员",
+            "description": "读取指定用户组的直接成员。"
+          },
+          "keycloak_events_login": {
+            "name": "查询登录记录",
+            "description": "读取目标环境的登录与认证事件。"
+          },
+          "keycloak_events_admin": {
+            "name": "查询授权变更记录",
+            "description": "读取目标环境的身份、角色及配置变更事件。"
+          },
+          "keycloak_user_role_assign": {
+            "name": "授予环境角色",
+            "description": "经环境工单审批后，为用户授予已有环境角色。"
+          },
+          "keycloak_user_role_unassign": {
+            "name": "撤销环境角色",
+            "description": "经环境工单审批后，撤销用户的环境角色。"
+          },
+          "dcim_manufacturers_create": {
+            "name": "新增设备厂商",
+            "description": "新增设备厂商，由目标系统原生权限控制。"
+          },
+          "dcim_device_types_create": {
+            "name": "新增设备型号",
+            "description": "新增设备型号，由目标系统原生权限控制。"
+          },
+          "dcim_device_roles_create": {
+            "name": "新增设备用途",
+            "description": "新增设备用途，由目标系统原生权限控制。"
+          },
+          "dcim_platforms_create": {
+            "name": "新增操作系统平台",
+            "description": "新增操作系统平台，由目标系统原生权限控制。"
+          },
+          "dcim_devices_create": {
+            "name": "纳管物理设备",
+            "description": "纳管物理设备，由目标系统原生权限控制。"
+          },
+          "dcim_devices_partial_update": {
+            "name": "更新物理设备",
+            "description": "更新物理设备，由目标系统原生权限控制。"
+          },
+          "dcim_interfaces_create": {
+            "name": "新增设备接口",
+            "description": "新增设备接口，由目标系统原生权限控制。"
+          },
+          "dcim_interfaces_partial_update": {
+            "name": "更新设备接口",
+            "description": "更新设备接口，由目标系统原生权限控制。"
+          },
+          "ipam_ip_addresses_create": {
+            "name": "登记 IP 地址",
+            "description": "登记 IP 地址，由目标系统原生权限控制。"
+          },
+          "ipam_ip_addresses_partial_update": {
+            "name": "更新 IP 地址",
+            "description": "更新 IP 地址，由目标系统原生权限控制。"
+          },
+          "virtualization_virtual_machines_create": {
+            "name": "纳管虚拟机",
+            "description": "纳管虚拟机，由目标系统原生权限控制。"
+          },
+          "virtualization_virtual_machines_partial_update": {
+            "name": "更新虚拟机",
+            "description": "更新虚拟机，由目标系统原生权限控制。"
+          },
+          "virtualization_interfaces_create": {
+            "name": "新增虚拟机接口",
+            "description": "新增虚拟机接口，由目标系统原生权限控制。"
+          },
+          "virtualization_interfaces_partial_update": {
+            "name": "更新虚拟机接口",
+            "description": "更新虚拟机接口，由目标系统原生权限控制。"
+          },
+          "assets_hosts_list": {
+            "name": "查询堡垒机主机",
+            "description": "查询堡垒机主机，由目标系统原生权限控制。"
+          },
+          "assets_hosts_retrieve": {
+            "name": "查看堡垒机主机",
+            "description": "查看堡垒机主机，由目标系统原生权限控制。"
+          },
+          "assets_platforms_list": {
+            "name": "查询接入平台",
+            "description": "查询接入平台，由目标系统原生权限控制。"
+          },
+          "assets_nodes_list": {
+            "name": "查询资产分组",
+            "description": "查询资产分组，由目标系统原生权限控制。"
+          },
+          "accounts_accounts_list": {
+            "name": "查询设备账号",
+            "description": "查询设备账号，由目标系统原生权限控制。"
+          },
+          "assets_hosts_create": {
+            "name": "接入堡垒机主机",
+            "description": "接入堡垒机主机，由目标系统原生权限控制。"
+          },
+          "assets_hosts_partial_update": {
+            "name": "更新堡垒机主机",
+            "description": "更新堡垒机主机，由目标系统原生权限控制。"
+          },
+          "accounts_accounts_create": {
+            "name": "登记设备账号",
+            "description": "登记设备账号，由目标系统原生权限控制。"
+          },
+          "accounts_accounts_partial_update": {
+            "name": "更新设备账号",
+            "description": "更新设备账号，由目标系统原生权限控制。"
+          }
+        },
+        "servers": {
+          "remediation-tools": "Kubernetes 处置"
+        }
+      }
+    },
+    "en": {
+      "translation": {
+        "role": {
+          "inspection": {
+            "shortName": "Inspection",
+            "name": "Inspection Engineer",
+            "description": "Inspect workloads, resources and events"
+          },
+          "diagnosis": {
+            "shortName": "Diagnosis",
+            "name": "Diagnosis Engineer",
+            "description": "Correlate evidence and verify root causes"
+          },
+          "remediation": {
+            "shortName": "Remediation",
+            "name": "Remediation Engineer",
+            "description": "Execute approved changes and verify the outcome"
+          },
+          "delivery": {
+            "shortName": "Delivery",
+            "name": "Delivery Engineer",
+            "description": "Deliver RDMA networks and AI clusters, verify configurations and validate performance"
+          },
+          "knowledge": {
+            "shortName": "Knowledge",
+            "name": "Knowledge Engineer",
+            "description": "Retrieve knowledge semantically, save verified findings and cite sources"
+          },
+          "reviewer": {
+            "name": "Review Engineer",
+            "shortName": "Review",
+            "description": "Independently review simulation changes, evidence and recovery plans"
+          },
+          "simulation": {
+            "name": "Simulation Engineer",
+            "shortName": "Simulation",
+            "description": "Data center simulator fault exercises, recovery and remediation validation"
+          },
+          "asset": {
+            "shortName": "Assets",
+            "name": "Asset Engineer",
+            "description": "Device onboarding, inventory maintenance and access verification"
+          },
+          "coordinator": {
+            "name": "Duty Lead",
+            "shortName": "Duty Lead"
+          }
+        },
+        "chat": {
+          "assistant": "Helper"
+        },
+        "configuration": {
+          "title": "Example team"
+        },
+        "management": {
+          "tabs": {
+            "team": "Example team"
+          }
+        }
+      },
+      "tools": {
+        "catalog": {
+          "grafana_query_loki": {
+            "name": "Query logs",
+            "description": "Query Loki logs to correlate evidence of an issue."
+          },
+          "grafana_query_prometheus": {
+            "name": "Query metrics",
+            "description": "Query operational metrics with Prometheus."
+          },
+          "netbox_get_service_dependencies": {
+            "name": "Inspect service dependencies",
+            "description": "Read service and infrastructure dependencies."
+          },
+          "kubernetes_get_workload_health": {
+            "name": "Inspect workload health",
+            "description": "Inspect workload state, events and replica readiness."
+          },
+          "runbook_find": {
+            "name": "Find a runbook",
+            "description": "Find runbooks related to the current symptoms."
+          },
+          "events_list": {
+            "name": "List cluster events",
+            "description": "Read Kubernetes events in the selected environment."
+          },
+          "namespaces_list": {
+            "name": "List namespaces",
+            "description": "List namespaces in the selected cluster."
+          },
+          "nodes_stats_summary": {
+            "name": "Read node statistics",
+            "description": "Read resource statistics for nodes and workloads."
+          },
+          "nodes_top": {
+            "name": "Read node usage",
+            "description": "Read node CPU and memory usage."
+          },
+          "pods_get": {
+            "name": "Read pod details",
+            "description": "Read the configuration and status of a pod."
+          },
+          "pods_list": {
+            "name": "List pods",
+            "description": "List pods in the selected cluster."
+          },
+          "pods_list_in_namespace": {
+            "name": "List namespace pods",
+            "description": "List pods in a namespace."
+          },
+          "pods_log": {
+            "name": "Read container logs",
+            "description": "Read container logs from a pod."
+          },
+          "pods_top": {
+            "name": "Read pod usage",
+            "description": "Read pod CPU and memory usage."
+          },
+          "resources_get": {
+            "name": "Read resource configuration",
+            "description": "Read a Kubernetes resource and its status."
+          },
+          "resources_list": {
+            "name": "List resources",
+            "description": "List Kubernetes resources by type and namespace."
+          },
+          "resources_create_or_update": {
+            "name": "Apply resource changes",
+            "description": "Create or update an authorized resource after approval."
+          },
+          "resources_delete": {
+            "name": "Delete a resource",
+            "description": "Delete a Kubernetes resource after approval."
+          },
+          "resources_scale": {
+            "name": "Scale a workload",
+            "description": "Change the workload replica count after approval."
+          },
+          "pods_delete": {
+            "name": "Delete a pod",
+            "description": "Delete a pod after approval."
+          },
+          "pods_exec": {
+            "name": "Execute a container command",
+            "description": "Run a command in an authorized pod after approval."
+          },
+          "netbox_get_objects": {
+            "name": "List inventory objects",
+            "description": "Query NetBox objects by type and filters."
+          },
+          "netbox_get_object_by_id": {
+            "name": "Read inventory details",
+            "description": "Read a NetBox object by its identifier."
+          },
+          "netbox_get_changelogs": {
+            "name": "Read inventory changes",
+            "description": "Read asset changes recorded in NetBox."
+          },
+          "netbox_search_objects": {
+            "name": "Search inventory",
+            "description": "Search inventory objects in NetBox."
+          },
+          "list_datasources": {
+            "name": "List datasources",
+            "description": "List Grafana datasources in this environment."
+          },
+          "get_datasource": {
+            "name": "Read datasource details",
+            "description": "Read a Grafana datasource configuration."
+          },
+          "query_prometheus": {
+            "name": "Query metrics",
+            "description": "Query environment metrics with PromQL."
+          },
+          "list_prometheus_metric_names": {
+            "name": "List metric names",
+            "description": "List available Prometheus metric names."
+          },
+          "list_prometheus_label_names": {
+            "name": "List metric labels",
+            "description": "List Prometheus label names."
+          },
+          "list_prometheus_label_values": {
+            "name": "List metric label values",
+            "description": "List values of a Prometheus label."
+          },
+          "query_loki_logs": {
+            "name": "Query logs",
+            "description": "Query environment logs with LogQL."
+          },
+          "query_loki_stats": {
+            "name": "Read log statistics",
+            "description": "Read Loki log volume and range statistics."
+          },
+          "list_loki_label_names": {
+            "name": "List log labels",
+            "description": "List Loki label names."
+          },
+          "list_loki_label_values": {
+            "name": "List log label values",
+            "description": "List values of a Loki label."
+          },
+          "search_dashboards": {
+            "name": "Search dashboards",
+            "description": "Find Grafana dashboards by name and tags."
+          },
+          "get_dashboard_by_uid": {
+            "name": "Read a dashboard",
+            "description": "Read a Grafana dashboard configuration."
+          },
+          "get_dashboard_summary": {
+            "name": "Read dashboard summary",
+            "description": "Read a summary of dashboard panels and metrics."
+          },
+          "alerting_rules_read": {
+            "name": "Read alert rules",
+            "description": "Read Grafana alert rules and their status."
+          },
+          "query_sql": {
+            "name": "Query SQL data",
+            "description": "Run SQL against a read-only datasource."
+          },
+          "users_profile_retrieve": {
+            "name": "Read bastion identity",
+            "description": "Read the JumpServer identity used by this tool call."
+          },
+          "perms_users_assets_list": {
+            "name": "List authorized assets",
+            "description": "List assets authorized for this engineer."
+          },
+          "perms_users_assets_retrieve": {
+            "name": "Read authorized asset details",
+            "description": "Read details of an authorized asset."
+          },
+          "perms_users_nodes_list": {
+            "name": "List authorized asset folders",
+            "description": "List JumpServer asset folders visible to this engineer."
+          },
+          "ops_jobs_list": {
+            "name": "List operation jobs",
+            "description": "List JumpServer operation jobs owned by this engineer."
+          },
+          "ops_jobs_retrieve": {
+            "name": "Read job details",
+            "description": "Read the configuration and status of an operation job."
+          },
+          "ops_job_execution_task_detail_retrieve": {
+            "name": "Read job execution results",
+            "description": "Read the status and output of an authorized job."
+          },
+          "ops_jobs_create": {
+            "name": "Create an operation job",
+            "description": "Create a JumpServer job after approval, optionally running it after saving."
+          },
+          "ops_jobs_update": {
+            "name": "Update an operation job",
+            "description": "Update a JumpServer job after approval, optionally running it after saving."
+          },
+          "ops_jobs_partial_update": {
+            "name": "Modify an operation job",
+            "description": "Modify selected JumpServer job fields after approval."
+          },
+          "get_me": {
+            "name": "Read ticketing identity",
+            "description": "Read the Zammad account and permissions used for this call."
+          },
+          "list_ticket_options": {
+            "name": "List ticket options",
+            "description": "List available ticket groups, states and priorities."
+          },
+          "search_tickets": {
+            "name": "Search tickets",
+            "description": "Search accessible tickets by text, state and group."
+          },
+          "get_ticket": {
+            "name": "Read ticket",
+            "description": "Read ticket details and recent notes."
+          },
+          "get_ticket_history": {
+            "name": "Read ticket history",
+            "description": "Read ticket changes and their authors."
+          },
+          "list_ticket_articles": {
+            "name": "List ticket messages",
+            "description": "Read paginated ticket messages and notes."
+          },
+          "get_ticket_article": {
+            "name": "Read ticket message",
+            "description": "Read the body of a ticket message."
+          },
+          "create_ticket": {
+            "name": "Create ticket",
+            "description": "Create a ticket in an authorized group after approval."
+          },
+          "update_ticket": {
+            "name": "Update ticket",
+            "description": "Update ticket title, state or owner after approval."
+          },
+          "add_ticket_note": {
+            "name": "Add ticket note",
+            "description": "Record progress and execution results after approval."
+          },
+          "keycloak_client_service_account_get": {
+            "name": "Get service account",
+            "description": "Read a client's service account to verify the engineer's native identity and role permissions."
+          },
+          "keycloak_identity_get": {
+            "name": "Get current identity",
+            "description": "Read the current environment service account and its Keycloak roles without credentials."
+          },
+          "keycloak_user_search": {
+            "name": "Find users",
+            "description": "Find environment users by name or email."
+          },
+          "keycloak_user_get": {
+            "name": "Get user",
+            "description": "Read a user profile and enabled status."
+          },
+          "keycloak_user_roles_get": {
+            "name": "Get user roles",
+            "description": "Read realm roles assigned directly to a user."
+          },
+          "keycloak_user_client_roles_get": {
+            "name": "Get application roles",
+            "description": "Read a user’s roles in a specific application."
+          },
+          "keycloak_user_groups_list": {
+            "name": "List user memberships",
+            "description": "Read a user’s group memberships."
+          },
+          "keycloak_role_list": {
+            "name": "List environment roles",
+            "description": "List roles defined in the target realm."
+          },
+          "keycloak_client_list": {
+            "name": "List identity clients",
+            "description": "List authentication clients in the environment."
+          },
+          "keycloak_client_get": {
+            "name": "Get identity client",
+            "description": "Read authentication settings for an application."
+          },
+          "keycloak_client_roles_list": {
+            "name": "List application roles",
+            "description": "List roles defined by an application."
+          },
+          "keycloak_group_list": {
+            "name": "List groups",
+            "description": "List groups in the target environment."
+          },
+          "keycloak_group_members_list": {
+            "name": "List group members",
+            "description": "Read direct members of a group."
+          },
+          "keycloak_events_login": {
+            "name": "Read login events",
+            "description": "Read login and authentication events in the target environment."
+          },
+          "keycloak_events_admin": {
+            "name": "Read administration events",
+            "description": "Read identity, role and configuration change events."
+          },
+          "keycloak_user_role_assign": {
+            "name": "Grant environment role",
+            "description": "Assign an existing realm role to a user after environment work-order approval."
+          },
+          "keycloak_user_role_unassign": {
+            "name": "Revoke environment role",
+            "description": "Remove a user’s realm role after environment work-order approval."
+          },
+          "dcim_manufacturers_create": {
+            "name": "Create manufacturer",
+            "description": "Create manufacturer using the target system’s native permissions."
+          },
+          "dcim_device_types_create": {
+            "name": "Create device type",
+            "description": "Create device type using the target system’s native permissions."
+          },
+          "dcim_device_roles_create": {
+            "name": "Create device role",
+            "description": "Create device role using the target system’s native permissions."
+          },
+          "dcim_platforms_create": {
+            "name": "Create platform",
+            "description": "Create platform using the target system’s native permissions."
+          },
+          "dcim_devices_create": {
+            "name": "Register physical device",
+            "description": "Register physical device using the target system’s native permissions."
+          },
+          "dcim_devices_partial_update": {
+            "name": "Update physical device",
+            "description": "Update physical device using the target system’s native permissions."
+          },
+          "dcim_interfaces_create": {
+            "name": "Create device interface",
+            "description": "Create device interface using the target system’s native permissions."
+          },
+          "dcim_interfaces_partial_update": {
+            "name": "Update device interface",
+            "description": "Update device interface using the target system’s native permissions."
+          },
+          "ipam_ip_addresses_create": {
+            "name": "Register IP address",
+            "description": "Register IP address using the target system’s native permissions."
+          },
+          "ipam_ip_addresses_partial_update": {
+            "name": "Update IP address",
+            "description": "Update IP address using the target system’s native permissions."
+          },
+          "virtualization_virtual_machines_create": {
+            "name": "Register virtual machine",
+            "description": "Register virtual machine using the target system’s native permissions."
+          },
+          "virtualization_virtual_machines_partial_update": {
+            "name": "Update virtual machine",
+            "description": "Update virtual machine using the target system’s native permissions."
+          },
+          "virtualization_interfaces_create": {
+            "name": "Create virtual machine interface",
+            "description": "Create virtual machine interface using the target system’s native permissions."
+          },
+          "virtualization_interfaces_partial_update": {
+            "name": "Update virtual machine interface",
+            "description": "Update virtual machine interface using the target system’s native permissions."
+          },
+          "assets_hosts_list": {
+            "name": "List managed hosts",
+            "description": "List managed hosts using the target system’s native permissions."
+          },
+          "assets_hosts_retrieve": {
+            "name": "Get managed host",
+            "description": "Get managed host using the target system’s native permissions."
+          },
+          "assets_platforms_list": {
+            "name": "List access platforms",
+            "description": "List access platforms using the target system’s native permissions."
+          },
+          "assets_nodes_list": {
+            "name": "List asset nodes",
+            "description": "List asset nodes using the target system’s native permissions."
+          },
+          "accounts_accounts_list": {
+            "name": "List asset accounts",
+            "description": "List asset accounts using the target system’s native permissions."
+          },
+          "assets_hosts_create": {
+            "name": "Register managed host",
+            "description": "Register managed host using the target system’s native permissions."
+          },
+          "assets_hosts_partial_update": {
+            "name": "Update managed host",
+            "description": "Update managed host using the target system’s native permissions."
+          },
+          "accounts_accounts_create": {
+            "name": "Register asset account",
+            "description": "Register asset account using the target system’s native permissions."
+          },
+          "accounts_accounts_partial_update": {
+            "name": "Update asset account",
+            "description": "Update asset account using the target system’s native permissions."
+          }
+        },
+        "servers": {
+          "remediation-tools": "Kubernetes operations"
+        }
+      }
+    }
+  }
+}

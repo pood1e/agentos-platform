@@ -1,0 +1,236 @@
+global:
+  agentos:
+    environments: []
+    toolsets: {}
+    identities: []
+    skills: []
+image:
+  repository: registry.example.com/agentos/agentos
+  digest: ''
+imagePullSecrets: []
+pack:
+  image: ''
+kagent:
+  endpoint: http://kagent-controller:8083
+  userId: agentos
+console:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 768Mi
+teamSessions:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 512Mi
+ingress:
+  host: ''
+  tlsSecret: agentos-ingress
+modelConfig:
+  spec:
+    provider: OpenAI
+    model: gpt-6.1-sol
+    apiKeySecret: model-credentials
+    apiKeySecretKey: api-key
+    openAI:
+      baseUrl: https://api.openai.com/v1
+      apiFormat: responses
+      maxCompletionTokens: 8192
+      reasoningEffort: medium
+harnesses:
+  standard:
+    kagent: {}
+    workload:
+      image: registry.example.com/agentos/standard-harness@sha256:a721dc17acc27d532dea7fbdccf592c511332bd24e619ee7d4b67641951645b2
+    env:
+    - {name: KAGENT_PROPAGATE_TOKEN, value: 'true'}
+    - {name: GOMEMLIMIT, value: 768MiB}
+    substrate:
+      workerPoolRef: {name: kagent-default}
+      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+  memory:
+    kagent:
+      memory:
+        modelConfigRef: {name: knowledge-embedding}
+        ttlDays: 3650
+    workload:
+      image: registry.example.com/agentos/standard-harness@sha256:a721dc17acc27d532dea7fbdccf592c511332bd24e619ee7d4b67641951645b2
+    env:
+    - {name: KAGENT_PROPAGATE_TOKEN, value: 'true'}
+    - {name: GOMEMLIMIT, value: 768MiB}
+    substrate:
+      workerPoolRef: {name: kagent-default}
+      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+  codex:
+    codex: {}
+    workload:
+      image: registry.example.com/agentos/codex-harness@sha256:807c10c963df74937ab3f576796da68f3b84e6d47ed22122751764e57d404e0d
+    env: [{name: GOMEMLIMIT, value: 768MiB}]
+    substrate:
+      workerPoolRef: {name: kagent-default}
+      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+  claude:
+    claude: {}
+    workload:
+      image: registry.example.com/agentos/claude-harness@sha256:4ed628e4dd5f211d22dfe83ebb4d6d65d7e6ff2ef1596c8257f22ccc52b29b6c
+    env: [{name: GOMEMLIMIT, value: 768MiB}]
+    substrate:
+      workerPoolRef: {name: kagent-default}
+      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+knowledgeMemory:
+  ttlDays: 3650
+embedding:
+  image: ollama/ollama:0.40.3@sha256:adca95a12c2b386a8f9a995e7fa0600e187e3323b5e5522f5a6c3b1ec73eff99
+  model: embeddinggemma:300m
+  digest: 85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1
+  storage: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+systemAgents:
+  assistant:
+    systemPrompt: ''
+  roleBuilder:
+    systemPrompt: ''
+oauth2-proxy:
+  config:
+    existingSecret: agentos-oidc
+    emailDomains:
+    - '*'
+    upstreams:
+    - static://202
+  extraArgs:
+    provider: oidc
+    oidc-issuer-url: ''
+    scope: openid profile email
+    redirect-url: /oauth2/callback
+    reverse-proxy: 'true'
+    skip-provider-button: 'true'
+    cookie-secure: 'true'
+    cookie-samesite: lax
+  serviceAccount:
+    automountServiceAccountToken: false
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+      - ALL
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 128Mi
+  image:
+    registry: quay.io
+    repository: oauth2-proxy/oauth2-proxy
+    tag: v7.15.5@sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916
+gateway:
+  skillRepository:
+    host: ''
+    path: ''
+    secretRef: agentos-skill-repository
+  parameters:
+    image:
+      registry: cr.agentgateway.dev
+      repository: agentgateway
+      tag: v1.6.0
+      digest: sha256:9d3e6044ddcdc0878b1787f77bd401252b95e22684203fb5e874c4c42d2ed90c
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: '1'
+        memory: 512Mi
+    service:
+      spec:
+        type: ClusterIP
+    deployment:
+      spec:
+        replicas: 1
+        template:
+          metadata:
+            labels:
+              agentos.dev/gateway: business
+          spec:
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+            - name: agentgateway
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                  - ALL
+    logging:
+      format: json
+      level: info
+  models:
+  - name: default-model-config
+    spec:
+      provider: OpenAI
+      match:
+        model: gpt-6.1-sol
+      baseURL: https://api.openai.com/v1
+      policies:
+        auth:
+          secretRef:
+            name: model-credentials
+            key: api-key
+  - name: knowledge-embedding
+    spec:
+      provider: Ollama
+      match:
+        model: embeddinggemma:300m
+      baseURL: http://knowledge-embedding:11434/v1
+  mcps:
+  - name: team-sessions
+    spec:
+      mcp:
+        prefixMode: Never
+        targets:
+        - name: team-sessions
+          static:
+            host: '{{ include "agentos.name" . }}-team-sessions'
+            port: 8081
+            path: /mcp
+            policies:
+              http: {requestTimeout: 10m}
+            protocol: StreamableHTTP
+      policies:
+        auth:
+          secretRef:
+            name: '{{ include "agentos.name" . }}-mcp'
+            key: token
+  - name: kagent-collaboration
+    spec:
+      mcp:
+        prefixMode: Never
+        targets:
+        - name: kagent-collaboration
+          static:
+            host: kagent-controller
+            port: 8083
+            path: /mcp
+            policies:
+              http: {requestTimeout: 10m}
+            protocol: StreamableHTTP

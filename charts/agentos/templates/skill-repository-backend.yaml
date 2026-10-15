@@ -1,0 +1,20 @@
+{{- if .Values.gateway.skillRepository.host }}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ include "agentos.name" . }}-skill-repository
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  static:
+    host: {{ .Values.gateway.skillRepository.host }}
+    port: 443
+  policies:
+    tls: {}
+    auth:
+      credentials:
+        - secretRef: {name: {{ .Values.gateway.skillRepository.secretRef }}}
+          location: {header: {name: Authorization}}
+    http:
+      requestTimeout: 5m
+{{- end }}

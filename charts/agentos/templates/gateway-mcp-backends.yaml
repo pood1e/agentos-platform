@@ -1,0 +1,12 @@
+{{- range .Values.gateway.mcps }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ .name }}
+  annotations: {agentos.dev/system-connection: 'true'}
+  labels:
+    {{- include "agentos.labels" $ | nindent 4 }}
+spec:
+  {{- tpl (toYaml .spec) $ | nindent 2 }}
+{{- end }}

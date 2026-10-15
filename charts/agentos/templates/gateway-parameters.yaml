@@ -1,0 +1,8 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: {{ include "agentos.name" . }}-gateway
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  {{- toYaml .Values.gateway.parameters | nindent 2 }}
