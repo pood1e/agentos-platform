@@ -16,6 +16,7 @@ import { Zammad } from "../server/change-control/providers/zammad/api.js";
 import { ZammadApprovals } from "../server/change-control/providers/zammad/approvals.js";
 import { changeControl } from "../server/change-control/service.js";
 import { ChangeStore } from "../server/change-control/store.js";
+import { operationHash } from "../server/shared/change-digest.js";
 import { fakeZammad } from "./fake-zammad.js";
 import { fixtureCatalog } from "./harness.js";
 
@@ -73,6 +74,20 @@ export function changeFixture() {
       },
       intent: "Create a disposable verification ConfigMap",
       prompt: "Validate the work-order execution path",
+      preparation: {
+        operationHash: operationHash(`${name}-kubernetes_resources_create_or_update`, {
+          resource: "test-configmap",
+          namespace: "agentos-lab",
+        }),
+        plan: {
+          impact: "Disposable lab ConfigMap only",
+          validation: "Read back the expected data",
+          rollback: "Delete the disposable ConfigMap",
+          simulation: { tenant: "agentos/simulation", id: "simulation-task" },
+        },
+        simulationReport:
+          "The disposable operation was verified in the simulation environment; performance is outside this validation.",
+      },
     });
     return { client, control, request };
   }

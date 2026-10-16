@@ -9,7 +9,7 @@ import {
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 
-const kinds = {
+export const resourceKinds = {
   models: ["agentgateway.dev", "v1alpha1", "agentgatewaymodels"],
   mcps: ["agentgateway.dev", "v1alpha1", "agentgatewaybackends"],
   routes: ["gateway.networking.k8s.io", "v1", "httproutes"],
@@ -19,13 +19,13 @@ const kinds = {
   modelConfigs: ["api.kagent.dev", "v1alpha3", "modelconfigs"],
   remoteMCPs: ["api.kagent.dev", "v1alpha3", "remotemcpservers"],
 } as const;
-export type ResourceKind = keyof typeof kinds;
+export type ResourceKind = keyof typeof resourceKinds;
 
 export interface ResourceStore {
   list(kind: ResourceKind): Promise<JsonObject[]>;
   get(kind: ResourceKind, name: string): Promise<JsonObject>;
   save(kind: ResourceKind, resource: JsonObject, create: boolean): Promise<JsonObject>;
-  validate(kind: ResourceKind, resource: JsonObject): Promise<void>;
+  validate(kind: ResourceKind, resource: JsonObject, create?: boolean): Promise<void>;
   remove(kind: ResourceKind, name: string, version: string): Promise<void>;
   readCatalog(): Promise<{ value: string; version: string }>;
   writeCatalog(value: string, version: string): Promise<string>;
@@ -51,7 +51,7 @@ export function resourceStore(
   const custom = config.makeApiClient(CustomObjectsApi);
   const core = config.makeApiClient(CoreV1Api);
   const params = (kind: ResourceKind) => {
-    const [group, version, plural] = kinds[kind];
+    const [group, version, plural] = resourceKinds[kind];
     return { group, version, plural, namespace };
   };
   return {
@@ -92,14 +92,20 @@ export function resourceStore(
         return translated(error);
       }
     },
-    async validate(kind, resource) {
+    async validate(kind, resource, create = true) {
       try {
-        await custom.createNamespacedCustomObject({
+        const request = {
           ...params(kind),
           body: resource,
           dryRun: "All",
           fieldValidation: "Strict",
-        });
+        };
+        if (create) await custom.createNamespacedCustomObject(request);
+        else
+          await custom.replaceNamespacedCustomObject({
+            ...request,
+            name: String(object(resource.metadata).name ?? ""),
+          });
       } catch (error) {
         translated(error);
       }

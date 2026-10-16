@@ -11,10 +11,6 @@ spec:
   ingress:
     - from:
         - podSelector:
-            matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: team-sessions}
-      ports: [{port: 8080, protocol: TCP}]
-    - from:
-        - podSelector:
             matchLabels: {app.kubernetes.io/name: kagent, app.kubernetes.io/component: controller}
         - podSelector:
             matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/component: console}

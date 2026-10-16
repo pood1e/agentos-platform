@@ -22,7 +22,14 @@ spec:
       policy:
         matchExpressions:
           - >-
-            (has(apiKey.service) && apiKey.service == 'agentos' && !('x-agentos-engineer' in request.headers)) ||
+            (has(apiKey.service) && apiKey.service == 'agentos' &&
+              request.path.matches('^/v1/(responses|chat/completions|messages|embeddings|models)(/.*)?$')) ||
+            (has(apiKey.service) && apiKey.service == 'platform' &&
+              apiKey.workspace == '{{ .Release.Namespace }}' && request.path in ['/mcp/team-sessions', '/mcp/kagent-collaboration']) ||
+            (has(apiKey.service) && apiKey.service == 'engineer' &&
+              apiKey.workspace == '{{ .Release.Namespace }}' &&
+              ((request.path == '/mcp/team-sessions' && 'team-sessions' in apiKey.tools) ||
+               (request.path == '/mcp/kagent-collaboration' && 'kagent-collaboration' in apiKey.tools))) ||
             (has(apiKey.environment) &&
               has(apiKey.engineer) && 'x-agentos-engineer' in request.headers &&
               apiKey.engineer == request.headers['x-agentos-engineer'] &&

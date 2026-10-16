@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package agentos.evaluation.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1alpha1/memory.proto";
+
+service EvaluationService {
+  rpc ListCandidates(ListCandidatesRequest) returns (ListCandidatesResponse);
+  rpc GetCandidate(GetCandidateRequest) returns (GetCandidateResponse);
+  rpc CreateCandidate(CreateCandidateRequest) returns (CreateCandidateResponse);
+  rpc RunEvaluation(RunEvaluationRequest) returns (RunEvaluationResponse);
+  rpc PublishCandidate(PublishCandidateRequest) returns (PublishCandidateResponse);
+}
+
+// Machine access is scoped to one immutable candidate and never accepts human OIDC tokens.
+service EvaluationExecutionService {
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  rpc Complete(CompleteRequest) returns (CompleteResponse);
+}
+
+message ScoreRule {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  double minimum = 2;
+  double maximum_regression = 3 [(buf.validate.field).double.gte = 0];
+}
+
+message SampleReference {
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+  string split = 2 [(buf.validate.field).string.in = "train", (buf.validate.field).string.in = "holdout"];
+  string input_digest = 3 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+}
+
+// The complete immutable baseline, supplied by the solution pack.
+message EvaluationBaseline {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  string version = 2 [(buf.validate.field).string.min_len = 1];
+  string dataset = 3 [(buf.validate.field).string.min_len = 1];
+  string dataset_version = 4 [(buf.validate.field).string.min_len = 1];
+  google.protobuf.Struct input_schema = 5 [(buf.validate.field).required = true];
+  google.protobuf.Struct expected_output_schema = 6 [(buf.validate.field).required = true];
+  repeated ScoreRule rules = 7 [(buf.validate.field).repeated.min_items = 1];
+  string judge_model = 8 [(buf.validate.field).string.min_len = 1];
+  string judge_prompt = 9 [(buf.validate.field).string.min_len = 1];
+  string scenario_version = 10 [(buf.validate.field).string.min_len = 1];
+  uint32 repetitions = 11 [(buf.validate.field).uint32 = {gte: 1, lte: 10}];
+  repeated SampleReference samples = 12 [(buf.validate.field).repeated = {min_items: 2, max_items: 1000}];
+  string job_image = 13 [(buf.validate.field).string.pattern = "^.+@sha256:[a-f0-9]{64}$"];
+  uint32 timeout_seconds = 14 [(buf.validate.field).uint32 = {gte: 60, lte: 7200}];
+  string environment = 15 [(buf.validate.field).string.min_len = 1];
+}
+
+message ResourceProposal {
+  kagent.api.v1alpha1.StructuredObject resource = 1 [(buf.validate.field).required = true];
+  bool delete = 2;
+}
+
+// Runtime resources retain their native schemas. Provider secrets contribute versions only.
+message ConfigurationSnapshot {
+  string workspace = 1;
+  string pack_image = 2;
+  string platform_image = 3;
+  repeated kagent.api.v1alpha1.StructuredObject resources = 4;
+  repeated ResourceProposal proposals = 5;
+  EvaluationBaseline baseline = 6;
+  repeated ArtifactContent artifacts = 7;
+  string knowledge_digest = 8;
+  string credentials_digest = 9;
+  repeated kagent.api.v1alpha1.MemorySummary knowledge = 10;
+}
+
+message ArtifactContent {
+  string source = 1;
+  string version = 2;
+  string path = 3;
+  string sha256 = 4;
+}
+
+enum CandidateState {
+  CANDIDATE_STATE_UNSPECIFIED = 0;
+  CANDIDATE_STATE_DRAFT = 1;
+  CANDIDATE_STATE_RUNNING = 2;
+  CANDIDATE_STATE_PASSED = 3;
+  CANDIDATE_STATE_FAILED = 4;
+  CANDIDATE_STATE_STALE = 5;
+  CANDIDATE_STATE_PUBLISHED = 6;
+  CANDIDATE_STATE_PUBLISHING = 7;
+}
+
+message Score {
+  string name = 1;
+  double value = 2;
+}
+
+message SampleResult {
+  string sample_id = 1;
+  uint32 repetition = 2;
+  repeated Score candidate = 3;
+  repeated Score released = 4;
+  string candidate_trace_id = 5;
+  string released_trace_id = 6;
+  string error = 7;
+}
+
+message EvaluationReport {
+  string binding_digest = 1;
+  repeated SampleResult samples = 2;
+  google.protobuf.Timestamp completed_at = 3;
+  string experiment_url = 4;
+  string error = 5;
+  bool feedback_synchronized = 6;
+}
+
+message Candidate {
+  string id = 1;
+  string name = 2;
+  string binding_digest = 3;
+  CandidateState state = 4;
+  google.protobuf.Timestamp created_at = 5;
+  string created_by = 6;
+  string baseline = 7;
+  string baseline_version = 8;
+  string job_name = 9;
+  EvaluationReport report = 10;
+  repeated string failures = 11;
+  string pack_image = 12;
+  string platform_image = 13;
+}
+
+message ListCandidatesRequest {}
+message ListCandidatesResponse { repeated Candidate candidates = 1; }
+message GetCandidateRequest { string id = 1 [(buf.validate.field).string.uuid = true]; }
+message GetCandidateResponse { Candidate candidate = 1; }
+message CreateCandidateRequest {
+  string name = 1 [(buf.validate.field).string = {min_len: 1, max_len: 80}];
+  repeated ResourceProposal proposals = 2 [(buf.validate.field).repeated = {min_items: 1, max_items: 64}];
+}
+message CreateCandidateResponse { Candidate candidate = 1; }
+message RunEvaluationRequest { string id = 1 [(buf.validate.field).string.uuid = true]; }
+message RunEvaluationResponse { Candidate candidate = 1; }
+message PublishCandidateRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  string binding_digest = 2 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+}
+message PublishCandidateResponse { Candidate candidate = 1; }
+
+// Evaluators receive a redacted runtime snapshot and the authoritative private binding digest.
+message EvaluationJobInput {
+  ConfigurationSnapshot snapshot = 1;
+  string binding_digest = 2;
+  string candidate_id = 3;
+}
+
+enum EvaluationVariant {
+  EVALUATION_VARIANT_UNSPECIFIED = 0;
+  EVALUATION_VARIANT_CANDIDATE = 1;
+  EVALUATION_VARIANT_RELEASED = 2;
+}
+message ExecuteRequest {
+  string candidate_id = 1 [(buf.validate.field).string.uuid = true];
+  string sample_id = 2 [(buf.validate.field).string.min_len = 1];
+  uint32 repetition = 3 [(buf.validate.field).uint32.gte = 1];
+  EvaluationVariant variant = 4 [(buf.validate.field).enum = {defined_only: true, not_in: [0]}];
+  google.protobuf.Struct input = 5 [(buf.validate.field).required = true];
+}
+message ExecuteResponse {
+  string output = 1;
+  string task_id = 2;
+  string context_id = 3;
+}
+message CompleteRequest {
+  string candidate_id = 1 [(buf.validate.field).string.uuid = true];
+  EvaluationReport report = 2 [(buf.validate.field).required = true];
+}
+message CompleteResponse {}

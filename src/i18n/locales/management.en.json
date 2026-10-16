@@ -101,5 +101,8 @@
     "No data for optional field": "No data for optional field",
     "Yes": "Yes",
     "No": "No"
-  }
+  },
+  "knowledgeEvidence": "Sources and execution evidence",
+  "viewEvidenceTask": "View execution task",
+  "knowledgePlaceholder": "# Short title\n\n## Finding\nOne verified conclusion.\n\n## Scope\nEnvironment and prerequisites.\n\n## Validation and limits\nHow it was verified and what remains untested.\n\n## Sources\nRelated task or documentation links."
 }

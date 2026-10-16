@@ -1,0 +1,16 @@
+--- a/go/harness/claude/internal/driver/process.go
++++ b/go/harness/claude/internal/driver/process.go
+@@ -130,8 +130,12 @@
+ 		"--dangerously-skip-permissions",
+ 	}
+ 	if d.config.ApprovalBroker != nil {
++		settingSources := ""
++		if d.config.SkillRoot != "" {
++			settingSources = "project"
++		}
+ 		args = append(args,
+-			"--setting-sources", "",
++			"--setting-sources", settingSources,
+ 			"--settings", d.config.SettingsPath,
+ 			"--permission-prompt-tool", d.config.PermissionPromptTool,
+ 		)

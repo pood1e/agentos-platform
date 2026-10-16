@@ -2,6 +2,7 @@ version: v2
 modules:
   - path: proto
   - path: third_party/kagent
+  - path: third_party/cloudevents
   - path: third_party/agentgateway/proto
 deps:
   - buf.build/bufbuild/protovalidate

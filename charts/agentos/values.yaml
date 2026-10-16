@@ -25,14 +25,12 @@ console:
     limits:
       cpu: '1'
       memory: 768Mi
-teamSessions:
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: '1'
-      memory: 512Mi
+authorization:
+  jwksUrl: ''
+  groupClaim: groups
+  viewerGroups: [agentos-viewers]
+  operatorGroups: [agentos-operators]
+  administratorGroups: [agentos-administrators]
 ingress:
   host: ''
   tlsSecret: agentos-ingress
@@ -119,6 +117,7 @@ oauth2-proxy:
     scope: openid profile email
     redirect-url: /oauth2/callback
     reverse-proxy: 'true'
+    set-authorization-header: 'true'
     skip-provider-button: 'true'
     cookie-secure: 'true'
     cookie-samesite: lax
@@ -210,8 +209,8 @@ gateway:
         targets:
         - name: team-sessions
           static:
-            host: '{{ include "agentos.name" . }}-team-sessions'
-            port: 8081
+            host: '{{ include "agentos.name" . }}-console'
+            port: 8080
             path: /mcp
             policies:
               http: {requestTimeout: 10m}

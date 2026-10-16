@@ -4,6 +4,7 @@ package agentos.console.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "agentos/evaluation/v1/evaluation.proto";
 
 // Presentation supplied by a solution pack. Every field is optional and falls back to the platform default.
 message Pack {
@@ -12,6 +13,7 @@ message Pack {
   repeated ToolBrand tools = 3 [(buf.validate.field).repeated.max_items = 64];
   // i18next resources by language code, merged over the platform resources by namespace.
   map<string, google.protobuf.Struct> locales = 4 [(buf.validate.field).map.max_pairs = 8];
+  agentos.evaluation.v1.EvaluationBaseline evaluation = 5;
 }
 
 message RolePresentation {

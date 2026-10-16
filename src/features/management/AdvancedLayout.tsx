@@ -2,6 +2,7 @@ import { Blocks, BookOpen, BrainCircuit, Cpu, Network, Play, Users } from "lucid
 import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAccess } from "@/lib/access";
 
 const sections = [
   { path: "/engineers", key: "team", icon: Users },
@@ -16,6 +17,8 @@ const sections = [
 export function AdvancedLayout() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
+  const access = useAccess();
+  if (!access.data?.manage) return null;
   return (
     <div data-testid="advanced" className="flex min-h-0 flex-1 flex-col gap-5">
       <Tabs value={pathname} className="shrink-0 overflow-x-auto">

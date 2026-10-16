@@ -106,6 +106,18 @@ export class TaskIndex {
     return this.relations().targets.get(callKey(entry.id, call.id));
   }
 
+  operationRoot(id: string): TaskEntry | undefined {
+    let entry = this.entry(id);
+    const seen = new Set<string>();
+    while (entry && !seen.has(entry.id)) {
+      seen.add(entry.id);
+      const parent = this.entry(this.relations().parents.get(entry.id) ?? "");
+      if (!parent || systemRoles.has(this.roleOf(parent.agentId))) return entry;
+      entry = parent;
+    }
+    return undefined;
+  }
+
   relations(): Relations {
     this.cache ??= this.build();
     return this.cache;
@@ -132,6 +144,18 @@ export class TaskIndex {
       const id = this.messages.get(ref.messageId);
       return id && candidates.has(id) ? id : undefined;
     }
+    if (ref.message) {
+      const matches = [...candidates].filter((id) => {
+        const entry = this.entries.get(id);
+        return (
+          entry !== undefined &&
+          entry.prompt === ref.message &&
+          (call.startedAt === undefined ||
+            (entry.createdAt !== undefined && entry.createdAt >= call.startedAt))
+        );
+      });
+      return matches.length === 1 ? matches[0] : undefined;
+    }
     return candidates.size === 1 ? [...candidates][0] : undefined;
   }
 
@@ -151,15 +175,31 @@ export class TaskIndex {
         if (!parents.has(child)) parents.set(child, entry.id);
         if (operation) operational.add(child);
       }
-      if (entry.parentTaskId)
+      if (entry.parentTaskId) {
         continuations.set(entry.parentTaskId, [
           ...(continuations.get(entry.parentTaskId) ?? []),
           entry.id,
         ]);
+        parents.set(entry.id, entry.parentTaskId);
+      }
       if (entry.resumedTaskId) resumed.add(entry.resumedTaskId);
       if (entry.reviewOfTaskId) {
         reviews.set(entry.reviewOfTaskId, [...(reviews.get(entry.reviewOfTaskId) ?? []), entry.id]);
         parents.set(entry.id, entry.reviewOfTaskId);
+      }
+    }
+    for (const ids of this.contexts.values()) {
+      const rounds = [...ids]
+        .flatMap((id) => this.entry(id) ?? [])
+        .filter((entry) => this.roleOf(entry.agentId) === "coordinator")
+        .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.id.localeCompare(b.id));
+      for (let position = 1; position < rounds.length; position++) {
+        const entry = rounds[position];
+        const previous = rounds[position - 1];
+        if (!entry || !previous || entry.parentTaskId || entry.reviewOfTaskId) continue;
+        continuations.set(previous.id, [...(continuations.get(previous.id) ?? []), entry.id]);
+        parents.set(entry.id, previous.id);
+        operational.add(entry.id);
       }
     }
     const roots = [...this.entries.values()].filter(

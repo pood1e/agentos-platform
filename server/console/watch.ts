@@ -19,6 +19,7 @@ export async function* watch<Desc extends DescMessage>(
   schema: Desc,
   signal: AbortSignal,
   view: () => MessageShape<Desc> | Promise<MessageShape<Desc>>,
+  poll = false,
 ): AsyncGenerator<MessageShape<Desc>> {
   let changed = true;
   let wake = () => {};
@@ -44,6 +45,7 @@ export async function* watch<Desc extends DescMessage>(
       const stop = new AbortController();
       wake = () => stop.abort();
       await sleep(healthCheck, AbortSignal.any([signal, stop.signal]));
+      if (poll) changed = true;
       wake = () => {};
     }
   } finally {

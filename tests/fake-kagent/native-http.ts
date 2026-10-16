@@ -10,6 +10,33 @@ export async function nativeRequest(
   response: ServerResponse,
 ) {
   const url = new URL(request.url ?? "/", "http://localhost");
+  if (
+    request.method === "GET" &&
+    ["/api/v1", "/apis/api.kagent.dev/v1alpha3"].includes(url.pathname)
+  ) {
+    const native = url.pathname === "/api/v1";
+    const resources = native
+      ? [
+          ["configmaps", "ConfigMap"],
+          ["secrets", "Secret"],
+        ]
+      : [["remotemcpservers", "RemoteMCPServer"]];
+    response.setHeader("Content-Type", "application/json");
+    response.end(
+      JSON.stringify({
+        apiVersion: "v1",
+        kind: "APIResourceList",
+        groupVersion: native ? "v1" : "api.kagent.dev/v1alpha3",
+        resources: resources.map(([name, kind]) => ({
+          name,
+          kind,
+          namespaced: true,
+          verbs: ["get", "list", "create", "patch"],
+        })),
+      }),
+    );
+    return true;
+  }
   const match = /^\/api(?:s\/[^/]+)?\/[^/]+\/namespaces\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/.exec(
     url.pathname,
   );
@@ -54,7 +81,20 @@ export async function nativeRequest(
         : { apiVersion: "v1", kind: "List", items: fake.resources.list(plural) };
     else if (request.method === "POST" || request.method === "PUT")
       result = fake.resources.save(plural, body, request.method === "POST");
-    else if (request.method === "DELETE" && name) {
+    else if (request.method === "PATCH" && name) {
+      const previous = fake.resources
+        .list(plural)
+        .find((resource) => object(resource.metadata).name === name);
+      result = fake.resources.save(
+        plural,
+        {
+          ...previous,
+          ...body,
+          metadata: { ...object(previous?.metadata), ...object(body.metadata) },
+        },
+        !previous,
+      );
+    } else if (request.method === "DELETE" && name) {
       fake.resources.remove(plural, name, text(object(body.preconditions).resourceVersion));
       result = { status: "Success" };
     } else throw new ConnectError("Invalid method", Code.InvalidArgument);

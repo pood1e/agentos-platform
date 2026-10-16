@@ -1,20 +1,75 @@
+import { randomUUID } from "node:crypto";
 import { clone, create } from "@bufbuild/protobuf";
+import { createClient } from "@connectrpc/connect";
+import { createGrpcTransport } from "@connectrpc/connect-node";
 import { expect, test } from "@playwright/test";
 import { TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
+import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { fixtureTasks } from "../fixtures/kagent.js";
 import { client, ids, observeTask, resetKagent, seedOperations, taskState } from "./kagent.js";
 
-test("shows execution and approval from left to right with Bezier connections", async ({
+test("keeps many executions in one instance and opens the exact linked continuation", async ({
+  page,
+  request,
+}) => {
+  await resetKagent(request);
+  const source = fixtureTasks().find((task) => task.id === ids.dispatchRoot);
+  if (!source) throw new Error("dispatch fixture missing");
+  const sessions = createClient(
+    SessionService,
+    createGrpcTransport({ baseUrl: "http://127.0.0.1:8093" }),
+  );
+  const { session } = await sessions.createSession({
+    agent: { namespace: "agentos", name: "coordinator" },
+    requestId: randomUUID(),
+  });
+  if (!session) throw new Error("coordinator session missing");
+  for (let round = 0; round <= 68; round++) {
+    const task = clone(TaskSchema, source);
+    task.id = `long-round-${round}`;
+    task.contextId = session.id;
+    task.artifacts = [];
+    task.history = [];
+    task.metadata = { [createdAtKey]: new Date(Date.now() + round * 1000).toISOString() };
+    await observeTask(request, task);
+  }
+  await expect
+    .poll(async () => (await client.listTasks({ query: "long-round-0" })).tasks[0]?.id)
+    .toBe("long-round-0");
+  await page.goto("/tasks/long-round-0");
+  await expect(page.getByTestId("task-engineer")).toBeVisible();
+  await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
+  await page.getByTestId("task-engineer").click();
+  await expect(page.getByTestId("execution-picker")).toContainText("69");
+  await page.getByTestId("execution-picker").click();
+  await expect(page.getByRole("option")).toHaveCount(69);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.goto("/tasks/long-round-12");
+  await expect(page.getByTestId("agent-drawer")).toBeVisible();
+  await expect(page.getByTestId("execution-picker")).toContainText("13");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
+});
+
+test("shows execution and approval from top to bottom with Bezier connections", async ({
   page,
   request,
 }) => {
   await resetKagent(request);
   await page.goto(`/tasks/${ids.approvalRoot}`);
   await expect(page.getByTestId("approval-node").first()).toBeVisible();
-  const columns = await page
-    .locator(".react-flow__node [data-column]")
-    .evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute("data-column"))));
-  expect(Math.max(...columns)).toBeGreaterThan(Math.min(...columns));
+  const rows = await page.locator(".react-flow__node [data-row]").evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      row: Number(node.getAttribute("data-row")),
+      top: node.getBoundingClientRect().top,
+    })),
+  );
+  expect(Math.max(...rows.map((node) => node.row))).toBeGreaterThan(1);
+  for (const earlier of rows)
+    for (const later of rows)
+      if (earlier.row < later.row) expect(earlier.top).toBeLessThan(later.top);
   const paths = await page
     .locator(".react-flow__edge-path")
     .evaluateAll((edges) => edges.map((edge) => edge.getAttribute("d")));
@@ -47,9 +102,11 @@ test("enlarges and shrinks the centered workflow with the available desktop spac
       .poll(() =>
         page.locator(".react-flow").evaluate((canvas) => {
           const bounds = canvas.getBoundingClientRect();
-          const nodes = [...canvas.querySelectorAll(".react-flow__node")].map((node) =>
-            node.getBoundingClientRect(),
-          );
+          const nodes = [
+            ...canvas.querySelectorAll(
+              ".react-flow__node, .react-flow__edge-path, .react-flow__edgelabel-renderer button",
+            ),
+          ].map((node) => node.getBoundingClientRect());
           const left = Math.min(...nodes.map((node) => node.left));
           const right = Math.max(...nodes.map((node) => node.right));
           const top = Math.min(...nodes.map((node) => node.top));
@@ -65,7 +122,33 @@ test("enlarges and shrinks the centered workflow with the available desktop spac
           };
         }),
       )
-      .toEqual({ fits: true, centerX: 0, centerY: 0 });
+      .toMatchObject({ fits: true });
+    const center = await page.locator(".react-flow").evaluate((canvas) => {
+      const bounds = canvas.getBoundingClientRect();
+      const diagram = [
+        ...canvas.querySelectorAll(
+          ".react-flow__node, .react-flow__edge-path, .react-flow__edgelabel-renderer button",
+        ),
+      ].map((node) => node.getBoundingClientRect());
+      return {
+        x: Math.abs(
+          (Math.min(...diagram.map((item) => item.left)) +
+            Math.max(...diagram.map((item) => item.right)) -
+            bounds.left -
+            bounds.right) /
+            2,
+        ),
+        y: Math.abs(
+          (Math.min(...diagram.map((item) => item.top)) +
+            Math.max(...diagram.map((item) => item.bottom)) -
+            bounds.top -
+            bounds.bottom) /
+            2,
+        ),
+      };
+    });
+    expect(center.x).toBeLessThan(20);
+    expect(center.y).toBeLessThan(20);
     scales.push(await zoom());
   }
   expect(scales[0]).toBeGreaterThan(1);

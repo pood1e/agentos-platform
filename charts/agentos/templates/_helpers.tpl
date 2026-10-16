@@ -31,3 +31,13 @@ capabilities: {drop: [ALL]}
 {{- end -}}
 {{- index . "_gatewayToken" -}}
 {{- end -}}
+
+{{- define "agentos.collaborationToken" -}}
+{{- if not (hasKey . "_collaborationToken") -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-gateway" (include "agentos.name" .)) -}}
+{{- $token := randAlphaNum 64 -}}
+{{- if and $secret (hasKey $secret.data "mcp-api-key") }}{{- $token = index $secret.data "mcp-api-key" | b64dec -}}{{- end -}}
+{{- $_ := set . "_collaborationToken" $token -}}
+{{- end -}}
+{{- index . "_collaborationToken" -}}
+{{- end -}}

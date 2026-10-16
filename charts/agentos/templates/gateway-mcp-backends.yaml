@@ -9,4 +9,26 @@ metadata:
     {{- include "agentos.labels" $ | nindent 4 }}
 spec:
   {{- tpl (toYaml .spec) $ | nindent 2 }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ .name }}-tool-access
+  labels:
+    {{- include "agentos.labels" $ | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ .name }}}
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+            - "has(apiKey.tools) && '{{ .name }}' in apiKey.tools && mcp.tool.name in apiKey.tools['{{ .name }}']"
+  traffic:
+    transformation:
+      request:
+        set:
+          - {name: x-agentos-role, value: "has(apiKey.service) && apiKey.service == 'platform' ? 'platform' : (has(apiKey.engineer) ? apiKey.engineer : '')"}
 {{- end }}

@@ -10,7 +10,7 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 2
-  strategy: {type: RollingUpdate, rollingUpdate: {maxSurge: 1, maxUnavailable: 0}}
+  strategy: {type: Recreate}
   selector:
     matchLabels:
       app.kubernetes.io/name: agentos
@@ -24,6 +24,7 @@ spec:
         app.kubernetes.io/component: console
       annotations:
         checksum/tools: {{ include (print $.Template.BasePath "/execution-tools.yaml") . | sha256sum }}
+        checksum/authorization: {{ include (print $.Template.BasePath "/authorization.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "agentos.name" . }}-console
       automountServiceAccountToken: true
@@ -48,8 +49,8 @@ spec:
       containers:
         - name: console
           image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
-          command: [node, build/server/console/main.js]
-          ports: [{name: http, containerPort: 8080}]
+          command: [node, build/server/platform/main.js]
+          ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}]
           env:
             {{- if .Values.global.agentos.environments }}
             - {name: AGENTOS_OPERATIONS_CONFIG, value: /etc/agentos-operations/connections.json}
@@ -58,7 +59,12 @@ spec:
             - {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
             {{- end }}
             - {name: AGENTOS_HOST, value: '0.0.0.0'}
+            - {name: AGENTOS_AUTH_CONFIG, value: /etc/agentos-authorization/authorization.json}
+            - name: AGENTOS_OIDC_AUDIENCE
+              valueFrom:
+                secretKeyRef: {name: {{ index .Values "oauth2-proxy" "config" "existingSecret" }}, key: client-id}
             - {name: AGENTOS_PORT, value: '8080'}
+            - {name: AGENTOS_RELEASE, value: {{ include "agentos.name" . }}}
             - {name: KAGENT_URL, value: {{ .Values.kagent.endpoint | quote }}}
             - {name: KAGENT_NAMESPACE, value: {{ .Release.Namespace | quote }}}
             - {name: KAGENT_USER_ID, value: {{ .Values.kagent.userId | quote }}}
@@ -72,6 +78,12 @@ spec:
             - name: AGENTOS_GATEWAY_TOKEN
               valueFrom:
                 secretKeyRef: {name: {{ include "agentos.name" . }}-gateway, key: api-key}
+            - name: AGENTOS_MCP_TOKEN
+              valueFrom:
+                secretKeyRef: {name: {{ include "agentos.name" . }}-mcp, key: token}
+            - name: AGENTOS_COLLABORATION_TOKEN
+              valueFrom:
+                secretKeyRef: {name: {{ include "agentos.name" . }}-gateway, key: mcp-api-key}
           readinessProbe:
             httpGet: {path: /readyz, port: http}
             periodSeconds: 3
@@ -83,6 +95,7 @@ spec:
           securityContext:
             {{- include "agentos.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
+            - {name: authorization, mountPath: /etc/agentos-authorization, readOnly: true}
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             {{- if .Values.global.agentos.environments }}
             - {name: operations, mountPath: /etc/agentos-operations, readOnly: true}
@@ -91,6 +104,8 @@ spec:
             - {name: pack, mountPath: /etc/agentos-pack, readOnly: true}
             {{- end }}
       volumes:
+        - name: authorization
+          configMap: {name: {{ include "agentos.name" . }}-authorization}
         - name: tools
           configMap: {name: {{ include "agentos.name" . }}-tools}
       {{- if .Values.pack.image }}

@@ -96,13 +96,14 @@ spec:
     - matches:
         - path: {type: PathPrefix, value: /agentos.governance.v1.ChangeControlService/}
       backendRefs: [{name: change-control, port: 8080}]
+{% for project in toolsets %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
-metadata: {name: change-control, namespace: {{ gateway_namespace }}}
+metadata: {name: change-control-{{ project }}, namespace: {{ gateway_namespace }}}
 spec:
   targetSelectors:
-    - {group: agentgateway.dev, kind: AgentgatewayBackend, matchLabels: {agentos.dev/component: environment-tool}}
+    - {group: agentgateway.dev, kind: AgentgatewayBackend, matchLabels: {agentos.dev/component: environment-tool, agentos.dev/project: {{ project }}}}
   backend:
     mcp:
       guardrails:
@@ -113,3 +114,5 @@ spec:
               failureMode: FailClosed
               metadata:
                 engineer: apiKey.engineer
+                project: "'{{ project }}'"
+{% endfor %}

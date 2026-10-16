@@ -8,7 +8,7 @@ import { millis } from "../server/read-model/decode/messages.js";
 import { listConversations } from "../server/read-model/views/conversation.js";
 import { engineers } from "../server/read-model/views/engineers.js";
 import { listTasks, taskDetail } from "../server/read-model/views/task.js";
-import { fixtureIndex, fixtureIds as ids } from "./fixtures/kagent.js";
+import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 
 describe("task entries", () => {
   const index = fixtureIndex();
@@ -59,6 +59,49 @@ describe("task entries", () => {
 
 describe("views", () => {
   const index = fixtureIndex();
+
+  it("projects native instance identity separately from engineer configuration and execution", async () => {
+    const detail = taskDetail(index, ids.dispatchRoot);
+    expect(detail).toBeDefined();
+    for (const run of detail?.runs ?? []) {
+      expect(run.contextId).toBe(index.entry(run.taskId)?.contextId);
+      expect(detail?.sessions.find((session) => session.id === run.contextId)).toMatchObject({
+        id: run.contextId,
+        contextId: run.contextId,
+        name: index.session(run.contextId)?.name ?? "",
+        agent: { namespace: run.agentId.split("/")[0], name: run.agentId.split("/")[1] },
+      });
+    }
+    for (const delegation of detail?.delegations ?? []) {
+      expect(delegation.sourceContextId).toBe(index.entry(delegation.sourceTaskId)?.contextId);
+      expect(delegation.targetContextId).toBe(index.entry(delegation.targetTaskId)?.contextId);
+    }
+    const { taskRun } = await import("../server/read-model/views/run.js");
+    const run = await taskRun(
+      {
+        index,
+        fullTask: async (id: string) => fixtureTasks().find((task) => task.id === id),
+      } as never,
+      ids.inspection,
+    );
+    expect(run?.contextId).toBe(index.entry(ids.inspection)?.contextId);
+  });
+
+  it("keeps the requested Session visible when the delegated Task has not arrived", () => {
+    const source = fixtureTasks().find((task) => task.id === ids.dispatchRoot);
+    if (!source) throw new Error("missing native task");
+    const pending = fixtureIndex([source]);
+    const detail = taskDetail(pending, source.id);
+    const invocation = detail?.delegations.find((link) => link.kind === DelegationKind.INVOKE);
+    expect(invocation?.targetTaskId).toBe("");
+    expect(invocation?.targetContextId).not.toBe("");
+    expect(detail?.sessions.map((session) => session.id)).toContain(invocation?.targetContextId);
+    expect(
+      detail?.sessions.every(
+        (session) => !session.creator && !session.preparedRevision && !session.a2aAuthority,
+      ),
+    ).toBe(true);
+  });
 
   it("lists operations as roots and titles chat delegations with the user's words", () => {
     const { tasks, totalSize } = listTasks(index, { query: "", pageToken: "", pageSize: 20 });

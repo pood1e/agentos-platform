@@ -14,6 +14,7 @@ export interface Ticket {
   agentos_impact: string;
   agentos_validation: string;
   agentos_rollback: string;
+  agentos_simulation: string;
   agentos_decision: string;
   agentos_reason: string;
 }
@@ -76,7 +77,7 @@ export class Zammad {
     return this.request<Ticket>("tickets", "POST", fields);
   }
   articles(id: string | number) {
-    return this.request<{ id: number; subject: string; body: string }[]>(
+    return this.request<{ id: number; subject: string; body: string; message_id?: string }[]>(
       `ticket_articles/by_ticket/${id}`,
     );
   }

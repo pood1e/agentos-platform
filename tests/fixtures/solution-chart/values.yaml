@@ -29,6 +29,8 @@ global:
       path: /team/skills.git
       secretRef: example-skill-repository
 agentos:
+  authorization:
+    jwksUrl: https://id.example.test/realms/agentos/protocol/openid-connect/certs
   image:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   ingress:

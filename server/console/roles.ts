@@ -42,6 +42,10 @@ export function roleCommands(
   access: BindingView,
   defaults: RoleDefaults,
   replaceTemplate: TemplateWriter,
+  platformTools: (
+    role: string,
+    tools: RoleDefinition["tools"],
+  ) => Promise<RoleDefinition["tools"]> = async (_role, tools) => tools,
 ) {
   async function catalog() {
     const [templates, tools, models] = await Promise.all([
@@ -96,7 +100,7 @@ export function roleCommands(
         current.servers,
       );
     }
-    return { ...role, tools };
+    return { ...role, tools: await platformTools(role.name, tools) };
   }
 
   async function configuration() {
@@ -242,7 +246,13 @@ export function roleCommands(
             resource: {
               apiVersion,
               kind: "AgentTemplate",
-              value: { ...value, spec: templateSpec({ ...role, tools }, object(value.spec)) },
+              value: {
+                ...value,
+                spec: templateSpec(
+                  { ...role, tools: await platformTools(role.name, tools) },
+                  object(value.spec),
+                ),
+              },
             },
           }),
         );

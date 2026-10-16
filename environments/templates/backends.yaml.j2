@@ -10,7 +10,7 @@ kind: AgentgatewayBackend
 metadata:
   name: {{ project }}-{{ identity.name }}
   namespace: {{ gateway_namespace }}
-  labels: {agentos.dev/component: environment-tool}
+  labels: {agentos.dev/component: environment-tool, agentos.dev/project: {{ project }}}
 spec:
   mcp:
     prefixMode: Never

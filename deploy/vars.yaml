@@ -31,3 +31,13 @@ oidc_secret_file: ""
 agentgateway_version: v1.6.0
 helm_diff_version: v3.15.11
 gateway_api_version: v1.6.1
+langfuse_enabled: false
+agentos_evaluation_enabled: false
+langfuse_namespace: agentos-observability
+agentos_evaluation_namespace: agentos-evaluation
+langfuse_chart_version: 2.1.4
+langfuse_version: 4.62.0
+clickhouse_operator_version: 0.0.8
+langfuse_issuer_name: letsencrypt
+otel_collector_chart_version: 0.176.0
+otel_collector_version: 0.162.0

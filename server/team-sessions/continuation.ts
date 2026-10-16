@@ -2,6 +2,7 @@
 import { create } from "@bufbuild/protobuf";
 import type { FastifyBaseLogger } from "fastify";
 import { type Message, MessageSchema, Role, TaskState } from "../../gen/a2a_pb.js";
+import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
 import { parentTaskKey, resumedTaskKey } from "../read-model/decode/messages.js";
 import type { TaskEntry } from "../read-model/entry.js";
@@ -9,6 +10,7 @@ import type { TaskIndex } from "../read-model/index.js";
 import { terminal } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { foreground, taskTree } from "../read-model/tree.js";
+import messages from "./messages.json" with { type: "json" };
 
 interface Continuation {
   childId: string;
@@ -16,12 +18,26 @@ interface Continuation {
   message: Message;
 }
 
-const waiting = (entry: TaskEntry) =>
+const waiting = (index: TaskIndex, entry: TaskEntry) =>
   entry.calls.flatMap((call) => {
     const invocation = call.delegation?.invocation;
-    return invocation?.state === TaskState.INPUT_REQUIRED && invocation.taskId
-      ? [invocation.taskId]
-      : [];
+    const childId = invocation?.taskId || index.target(entry, call);
+    if (!childId) return [];
+    if (!invocation && (call.state === ActivityState.FAILED || !call.returned)) return [childId];
+    if (!invocation) return [];
+    if (invocation.state === TaskState.INPUT_REQUIRED) return [invocation.taskId];
+    const child = index.entry(invocation.taskId);
+    const continued =
+      child &&
+      (index.relations().continuations.get(child.id) ?? []).some((id) => {
+        const next = index.entry(id);
+        return (
+          next?.agentId === child.agentId &&
+          next.contextId === child.contextId &&
+          next.resumedTaskId
+        );
+      });
+    return continued ? [invocation.taskId] : [];
   });
 
 function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
@@ -31,17 +47,26 @@ function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
   const tree = taskTree(index, child.id);
   const active = tree ? foreground(tree) : [];
   if (active.some((entry) => !terminal(entry.state))) return undefined;
-  if (active.some((entry) => waiting(entry).some((id) => !resumed.has(id)))) return undefined;
+  if (active.some((entry) => waiting(index, entry).some((id) => !resumed.has(id))))
+    return undefined;
   const decided = active
     .filter((entry) => entry.decision)
     .sort((a, b) => (b.statusAt ?? 0) - (a.statusAt ?? 0))[0]?.decision;
-  if (!decided) return undefined;
   const result = tree?.latest ?? child;
+  const language = /\p{Script=Han}/u.test(parent.prompt) ? "zh-CN" : "en";
+  const summary =
+    language === "zh-CN"
+      ? Array.from(result.answer).slice(0, 180).join("")
+      : result.answer.split(/\s+/).slice(0, 80).join(" ");
+  const message = messages[language]
+    .replace("{state}", TaskState[result.state])
+    .replace("{task}", result.id)
+    .replace("{result}", summary);
   return {
     childId: child.id,
     tenant: parent.agentId,
     message: create(MessageSchema, {
-      messageId: `resume-${child.id}-${decided.messageId}`,
+      messageId: `resume-${child.id}-${decided?.messageId ?? result.id}`,
       contextId: parent.contextId,
       role: Role.USER,
       extensions: [hitlExtension],
@@ -50,7 +75,7 @@ function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
         {
           content: {
             case: "text",
-            value: `The delegated task ${child.id} has resumed after the user's decision and is now ${TaskState[result.state]}.\nUser decision: ${JSON.stringify(decided.payload)}\nObserved result:\n${result.answer}\nContinue the original goal using this result. Choose any necessary validation or knowledge persistence based on the evidence, and report actual outcomes in the original task's language.`,
+            value: message,
           },
         },
       ],
@@ -78,7 +103,7 @@ export function startContinuations(sync: KagentSync, log: FastifyBaseLogger): ()
     const waitingIds = new Set<string>();
     for (const parent of index.all()) {
       if (!terminal(parent.state)) continue;
-      for (const childId of waiting(parent)) {
+      for (const childId of waiting(index, parent)) {
         const next = continuation(index, parent, childId);
         waitingIds.add(childId);
         if (!next) {

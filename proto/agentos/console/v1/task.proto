@@ -4,8 +4,10 @@ package agentos.console.v1;
 
 import "agentos/console/v1/engineer.proto";
 import "agentos/console/v1/state.proto";
+import "agentos/governance/v1/change.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "kagent/api/v1alpha1/sessions.proto";
 
 // Root operation started by a person or delegated from a conversation.
 message TaskSummary {
@@ -26,6 +28,8 @@ message TaskDetail {
   string answer = 6;
   google.protobuf.Timestamp started_at = 7;
   google.protobuf.Timestamp completed_at = 8;
+  // Native session identities and names used by this operation.
+  repeated kagent.api.v1alpha1.Session sessions = 9;
 }
 
 // One A2A task executed by one engineer inside an operation tree.
@@ -38,6 +42,7 @@ message TaskRun {
   string output = 6;
   repeated ToolCall calls = 7;
   google.protobuf.Timestamp updated_at = 8;
+  string context_id = 9;
 }
 
 message ToolCall {
@@ -76,6 +81,12 @@ message Delegation {
   google.protobuf.Timestamp finished_at = 11;
   // Native approval request reviewed by this task.
   string request_id = 12;
+  // Delegations whose synchronous replies were observed before this dispatch.
+  repeated string depends_on = 13;
+  // A synchronous reply was recorded, including replies without a timestamp.
+  bool returned = 14;
+  string source_context_id = 15;
+  string target_context_id = 16;
 }
 
 enum InteractionKind {
@@ -116,4 +127,6 @@ message Interaction {
   google.protobuf.Timestamp answered_at = 11;
   repeated Answer answers = 12;
   string rejection_reason = 13;
+  // Compact native change records; request payloads are loaded separately.
+  repeated agentos.governance.v1.Change changes = 14;
 }

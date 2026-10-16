@@ -1,4 +1,5 @@
 keycloak:
+  approval: []
   readOnly:
     - keycloak_identity_get
     - keycloak_client_service_account_get
@@ -37,7 +38,14 @@ kubernetes:
     - resources_scale
     - pods_delete
     - pods_exec
+  approval:
+    - resources_create_or_update
+    - resources_delete
+    - resources_scale
+    - pods_delete
+    - pods_exec
 netbox:
+  approval: []
   readOnly:
     - netbox_get_objects
     - netbox_get_object_by_id
@@ -100,7 +108,12 @@ jumpserver:
     - assets_hosts_partial_update
     - accounts_accounts_create
     - accounts_accounts_partial_update
+  approval:
+    - ops_jobs_create
+    - ops_jobs_update
+    - ops_jobs_partial_update
 zammad:
+  approval: []
   readOnly:
     - get_me
     - list_ticket_options

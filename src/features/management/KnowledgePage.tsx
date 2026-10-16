@@ -19,7 +19,8 @@ import type {
 } from "../../../gen/kagent/api/v1alpha1/memory_pb.js";
 import { managementClient } from "../../lib/console.js";
 import { millis } from "../../lib/format.js";
-import { Markdown } from "../shared/Markdown.js";
+import { KnowledgeArticle } from "./KnowledgeArticle.js";
+import { knowledgeDocument } from "./knowledge-content.js";
 import { ConfirmDelete, ResourceSheet, SaveButton } from "./ResourceDialog.js";
 import { Failure, ResourcePage, useManagementPage } from "./ResourcePage.js";
 
@@ -44,6 +45,7 @@ function AddKnowledge({ onSaved }: { onSaved: () => void }) {
         rows={18}
         required
         maxLength={24000}
+        placeholder={t("management.knowledgePlaceholder")}
         value={content}
         onChange={(event) => setContent(event.target.value)}
       />
@@ -70,10 +72,15 @@ export function KnowledgePage() {
   const [clearing, setClearing] = useState(false);
   const [deleting, setDeleting] = useState<MemorySummary | MemorySearchResult>();
   const records = semantic ?? list.data?.memories ?? [];
-  const date = (value?: number) =>
-    value === undefined ? "—" : new Date(value).toLocaleString(i18n.resolvedLanguage);
+  const date = (value?: number, includeTime = true) =>
+    value === undefined
+      ? "—"
+      : includeTime
+        ? new Date(value).toLocaleString(i18n.resolvedLanguage)
+        : new Date(value).toLocaleDateString(i18n.resolvedLanguage);
   const total = semantic?.length ?? list.data?.totalSize ?? 0;
   const title = t("management.tabs.knowledge");
+  const document = viewing && knowledgeDocument(viewing.content);
   return (
     <>
       <ResourcePage
@@ -122,58 +129,59 @@ export function KnowledgePage() {
           </>
         }
       >
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
               <TableHead>{t("management.knowledgeContent")}</TableHead>
-              <TableHead>
+              <TableHead className="w-24">
                 {t(semantic ? "management.similarity" : "management.accessCount")}
               </TableHead>
-              <TableHead>{t("management.createdAt")}</TableHead>
-              {semantic === undefined && <TableHead>{t("management.expiresAt")}</TableHead>}
-              <TableHead className="text-right">{t("management.actions")}</TableHead>
+              <TableHead className="w-44">{t("management.createdAt")}</TableHead>
+              <TableHead className="w-16 text-right">{t("management.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {records.map((item) => (
-              <TableRow key={item.id} data-testid="knowledge-row">
-                <TableCell className="w-full max-w-40">
-                  <Button
-                    variant="link"
-                    className="h-auto max-w-full justify-start p-0 text-left font-normal text-foreground"
-                    onClick={() => setViewing(item)}
-                  >
-                    <span className="truncate">
-                      {item.content
-                        .split("\n")
-                        .find((line) => line.trim())
-                        ?.replace(/^#+\s*/, "")}
-                    </span>
-                  </Button>
-                </TableCell>
-                <TableCell className="text-xs tabular-nums">
-                  {"score" in item ? `${Math.round(item.score * 100)}%` : String(item.accessCount)}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {date(millis(item.createdAt))}
-                </TableCell>
-                {semantic === undefined && (
-                  <TableCell className="text-xs text-muted-foreground">
-                    {date(millis("expiresAt" in item ? item.expiresAt : undefined))}
+            {records.map((item) => {
+              const preview = knowledgeDocument(item.content);
+              return (
+                <TableRow key={item.id} data-testid="knowledge-row">
+                  <TableCell className="py-4">
+                    <Button
+                      variant="link"
+                      className="h-auto w-full max-w-full flex-col items-start gap-1 p-0 text-left font-normal whitespace-normal text-foreground no-underline hover:no-underline"
+                      onClick={() => setViewing(item)}
+                    >
+                      <span className="line-clamp-2 text-sm leading-6 font-medium">
+                        {preview.title}
+                      </span>
+                      {preview.excerpt && (
+                        <span className="line-clamp-2 text-xs leading-6 text-muted-foreground">
+                          {preview.excerpt}
+                        </span>
+                      )}
+                    </Button>
                   </TableCell>
-                )}
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("management.deleteKnowledge")}
-                    onClick={() => setDeleting(item)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                  <TableCell className="text-xs tabular-nums">
+                    {"score" in item
+                      ? `${Math.round(item.score * 100)}%`
+                      : String(item.accessCount)}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {date(millis(item.createdAt), false)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("management.deleteKnowledge")}
+                      onClick={() => setDeleting(item)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </ResourcePage>
@@ -189,13 +197,21 @@ export function KnowledgePage() {
         )}
       </ResourceSheet>
       <ResourceSheet
-        title={t("management.knowledgeContent")}
+        title={document?.title ?? t("management.knowledgeContent")}
+        className="sm:max-w-3xl data-[side=right]:sm:max-w-3xl"
         open={!!viewing}
         onOpenChange={(open) => {
           if (!open) setViewing(undefined);
         }}
       >
-        {viewing && <Markdown>{viewing.content}</Markdown>}
+        {viewing && document && (
+          <div className="space-y-6">
+            <p className="border-b pb-4 text-xs text-muted-foreground">
+              {t("management.createdAt")} · {date(millis(viewing.createdAt))}
+            </p>
+            <KnowledgeArticle key={viewing.id} content={document.body} />
+          </div>
+        )}
       </ResourceSheet>
       {clearing && (
         <ConfirmDelete
@@ -217,11 +233,7 @@ export function KnowledgePage() {
       {deleting && (
         <ConfirmDelete
           title={t("management.deleteNamed", {
-            name:
-              deleting.content
-                .split("\n")
-                .find((line) => line.trim())
-                ?.slice(0, 80) ?? deleting.id,
+            name: knowledgeDocument(deleting.content).title.slice(0, 80) || deleting.id,
           })}
           description={t("management.deleteKnowledgeNotice")}
           onClose={() => setDeleting(undefined)}

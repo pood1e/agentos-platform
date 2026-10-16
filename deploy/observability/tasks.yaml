@@ -1,0 +1,151 @@
+- name: Require Langfuse site configuration
+  ansible.builtin.assert:
+    that:
+      - langfuse_domain | default('') | length > 0
+      - langfuse_oidc_secret_file | default('') | length > 0
+      - langfuse_admin_email | default('') | length > 0
+
+- name: Ensure observability namespace
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata: {name: "{{ langfuse_namespace }}"}
+
+- name: Configure observability ingress
+  ansible.builtin.import_tasks: ingress.yaml
+
+- name: Configure native Langfuse OIDC provider
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata: {name: langfuse-oidc, namespace: "{{ langfuse_namespace }}"}
+      type: Opaque
+      stringData: "{{ lookup('ansible.builtin.file', langfuse_oidc_secret_file) | from_json }}"
+  no_log: true
+
+- name: Discover persisted project initialization credentials
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: langfuse-project
+    namespace: "{{ langfuse_namespace }}"
+  register: langfuse_project_credentials
+  no_log: true
+
+- name: Initialize Langfuse project credentials
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata: {name: langfuse-project, namespace: "{{ langfuse_namespace }}"}
+      type: Opaque
+      stringData:
+        public-key: "pk-lf-{{ lookup('ansible.builtin.password', playbook_dir + '/../.cache/langfuse-public', length=32, chars=['ascii_letters', 'digits']) }}"
+        secret-key: "sk-lf-{{ lookup('ansible.builtin.password', playbook_dir + '/../.cache/langfuse-secret', length=48, chars=['ascii_letters', 'digits']) }}"
+        admin-password: "{{ lookup('ansible.builtin.password', playbook_dir + '/../.cache/langfuse-admin', length=48, chars=['ascii_letters', 'digits']) }}"
+  when: langfuse_project_credentials.resources | length == 0
+  no_log: true
+
+- name: Install official ClickHouse operator
+  kubernetes.core.helm:
+    name: clickhouse-operator
+    binary_path: "{{ helm_binary }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+    chart_ref: oci://ghcr.io/clickhouse/clickhouse-operator-helm
+    chart_version: "{{ clickhouse_operator_version }}"
+    release_namespace: clickhouse-operator
+    create_namespace: true
+    reset_values: true
+    history_max: 3
+    wait: true
+    timeout: 10m
+
+- name: Configure dedicated Langfuse PostgreSQL
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      metadata: {name: langfuse-postgres, namespace: "{{ langfuse_namespace }}"}
+      spec:
+        instances: 1
+        imageName: "{{ postgres_image }}"
+        storage: {size: 5Gi, storageClass: local-path}
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: '1', memory: 1Gi}
+        bootstrap:
+          initdb: {database: langfuse, owner: langfuse}
+
+- name: Wait for Langfuse database
+  kubernetes.core.k8s_info:
+    api_version: postgresql.cnpg.io/v1
+    kind: Cluster
+    name: langfuse-postgres
+    namespace: "{{ langfuse_namespace }}"
+    wait: true
+    wait_condition: {type: Ready, status: 'True'}
+    wait_timeout: 900
+  when: not ansible_check_mode
+
+- name: Install official Langfuse chart
+  kubernetes.core.helm:
+    name: langfuse
+    binary_path: "{{ helm_binary }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+    chart_ref: langfuse
+    chart_repo_url: https://langfuse.github.io/langfuse-k8s
+    chart_version: "{{ langfuse_chart_version }}"
+    release_namespace: "{{ langfuse_namespace }}"
+    reset_values: true
+    history_max: 3
+    wait: true
+    timeout: 20m
+    release_values: >-
+      {{ lookup('ansible.builtin.template', 'observability/values.yaml.j2') | from_yaml
+         | combine(langfuse_values | default({}), recursive=true) }}
+  no_log: true
+
+- name: Restrict observability traffic
+  kubernetes.core.k8s:
+    state: present
+    template: observability/network-policy.yaml.j2
+
+- name: Read native Langfuse project credentials
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: langfuse-project
+    namespace: "{{ langfuse_namespace }}"
+  register: langfuse_project
+  no_log: true
+
+- name: Configure collector ingestion identity
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata: {name: langfuse-otel, namespace: "{{ langfuse_namespace }}"}
+      type: Opaque
+      stringData:
+        authorization: >-
+          Basic {{ ((langfuse_project.resources[0].data['public-key'] | b64decode) + ':' +
+                    (langfuse_project.resources[0].data['secret-key'] | b64decode)) | b64encode }}
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Install official OpenTelemetry collector
+  kubernetes.core.helm:
+    name: langfuse-collector
+    binary_path: "{{ helm_binary }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+    chart_ref: opentelemetry-collector
+    chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart_version: "{{ otel_collector_chart_version }}"
+    release_namespace: "{{ langfuse_namespace }}"
+    reset_values: true
+    history_max: 3
+    wait: true
+    timeout: 10m
+    release_values: "{{ lookup('ansible.builtin.template', 'observability/collector.yaml.j2') | from_yaml }}"

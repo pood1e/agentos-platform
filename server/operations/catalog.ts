@@ -8,12 +8,14 @@ interface TierLists {
   write?: string[];
   management?: string[];
   managementReadOnly?: string[];
+  approval?: string[];
 }
 
 /** Tool tiers for managed environment projects and for platform MCP servers. */
 export interface ToolCatalog {
   projects: Map<string, Map<string, Tier>>;
   servers: Map<string, Map<string, Tier>>;
+  approvals: Map<string, Set<string>>;
 }
 
 function tiers(source: Record<string, TierLists> | null): Map<string, Map<string, Tier>> {
@@ -31,7 +33,23 @@ function tiers(source: Record<string, TierLists> | null): Map<string, Map<string
 }
 
 export function parseCatalog(projects: string, servers: string): ToolCatalog {
-  return { projects: tiers(parse(projects)), servers: tiers(parse(servers)) };
+  const source = parse(projects) as Record<string, TierLists> | null;
+  return {
+    projects: tiers(source),
+    servers: tiers(parse(servers)),
+    approvals: new Map(
+      Object.entries(source ?? {}).map(([project, lists]) => [
+        project,
+        new Set(lists.approval ?? lists.write ?? []),
+      ]),
+    ),
+  };
+}
+
+export function requiresChangeReview(catalog: ToolCatalog, project: string, tool: string) {
+  return (
+    !catalog.projects.get(project)?.has(tool) || catalog.approvals.get(project)?.has(tool) === true
+  );
 }
 
 export function loadCatalog(

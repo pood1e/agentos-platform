@@ -41,6 +41,11 @@
       "match": "grafana|loki",
       "name": "Grafana",
       "icon": "icons/grafana.svg"
+    },
+    {
+      "match": "zammad",
+      "name": "Zammad",
+      "icon": "icons/zammad.svg"
     }
   ],
   "locales": {

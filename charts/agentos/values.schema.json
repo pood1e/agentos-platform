@@ -62,6 +62,13 @@
                       "type": "string",
                       "minLength": 1
                     }
+                  },
+                  "approval": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "uniqueItems": true
                   }
                 }
               }
@@ -181,22 +188,6 @@
       "required": ["endpoint", "userId"]
     },
     "console": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "resources": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": {
-              "type": ["string", "number"]
-            }
-          }
-        }
-      },
-      "required": ["resources"]
-    },
-    "teamSessions": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -388,6 +379,51 @@
           }
         }
       }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jwksUrl",
+        "viewerGroups",
+        "operatorGroups",
+        "administratorGroups",
+        "groupClaim"
+      ],
+      "properties": {
+        "jwksUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "viewerGroups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "operatorGroups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "administratorGroups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "groupClaim": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   },
   "required": [
@@ -396,7 +432,6 @@
     "imagePullSecrets",
     "kagent",
     "console",
-    "teamSessions",
     "ingress",
     "modelConfig",
     "harnesses",
@@ -405,7 +440,8 @@
     "oauth2-proxy",
     "gateway",
     "systemAgents",
-    "pack"
+    "pack",
+    "authorization"
   ],
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$defs": {
