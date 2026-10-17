@@ -117,6 +117,9 @@ for name, source, overrides, presets, config in [
     docs = [doc for doc in yaml.safe_load_all(manifest) if doc]
     identities = [(doc['apiVersion'], doc['kind'], doc['metadata'].get('namespace', ''), doc['metadata']['name']) for doc in docs]
     assert len(identities) == len(set(identities)), f'{name}: duplicate resources'
+    for policy in [doc for doc in docs if doc['kind'] == 'AgentgatewayPolicy' and 'traffic' in doc['spec']]:
+        targets = policy['spec'].get('targetRefs', []) + policy['spec'].get('targetSelectors', [])
+        assert all(target['kind'] in {'Gateway', 'HTTPRoute', 'GRPCRoute', 'ListenerSet', 'InferencePool'} for target in targets), f'{name}: traffic policy targets an unsupported resource'
     gateway_secret = next(doc for doc in docs if doc['kind'] == 'Secret' and doc['metadata']['name'] == 'agentos-gateway')
     token = base64.b64decode(gateway_secret['data']['api-key'])
     keys = next(doc for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'agentos-gateway-keys')

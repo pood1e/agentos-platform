@@ -18,7 +18,7 @@ metadata:
     {{- include "agentos.labels" $ | nindent 4 }}
 spec:
   targetRefs:
-    - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ .name }}}
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ .name }}}
   backend:
     mcp:
       authorization:
