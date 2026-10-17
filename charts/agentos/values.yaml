@@ -135,6 +135,7 @@ oauth2-proxy:
     skip-provider-button: 'true'
     cookie-secure: 'true'
     cookie-samesite: lax
+    cookie-refresh: 2m
   serviceAccount:
     automountServiceAccountToken: false
   securityContext:
