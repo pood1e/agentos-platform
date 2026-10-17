@@ -48,7 +48,7 @@ config:
     batch: {timeout: 5s, send_batch_size: 256}
   exporters:
     debug: null
-    otlphttp/langfuse:
+    otlp_http/langfuse:
       endpoint: http://langfuse-web:3000/api/public/otel
       headers:
         Authorization: '${env:LANGFUSE_AUTHORIZATION}'
@@ -62,4 +62,4 @@ config:
       traces:
         receivers: [otlp]
         processors: [memory_limiter, filter/span-events, transform/metadata, batch]
-        exporters: [otlphttp/langfuse]
+        exporters: [otlp_http/langfuse]
