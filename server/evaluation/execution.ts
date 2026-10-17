@@ -1,4 +1,4 @@
-import { clone, create, fromJsonString } from "@bufbuild/protobuf";
+import { clone, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import { Ajv } from "ajv";
 import { TaskState } from "../../gen/a2a_pb.js";
@@ -14,22 +14,22 @@ import { digest } from "../shared/change-digest.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { evaluationFailures } from "./gate.js";
 import type { evaluationJobs } from "./jobs.js";
+import { nativeEvaluationProof } from "./proofs.js";
+import { nativeReady } from "./readiness.js";
 import type { evaluationSandboxes } from "./sandbox.js";
-import type { CandidateRecord, EvaluationStore } from "./store.js";
-import { variantName } from "./variants.js";
+import type { EvaluationStore } from "./store.js";
+import { sampleAgent } from "./subject.js";
 
 export interface ExecutionDependencies {
   store: EvaluationStore;
   jobs: ReturnType<typeof evaluationJobs>;
   sandboxes: ReturnType<typeof evaluationSandboxes>;
-  synchronized: (record: CandidateRecord) => Promise<void>;
 }
 
 export function evaluationExecution({
   store,
   jobs,
   sandboxes,
-  synchronized,
 }: ExecutionDependencies): ServiceImpl<typeof EvaluationExecutionService> {
   const schemas = new Ajv({ strict: true, allErrors: false });
   async function running(id: string) {
@@ -61,6 +61,7 @@ export function evaluationExecution({
         request.repetition > baseline.repetitions ||
         !request.input ||
         digest(request.input) !== sample.inputDigest ||
+        request.input.agent !== sample.agent ||
         !schemas.validate(baseline.inputSchema ?? {}, request.input)
       )
         throw new ConnectError(
@@ -69,11 +70,19 @@ export function evaluationExecution({
         );
       const variant = request.variant === EvaluationVariant.CANDIDATE ? "candidate" : "released";
       const scope = sandboxes.scoped(request.candidateId, variant);
-      const agent = variantName(scope.prefix, text(request.input.agent));
-      await scope.clients.agents.getAgent(
-        { ref: { namespace: store.namespace, name: agent } },
-        { timeoutMs: 10_000, signal: context.signal },
-      );
+      const agent = sampleAgent(record.snapshot, sample.agent, variant, scope.prefix);
+      const deadline = Date.now() + Math.min(600_000, baseline.timeoutSeconds * 500);
+      for (;;) {
+        const { agent: native } = await scope.clients.agents.getAgent(
+          { ref: { namespace: store.namespace, name: agent } },
+          { timeoutMs: 10_000, signal: context.signal },
+        );
+        if (native?.resource?.value && nativeReady(native.resource.value)) break;
+        if (Date.now() > deadline)
+          throw new ConnectError("Evaluation runtime was not prepared", Code.DeadlineExceeded);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        context.signal.throwIfAborted();
+      }
       const messageId = messageIdentity(
         request.candidateId,
         request.sampleId,
@@ -111,12 +120,21 @@ export function evaluationExecution({
         result.text.length > 65536
       )
         throw new ConnectError("Native evaluation did not complete", Code.Aborted);
-      return { output: result.text, taskId: result.taskId, contextId: result.contextId };
+      const calls = await nativeEvaluationProof(scope.clients, session, result.taskId, messageId);
+      return { output: result.text, taskId: result.taskId, contextId: result.contextId, calls };
     },
     async complete(request) {
       const existing = await store.get(request.candidateId);
       if (existing.report) {
-        if (!request.report || existing.report.bindingDigest !== request.report.bindingDigest)
+        const retained = clone(EvaluationReportSchema, existing.report);
+        retained.feedbackSynchronized = false;
+        const submitted = request.report && clone(EvaluationReportSchema, request.report);
+        if (submitted) submitted.feedbackSynchronized = false;
+        if (
+          !submitted ||
+          toJsonString(EvaluationReportSchema, retained) !==
+            toJsonString(EvaluationReportSchema, submitted)
+        )
           throw new ConnectError("Completed evaluation cannot be replaced", Code.AlreadyExists);
         return {};
       }
@@ -137,9 +155,42 @@ export function evaluationExecution({
         )
       )
         throw new ConnectError("Evaluation report is malformed", Code.InvalidArgument);
-      await synchronized({ ...record, report });
-      report.feedbackSynchronized = true;
-      await store.report(request.candidateId, create(EvaluationReportSchema, report));
+      for (const row of report.samples) {
+        if (row.error) continue;
+        const sample = record.snapshot.baseline?.samples.find(
+          (sample) => sample.id === row.sampleId,
+        );
+        if (!sample) throw new ConnectError("Evaluation sample is missing", Code.InvalidArgument);
+        for (const variant of ["candidate", "released"] as const) {
+          const scope = sandboxes.scoped(request.candidateId, variant);
+          const requestId = messageIdentity(
+            request.candidateId,
+            sample.id,
+            String(row.repetition),
+            variant,
+          );
+          const { session } = await scope.clients.sessions.createSession(
+            {
+              agent: {
+                namespace: store.namespace,
+                name: sampleAgent(record.snapshot, sample.agent, variant, scope.prefix),
+              },
+              requestId,
+              name: `Evaluation ${sample.id}`,
+            },
+            { timeoutMs: 30_000 },
+          );
+          if (!session)
+            throw new ConnectError("Evaluation context is missing", Code.FailedPrecondition);
+          await nativeEvaluationProof(
+            scope.clients,
+            session,
+            variant === "candidate" ? row.candidateTaskId : row.releasedTaskId,
+            requestId,
+          );
+        }
+      }
+      await store.report(request.candidateId, report);
       return {};
     },
   };

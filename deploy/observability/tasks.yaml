@@ -48,6 +48,51 @@
   when: langfuse_project_credentials.resources | length == 0
   no_log: true
 
+- name: Discover persisted Langfuse cryptography
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: langfuse-cryptography
+    namespace: "{{ langfuse_namespace }}"
+  register: langfuse_cryptography
+  no_log: true
+
+- name: Discover chart-owned Langfuse cryptography
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: langfuse-app
+    namespace: "{{ langfuse_namespace }}"
+  register: langfuse_chart_cryptography
+  when: langfuse_cryptography.resources | length == 0
+  no_log: true
+
+- name: Persist Langfuse cryptography independently of Helm
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata: {name: langfuse-cryptography, namespace: "{{ langfuse_namespace }}"}
+      type: Opaque
+      data:
+        salt: >-
+          {{ langfuse_chart_cryptography.resources[0].data.salt
+             if langfuse_chart_cryptography.resources | length else
+             lookup('ansible.builtin.password', playbook_dir + '/../.cache/langfuse-salt',
+                    length=48, chars=['ascii_letters', 'digits']) | b64encode }}
+        encryption-key: >-
+          {{ langfuse_chart_cryptography.resources[0].data['encryption-key']
+             if langfuse_chart_cryptography.resources | length else
+             lookup('ansible.builtin.password', playbook_dir + '/../.cache/langfuse-encryption',
+                    length=64, chars=['hexdigits']) | b64encode }}
+        nextauth-secret: >-
+          {{ langfuse_chart_cryptography.resources[0].data['nextauth-secret']
+             if langfuse_chart_cryptography.resources | length else
+             lookup('ansible.builtin.password', playbook_dir + '/../.cache/langfuse-nextauth',
+                    length=48, chars=['ascii_letters', 'digits']) | b64encode }}
+  when: langfuse_cryptography.resources | length == 0
+  no_log: true
+
 - name: Install official ClickHouse operator
   kubernetes.core.helm:
     name: clickhouse-operator
@@ -90,6 +135,8 @@
   when: not ansible_check_mode
 
 - name: Install official Langfuse chart
+  environment:
+    HELM_DIFF_USE_UPGRADE_DRY_RUN: 'true'
   kubernetes.core.helm:
     name: langfuse
     binary_path: "{{ helm_binary }}"

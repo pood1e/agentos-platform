@@ -5,7 +5,6 @@
   vars_files: [vars.yaml]
   vars:
     ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
-    app_package: "{{ playbook_dir }}/../.cache/{{ app_chart }}-{{ app_chart_version }}.tgz"
     chart_user: "{{ lookup('env', 'AGENTOS_CHART_USER') }}"
   module_defaults:
     kubernetes.core.k8s:
@@ -55,22 +54,28 @@
       loop: "{{ application_credentials.results }}"
       no_log: true
 
-    - name: Fetch published application chart
-      ansible.builtin.get_url:
-        url: "{{ app_chart_repository }}/charts/{{ app_chart }}-{{ app_chart_version }}.tgz"
-        dest: "{{ app_package }}"
-        url_username: "{{ chart_user or omit }}"
-        url_password: "{{ lookup('env', 'AGENTOS_CHART_TOKEN') or omit }}"
-        force_basic_auth: "{{ chart_user | length > 0 }}"
-        mode: "0600"
+    - name: Authenticate application chart registry
+      ansible.builtin.command:
+        argv:
+          - "{{ helm_binary }}"
+          - registry
+          - login
+          - "{{ (app_chart_repository | ansible.builtin.urlsplit).netloc }}"
+          - --username
+          - "{{ chart_user }}"
+          - --password-stdin
+        stdin: "{{ lookup('env', 'AGENTOS_CHART_TOKEN') }}"
+      when: chart_user | length > 0
+      changed_when: false
       no_log: true
 
     - name: Deploy application chart
       kubernetes.core.helm:
-        name: agentos
+        name: "{{ app_release_name }}"
         binary_path: "{{ helm_binary }}"
         kubeconfig: "{{ kubeconfig_path }}"
-        chart_ref: "{{ app_package }}"
+        chart_ref: "{{ app_chart_repository }}/{{ app_chart }}"
+        chart_version: "{{ app_chart_version }}"
         release_namespace: "{{ agentos_namespace }}"
         reset_values: true
         take_ownership: true

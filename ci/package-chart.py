@@ -15,6 +15,9 @@ digest = metadata['containerimage.digest']
 assert digest.startswith('sha256:') and len(digest) == 71
 info = yaml.safe_load((chart / 'Chart.yaml').read_text())
 assert info['appVersion'] == package['version']
+if os.environ.get('CI_COMMIT_BRANCH') and os.environ.get('CI_COMMIT_BRANCH') != os.environ.get('CI_DEFAULT_BRANCH'):
+    info['version'] = f"{info['version']}-{os.environ['CI_COMMIT_SHA'][:12]}"
+    (chart / 'Chart.yaml').write_text(yaml.safe_dump(info, sort_keys=False))
 values = yaml.safe_load((chart / 'values.yaml').read_text())
 versions = yaml.safe_load(Path('deploy/vars.yaml').read_text())
 harnesses = values['harnesses']

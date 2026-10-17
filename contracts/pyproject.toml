@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentos-contracts"
+version = "0.2.0"
+description = "Generated AgentOS and native runtime protocol bindings"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = ["protobuf==7.36.2"]
+
+[tool.setuptools]
+py-modules = ["a2a_pb2"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+namespaces = true
+include = ["agentos*", "kagent*", "buf*", "google*", "io*"]

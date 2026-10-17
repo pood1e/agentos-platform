@@ -424,6 +424,140 @@
           "minLength": 1
         }
       }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "kagentURL": {
+          "type": "string",
+          "pattern": "^$|^https?://[^ ]+$"
+        },
+        "langfuseURL": {
+          "type": "string",
+          "pattern": "^$|^https?://[^ ]+$"
+        },
+        "langfuseNamespace": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "langfuseSecret": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "feedbackURL": {
+          "type": "string",
+          "pattern": "^$|^https?://[^ ]+$"
+        },
+        "feedbackSecret": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "judge": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "spec": {
+              "type": "object"
+            }
+          },
+          "required": ["spec"]
+        },
+        "baseline": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "namespace",
+        "kagentURL",
+        "langfuseURL",
+        "langfuseNamespace",
+        "langfuseSecret",
+        "feedbackURL",
+        "feedbackSecret",
+        "judge",
+        "baseline"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "namespace": {
+                "minLength": 1
+              },
+              "kagentURL": {
+                "minLength": 1
+              },
+              "langfuseURL": {
+                "minLength": 1
+              },
+              "langfuseNamespace": {
+                "minLength": 1
+              },
+              "langfuseSecret": {
+                "minLength": 1
+              },
+              "feedbackURL": {
+                "minLength": 1
+              },
+              "feedbackSecret": {
+                "minLength": 1
+              },
+              "judge": {
+                "properties": {
+                  "spec": {
+                    "required": ["provider", "match", "baseURL"],
+                    "properties": {
+                      "match": {
+                        "type": "object",
+                        "required": ["model"],
+                        "properties": {
+                          "model": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "baseline": {
+                "minProperties": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["enabled"]
     }
   },
   "required": [

@@ -168,7 +168,7 @@ describe("native gateway connections", () => {
       headersFrom: [
         {
           name: "Authorization",
-          valueFrom: { type: "Secret", name: "agentos-gateway", key: "authorization" },
+          valueFrom: { type: "Secret", name: "agentos-gateway", key: "catalog-authorization" },
         },
       ],
     });

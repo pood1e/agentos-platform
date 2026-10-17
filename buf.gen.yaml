@@ -15,4 +15,6 @@ plugins:
       - kagent.api.v1alpha1.CreateSessionRequest
       - kagent.api.v1alpha1.ListToolServersRequest
       - lf.a2a.v1.Message
+      - agentos.automation.v1.CaseRequest
+      - agentos.automation.v1.CaseReference
     opt: [target=json-bundle]

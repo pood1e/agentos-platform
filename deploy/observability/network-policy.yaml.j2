@@ -24,3 +24,12 @@ spec:
         - {protocol: TCP, port: 3000}
         - {protocol: TCP, port: 4317}
         - {protocol: TCP, port: 4318}
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ate-system}
+          podSelector:
+            matchExpressions:
+              - {key: app, operator: In, values: [atenet-egress, atenet-router]}
+      ports:
+        - {protocol: TCP, port: 4317}
+        - {protocol: TCP, port: 4318}

@@ -7,11 +7,11 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 import "kagent/api/v1alpha1/common.proto";
 import "kagent/api/v1alpha1/memory.proto";
+import "agentos/kagent/v1/wire.proto";
 
 service EvaluationService {
   rpc ListCandidates(ListCandidatesRequest) returns (ListCandidatesResponse);
   rpc GetCandidate(GetCandidateRequest) returns (GetCandidateResponse);
-  rpc CreateCandidate(CreateCandidateRequest) returns (CreateCandidateResponse);
   rpc RunEvaluation(RunEvaluationRequest) returns (RunEvaluationResponse);
   rpc PublishCandidate(PublishCandidateRequest) returns (PublishCandidateResponse);
 }
@@ -20,6 +20,27 @@ service EvaluationService {
 service EvaluationExecutionService {
   rpc Execute(ExecuteRequest) returns (ExecuteResponse);
   rpc Complete(CompleteRequest) returns (CompleteResponse);
+}
+
+message EvaluationConfiguration {
+  string namespace = 1 [(buf.validate.field).string.min_len = 1];
+  string platform_image = 2 [(buf.validate.field).string.pattern = "^.+@sha256:[a-f0-9]{64}$"];
+  string pack_image = 3 [(buf.validate.field).string.pattern = "^.+@sha256:[a-f0-9]{64}$"];
+  string gateway_url = 4 [(buf.validate.field).string.uri = true];
+  string judge_url = 5 [(buf.validate.field).string.uri = true];
+  string langfuse_url = 6 [(buf.validate.field).string.uri = true];
+  string langfuse_secret = 7 [(buf.validate.field).string.min_len = 1];
+  repeated string image_pull_secrets = 8;
+  string feedback_url = 9 [(buf.validate.field).string.uri = true];
+  string feedback_secret = 10 [(buf.validate.field).string.min_len = 1];
+  string kagent_url = 11 [(buf.validate.field).string.uri = true];
+  EvaluationBaseline baseline = 12 [(buf.validate.field).required = true];
+}
+
+message EvaluationFeedback {
+  string candidate_id = 1;
+  string workspace = 2;
+  EvaluationReport report = 3;
 }
 
 message ScoreRule {
@@ -32,6 +53,8 @@ message SampleReference {
   string id = 1 [(buf.validate.field).string.min_len = 1];
   string split = 2 [(buf.validate.field).string.in = "train", (buf.validate.field).string.in = "holdout"];
   string input_digest = 3 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+  string agent = 4 [(buf.validate.field).string.min_len = 1];
+  string name = 5 [(buf.validate.field).string.max_len = 80];
 }
 
 // The complete immutable baseline, supplied by the solution pack.
@@ -51,10 +74,12 @@ message EvaluationBaseline {
   string job_image = 13 [(buf.validate.field).string.pattern = "^.+@sha256:[a-f0-9]{64}$"];
   uint32 timeout_seconds = 14 [(buf.validate.field).uint32 = {gte: 60, lte: 7200}];
   string environment = 15 [(buf.validate.field).string.min_len = 1];
+  repeated string knowledge_seed = 16 [(buf.validate.field).repeated.max_items = 16, (buf.validate.field).repeated.items.string = {min_len: 1, max_len: 2000}];
+  string reference_agent = 17 [(buf.validate.field).string.min_len = 1];
 }
 
 message ResourceProposal {
-  kagent.api.v1alpha1.StructuredObject resource = 1 [(buf.validate.field).required = true];
+  .kagent.api.v1alpha1.StructuredObject resource = 1 [(buf.validate.field).required = true];
   bool delete = 2;
 }
 
@@ -63,13 +88,16 @@ message ConfigurationSnapshot {
   string workspace = 1;
   string pack_image = 2;
   string platform_image = 3;
-  repeated kagent.api.v1alpha1.StructuredObject resources = 4;
+  repeated .kagent.api.v1alpha1.StructuredObject resources = 4;
   repeated ResourceProposal proposals = 5;
   EvaluationBaseline baseline = 6;
   repeated ArtifactContent artifacts = 7;
   string knowledge_digest = 8;
   string credentials_digest = 9;
-  repeated kagent.api.v1alpha1.MemorySummary knowledge = 10;
+  repeated .kagent.api.v1alpha1.MemorySummary knowledge = 10;
+  .kagent.api.v1alpha1.ResourceReference subject = 11;
+  string subject_model_config = 12;
+  string subject_harness = 13;
 }
 
 message ArtifactContent {
@@ -103,6 +131,8 @@ message SampleResult {
   string candidate_trace_id = 5;
   string released_trace_id = 6;
   string error = 7;
+  string candidate_task_id = 8;
+  string released_task_id = 9;
 }
 
 message EvaluationReport {
@@ -133,12 +163,10 @@ message Candidate {
 message ListCandidatesRequest {}
 message ListCandidatesResponse { repeated Candidate candidates = 1; }
 message GetCandidateRequest { string id = 1 [(buf.validate.field).string.uuid = true]; }
-message GetCandidateResponse { Candidate candidate = 1; }
-message CreateCandidateRequest {
-  string name = 1 [(buf.validate.field).string = {min_len: 1, max_len: 80}];
-  repeated ResourceProposal proposals = 2 [(buf.validate.field).repeated = {min_items: 1, max_items: 64}];
+message GetCandidateResponse {
+  Candidate candidate = 1;
+  ConfigurationSnapshot snapshot = 2;
 }
-message CreateCandidateResponse { Candidate candidate = 1; }
 message RunEvaluationRequest { string id = 1 [(buf.validate.field).string.uuid = true]; }
 message RunEvaluationResponse { Candidate candidate = 1; }
 message PublishCandidateRequest {
@@ -170,6 +198,7 @@ message ExecuteResponse {
   string output = 1;
   string task_id = 2;
   string context_id = 3;
+  repeated agentos.kagent.v1.ToolActivity calls = 4;
 }
 message CompleteRequest {
   string candidate_id = 1 [(buf.validate.field).string.uuid = true];

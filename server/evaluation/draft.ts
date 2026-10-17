@@ -167,6 +167,7 @@ export function nativeKind(kind: ResourceKind): string {
   return {
     models: "AgentgatewayModel",
     mcps: "AgentgatewayBackend",
+    mcpPolicies: "AgentgatewayPolicy",
     routes: "HTTPRoute",
     templates: "AgentTemplate",
     agents: "Agent",

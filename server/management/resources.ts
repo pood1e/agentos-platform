@@ -12,6 +12,7 @@ import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 export const resourceKinds = {
   models: ["agentgateway.dev", "v1alpha1", "agentgatewaymodels"],
   mcps: ["agentgateway.dev", "v1alpha1", "agentgatewaybackends"],
+  mcpPolicies: ["agentgateway.dev", "v1alpha1", "agentgatewaypolicies"],
   routes: ["gateway.networking.k8s.io", "v1", "httproutes"],
   templates: ["api.kagent.dev", "v1alpha3", "agenttemplates"],
   agents: ["api.kagent.dev", "v1alpha3", "agents"],

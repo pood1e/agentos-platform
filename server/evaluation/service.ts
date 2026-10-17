@@ -1,15 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { clone, create } from "@bufbuild/protobuf";
+import { clone, create, fromJson, toJson } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import {
   CandidateSchema,
   CandidateState,
   type ConfigurationSnapshot,
+  ConfigurationSnapshotSchema,
   type EvaluationService,
   type ResourceProposal,
 } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
-import { accessProfile } from "../platform/authorization.js";
+import { redact } from "../../shared/redact.js";
 import { evaluationFailures, snapshotDigest } from "./gate.js";
 import type { evaluationJobs } from "./jobs.js";
 import type { CandidateRecord, EvaluationStore } from "./store.js";
@@ -22,12 +23,38 @@ export interface EvaluationDependencies {
   prepare: (record: CandidateRecord) => Promise<void>;
   publish: (record: CandidateRecord) => Promise<void>;
   published?: () => Promise<void>;
+  ready?: (record: CandidateRecord) => Promise<boolean>;
+  dispose?: (id: string) => Promise<void>;
+}
+
+export function candidateDrafts({ store, freeze, validate }: EvaluationDependencies) {
+  return async (name: string, proposals: ResourceProposal[], createdBy: string) => {
+    if (!proposals.length || proposals.length > 64 || !createdBy)
+      throw new ConnectError("Candidate changes and author are required", Code.InvalidArgument);
+    await validate(proposals);
+    const snapshot = await freeze(proposals);
+    if (!snapshot.baseline)
+      throw new ConnectError("Evaluation baseline is required", Code.FailedPrecondition);
+    const candidate = create(CandidateSchema, {
+      id: randomUUID(),
+      name: name.slice(0, 80),
+      bindingDigest: snapshotDigest(snapshot),
+      state: CandidateState.DRAFT,
+      createdAt: timestampFromMs(Date.now()),
+      createdBy,
+      baseline: snapshot.baseline.name,
+      baselineVersion: snapshot.baseline.version,
+      packImage: snapshot.packImage,
+      platformImage: snapshot.platformImage,
+    });
+    return (await store.create(candidate, snapshot)).candidate;
+  };
 }
 
 export function evaluationService(
   dependencies: EvaluationDependencies,
 ): ServiceImpl<typeof EvaluationService> {
-  const { store, jobs, freeze, validate, prepare, publish } = dependencies;
+  const { store, jobs, freeze, prepare, publish } = dependencies;
   async function current(id: string) {
     const record = await store.get(id);
     const candidate = clone(CandidateSchema, record.candidate);
@@ -41,7 +68,10 @@ export function evaluationService(
       candidate.failures = ["evaluation.bindingChanged"];
     } else if (candidate.jobName) {
       const job = await jobs.get(id);
-      if (
+      if (!job) {
+        candidate.state = CandidateState.FAILED;
+        candidate.failures = ["evaluation.jobMissing"];
+      } else if (
         job?.status?.conditions?.some(
           (condition) => condition.type === "Failed" && condition.status === "True",
         )
@@ -72,39 +102,40 @@ export function evaluationService(
       return { candidates };
     },
     async getCandidate({ id }) {
-      return { candidate: (await current(id)).candidate };
-    },
-    async createCandidate(request, context) {
-      await validate(request.proposals);
-      const snapshot = await freeze(request.proposals);
-      if (!snapshot.baseline)
-        throw new ConnectError("Evaluation baseline is required", Code.FailedPrecondition);
-      const candidate = create(CandidateSchema, {
-        id: randomUUID(),
-        name: request.name,
-        bindingDigest: snapshotDigest(snapshot),
-        state: CandidateState.DRAFT,
-        createdAt: timestampFromMs(Date.now()),
-        createdBy: context.values.get(accessProfile).subject,
-        baseline: snapshot.baseline.name,
-        baselineVersion: snapshot.baseline.version,
-        packImage: snapshot.packImage,
-        platformImage: snapshot.platformImage,
-      });
-      return { candidate: (await store.create(candidate, snapshot)).candidate };
+      const record = await current(id);
+      return {
+        candidate: record.candidate,
+        snapshot: fromJson(
+          ConfigurationSnapshotSchema,
+          redact(toJson(ConfigurationSnapshotSchema, record.snapshot)),
+        ),
+      };
     },
     async runEvaluation({ id }) {
       const record = await current(id);
-      if (record.candidate.state === CandidateState.RUNNING) {
-        await jobs.start(record);
-        return { candidate: record.candidate };
-      }
+      if (record.candidate.state === CandidateState.RUNNING) return { candidate: record.candidate };
       if (record.candidate.state !== CandidateState.DRAFT)
         throw new ConnectError(
           "Create a new candidate for changed inputs or a new attempt",
           Code.FailedPrecondition,
         );
-      await prepare(record);
+      try {
+        await prepare(record);
+      } catch (error) {
+        await store.update(record, {
+          ...record.candidate,
+          state: CandidateState.FAILED,
+          failures: ["evaluation.setupFailed"],
+        });
+        await dependencies.dispose?.(id);
+        throw new ConnectError(
+          "Evaluation setup failed",
+          Code.FailedPrecondition,
+          undefined,
+          undefined,
+          error,
+        );
+      }
       const running = await store.update(record, {
         ...record.candidate,
         state: CandidateState.RUNNING,
@@ -121,18 +152,20 @@ export function evaluationService(
       )
         return { candidate: record.candidate };
       if (
-        record.candidate.state !== CandidateState.PASSED ||
+        ![CandidateState.PASSED, CandidateState.PUBLISHING].includes(record.candidate.state) ||
         bindingDigest !== record.candidate.bindingDigest
       )
         throw new ConnectError(
           "Publication requires a current passing evaluation",
           Code.FailedPrecondition,
         );
-      const publishing = await store.update(record, {
-        ...record.candidate,
-        state: CandidateState.PUBLISHING,
-      });
+      const publishing =
+        record.candidate.state === CandidateState.PUBLISHING
+          ? record
+          : await store.update(record, { ...record.candidate, state: CandidateState.PUBLISHING });
       await publish(publishing);
+      if (dependencies.ready && !(await dependencies.ready(publishing)))
+        return { candidate: publishing.candidate };
       const response = {
         candidate: (
           await store.update(publishing, {

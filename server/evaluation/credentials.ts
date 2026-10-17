@@ -2,9 +2,9 @@ import type { JsonObject } from "@bufbuild/protobuf";
 import type { CoreV1Api } from "@kubernetes/client-node";
 import { meta } from "../management/native.js";
 import { object, text } from "../read-model/decode/messages.js";
-import { secretReferences } from "./references.js";
+import { type Variant, variantName } from "./names.js";
+import { secretArtifact, secretReferences } from "./references.js";
 import type { CandidateRecord } from "./store.js";
-import { variantName } from "./variants.js";
 
 export function sandboxCredentials(
   core: CoreV1Api,
@@ -12,7 +12,12 @@ export function sandboxCredentials(
   namespace: string,
   apply: (value: JsonObject, candidate: string) => Promise<unknown>,
 ) {
-  async function copyCredentials(value: JsonObject, prefix: string, record: CandidateRecord) {
+  async function copyCredentials(
+    value: JsonObject,
+    prefix: string,
+    record: CandidateRecord,
+    variant: Variant,
+  ) {
     const originals = secretReferences(
       record.snapshot.resources.flatMap((entry) => entry.value ?? []),
     );
@@ -42,10 +47,14 @@ export function sandboxCredentials(
     }
     visit(value.spec);
     for (const [name, selected] of references) {
-      const proposed = record.snapshot.proposals.find(
-        (proposal) =>
-          proposal.resource?.kind === "Secret" && meta(proposal.resource.value ?? {}).name === name,
-      )?.resource?.value;
+      const proposed =
+        variant === "candidate"
+          ? record.snapshot.proposals.find(
+              (proposal) =>
+                proposal.resource?.kind === "Secret" &&
+                meta(proposal.resource.value ?? {}).name === name,
+            )?.resource?.value
+          : undefined;
       const current = proposed
         ? {
             data: Object.fromEntries(
@@ -56,6 +65,14 @@ export function sandboxCredentials(
             ),
           }
         : await core.readNamespacedSecret({ namespace: workspace, name });
+      if (!proposed) {
+        const frozen = record.snapshot.artifacts.find(
+          (entry) => entry.source === `k8s-secret://${workspace}/${name}`,
+        );
+        const actual = secretArtifact(current);
+        if (!frozen || frozen.version !== actual.version || frozen.sha256 !== actual.sha256)
+          throw new Error("Credential changed after candidate creation");
+      }
       const data = Object.fromEntries(
         [...selected].map((key) => {
           if (!current.data?.[key]) throw new Error("Evaluation credential key is missing");

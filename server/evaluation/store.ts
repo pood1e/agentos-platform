@@ -163,4 +163,18 @@ export class EvaluationStore {
       body: { ...current, data: { "report.json": toJsonString(EvaluationReportSchema, report) } },
     });
   }
+
+  async acknowledge(id: string): Promise<void> {
+    const name = `${this.name(id)}-report`;
+    const current = await this.api.readNamespacedConfigMap({ namespace: this.namespace, name });
+    const report = fromJsonString(EvaluationReportSchema, current.data?.["report.json"] ?? "{}");
+    if (!report.bindingDigest) throw new Error("Evaluation report is missing");
+    if (report.feedbackSynchronized) return;
+    report.feedbackSynchronized = true;
+    await this.api.replaceNamespacedConfigMap({
+      namespace: this.namespace,
+      name,
+      body: { ...current, data: { "report.json": toJsonString(EvaluationReportSchema, report) } },
+    });
+  }
 }

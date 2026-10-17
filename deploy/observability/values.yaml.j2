@@ -1,6 +1,8 @@
 langfuse:
   image: {tag: '{{ langfuse_version }}', pullPolicy: IfNotPresent}
   features: {telemetryEnabled: false}
+  salt: {secretKeyRef: {name: langfuse-cryptography, key: salt}}
+  encryptionKey: {secretKeyRef: {name: langfuse-cryptography, key: encryption-key}}
   auth:
     disableUsernamePassword: true
     providers:
@@ -8,7 +10,9 @@ langfuse:
         clientId: {secretKeyRef: {name: langfuse-oidc, key: client-id}}
         clientSecret: {secretKeyRef: {name: langfuse-oidc, key: client-secret}}
         issuer: {secretKeyRef: {name: langfuse-oidc, key: issuer}}
-  nextauth: {url: 'https://{{ langfuse_domain }}'}
+  nextauth:
+    url: 'https://{{ langfuse_domain }}'
+    secret: {secretKeyRef: {name: langfuse-cryptography, key: nextauth-secret}}
   ingress:
     enabled: true
     className: traefik

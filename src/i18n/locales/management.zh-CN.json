@@ -7,7 +7,8 @@
     "mcp": "MCP",
     "models": "模型接入",
     "environments": "环境",
-    "harnesses": "Harness"
+    "harnesses": "Harness",
+    "evaluation": "测评"
   },
   "add": "新增",
   "edit": "编辑",

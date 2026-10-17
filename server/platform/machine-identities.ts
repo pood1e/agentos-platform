@@ -3,16 +3,18 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import {
   ApiException,
   CoreV1Api,
+  CustomObjectsApi,
   type KubeConfig,
   KubernetesObjectApi,
   PatchStrategy,
 } from "@kubernetes/client-node";
 import type { ToolBinding } from "../../gen/agentos/console/v1/role_pb.js";
 import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import { logicalPlatformServer, platformServices } from "../../shared/platform-tools.js";
+import { engineerServer, logicalPlatformServer } from "../../shared/platform-tools.js";
 import { roleDefinition, templateSpec } from "../console/role-template.js";
 import type { TemplateWriter } from "../console/template-writer.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { serverTargets } from "../operations/bindings.js";
 import { object } from "../read-model/decode/messages.js";
 
 /** Native gateway API keys are scoped to one workspace, role and configured tool subset. */
@@ -23,9 +25,11 @@ export function machineIdentities(
   scope: {
     gatewayNamespace?: string;
     metadata?: JsonObject;
+    collaborationService?: string;
   } = {},
 ) {
   const core = config.makeApiClient(CoreV1Api);
+  const custom = config.makeApiClient(CustomObjectsApi);
   const resources = KubernetesObjectApi.makeApiClient(config);
   const gatewayNamespace = scope.gatewayNamespace ?? namespace;
   const labels = (role: string) => ({
@@ -36,12 +40,29 @@ export function machineIdentities(
       : {}),
   });
   async function bind(role: string, bindings: ToolBinding[]): Promise<ToolBinding[]> {
-    const selected = bindings.filter((binding) =>
-      platformServices.includes(
-        logicalPlatformServer(binding.server, role) as (typeof platformServices)[number],
-      ),
+    const backends: { items: JsonObject[] } = await custom.listNamespacedCustomObject({
+      group: "agentgateway.dev",
+      version: "v1alpha1",
+      plural: "agentgatewaybackends",
+      namespace: gatewayNamespace,
+    });
+    const environments = serverTargets(backends.items);
+    const remotes: { items: JsonObject[] } = await custom.listNamespacedCustomObject({
+      group: "api.kagent.dev",
+      version: "v1alpha3",
+      plural: "remotemcpservers",
+      namespace,
+    });
+    const environmentServers = new Set(
+      remotes.items
+        .filter((remote) => object(object(remote.metadata).labels)["agentos.dev/environment"])
+        .map((remote) => String(object(remote.metadata).name)),
     );
-    if (!selected.length) return bindings;
+    const selected = bindings.filter(
+      (binding) =>
+        !environments.has(logicalPlatformServer(binding.server, role)) &&
+        !environmentServers.has(binding.server),
+    );
     const name = `${release}-role-${role}`;
     const existing = await core
       .readNamespacedSecret({ namespace, name })
@@ -51,6 +72,7 @@ export function machineIdentities(
       });
     if (existing && existing.metadata?.labels?.["agentos.dev/platform-role"] !== role)
       throw new Error("Machine credential belongs to another resource");
+    if (!selected.length && !existing) return bindings;
     const token = existing?.data?.["api-key"]
       ? Buffer.from(existing.data["api-key"], "base64").toString()
       : randomBytes(32).toString("base64url");
@@ -96,7 +118,7 @@ export function machineIdentities(
     );
     for (const binding of selected) {
       const service = logicalPlatformServer(binding.server, role);
-      const remoteName = `${service}-${role}`;
+      const remoteName = engineerServer(service, role);
       await resources.patch(
         {
           apiVersion: "api.kagent.dev/v1alpha3",
@@ -107,10 +129,13 @@ export function machineIdentities(
             labels: {
               "agentos.dev/platform-role": role,
               "agentos.dev/platform-service": service,
+              ...(typeof scope.metadata?.candidate === "string"
+                ? { "agentos.dev/candidate": scope.metadata.candidate }
+                : {}),
             },
           },
           spec: {
-            url: `http://${release}-mcp-gateway.${gatewayNamespace}.svc:8080/mcp/${service}`,
+            url: `http://${release}-mcp-gateway.${gatewayNamespace}.svc:8080/mcp/${service === "kagent-collaboration" ? (scope.collaborationService ?? service) : service}`,
             protocol: "STREAMABLE_HTTP",
             timeout: "10m",
             sseReadTimeout: "10m",
@@ -131,7 +156,7 @@ export function machineIdentities(
     }
     return bindings.map((binding) =>
       selected.includes(binding)
-        ? { ...binding, server: `${logicalPlatformServer(binding.server, role)}-${role}` }
+        ? { ...binding, server: engineerServer(logicalPlatformServer(binding.server, role), role) }
         : binding,
     );
   }

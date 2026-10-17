@@ -28,3 +28,9 @@ spec:
               service:
                 name: {{ include "agentos.name" . }}-console
                 port: {name: http}
+          - path: /agentos.evaluation.v1.EvaluationService
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "agentos.name" . }}-console
+                port: {name: http}

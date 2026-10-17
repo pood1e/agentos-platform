@@ -20,9 +20,11 @@ import { object, text } from "../read-model/decode/messages.js";
 import { sessionTools } from "../team-sessions/tools.js";
 import { sandboxCredentials } from "./credentials.js";
 import { evaluationKeys } from "./keys.js";
+import { frozenKnowledge } from "./knowledge.js";
+import { type Variant, variantName, variantPrefix } from "./names.js";
 import { evaluationClients } from "./scoped-clients.js";
 import type { CandidateRecord } from "./store.js";
-import { evaluationVariant, type Variant, variantName, variantPrefix } from "./variants.js";
+import { evaluationVariant } from "./variants.js";
 
 interface SandboxConfiguration {
   namespace: string;
@@ -48,6 +50,7 @@ export function evaluationSandboxes(
     const clients = evaluationClients(native, options.namespace, prefix);
     const identities = machineIdentities(config, options.namespace, options.release, {
       gatewayNamespace: options.workspace,
+      collaborationService: "evaluation-collaboration",
       metadata: { service: "evaluation", agentPrefix: prefix, candidate: id, variant },
     });
     const knowledge = {
@@ -55,6 +58,7 @@ export function evaluationSandboxes(
       scope: {
         ...options.knowledge.scope,
         agentName: `${options.namespace}__NS__${variantName(prefix, "knowledge")}`,
+        ttlDays: 1,
       },
     };
     return { prefix, clients, identities, knowledge };
@@ -86,6 +90,7 @@ export function evaluationSandboxes(
     );
   }
   const copyCredentials = sandboxCredentials(core, options.workspace, options.namespace, apply);
+  const seedKnowledge = frozenKnowledge(core, native, options.namespace, options.knowledge);
   async function prepare(record: CandidateRecord) {
     await keys.issue(`candidate-${record.candidate.id}-access`, record.candidate.id, {
       service: "evaluator",
@@ -209,7 +214,7 @@ export function evaluationSandboxes(
         )
           continue;
         if (value.kind === "AgentgatewayModel" || value.kind === "RemoteMCPServer")
-          await copyCredentials(value, prefix, record);
+          await copyCredentials(value, prefix, record, variant);
         if (value.kind === "AgentTemplate") {
           const role = roleDefinition(
             create(AgentTemplateSchema, {
@@ -228,21 +233,7 @@ export function evaluationSandboxes(
         }
         await apply(value, record.candidate.id);
       }
-      const memories = knowledgeService(native, knowledge);
-      const existing = await native.memory.list(knowledge.scope, { timeoutMs: 10_000 });
-      if (!existing.memories.length)
-        for (const entry of record.snapshot.knowledge) await memories.add(entry.content);
-      else if (
-        existing.memories
-          .map((entry) => entry.content)
-          .sort()
-          .join("\0") !==
-        record.snapshot.knowledge
-          .map((entry) => entry.content)
-          .sort()
-          .join("\0")
-      )
-        throw new Error("Evaluation knowledge changed before execution");
+      await seedKnowledge(record, knowledge);
     }
   }
   async function handler(id: string, variant: Variant, role: string) {
@@ -255,7 +246,7 @@ export function evaluationSandboxes(
         name: `${prefix}invoke`,
       });
       const invoke = nativeInvocation(
-        new URL("/mcp/kagent-collaboration", options.platformMcpUrl),
+        new URL("/mcp/evaluation-collaboration", options.platformMcpUrl),
         Buffer.from(token.data?.["api-key"] ?? "", "base64").toString(),
         options.userId,
       );
@@ -282,10 +273,13 @@ export function evaluationSandboxes(
       name: `${prefix}invoke`,
     });
     return nativeInvocation(
-      new URL("/mcp/kagent-collaboration", options.platformMcpUrl),
+      new URL("/mcp/evaluation-collaboration", options.platformMcpUrl),
       Buffer.from(secret.data?.["api-key"] ?? "", "base64").toString(),
       options.userId,
     );
   }
-  return { prepare, handler, invoke, keys, scoped };
+  const release = (id: string) => {
+    for (const key of handlers.keys()) if (key.startsWith(`${id}:`)) handlers.delete(key);
+  };
+  return { prepare, handler, invoke, keys, scoped, release };
 }

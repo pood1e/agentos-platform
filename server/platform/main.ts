@@ -9,6 +9,7 @@ import { loadPack } from "../console/pack.js";
 import { roleCommands } from "../console/roles.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
+import { platformEvaluation } from "../evaluation/platform.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
 import { nativeInvocation } from "../kagent/invoke-session.js";
 import { knowledgeConfig } from "../knowledge/config.js";
@@ -27,6 +28,7 @@ import { registerTeamSessions } from "../team-sessions/app.js";
 import { startContinuations } from "../team-sessions/continuation.js";
 import { sessionTools } from "../team-sessions/tools.js";
 import { authorizationConfig, humanAuthorization } from "./authorization.js";
+import { automationTools } from "./automation.js";
 import { collaborationGuardrails } from "./guardrails.js";
 import { machineIdentities } from "./machine-identities.js";
 
@@ -53,6 +55,62 @@ const identities = machineIdentities(
   config.namespace,
   process.env.AGENTOS_RELEASE ?? "agentos",
 );
+const pack = loadPack(packRoot),
+  catalogName = process.env.AGENTOS_SKILL_CATALOG ?? "agentos-skills";
+const store = resourceStore(kubeConfig, config.namespace, catalogName);
+const gateway = {
+  name: process.env.AGENTOS_GATEWAY_NAME ?? "agentos-gateway",
+  url: process.env.AGENTOS_GATEWAY_URL ?? "http://agentos-gateway:8080",
+  mcpUrl:
+    process.env.AGENTOS_MCP_GATEWAY_URL ??
+    process.env.AGENTOS_GATEWAY_URL ??
+    "http://agentos-mcp-gateway:8080",
+  namespace: config.namespace,
+  secret: process.env.AGENTOS_GATEWAY_SECRET ?? "agentos-gateway",
+};
+function services(
+  native = clients,
+  resources = store,
+  replace = replaceTemplate,
+  bind = identities.bind,
+) {
+  return {
+    service: consoleService({
+      sync,
+      clients: native,
+      namespace: config.namespace,
+      access,
+      operations,
+      roleDefaults: roleDefaults(),
+      replaceTemplate: replace,
+      pack,
+      platformTools: bind,
+    }),
+    management: managementService({
+      clients: native,
+      store: resources,
+      gateway,
+      knowledge,
+      operations,
+    }),
+  };
+}
+const evaluation = await platformEvaluation({
+  app,
+  config: kubeConfig,
+  native: clients,
+  store,
+  workspace: config.namespace,
+  release: process.env.AGENTOS_RELEASE ?? "agentos",
+  catalogName,
+  knowledge,
+  userId: config.userId,
+  mcpUrl: gateway.mcpUrl,
+  bind: identities.bind,
+  services: (draft) =>
+    services(draft.clients(clients), draft.store, draft.replace, async (_role, tools) => tools),
+});
+const activeClients = evaluation.clients;
 const { alignRoles } = roleCommands(
   clients,
   config.namespace,
@@ -63,37 +121,8 @@ const { alignRoles } = roleCommands(
 );
 await registerConsole(app, {
   authorization: humanAuthorization(config.namespace, authorizationConfig()),
-  service: consoleService({
-    sync,
-    clients,
-    namespace: config.namespace,
-    access,
-    operations,
-    roleDefaults: roleDefaults(),
-    replaceTemplate,
-    pack: loadPack(packRoot),
-    platformTools: identities.bind,
-  }),
-  management: managementService({
-    clients,
-    store: resourceStore(
-      kubeConfig,
-      config.namespace,
-      process.env.AGENTOS_SKILL_CATALOG ?? "agentos-skills",
-    ),
-    gateway: {
-      name: process.env.AGENTOS_GATEWAY_NAME ?? "agentos-gateway",
-      url: process.env.AGENTOS_GATEWAY_URL ?? "http://agentos-gateway:8080",
-      mcpUrl:
-        process.env.AGENTOS_MCP_GATEWAY_URL ??
-        process.env.AGENTOS_GATEWAY_URL ??
-        "http://agentos-mcp-gateway:8080",
-      namespace: config.namespace,
-      secret: process.env.AGENTOS_GATEWAY_SECRET ?? "agentos-gateway",
-    },
-    knowledge,
-    operations,
-  }),
+  ...services(activeClients),
+  ...evaluation.routes,
   ready: sync.healthy,
   staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
   packRoot,
@@ -101,29 +130,53 @@ await registerConsole(app, {
 await registerTeamSessions(
   app,
   sessionTools(
-    clients,
+    activeClients,
     config.namespace,
     access,
-    knowledgeService(clients, knowledge),
+    knowledgeService(activeClients, knowledge),
     nativeInvocation(
       new URL("/mcp/kagent-collaboration", knowledge.url),
       process.env.AGENTOS_COLLABORATION_TOKEN ?? knowledge.token,
       config.userId,
     ),
-    changePreparation(clients, config.namespace, operations.environments, catalog),
+    changePreparation(activeClients, config.namespace, operations.environments, catalog),
   ),
   token,
-  (role) =>
-    role === "platform"
-      ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
-      : identities.authorize(role, clients).then((scopes) => ({ scopes })),
+  async (role, headers) => {
+    if (role === "automation") {
+      const environment = headers["x-agentos-environment"];
+      if (
+        typeof environment !== "string" ||
+        !operations.environments.some((entry) => entry.environment?.name === environment)
+      )
+        throw new Error("Unknown source environment");
+      return {
+        scopes: ["run_case", "observe_case", "cancel_case"],
+        handler: automationTools(
+          activeClients,
+          sync,
+          config.namespace,
+          environment,
+          nativeInvocation(
+            new URL("/mcp/kagent-collaboration", knowledge.url),
+            process.env.AGENTOS_COLLABORATION_TOKEN ?? knowledge.token,
+            config.userId,
+          ),
+        ),
+      };
+    }
+    return headers["x-agentos-workspace"] && headers["x-agentos-workspace"] !== config.namespace
+      ? evaluation.machine(headers, role)
+      : role === "platform"
+        ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
+        : identities.authorize(role, clients).then((scopes) => ({ scopes }));
+  },
 );
 const stopContinuations = startContinuations(sync, app.log);
 const stopOperations = operationsCoordinator(sync, operations, app.log, catalog);
 const processor = createServer(
   connectNodeAdapter({
-    routes: (router) =>
-      router.service(ExtMcp, collaborationGuardrails(clients, new Set([config.namespace]))),
+    routes: (router) => router.service(ExtMcp, collaborationGuardrails(evaluation.workspaces)),
   }),
 );
 app.addHook("onClose", async () => {

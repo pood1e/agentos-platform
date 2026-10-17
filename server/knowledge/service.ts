@@ -87,5 +87,5 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
       throw fail(Code.Unavailable, "management.unavailable", error);
     }
   }
-  return { list, search, add, clear, remove };
+  return { list, search, add, clear, remove, vector };
 }

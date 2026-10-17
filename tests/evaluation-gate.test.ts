@@ -35,6 +35,8 @@ function fixture() {
         repetition,
         candidateTraceId: "candidate-trace",
         releasedTraceId: "released-trace",
+        candidateTaskId: "candidate-task",
+        releasedTaskId: "released-task",
         candidate: [{ name: "correctness", value: 1 }],
         released: [{ name: "correctness", value: 1 }],
       })),

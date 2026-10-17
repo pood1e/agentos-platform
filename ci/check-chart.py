@@ -106,6 +106,7 @@ def check_bindings(templates, config):
 for name, source, overrides, presets, config in [
     ('platform', chart, ['-f', values], system_presets, None),
     ('alternate', chart, ['-f', values, '--namespace', 'operations'], system_presets, None),
+    ('evaluation', chart, ['-f', values, '-f', 'tests/fixtures/evaluation-values.yaml'], system_presets, None),
     ('solution', solution, ['--namespace', 'agentos'], system_presets | solution_presets, solution_values),
     ('direct-only', solution, ['--namespace', 'agentos', '--set-json', f'global.agentos.environments={direct_only}'], system_presets | solution_presets,
      {**solution_values, 'environments': json.loads(direct_only)}),
@@ -166,7 +167,7 @@ for name, source, overrides, presets, config in [
         assert not any(doc['kind'] == 'HTTPRoute' and doc['metadata']['name'].endswith('-skill-repository') for doc in docs)
     subprocess.run(['.cache/bin/kubeconform', '-strict', '-summary', '-kubernetes-version', '1.37.1', '-schema-location', 'default', '-schema-location', str(cache) + '/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json', str(path)], check=True)
 
-for invalid in [['--set', 'image.digest=latest'], ['--set', 'pack.image=latest'], ['--set', 'managedEnvironments={env}'], ['--set', 'gateway.skillRepository.host=git.example.test']]:
+for invalid in [['--set', 'image.digest=latest'], ['--set', 'pack.image=latest'], ['--set', 'managedEnvironments={env}'], ['--set', 'gateway.skillRepository.host=git.example.test'], ['--set', 'evaluation.enabled=true'], ['--set', 'evaluation.unrecognized=true']]:
     result = subprocess.run([helm, 'template', 'invalid', chart, '-f', values, *invalid], capture_output=True)
     assert result.returncode != 0, f'Invalid values were accepted: {invalid}'
 

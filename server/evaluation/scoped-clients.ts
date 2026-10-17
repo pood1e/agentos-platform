@@ -60,5 +60,38 @@ export function evaluationClients(
         return response;
       },
     },
+    models: {
+      ...native.models,
+      listModelConfigs: async (request, options) => {
+        const response = await native.models.listModelConfigs(request, options);
+        response.modelConfigs = response.modelConfigs.filter((model) => accepts(model.ref));
+        return response;
+      },
+      getModelConfig: (request, options) => {
+        checked(request.ref);
+        return native.models.getModelConfig(request, options);
+      },
+    },
+    harnesses: {
+      ...native.harnesses,
+      listHarnesses: async (request, options) => {
+        if (request.namespace !== namespace) checked(undefined);
+        const response = await native.harnesses.listHarnesses(request, options);
+        response.harnesses = response.harnesses.filter((harness) => accepts(harness.ref));
+        return response;
+      },
+    },
+    tools: {
+      ...native.tools,
+      listToolServers: async (request, options) => {
+        const response = await native.tools.listToolServers(request, options);
+        response.toolServers = response.toolServers.filter(
+          (server) =>
+            server.ref.startsWith(`${namespace}/${prefix}`) ||
+            server.ref.startsWith(`${namespace}/engineer-${prefix}`),
+        );
+        return response;
+      },
+    },
   };
 }

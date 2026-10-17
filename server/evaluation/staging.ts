@@ -1,11 +1,13 @@
-import { createClient, createRouterTransport, type Interceptor } from "@connectrpc/connect";
+import { toJson } from "@bufbuild/protobuf";
+import { createRouterTransport, type Interceptor } from "@connectrpc/connect";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { EvaluationService } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import type { ConsoleRoutes } from "../console/app.js";
-import type { KagentClients } from "../kagent/clients.js";
 import type { ResourceStore } from "../management/resources.js";
+import { accessProfile } from "../platform/authorization.js";
+import { object, text } from "../read-model/decode/messages.js";
 import { configurationDraft } from "./draft.js";
+import type { candidateDrafts } from "./service.js";
 
 const mutations = new Set([
   "CreateRole",
@@ -19,23 +21,20 @@ const mutations = new Set([
   "SetEngineerRuntime",
 ]);
 
+export const isConfigurationMutation = (name: string) => mutations.has(name);
+
 export interface StagingDependencies {
   store: ResourceStore;
-  clients: KagentClients;
   workspace: string;
   catalogName: string;
   services: (
     draft: ReturnType<typeof configurationDraft>,
   ) => Pick<ConsoleRoutes, "service" | "management">;
-  evaluation: NonNullable<ConsoleRoutes["evaluation"]>;
+  stage: ReturnType<typeof candidateDrafts>;
 }
 
 /** All existing configuration editors enter the same immutable candidate pipeline. */
 export function configurationStaging(dependencies: StagingDependencies): Interceptor {
-  const evaluation = createClient(
-    EvaluationService,
-    createRouterTransport((router) => router.service(EvaluationService, dependencies.evaluation)),
-  );
   return (next) => async (request) => {
     if (request.stream || !mutations.has(request.method.name)) return next(request);
     const draft = configurationDraft(
@@ -56,14 +55,24 @@ export function configurationStaging(dependencies: StagingDependencies): Interce
       request.message,
       request.contextValues,
     );
-    const created = await evaluation.createCandidate(
-      {
-        name: request.method.name,
-        proposals: draft.proposals(),
-      },
-      { contextValues: request.contextValues, signal: request.signal },
+    const input = object(toJson(request.method.input, request.message));
+    const subject = [
+      object(input.role).name,
+      object(object(object(object(input.connection).resource).value).metadata).name,
+      object(object(input.item).skill).name,
+      object(object(input.harness).ref).name,
+      object(input.engineer).name,
+      object(input.ref).name,
+      input.name,
+    ]
+      .map(text)
+      .find(Boolean);
+    const created = await dependencies.stage(
+      `${request.method.name}:${subject ?? ""}`,
+      draft.proposals(),
+      request.contextValues.get(accessProfile).subject,
     );
-    response.header.set("x-agentos-candidate", created.candidate?.id ?? "");
+    response.header.set("x-agentos-candidate", created.id);
     return response;
   };
 }

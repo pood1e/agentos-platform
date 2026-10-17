@@ -18,7 +18,7 @@ it("rejects cross-workspace invocation and native task methods outside the expos
   const guard = createClient(
     ExtMcp,
     createRouterTransport((router) =>
-      router.service(ExtMcp, collaborationGuardrails(clients, new Set(["agentos"]))),
+      router.service(ExtMcp, collaborationGuardrails(new Map([["agentos", clients]]))),
     ),
   );
   const request = create(McpRequestSchema, {
@@ -40,7 +40,7 @@ it("filters both structured and readable session results using the verified work
   const guard = createClient(
     ExtMcp,
     createRouterTransport((router) =>
-      router.service(ExtMcp, collaborationGuardrails(clients, new Set(["evaluation"]))),
+      router.service(ExtMcp, collaborationGuardrails(new Map([["evaluation", clients]]))),
     ),
   );
   const result = {

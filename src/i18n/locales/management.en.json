@@ -7,7 +7,8 @@
     "mcp": "MCP",
     "models": "Models",
     "environments": "Environments",
-    "harnesses": "Harness"
+    "harnesses": "Harness",
+    "evaluation": "Evaluations"
   },
   "add": "Add",
   "edit": "Edit",

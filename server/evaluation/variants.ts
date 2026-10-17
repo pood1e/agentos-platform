@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import type { ConfigurationSnapshot } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import {
+  engineerServer,
   logicalPlatformServer,
   platformProfile,
   platformServices,
@@ -9,14 +9,8 @@ import {
 import { meta } from "../management/native.js";
 import { serverTargets } from "../operations/bindings.js";
 import { object, text } from "../read-model/decode/messages.js";
-
-export type Variant = "candidate" | "released";
-export const variantPrefix = (id: string, variant: Variant) =>
-  `e${id.replaceAll("-", "").slice(0, 16)}${variant[0]}-`;
-export const variantName = (prefix: string, name: string) =>
-  prefix.length + name.length <= 63
-    ? `${prefix}${name}`
-    : `${prefix}${name.slice(0, 54 - prefix.length)}-${createHash("sha256").update(name).digest("hex").slice(0, 8)}`;
+import { type Variant, variantName } from "./names.js";
+import { subjectProbe } from "./subject.js";
 
 /** Both variants start from the same frozen resources; production MCPs are never copied. */
 export function evaluationVariant(
@@ -41,6 +35,7 @@ export function evaluationVariant(
       else values.set(`${entry.kind}/${meta(entry.value).name}`, structuredClone(entry.value));
     }
   const native = [...values.values()];
+  if (variant === "candidate") native.push(...subjectProbe(snapshot, native));
   const targets = serverTargets(native.filter((value) => value.kind === "AgentgatewayBackend"));
   const remote = native.filter(
     (value) =>
@@ -48,14 +43,16 @@ export function evaluationVariant(
       ((targets.get(text(meta(value).name))?.environment === snapshot.baseline?.environment &&
         targets.get(text(meta(value).name))?.access === "readOnly") ||
         platformServices.includes(text(meta(value).name) as (typeof platformServices)[number]) ||
-        platformProfile(text(meta(value).name))),
+        platformServices.includes(
+          platformProfile(text(meta(value).name))?.service as (typeof platformServices)[number],
+        )),
   );
   const allowed = new Set(remote.map((value) => text(meta(value).name)));
   const remoteName = (name: string) => {
     const profile = platformProfile(name);
-    if (profile) return `${profile.service}-${variantName(prefix, profile.role)}`;
+    if (profile) return engineerServer(profile.service, variantName(prefix, profile.role));
     if (platformServices.includes(name as (typeof platformServices)[number]))
-      return `${name}-${prefix}platform`;
+      return engineerServer(name, `${prefix}platform`);
     return variantName(prefix, name);
   };
   const gatewayName = `${prefix}gateway`;
@@ -91,9 +88,13 @@ export function evaluationVariant(
               server: {
                 ...original,
                 name: platformServices.includes(
-                  text(original.name) as (typeof platformServices)[number],
+                  (platformProfile(text(original.name))?.service ??
+                    text(original.name)) as (typeof platformServices)[number],
                 )
-                  ? `${text(original.name)}-${variantName(prefix, name)}`
+                  ? engineerServer(
+                      platformProfile(text(original.name))?.service ?? text(original.name),
+                      variantName(prefix, name),
+                    )
                   : remoteName(text(original.name)),
               },
             },

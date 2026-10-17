@@ -26,16 +26,17 @@ const denied = (reason: string) => ({
 
 /** Agentgateway supplies verified key metadata; native sessions remain in their workspace. */
 export function collaborationGuardrails(
-  clients: KagentClients,
-  workspaces: ReadonlySet<string>,
+  workspaces: ReadonlyMap<string, KagentClients>,
 ): ServiceImpl<typeof ExtMcp> {
   const scope = (metadata?: JsonObject) => {
     const workspace = text(metadata?.workspace),
       prefix = text(metadata?.agentPrefix);
-    if (!workspaces.has(workspace)) throw new Error("Workspace access denied");
+    const clients = workspaces.get(workspace);
+    if (!clients) throw new Error("Workspace access denied");
     return {
       workspace,
       prefix,
+      clients,
       accepts: (agent: string) => agent.startsWith(`${workspace}/${prefix}`),
     };
   };
@@ -52,7 +53,7 @@ export function collaborationGuardrails(
           if (params.name === "invoke_session") {
             const id = text(object(params.arguments).session_id);
             if (!id) throw new Error("Native session is required");
-            const { session } = await clients.sessions.getSession(
+            const { session } = await access.clients.sessions.getSession(
               { sessionId: id },
               { timeoutMs: 10_000 },
             );

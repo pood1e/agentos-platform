@@ -1,0 +1,29 @@
+{{- if .Values.evaluation.enabled }}
+{{- $name := include "agentos.name" . }}
+{{- $evaluation := .Values.evaluation }}
+{{- $pullSecrets := list }}
+{{- range .Values.imagePullSecrets }}
+{{- $pullSecrets = append $pullSecrets .name }}
+{{- end }}
+{{- $configuration := dict
+  "namespace" $evaluation.namespace
+  "platformImage" (printf "%s@%s" .Values.image.repository .Values.image.digest)
+  "packImage" (required "Evaluation requires a versioned solution pack" .Values.pack.image)
+  "gatewayUrl" (printf "http://%s-mcp-gateway.%s.svc:8080" $name .Release.Namespace)
+  "judgeUrl" (printf "http://%s-judge.%s.svc:8081/v1" $name .Release.Namespace)
+  "langfuseUrl" $evaluation.langfuseURL
+  "langfuseSecret" $evaluation.langfuseSecret
+  "imagePullSecrets" $pullSecrets
+  "feedbackUrl" $evaluation.feedbackURL
+  "feedbackSecret" $evaluation.feedbackSecret
+  "kagentUrl" $evaluation.kagentURL
+  "baseline" $evaluation.baseline }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-evaluation
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+data:
+  configuration.json: {{ $configuration | toJson | quote }}
+{{- end }}

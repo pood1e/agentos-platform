@@ -25,10 +25,13 @@ spec:
         action: Require
         policy:
           matchExpressions:
-            - "has(apiKey.tools) && '{{ .name }}' in apiKey.tools && mcp.tool.name in apiKey.tools['{{ .name }}']"
+            - "(has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '{{ $.Release.Namespace }}') || (has(apiKey.tools) && '{{ .name }}' in apiKey.tools && mcp.tool.name in apiKey.tools['{{ .name }}'])"
   traffic:
     transformation:
       request:
         set:
-          - {name: x-agentos-role, value: "has(apiKey.service) && apiKey.service == 'platform' ? 'platform' : (has(apiKey.engineer) ? apiKey.engineer : '')"}
+          - {name: x-agentos-role, value: "has(apiKey.service) && apiKey.service in ['platform', 'catalog'] ? 'platform' : (has(apiKey.engineer) ? apiKey.engineer : '')"}
+          - {name: x-agentos-workspace, value: "has(apiKey.workspace) ? apiKey.workspace : ''"}
+          - {name: x-agentos-candidate, value: "has(apiKey.candidate) ? apiKey.candidate : ''"}
+          - {name: x-agentos-variant, value: "has(apiKey.variant) ? apiKey.variant : ''"}
 {{- end }}

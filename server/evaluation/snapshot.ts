@@ -17,6 +17,7 @@ import type { ResourceStore } from "../management/resources.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { digest } from "../shared/change-digest.js";
 import { secretArtifact, secretReferences } from "./references.js";
+import { evaluationSubject } from "./subject.js";
 
 const kinds = [
   "templates",
@@ -25,6 +26,7 @@ const kinds = [
   "models",
   "modelConfigs",
   "mcps",
+  "mcpPolicies",
   "remoteMCPs",
   "routes",
 ] as const;
@@ -56,44 +58,54 @@ export interface SnapshotInputs {
   baseline: EvaluationBaseline;
   catalogName: string;
   knowledge: () => Promise<MemorySummary[]>;
-  artifacts: ConfigurationSnapshot["artifacts"];
+  artifacts: (
+    resources: JsonObject[],
+    proposals: ResourceProposal[],
+  ) => Promise<ConfigurationSnapshot["artifacts"]>;
 }
 
 export function configurationSnapshots(inputs: SnapshotInputs) {
   return async (proposals: ResourceProposal[] = []) => {
-    const [groups, skills, secrets, memories] = await Promise.all([
+    const [groups, skills, memories] = await Promise.all([
       Promise.all(kinds.map((kind) => inputs.store.list(kind))),
       inputs.store.readCatalog(),
-      inputs.core.listNamespacedSecret({ namespace: inputs.workspace }),
       inputs.knowledge(),
     ]);
-    const resources = groups
-      .flat()
+    const native = groups.flat();
+    const catalog: JsonObject = {
+      apiVersion: "v1",
+      kind: "ConfigMap",
+      metadata: { name: inputs.catalogName, namespace: inputs.workspace },
+      data: { "catalog.json": skills.value },
+    };
+    const artifacts = await inputs.artifacts([...native, catalog], proposals);
+    const resources = native
       .map(configurationResource)
       .sort((a, b) =>
         `${a.kind}/${text(object(a.metadata).name)}`.localeCompare(
           `${b.kind}/${text(object(b.metadata).name)}`,
         ),
       );
-    resources.push({
-      apiVersion: "v1",
-      kind: "ConfigMap",
-      metadata: { name: inputs.catalogName, namespace: inputs.workspace },
-      data: { "catalog.json": skills.value },
-    });
+    resources.push(catalog);
+    const currentReferences = secretReferences(resources);
     const references = secretReferences([
       ...resources,
       ...proposals.flatMap((proposal) => proposal.resource?.value ?? []),
     ]);
     for (const proposal of proposals)
-      if (proposal.resource?.kind === "Secret")
+      if (
+        proposal.resource?.kind === "Secret" &&
+        !currentReferences.has(text(object(proposal.resource.value?.metadata).name))
+      )
         references.delete(text(object(proposal.resource.value?.metadata).name));
-    const credentials = secrets.items
-      .filter((secret) => references.has(secret.metadata?.name ?? ""))
+    const secrets = await Promise.all(
+      [...references].map((name) =>
+        inputs.core.readNamespacedSecret({ namespace: inputs.workspace, name }),
+      ),
+    );
+    const credentials = secrets
       .map(secretArtifact)
       .sort((a, b) => a.source.localeCompare(b.source));
-    if (credentials.length !== references.size)
-      throw new Error("A referenced credential is missing");
     const knowledge = memories
       .map((entry) => create(MemorySummarySchema, { ...entry, accessCount: 0n }))
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -104,8 +116,9 @@ export function configurationSnapshots(inputs: SnapshotInputs) {
       resources: resources.map((value) => create(StructuredObjectSchema, resource(value))),
       proposals,
       baseline: inputs.baseline,
+      ...evaluationSubject(native, proposals, inputs.workspace, inputs.baseline.referenceAgent),
       artifacts: [
-        ...inputs.artifacts,
+        ...artifacts,
         ...credentials.map((entry) => create(ArtifactContentSchema, entry)),
       ],
       knowledge,

@@ -32,7 +32,6 @@ const readerMethods = new Set([
   "ListHarnesses",
   "GetEngineerRuntime",
   "ListCandidates",
-  "GetCandidate",
   "SearchEvents",
   "GetEvent",
   "GetMetrics",

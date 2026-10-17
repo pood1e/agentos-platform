@@ -132,5 +132,15 @@ export function evaluationJobs(config: KubeConfig, options: EvaluationJobConfig)
       },
     });
   }
-  return { start, get, name };
+  async function cancel(id: string) {
+    const job = await get(id);
+    if (!job || job.metadata?.labels?.["agentos.dev/candidate"] !== id) return;
+    await api.deleteNamespacedJob({
+      namespace: options.namespace,
+      name: name(id),
+      propagationPolicy: "Foreground",
+      body: { preconditions: { uid: job.metadata.uid } },
+    });
+  }
+  return { start, get, name, cancel };
 }

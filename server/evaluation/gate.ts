@@ -40,7 +40,13 @@ export function evaluationFailures(
     const key = `${sample.sampleId}:${sample.repetition}`;
     if (!expected.has(key) || observed.has(key)) failures.add("evaluation.sampleMismatch");
     observed.add(key);
-    if (sample.error || !sample.candidateTraceId || !sample.releasedTraceId)
+    if (
+      sample.error ||
+      !sample.candidateTraceId ||
+      !sample.releasedTraceId ||
+      !sample.candidateTaskId ||
+      !sample.releasedTaskId
+    )
       failures.add("evaluation.incomplete");
     for (const scores of [sample.candidate, sample.released]) {
       const names = scores.map((score) => score.name);

@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { JsonObject } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { CoreV1Api, type KubeConfig } from "@kubernetes/client-node";
 import { Mutex } from "async-mutex";
@@ -7,9 +8,12 @@ import {
   CandidateState,
   type ResourceProposal,
 } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { roleDefinition, templateSpec } from "../console/role-template.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { meta, optional } from "../management/native.js";
 import { type ResourceKind, type ResourceStore, resourceKinds } from "../management/resources.js";
+import type { machineIdentities } from "../platform/machine-identities.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { nativeKind } from "./draft.js";
 import { secretArtifact } from "./references.js";
@@ -31,6 +35,7 @@ export function publications(
   candidates: EvaluationStore,
   workspace: string,
   catalogName: string,
+  bind: ReturnType<typeof machineIdentities>["bind"],
 ) {
   const core = config.makeApiClient(CoreV1Api);
   const mutex = new Mutex();
@@ -163,9 +168,24 @@ export function publications(
         (a, b) => priority(a.resource?.kind) - priority(b.resource?.kind),
       );
       for (const proposal of ordered) {
-        const value = proposal.resource?.value;
+        let value = proposal.resource?.value;
         if (!value) denied("Candidate resource is missing");
         const name = text(meta(value).name);
+        if (value.kind === "AgentTemplate" && !proposal.delete) {
+          const role = roleDefinition(
+            create(AgentTemplateSchema, {
+              ref: { namespace: workspace, name },
+              resource: proposal.resource,
+            }),
+          );
+          value = {
+            ...value,
+            spec: templateSpec(
+              { ...role, tools: await bind(name, role.tools) },
+              object(value.spec),
+            ),
+          };
+        }
         if (value.kind === "ConfigMap") {
           const current = await store.readCatalog();
           const frozen = record.snapshot.resources.find(
@@ -218,6 +238,7 @@ function priority(kind?: string) {
     "Harness",
     "AgentgatewayModel",
     "AgentgatewayBackend",
+    "AgentgatewayPolicy",
     "Secret",
     "HTTPRoute",
     "ModelConfig",
