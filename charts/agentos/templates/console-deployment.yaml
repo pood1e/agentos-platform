@@ -36,6 +36,7 @@ spec:
       {{- end }}
       securityContext:
         {{- include "agentos.securityContext" . | nindent 8 }}
+        fsGroup: 1000
       {{- with .Values.pack.image }}
       initContainers:
         - name: pack
