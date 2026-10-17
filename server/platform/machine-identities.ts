@@ -135,6 +135,7 @@ export function machineIdentities(
             },
           },
           spec: {
+            description: `${service}; ${role}`,
             url: `http://${release}-mcp-gateway.${gatewayNamespace}.svc:8080/mcp/${service === "kagent-collaboration" ? (scope.collaborationService ?? service) : service}`,
             protocol: "STREAMABLE_HTTP",
             timeout: "10m",
