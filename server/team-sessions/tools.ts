@@ -108,7 +108,7 @@ export function sessionTools(
         "delegate_coordinator",
         {
           description:
-            "Delegate an operation only to the workspace coordinator. Input is an A2A Message: use a fresh UUID messageId, ROLE_USER and text parts with four short bullets: goal, essential context, deliverable and scope. Limit delegation text to 300 Chinese characters or 150 English words; reference long evidence by task or attachment and send only new facts on follow-ups. Omit contextId for new work; reuse the returned session_id as contextId for follow-ups. Reuse the same messageId and inputs on retries. Returns the native kagent invocation result, including session_id, task_id, state and text. When input is required, report the wait and let the original task handle the response.",
+            "Delegate an operation only to the workspace coordinator. Input is an A2A Message: use a fresh UUID messageId, ROLE_USER and text parts with concise goal, essential context, deliverable and scope. Preserve exact asset identifiers, paths, execution parameters, acceptance criteria and authorization boundaries; completeness determines the required length. Reference long evidence by an accessible task or attachment. A new session needs all essential context; an existing session can receive follow-up facts. Omit contextId for new work; reuse the returned session_id as contextId for follow-ups. Reuse the same messageId and inputs on retries. Returns the native kagent invocation result, including session_id, task_id, state and text. When input is required, report the wait and let the original task handle the response.",
           inputSchema: inputSchema(messageSchema),
           annotations: { destructiveHint: false, idempotentHint: true },
         },
