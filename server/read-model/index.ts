@@ -9,6 +9,8 @@ export interface Relations {
   /** Child task per `${taskId}:${callId}` delegation call. */
   targets: Map<string, string>;
   parents: Map<string, string>;
+  /** Explicit task references and delegation calls, excluding chronological session grouping. */
+  causalParents: Map<string, string>;
   continuations: Map<string, string[]>;
   reviews: Map<string, string[]>;
   resumed: Set<string>;
@@ -188,6 +190,7 @@ export class TaskIndex {
         parents.set(entry.id, entry.reviewOfTaskId);
       }
     }
+    const causalParents = new Map(parents);
     for (const ids of this.contexts.values()) {
       const rounds = [...ids]
         .flatMap((id) => this.entry(id) ?? [])
@@ -209,6 +212,6 @@ export class TaskIndex {
         !operational.has(entry.id) &&
         !entry.parentTaskId,
     );
-    return { targets, parents, continuations, reviews, resumed, roots };
+    return { targets, parents, causalParents, continuations, reviews, resumed, roots };
   }
 }

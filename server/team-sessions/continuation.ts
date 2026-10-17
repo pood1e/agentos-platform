@@ -18,6 +18,17 @@ interface Continuation {
   message: Message;
 }
 
+function stoppedOperation(index: TaskIndex, parent: TaskEntry): boolean {
+  const ancestors = index.relations().causalParents;
+  const seen = new Set<string>();
+  for (let entry: TaskEntry | undefined = parent; entry && !seen.has(entry.id); ) {
+    if ([TaskState.CANCELED, TaskState.REJECTED].includes(entry.state)) return true;
+    seen.add(entry.id);
+    entry = index.entry(ancestors.get(entry.id) ?? "");
+  }
+  return false;
+}
+
 const waiting = (index: TaskIndex, entry: TaskEntry) =>
   entry.calls.flatMap((call) => {
     const invocation = call.delegation?.invocation;
@@ -102,7 +113,7 @@ export function startContinuations(sync: KagentSync, log: FastifyBaseLogger): ()
     if (stopped) return;
     const waitingIds = new Set<string>();
     for (const parent of index.all()) {
-      if (!terminal(parent.state)) continue;
+      if (!terminal(parent.state) || stoppedOperation(index, parent)) continue;
       for (const childId of waiting(index, parent)) {
         const next = continuation(index, parent, childId);
         waitingIds.add(childId);

@@ -23,9 +23,10 @@ it.each(["approval", "transport failure"])(
     if (reason === "transport failure") {
       const child = index.entry(fixtureIds.approved);
       if (!child) throw new Error("Missing completed native child");
-      index.upsert({ ...child, decision: undefined });
+      index.upsert({ ...child, version: `${child.version}-without-decision`, decision: undefined });
       index.upsert({
         ...parent,
+        version: `${parent.version}-transport-failure`,
         calls: parent.calls.map((item) =>
           item.id === call.id
             ? {
@@ -101,3 +102,73 @@ it.each(["approval", "transport failure"])(
     }
   },
 );
+
+it.each(["canceled", "rejected", "canceled ancestor"])(
+  "keeps a %s operation stopped after a child finishes",
+  async (reason) => {
+    const { sync, index } = environment(decidedTasks());
+    await sync.refresh();
+    const parent = index.entry(fixtureIds.approvalRoot);
+    if (!parent) throw new Error("Missing coordinator fixture");
+    if (reason === "canceled ancestor") {
+      index.upsert({ ...parent, id: "stopped-owner", state: TaskState.CANCELED, calls: [] });
+      index.upsert({
+        ...parent,
+        version: `${parent.version}-stopped-owner`,
+        state: TaskState.COMPLETED,
+        parentTaskId: "stopped-owner",
+      });
+    } else {
+      index.upsert({
+        ...parent,
+        version: `${parent.version}-${reason}`,
+        state: reason === "canceled" ? TaskState.CANCELED : TaskState.REJECTED,
+      });
+    }
+    const send = vi.spyOn(sync, "send");
+    const stop = startContinuations(sync, silent);
+    try {
+      index.flush();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      stop();
+      sync.close();
+    }
+  },
+);
+
+it("allows a new request in a session whose earlier operation was canceled", async () => {
+  const { sync, index } = environment(decidedTasks());
+  await sync.refresh();
+  const parent = index.entry(fixtureIds.approvalRoot);
+  if (!parent) throw new Error("Missing coordinator fixture");
+  index.upsert({
+    ...parent,
+    id: "canceled-earlier-round",
+    state: TaskState.CANCELED,
+    calls: [],
+    createdAt: (parent.createdAt ?? 0) - 1,
+  });
+  expect(index.relations().parents.get(parent.id)).toBe("canceled-earlier-round");
+  expect(index.relations().causalParents.get(parent.id)).toBeUndefined();
+  const send = vi.spyOn(sync, "send").mockImplementation(async (tenant, message) => {
+    const task = create(TaskSchema, {
+      id: "new-request-continuation",
+      contextId: message.contextId,
+      status: { state: TaskState.COMPLETED },
+      history: [message],
+    });
+    index.upsert(ingest(task, tenant));
+    return task;
+  });
+  const stop = startContinuations(sync, silent);
+  try {
+    await until(() => send.mock.calls.length > 0);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[1].contextId).toBe(parent.contextId);
+  } finally {
+    stop();
+    sync.close();
+  }
+});
