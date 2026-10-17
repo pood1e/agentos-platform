@@ -11,10 +11,6 @@ spec:
   ingress:
     - from:
         - podSelector:
-            matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: team-sessions}
-      ports: [{port: 8080, protocol: TCP}]
-    - from:
-        - podSelector:
             matchLabels: {app.kubernetes.io/name: kagent, app.kubernetes.io/component: controller}
         - podSelector:
             matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/component: console}
@@ -26,3 +22,25 @@ spec:
         - podSelector:
             matchLabels: {ate.dev/worker-pool: kagent-default}
       ports: [{port: 8080, protocol: TCP}]
+    {{- if .Values.automation.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: traefik}
+      ports: [{port: 8080, protocol: TCP}]
+    {{- end }}
+    {{- if .Values.evaluation.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .Values.evaluation.namespace }}}
+          podSelector:
+            matchLabels: {agentos.dev/component: evaluation}
+      ports: [{port: 8080, protocol: TCP}, {port: 8081, protocol: TCP}]
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .Values.evaluation.langfuseNamespace }}}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: langfuse, app.kubernetes.io/component: worker}
+      ports: [{port: 8081, protocol: TCP}]
+    {{- end }}

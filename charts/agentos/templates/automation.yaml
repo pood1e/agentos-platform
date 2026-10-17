@@ -1,0 +1,83 @@
+{{- if .Values.automation.enabled }}
+{{- $name := include "agentos.name" . }}
+{{- range .Values.global.agentos.environments }}
+{{- $credential := printf "%s-events-%s" $name .name }}
+{{- $token := include "agentos.nativeToken" (dict "root" $ "name" $credential) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $credential }}
+  labels:
+    {{- include "agentos.labels" $ | nindent 4 }}
+type: Opaque
+data:
+  api-key: {{ $token | b64enc | quote }}
+  authorization: {{ printf "Bearer %s" $token | b64enc | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $credential }}
+  labels:
+    agentos.dev/gateway-keys: {{ $name }}
+    {{- include "agentos.labels" $ | nindent 4 }}
+data:
+  source: {{ dict "keyHash" (printf "sha256:%s" ($token | sha256sum)) "metadata" (dict "service" "automation" "workspace" $.Release.Namespace "environment" .name) | toJson | quote }}
+{{- end }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: automation
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  mcp:
+    prefixMode: Never
+    targets:
+      - name: automation
+        static:
+          host: {{ $name }}-console
+          port: 8080
+          path: /mcp
+          policies: {http: {requestTimeout: 10m}}
+          protocol: StreamableHTTP
+  policies:
+    auth: {secretRef: {name: {{ $name }}-mcp, key: token}}
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions: ["mcp.tool.name in ['run_case', 'observe_case', 'cancel_case']"]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: automation
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  parentRefs: [{name: {{ $name }}-gateway, sectionName: http}]
+  rules:
+    - matches: [{path: {type: Exact, value: /mcp/automation}}]
+      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: automation}]
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: automation
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  targetRefs: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: automation}]
+  traffic:
+    transformation:
+      request:
+        set:
+          - {name: x-agentos-role, value: "'automation'"}
+          - {name: x-agentos-environment, value: apiKey.environment}
+          - {name: x-agentos-workspace, value: apiKey.workspace}
+          - {name: x-agentos-candidate, value: "''"}
+          - {name: x-agentos-variant, value: "''"}
+{{- end }}

@@ -63,6 +63,39 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
     const name = text(meta(parent).name);
     const previous = await optional(store, "remoteMCPs", name);
     await child(
+      "mcpPolicies",
+      {
+        apiVersion: "agentgateway.dev/v1alpha1",
+        kind: "AgentgatewayPolicy",
+        metadata: { name: `${name}-tool-access` },
+        spec: {
+          targetRefs: [{ group: "agentgateway.dev", kind: "AgentgatewayBackend", name }],
+          backend: {
+            mcp: {
+              authorization: {
+                action: "Require",
+                policy: {
+                  matchExpressions: [
+                    `(has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '${gateway.namespace}') || (has(apiKey.tools) && '${name}' in apiKey.tools && mcp.tool.name in apiKey.tools['${name}'])`,
+                  ],
+                },
+              },
+            },
+          },
+          traffic: {
+            transformation: {
+              request: {
+                set: [
+                  { name: "x-agentos-role", value: "has(apiKey.engineer) ? apiKey.engineer : ''" },
+                ],
+              },
+            },
+          },
+        },
+      },
+      parent,
+    );
+    await child(
       "routes",
       {
         apiVersion: "gateway.networking.k8s.io/v1",
@@ -94,7 +127,7 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
           headersFrom: [
             {
               name: "Authorization",
-              valueFrom: { type: "Secret", name: gateway.secret, key: "authorization" },
+              valueFrom: { type: "Secret", name: gateway.secret, key: "catalog-authorization" },
             },
           ],
         },

@@ -6,6 +6,7 @@ import {
   type SkillSchema,
 } from "../../gen/agentos/console/v1/role_pb.js";
 import type { AgentTemplate } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { logicalPlatformServer } from "../../shared/platform-tools.js";
 import { object, text } from "../read-model/decode/messages.js";
 
 export const apiVersion = "api.kagent.dev/v1alpha3";
@@ -50,7 +51,10 @@ export function roleDefinition(template: AgentTemplate): RoleDefinition {
         ? []
         : [
             {
-              server: text(object(mcp.server).name),
+              server: logicalPlatformServer(
+                text(object(mcp.server).name),
+                template.ref?.name ?? text(metadata.name),
+              ),
               tools: strings(mcp.tools),
               requireApproval: mcp.requireApproval === true,
             },

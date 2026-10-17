@@ -1,21 +1,26 @@
-import type { Interaction } from "../../../../gen/agentos/console/v1/task_pb.js";
-import { awaiting } from "../../status/activity.js";
-import { approvals } from "./approvals.js";
-import type { Link } from "./links.js";
-import { type CollaborationStep, eventTime, sequenceFor } from "./sequence.js";
+import { ActivityState } from "../../../../gen/agentos/console/v1/state_pb.js";
+import type { Interaction, TaskDetail } from "../../../../gen/agentos/console/v1/task_pb.js";
+import type { Change } from "../../../../gen/agentos/governance/v1/change_pb.js";
+import { millis } from "../../../lib/format.js";
+import { active, awaiting } from "../../status/activity.js";
+import { approvalActivities, currentInteraction } from "./approval-activities.js";
+import { delegationRanks } from "./delegation-ranks.js";
+import { type Link, linksOf } from "./links.js";
+import { type CollaborationStep, sequenceFor } from "./sequence.js";
 
 export interface FlowActivity {
   id: string;
+  contextId: string;
   agentId: string;
+  name: string;
   taskId: string;
-  kind: "entry" | "execution" | "resume" | "approval" | "continued" | "review";
+  taskIds: string[];
+  kind: "engineer" | "approval";
   root: boolean;
-  final: boolean;
-  step?: CollaborationStep;
-  interaction?: Interaction;
-  returns: Link[];
-  startedAt?: number;
-  endedAt?: number;
+  rank: number;
+  state: ActivityState;
+  interactions: Interaction[];
+  ticket?: Change;
 }
 
 export interface FlowConnection {
@@ -23,184 +28,158 @@ export interface FlowConnection {
   source: string;
   target: string;
   phase: "dispatch" | "return" | "approval";
-  link: Link;
+  step: CollaborationStep;
 }
 
-interface TaskFlow {
-  entry: FlowActivity;
-  outgoing: CollaborationStep[];
-  resumes: FlowActivity[];
+export const instanceNodeId = (contextId: string) => `session:${contextId}`;
+
+/** Current work takes precedence over previous completed attempts. */
+export function currentState(states: ActivityState[]) {
+  return (
+    states.find((state) => state === ActivityState.WORKING) ??
+    states.find(active) ??
+    states.find(awaiting) ??
+    states.at(-1) ??
+    ActivityState.UNOBSERVED
+  );
 }
 
-const completion = (link: Link) => eventTime(link, "finished") ?? eventTime(link, "returned");
-
-export interface FlowInput {
-  participants: string[];
-  links: Link[];
-  root?: { taskId: string; agentId: string };
-  window: { start?: number; completedAt?: number };
-  interactions: Interaction[];
-}
-
-export function collaborationFlow({ participants, links, root, window, interactions }: FlowInput) {
-  const steps = sequenceFor(links.filter((link) => link.kind !== "review"));
-  const activities: FlowActivity[] = [];
-  const connections: FlowConnection[] = [];
-  const constraints: { source: string; target: string }[] = [];
-  const tasks = new Map<string, TaskFlow>();
-  const rootAgent = root?.agentId ?? participants[0];
-  const addEntry = (taskId: string, agentId: string, step?: CollaborationStep) => {
-    const isRoot = Boolean(root && taskId === root.taskId && !step);
-    const entry: FlowActivity = {
-      id: step?.link.id ?? `task:${taskId || agentId}`,
+/** Native Sessions are instances; Tasks are executions inside their existing context. */
+export function collaborationFlow(detail: TaskDetail) {
+  const steps = sequenceFor(linksOf(detail));
+  const ranks = delegationRanks(steps, detail.summary?.id);
+  const rootRun = detail.runs.find((run) => run.taskId === detail.summary?.id);
+  const activities = new Map<string, FlowActivity>();
+  const connections = new Map<string, FlowConnection>();
+  const addInstance = (contextId: string, agentId: string, taskId: string, rank: number) => {
+    if (!contextId) return;
+    const id = instanceNodeId(contextId);
+    const known = activities.get(id);
+    if (known) {
+      known.rank = Math.min(known.rank, rank);
+      if (taskId && !known.taskIds.includes(taskId)) known.taskIds.push(taskId);
+      return known;
+    }
+    const activity: FlowActivity = {
+      id,
+      contextId,
       agentId,
       taskId,
-      kind: step ? "execution" : "entry",
-      root: isRoot,
-      final: false,
-      step,
-      returns: [],
-      startedAt: step?.link.startedAt ?? (isRoot ? window.start : undefined),
-      endedAt: step ? eventTime(step.link, "finished") : undefined,
+      name: detail.sessions.find((session) => session.id === contextId)?.name ?? "",
+      taskIds: taskId ? [taskId] : [],
+      kind: "engineer",
+      root: contextId === rootRun?.contextId,
+      rank,
+      state: ActivityState.UNOBSERVED,
+      interactions: [],
     };
-    activities.push(entry);
-    return entry;
+    activities.set(id, activity);
+    return activity;
   };
-  if (rootAgent) {
-    const taskId = root?.taskId ?? "";
-    tasks.set(taskId, { entry: addEntry(taskId, rootAgent), outgoing: [], resumes: [] });
-  }
-  const executions = new Map(
-    steps.map((step) => [
-      step.link.id,
-      addEntry(step.link.targetTaskId ?? "", step.link.target, step),
-    ]),
-  );
+  const connect = (
+    source: string,
+    target: string,
+    step: CollaborationStep,
+    phase: FlowConnection["phase"],
+  ) => {
+    const id = JSON.stringify([source, target, phase, step.link.id]);
+    connections.set(id, { id, source, target, phase, step });
+  };
+  if (rootRun) addInstance(rootRun.contextId, rootRun.agentId, rootRun.taskId, 0);
   for (const step of steps) {
     const { link } = step;
-    if (!tasks.has(link.sourceTaskId)) {
-      const owners = [...executions.values()].filter(
-        (entry) => entry.taskId === link.sourceTaskId && entry.agentId === link.source,
-      );
-      tasks.set(link.sourceTaskId, {
-        entry:
-          owners.length === 1 && owners[0] ? owners[0] : addEntry(link.sourceTaskId, link.source),
-        outgoing: [],
-        resumes: [],
-      });
-    }
-    tasks.get(link.sourceTaskId)?.outgoing.push(step);
-  }
-  for (const task of tasks.values()) {
-    const batches = new Map<string, Link[]>();
-    const returned = task.outgoing
-      .map(({ link }) => link)
-      .filter(
-        (link) =>
-          link.kind === "invoke" &&
-          eventTime(link, "returned") !== undefined &&
-          !links.some(
-            (next) => next.kind === "resume" && next.sourceTaskId === link.targetTaskId,
-          ) &&
-          !interactions.some(
-            (interaction) =>
-              interaction.taskId === link.targetTaskId && awaiting(interaction.state),
-          ),
-      )
-      .sort((a, b) => (completion(a) ?? 0) - (completion(b) ?? 0) || a.id.localeCompare(b.id));
-    for (const link of returned) {
-      const next = task.outgoing.find(
-        (step) =>
-          step.link.id !== link.id &&
-          step.link.startedAt !== undefined &&
-          step.link.startedAt > (completion(link) ?? Infinity),
-      );
-      const key = next?.link.id ?? "final";
-      batches.set(key, [...(batches.get(key) ?? []), link]);
-    }
-    for (const batch of batches.values()) {
-      const first = batch[0];
-      if (!first) continue;
-      const resume: FlowActivity = {
-        id: `resume:${first.id}`,
-        agentId: task.entry.agentId,
-        taskId: task.entry.taskId,
-        kind: "resume",
-        root: task.entry.root,
-        final: false,
-        returns: batch,
-        startedAt: completion(batch.at(-1) ?? first),
-        endedAt: completion(batch.at(-1) ?? first),
-      };
-      task.resumes.push(resume);
-      activities.push(resume);
-    }
-    const last = task.resumes.at(-1) ?? task.entry;
-    const hasLaterDispatch = task.outgoing.some(
-      ({ link }) =>
-        link.kind !== "background" &&
-        (link.startedAt === undefined ||
-          last.endedAt === undefined ||
-          link.startedAt > last.endedAt),
+    const rank = ranks.get(link.id) ?? 1;
+    const source = addInstance(
+      link.sourceContextId,
+      link.source,
+      link.sourceTaskId,
+      Math.max(0, rank - 1),
     );
-    last.final = !hasLaterDispatch;
-    if (last.root && last.final) last.endedAt = window.completedAt ?? last.endedAt;
-    for (let i = 1; i < task.resumes.length; i++) {
-      const previous = task.resumes[i - 1];
-      const current = task.resumes[i];
-      if (previous && current) constraints.push({ source: previous.id, target: current.id });
+    const target = addInstance(link.targetContextId, link.target, link.targetTaskId ?? "", rank);
+    if (!source || !target) continue;
+    connect(source.id, target.id, step, "dispatch");
+    if (link.kind === "invoke" && link.returned) connect(target.id, source.id, step, "return");
+  }
+  for (const interaction of [...detail.interactions].sort(
+    (a, b) =>
+      (millis(a.requestedAt) ?? 0) - (millis(b.requestedAt) ?? 0) || a.id.localeCompare(b.id),
+  )) {
+    const contextId = detail.runs.find((run) => run.taskId === interaction.taskId)?.contextId;
+    const owner = contextId && activities.get(instanceNodeId(contextId));
+    if (!owner) continue;
+    const reviewers = steps.filter(
+      ({ link }) =>
+        link.kind === "review" &&
+        link.sourceTaskId === interaction.taskId &&
+        link.requestId === interaction.requestId,
+    );
+    const link: Link = {
+      id: interaction.id,
+      source: interaction.agentId,
+      target: "human",
+      sourceTaskId: interaction.taskId,
+      sourceContextId: owner.contextId,
+      targetContextId: "",
+      kind: "approval",
+      state: interaction.state,
+      startedAt: millis(interaction.requestedAt),
+      endedAt: millis(interaction.answeredAt),
+      returned: !awaiting(interaction.state),
+      dependsOn: [],
+    };
+    const step: CollaborationStep = { link, occurrence: 1, simultaneous: [], parallel: [] };
+    const authorities = reviewers.flatMap(
+      ({ link }) => activities.get(instanceNodeId(link.targetContextId)) ?? [],
+    );
+    const rank = Math.max(owner.rank, ...authorities.map((item) => item.rank)) + 1;
+    for (const { id, ticket } of approvalActivities(interaction)) {
+      const known = activities.get(id);
+      const approvals = [...(known?.interactions ?? []), interaction];
+      const current = currentInteraction(approvals) ?? interaction;
+      activities.set(id, {
+        id,
+        contextId: "",
+        agentId: current.agentId,
+        name: "",
+        taskId: current.taskId,
+        taskIds: [...new Set(approvals.map((item) => item.taskId))],
+        kind: "approval",
+        interactions: approvals,
+        ticket,
+        root: false,
+        rank: Math.min(known?.rank ?? rank, rank),
+        state: current.state,
+      });
+      for (const authority of authorities.length ? authorities : [owner])
+        connect(authority.id, id, step, "approval");
+      if ([ActivityState.SUCCEEDED, ActivityState.REJECTED].includes(interaction.state))
+        connect(id, owner.id, step, "return");
     }
   }
-  for (const step of steps) {
-    const { link } = step;
-    const task = tasks.get(link.sourceTaskId);
-    const execution = executions.get(link.id);
-    if (!task || !execution) continue;
-    const source =
-      task.resumes.findLast(
-        (resume) =>
-          !resume.returns.some((returned) => returned.id === link.id) &&
-          link.startedAt !== undefined &&
-          resume.startedAt !== undefined &&
-          resume.startedAt < link.startedAt,
-      ) ?? task.entry;
-    connections.push({
-      id: `dispatch:${link.id}`,
-      source: source.id,
-      target: execution.id,
-      phase: "dispatch",
-      link,
-    });
-    const destination = task.resumes.find((resume) => resume.returns.includes(link));
-    if (!destination) continue;
-    const child =
-      link.targetTaskId && link.targetTaskId !== link.sourceTaskId
-        ? tasks.get(link.targetTaskId)
-        : undefined;
-    const terminal =
-      child?.resumes.findLast(
-        (resume) =>
-          resume.endedAt !== undefined &&
-          completion(link) !== undefined &&
-          resume.endedAt <= (completion(link) ?? 0),
-      ) ?? execution;
-    connections.push({
-      id: `return:${link.id}`,
-      source: terminal.id,
-      target: destination.id,
-      phase: "return",
-      link,
-    });
+  for (const activity of activities.values()) {
+    if (activity.kind === "approval") continue;
+    const executions = detail.runs
+      .filter((run) => run.contextId === activity.contextId)
+      .sort(
+        (a, b) =>
+          (millis(a.updatedAt) ?? 0) - (millis(b.updatedAt) ?? 0) ||
+          a.taskId.localeCompare(b.taskId),
+      );
+    const current =
+      executions.findLast((run) => active(run.state)) ??
+      executions.findLast((run) => awaiting(run.state)) ??
+      executions.at(-1);
+    if (current) activity.taskId = current.taskId;
+    activity.taskIds = [...new Set([...activity.taskIds, ...executions.map((run) => run.taskId)])];
+    activity.state = currentState(
+      executions.length
+        ? executions.map((run) => run.state)
+        : steps
+            .filter(({ link }) => link.targetContextId === activity.contextId)
+            .map(({ link }) => link.state),
+    );
   }
-  approvals(
-    { activities, connections, constraints },
-    interactions,
-    sequenceFor(links.filter((link) => link.kind === "review")),
-  );
-  for (const agentId of participants) {
-    if (!activities.some((activity) => activity.agentId === agentId)) addEntry("", agentId);
-  }
-  return { activities, connections, constraints, steps };
+  return { activities: [...activities.values()], connections: [...connections.values()], steps };
 }
 
 export type CollaborationFlow = ReturnType<typeof collaborationFlow>;

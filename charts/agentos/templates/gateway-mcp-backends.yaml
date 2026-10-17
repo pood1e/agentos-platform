@@ -9,4 +9,29 @@ metadata:
     {{- include "agentos.labels" $ | nindent 4 }}
 spec:
   {{- tpl (toYaml .spec) $ | nindent 2 }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ .name }}-tool-access
+  labels:
+    {{- include "agentos.labels" $ | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ .name }}}
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+            - "(has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '{{ $.Release.Namespace }}') || (has(apiKey.tools) && '{{ .name }}' in apiKey.tools && mcp.tool.name in apiKey.tools['{{ .name }}'])"
+  traffic:
+    transformation:
+      request:
+        set:
+          - {name: x-agentos-role, value: "has(apiKey.service) && apiKey.service in ['platform', 'catalog'] ? 'platform' : (has(apiKey.engineer) ? apiKey.engineer : '')"}
+          - {name: x-agentos-workspace, value: "has(apiKey.workspace) ? apiKey.workspace : ''"}
+          - {name: x-agentos-candidate, value: "has(apiKey.candidate) ? apiKey.candidate : ''"}
+          - {name: x-agentos-variant, value: "has(apiKey.variant) ? apiKey.variant : ''"}
 {{- end }}

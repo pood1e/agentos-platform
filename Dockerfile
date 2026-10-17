@@ -9,4 +9,4 @@ COPY build ./build
 COPY dist ./dist
 USER node
 EXPOSE 8080 9090
-CMD ["node", "build/server/console/main.js"]
+CMD ["node", "build/server/platform/main.js"]

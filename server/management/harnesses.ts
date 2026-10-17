@@ -7,6 +7,7 @@ import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.
 import { HarnessSchema } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { conflict, invalid } from "../shared/errors.js";
+import { credentialReferences } from "./credential-references.js";
 import { meta, resource } from "./native.js";
 import type { ResourceStore } from "./resources.js";
 
@@ -45,6 +46,7 @@ export function harnessCommands(store: ResourceStore, namespace: string) {
     )
       throw invalid("harness.invalidReference");
     if (!request.create && !meta(value).resourceVersion) throw conflict("configuration.conflict");
+    credentialReferences(value.spec, undefined);
     const saved = await store.save(
       "harnesses",
       { ...value, metadata: { ...meta(value), name, namespace } },

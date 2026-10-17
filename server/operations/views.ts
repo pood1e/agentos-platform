@@ -1,4 +1,4 @@
-import { Code, ConnectError } from "@connectrpc/connect";
+import { type CallOptions, Code, ConnectError } from "@connectrpc/connect";
 import type { OperationsConfig } from "../../gen/agentos/governance/v1/change_pb.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { changeId } from "../shared/change-digest.js";
@@ -11,6 +11,7 @@ export async function changes(
   config: OperationsConfig,
   taskId: string,
   requestId: string,
+  options?: CallOptions,
 ) {
   const entry = sync.index.entry(taskId);
   const interaction = entry?.interactions.find((item) => item.requestId === requestId);
@@ -20,9 +21,10 @@ export async function changes(
       const connection = environmentFor(config.environments, tool.name);
       if (!connection) return undefined;
       try {
-        const { result } = await changeClient(connection).getChange({
-          id: changeId(entry.id, tool.id),
-        });
+        const { result } = await changeClient(connection).getChange(
+          { id: changeId(entry.id, tool.id) },
+          options,
+        );
         return result?.change;
       } catch (error) {
         if (error instanceof ConnectError && error.code === Code.NotFound) return undefined;

@@ -105,5 +105,13 @@ spec:
       policy:
         matchExpressions:
           - >-
-            has(apiKey.service) && apiKey.service == 'agentos' && !('x-agentos-engineer' in request.headers)
+            apiKey.environment == '{{ environment_name }}' && apiKey.engineer == 'catalog' &&
+            'x-agentos-engineer' in request.headers && request.headers['x-agentos-engineer'] == 'catalog'
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+            - {{ ('mcp.tool.name in ' + (toolsets[project].readOnly | default([]) | to_json)) | to_json }}
 {% endfor %}

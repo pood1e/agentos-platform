@@ -86,6 +86,7 @@ export function ingest(task: Task, agentId: string): TaskEntry {
         return value ? [{ id: message.messageId, text: value }] : [];
       }),
     answer:
+      (task.status?.state === TaskState.FAILED ? messageText(task.status.message) : "") ||
       output(task) ||
       messageText(
         task.history.findLast((message) => message.role === Role.AGENT && !hitlPayload(message)),

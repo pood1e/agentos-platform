@@ -93,7 +93,9 @@
     "searchPlaceholder": "Search tasks…",
     "noMatches": "No matching tasks",
     "noTasks": "No tasks yet",
-    "notFound": "This task does not exist or is no longer visible."
+    "notFound": "This task does not exist or is no longer visible.",
+    "expandContent": "Show full description",
+    "collapseContent": "Collapse description"
   },
   "graph": {
     "title": "Collaboration",
@@ -108,7 +110,11 @@
     "requestApproval": "Request approval",
     "review": "Submit for review",
     "resumeExecution": "Resume execution",
-    "requestInput": "Request input"
+    "requestInput": "Request input",
+    "ticket": "Ticket #{{id}}",
+    "rounds": "{{count}} rounds",
+    "join": "Join",
+    "reuseResult": "Reuse result"
   },
   "drawer": {
     "title": "Execution details",
@@ -116,7 +122,13 @@
     "result": "Execution result",
     "loading": "Loading execution details…",
     "unavailable": "Unable to load execution details.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "execution": "Executions",
+    "rounds": "Round trips",
+    "roundNumber": "Round {{number}}",
+    "approvals": "Approval history",
+    "executionNumber": "Execution {{number}}",
+    "waitingExecution": "Waiting for this instance to start execution."
   },
   "common": {
     "close": "Close"
@@ -256,7 +268,20 @@
       "EXECUTING": "Executing",
       "SUCCEEDED": "Completed",
       "FAILED": "Failed",
-      "EXPIRED": "Expired"
+      "EXPIRED": "Expired",
+      "CANCELED": "Closed"
+    },
+    "plan": {
+      "impact": "Impact",
+      "validation": "Validation",
+      "rollback": "Rollback",
+      "simulation": "Simulation evidence and limitations",
+      "source": "View simulation task"
+    },
+    "blockers": {
+      "ASSESSMENT_REQUIRED": "Impact, validation, rollback or simulation evidence is missing. Execution remains paused.",
+      "PLAN_CHANGED": "The plan changed after approval. A new approval is required.",
+      "NORMAL_CHANGE_REQUIRED": "This execution flow requires a Normal Change."
     }
   },
   "harness": {

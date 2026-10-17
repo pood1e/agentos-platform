@@ -9,9 +9,12 @@ plugins:
     out: gen/schema
     types:
       - agentos.console.v1.RoleDefinition
+      - agentos.governance.v1.PrepareChangeRequest
       - agentos.management.v1.SearchKnowledgeRequest
       - kagent.api.v1alpha1.ListAgentsRequest
       - kagent.api.v1alpha1.CreateSessionRequest
       - kagent.api.v1alpha1.ListToolServersRequest
       - lf.a2a.v1.Message
+      - agentos.automation.v1.CaseRequest
+      - agentos.automation.v1.CaseReference
     opt: [target=json-bundle]

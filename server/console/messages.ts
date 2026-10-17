@@ -16,8 +16,8 @@ import { ingest } from "../read-model/entry.js";
 import { awaiting, terminal } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation, conversationRole } from "../read-model/views/conversation.js";
-import { shortTitle } from "../read-model/views/title.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
+import { shortTitle } from "../shared/title.js";
 
 export function messageCommands(sync: KagentSync, clients: KagentClients) {
   const index = sync.index;

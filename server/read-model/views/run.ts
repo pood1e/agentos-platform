@@ -13,6 +13,7 @@ export async function taskRun(sync: KagentSync, taskId: string): Promise<TaskRun
   return create(TaskRunSchema, {
     taskId,
     agentId: entry.agentId,
+    contextId: entry.contextId,
     state: runState(entry),
     prompt: entry.prompt,
     output: entry.answer,

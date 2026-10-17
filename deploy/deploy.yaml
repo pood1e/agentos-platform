@@ -25,3 +25,7 @@
 - name: Install application chart
   ansible.builtin.import_playbook: app.yaml
   tags: [app]
+
+- name: Install observability and evaluation services
+  ansible.builtin.import_playbook: observability.yaml
+  tags: [observability]

@@ -9,7 +9,6 @@ import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_
 import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind, type TaskDetail } from "../../../gen/agentos/console/v1/task_pb.js";
 import { consoleClient } from "../../lib/console.js";
-import { millis } from "../../lib/format.js";
 import { useWatch } from "../../lib/use-watch.js";
 import { Avatar } from "../shared/Avatar.js";
 import { engineerName } from "../shared/engineers.js";
@@ -19,8 +18,9 @@ import { Status } from "../status/Status.js";
 import { AgentDrawer, type DrawerTarget } from "./AgentDrawer.js";
 import { BackgroundTasks } from "./BackgroundTasks.js";
 import { Collaboration } from "./Collaboration.js";
-import { collaborationFlow, type FlowActivity } from "./flow/collaboration-flow.js";
-import { linksOf } from "./flow/links.js";
+import { currentInteraction } from "./flow/approval-activities.js";
+import { collaborationFlow, type FlowActivity, instanceNodeId } from "./flow/collaboration-flow.js";
+import type { ConnectionBundle } from "./flow/connection-bundles.js";
 import { TaskConclusion } from "./TaskConclusion.js";
 import { TaskList } from "./TaskList.js";
 
@@ -32,31 +32,18 @@ async function* follow(taskId: string, signal: AbortSignal) {
 const concluded = (state: ActivityState) =>
   !active(state) && !awaiting(state) && state !== ActivityState.UNOBSERVED;
 
-function TaskView({ detail }: { detail: TaskDetail }) {
+function TaskView({ detail, focusTaskId }: { detail: TaskDetail; focusTaskId: string }) {
   const { t } = useTranslation();
-  const [target, setTarget] = useState<DrawerTarget>({});
-  const [open, setOpen] = useState(false);
+  const focus =
+    detail.summary?.id !== focusTaskId
+      ? detail.runs.find((run) => run.taskId === focusTaskId)
+      : undefined;
+  const [target, setTarget] = useState<DrawerTarget>(() =>
+    focus ? { taskId: focus.taskId, contextId: focus.contextId } : {},
+  );
+  const [open, setOpen] = useState(!!focus);
   const summary = detail.summary;
-  const links = useMemo(() => linksOf(detail), [detail]);
-  const root = useMemo(() => {
-    const run = detail.runs.find((item) => item.taskId === summary?.id);
-    return run ? { taskId: run.taskId, agentId: run.agentId } : undefined;
-  }, [detail, summary?.id]);
-  const window = useMemo(
-    () => ({ start: millis(detail.startedAt), completedAt: millis(detail.completedAt) }),
-    [detail.startedAt, detail.completedAt],
-  );
-  const flow = useMemo(
-    () =>
-      collaborationFlow({
-        participants: detail.participants.map((item) => item.id),
-        links,
-        root,
-        window,
-        interactions: detail.interactions,
-      }),
-    [detail.participants, detail.interactions, links, root, window],
-  );
+  const flow = useMemo(() => collaborationFlow(detail), [detail]);
   const collaborative = flow.activities.length > 1;
   const single = !collaborative ? flow.activities[0] : undefined;
   const engineer = detail.participants.find((item) => item.id === single?.agentId);
@@ -66,11 +53,15 @@ function TaskView({ detail }: { detail: TaskDetail }) {
   );
   const review = pending.find((item) => item.kind === InteractionKind.APPROVAL) ?? pending[0];
   const select = useCallback((activity: FlowActivity) => {
-    setTarget({ activity });
+    setTarget(
+      activity.kind === "approval"
+        ? { activityId: activity.id, interactionId: currentInteraction(activity.interactions)?.id }
+        : { contextId: activity.contextId },
+    );
     setOpen(true);
   }, []);
-  const selectCall = useCallback((callKey: string) => {
-    setTarget({ callKey });
+  const selectConnection = useCallback((connection: ConnectionBundle) => {
+    setTarget({ connectionId: connection.id });
     setOpen(true);
   }, []);
   const state = summary?.state ?? ActivityState.UNSPECIFIED;
@@ -89,33 +80,19 @@ function TaskView({ detail }: { detail: TaskDetail }) {
             state={state}
             onClick={
               review
-                ? () =>
-                    select({
-                      id: review.id,
-                      agentId: review.agentId,
-                      taskId: review.taskId,
-                      kind: "approval",
-                      root: false,
-                      final: true,
-                      returns: [],
-                      interaction: review,
-                    })
+                ? () => {
+                    setTarget({ interactionId: review.id });
+                    setOpen(true);
+                  }
                 : undefined
             }
           />
           <BackgroundTasks
             runs={detail.runs}
-            onSelect={(run) =>
-              select({
-                id: `task:${run.taskId}`,
-                taskId: run.taskId,
-                agentId: run.agentId,
-                kind: "execution",
-                root: false,
-                final: true,
-                returns: [],
-              })
-            }
+            onSelect={(run) => {
+              setTarget({ taskId: run.taskId, contextId: run.contextId });
+              setOpen(true);
+            }}
           />
         </div>
       </div>
@@ -123,11 +100,16 @@ function TaskView({ detail }: { detail: TaskDetail }) {
         <Collaboration
           participants={detail.participants}
           flow={flow}
-          rootState={state}
-          selected={target.activity?.id ?? ""}
-          selectedCall={target.callKey ?? ""}
+          selected={
+            target.interactionId
+              ? (flow.activities.find((activity) =>
+                  activity.interactions.some((item) => item.id === target.interactionId),
+                )?.id ?? "")
+              : (target.activityId ?? (target.contextId ? instanceNodeId(target.contextId) : ""))
+          }
+          selectedConnection={target.connectionId ?? ""}
           onSelect={select}
-          onCall={selectCall}
+          onConnection={selectConnection}
         />
       ) : (
         single &&
@@ -148,7 +130,7 @@ function TaskView({ detail }: { detail: TaskDetail }) {
       {detail.answer && concluded(state) && !pending.length && (
         <TaskConclusion answer={detail.answer} collaborative={collaborative} />
       )}
-      <AgentDrawer detail={detail} target={target} open={open} onOpenChange={setOpen} />
+      <AgentDrawer detail={detail} flow={flow} target={target} open={open} onOpenChange={setOpen} />
     </div>
   );
 }
@@ -176,12 +158,16 @@ export function TasksPage() {
         tasks={list.data?.tasks ?? []}
         total={list.data?.totalSize ?? 0}
         paging={paging.controls(list.data?.nextPageToken)}
-        selectedId={selected}
+        selectedId={detail?.summary?.id ?? selected}
         selectedTitle={detail?.summary?.title}
         onSelect={(id) => navigate(`/tasks/${id}`)}
       />
       {detail ? (
-        <TaskView key={selected} detail={detail} />
+        <TaskView
+          key={`${detail.summary?.id}:${selected}`}
+          detail={detail}
+          focusTaskId={selected}
+        />
       ) : (
         <p className="flex items-center justify-center text-sm text-muted-foreground">
           {t(error || (list.data && !selected ? "task.noTasks" : "status.connecting"))}

@@ -1,5 +1,5 @@
 import { create, toJson } from "@bufbuild/protobuf";
-import { timestampFromDate, ValueSchema } from "@bufbuild/protobuf/wkt";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import {
   type ChangeControlService,
@@ -8,8 +8,9 @@ import {
   type Environment,
   Governance,
 } from "../../gen/agentos/governance/v1/change_pb.js";
-import type { ToolCatalog } from "../operations/catalog.js";
-import { callHash } from "../shared/change-digest.js";
+import { requiresChangeReview, type ToolCatalog } from "../operations/catalog.js";
+import { callHash, operationHash } from "../shared/change-digest.js";
+import { changeProposal } from "../shared/change-proposal.js";
 import type { ApprovalProvider } from "./provider.js";
 import { type ChangeStore, changeRequest } from "./store.js";
 
@@ -33,15 +34,15 @@ export function changeControl(
       split = local.indexOf("_"),
       service = local.slice(0, split),
       tool = local.slice(split + 1);
-    if (!catalog.projects.has(service))
-      throw new ConnectError("Unknown environment service", Code.PermissionDenied);
+    if (!catalog.projects.get(service)?.has(tool))
+      throw new ConnectError("Unknown environment tool", Code.PermissionDenied);
     return { name: local, service, tool };
   };
 
   async function get(id: string) {
     const row = await store.get(id),
       request = changeRequest(row);
-    const decision = await approvals.decision(row.ticket_id ?? "", id, row.plan_hash);
+    const decision = await approvals.decision(row.ticket_id ?? "", row.id, row.plan_hash);
     const state = row.claimed_at
       ? row.failed === null
         ? ChangeState.EXECUTING
@@ -50,8 +51,8 @@ export function changeControl(
           : ChangeState.SUCCEEDED
       : decision.rejected
         ? ChangeState.REJECTED
-        : row.expires_at.getTime() <= Date.now()
-          ? ChangeState.EXPIRED
+        : decision.canceled
+          ? ChangeState.CANCELED
           : row.failed !== null
             ? ChangeState.FAILED
             : decision.approved
@@ -59,15 +60,15 @@ export function changeControl(
               : ChangeState.PENDING;
     return {
       change: create(ChangeSchema, {
-        id,
+        id: row.id,
         environment,
-        request,
+        request: changeProposal(request),
         ticketId: row.ticket_id ?? "",
         ticketUrl: approvals.url(row.ticket_id ?? ""),
         state,
         reason: decision.reason,
+        blocker: decision.blocker,
         decidedBy: decision.actor,
-        expiresAt: timestampFromDate(row.expires_at),
       }),
       planHash: row.plan_hash,
     };
@@ -77,11 +78,28 @@ export function changeControl(
     async registerChange({ request }) {
       if (!request?.tool?.id || !request.tool.callId)
         throw new ConnectError("A native tool approval is required", Code.InvalidArgument);
-      call(request);
+      const operation = call(request);
+      if (!requiresChangeReview(catalog, operation.service, operation.tool))
+        throw new ConnectError(
+          "Platform management uses native permissions and audit without a work order",
+          Code.InvalidArgument,
+        );
+      if (
+        request.preparation?.operationHash !==
+        operationHash(request.tool.name, request.tool.args ?? {})
+      )
+        throw new ConnectError(
+          "Prepared plan differs from the proposed operation",
+          Code.InvalidArgument,
+        );
       const row = await store.register(
         request,
         callHash(request.engineer, request.tool.name, request.tool.args ?? {}),
         (id, hash) => approvals.create(id, hash, request),
+        async (row) => {
+          const decision = await approvals.decision(row.ticket_id ?? "", row.id, row.plan_hash);
+          return !decision.rejected && !decision.canceled;
+        },
       );
       return { result: await get(row.id) };
     },
@@ -113,7 +131,8 @@ export function changeControl(
           row.ticket_id ?? "",
           recorded.failed ?? failed,
           recorded.output,
-          !!recorded.claimed_at,
+          changeRequest(recorded).intent,
+          recorded.id,
         );
         await store.reported(id);
       }
@@ -123,7 +142,10 @@ export function changeControl(
 
   async function authorize(engineer: string, tool: string, args: object) {
     const [service = "", ...rest] = tool.split("_");
-    if (catalog.projects.get(service)?.get(rest.join("_")) === "read") return;
+    const name = rest.join("_");
+    if (!catalog.projects.get(service)?.has(name))
+      throw new ConnectError("Unknown environment tool", Code.PermissionDenied);
+    if (!requiresChangeReview(catalog, service, name)) return;
     const hash = callHash(
       engineer,
       `${environment.name}-${tool}`,

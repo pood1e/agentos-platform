@@ -3,6 +3,7 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "agentos/console/v1/pack.proto";
+import "agentos/console/v1/access.proto";
 import "agentos/console/v1/conversation.proto";
 import "agentos/console/v1/engineer.proto";
 import "agentos/console/v1/tool.proto";
@@ -18,6 +19,7 @@ import "kagent/api/v1alpha1/common.proto";
 
 // Workbench API. google.rpc.ErrorInfo.reason carries localization keys.
 service ConsoleService {
+  rpc GetAccessProfile(GetAccessProfileRequest) returns (GetAccessProfileResponse);
   rpc ListEngineers(ListEngineersRequest) returns (ListEngineersResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   // Sends the current operation tree, then again whenever it changes.

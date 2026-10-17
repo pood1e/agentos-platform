@@ -7,7 +7,8 @@
     "mcp": "MCP",
     "models": "模型接入",
     "environments": "环境",
-    "harnesses": "Harness"
+    "harnesses": "Harness",
+    "evaluation": "测评"
   },
   "add": "新增",
   "edit": "编辑",
@@ -101,5 +102,8 @@
     "No data for optional field": "未启用",
     "Yes": "是",
     "No": "否"
-  }
+  },
+  "knowledgeEvidence": "来源与执行依据",
+  "viewEvidenceTask": "查看执行任务",
+  "knowledgePlaceholder": "# 简短标题\n\n## 结论\n一句话说明已验证的经验。\n\n## 适用范围\n环境及前置条件。\n\n## 验证与限制\n验证方法及尚未覆盖的内容。\n\n## 来源\n相关任务或文档链接。"
 }

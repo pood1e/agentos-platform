@@ -14,4 +14,4 @@ spec:
       valueFrom:
         type: Secret
         name: {{ include "agentos.name" . }}-gateway
-        key: authorization
+        key: mcp-authorization

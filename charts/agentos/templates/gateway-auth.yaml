@@ -22,11 +22,33 @@ spec:
       policy:
         matchExpressions:
           - >-
-            (has(apiKey.service) && apiKey.service == 'agentos' && !('x-agentos-engineer' in request.headers)) ||
+            (has(apiKey.service) && apiKey.service == 'agentos' &&
+              request.path.matches('^/v1/(responses|chat/completions|messages|embeddings|models)(/.*)?$')) ||
+            (has(apiKey.service) && apiKey.service == 'platform' &&
+              apiKey.workspace == '{{ .Release.Namespace }}' && request.path in ['/mcp/team-sessions', '/mcp/kagent-collaboration']) ||
+            (has(apiKey.service) && apiKey.service == 'engineer' &&
+              apiKey.workspace == '{{ .Release.Namespace }}' &&
+              has(apiKey.tools) && apiKey.tools.exists(server, request.path == '/mcp/' + server)) ||
+            (has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '{{ .Release.Namespace }}' &&
+              request.path.startsWith('/mcp/')
+              {{- range .Values.global.agentos.environments }} && !request.path.startsWith('/mcp/{{ .name }}-'){{- end }}) ||
             (has(apiKey.environment) &&
               has(apiKey.engineer) && 'x-agentos-engineer' in request.headers &&
               apiKey.engineer == request.headers['x-agentos-engineer'] &&
               request.path.startsWith('/mcp/' + apiKey.environment + '-'))
+            {{- if .Values.automation.enabled }} ||
+            (has(apiKey.service) && apiKey.service == 'automation' &&
+              apiKey.workspace == '{{ .Release.Namespace }}' && has(apiKey.environment) &&
+              request.path == '/mcp/automation')
+            {{- end }}
+            {{- if .Values.evaluation.enabled }} ||
+            (has(apiKey.service) && apiKey.service == 'evaluator' &&
+              apiKey.workspace == '{{ .Values.evaluation.namespace }}' && has(apiKey.candidate) &&
+              request.path in ['/agentos.evaluation.v1.EvaluationExecutionService/Execute', '/agentos.evaluation.v1.EvaluationExecutionService/Complete']) ||
+            (has(apiKey.service) && apiKey.service == 'evaluation' &&
+              apiKey.workspace == '{{ .Values.evaluation.namespace }}' && has(apiKey.candidate) &&
+              request.path in ['/mcp/team-sessions', '/mcp/evaluation-collaboration'])
+            {{- end }}
     headerModifiers:
       request:
         remove: [authorization, x-api-key]

@@ -1,5 +1,5 @@
 global:
-  watchNamespaces: ["{{ agentos_namespace }}"]
+  watchNamespaces: ["{{ agentos_namespace }}"{% if agentos_evaluation_enabled %}, "{{ agentos_evaluation_namespace }}"{% endif %}]
 providers: null
 database:
   postgres:
@@ -45,4 +45,9 @@ grafana-mcp:
   enabled: false
 otel:
   traces:
-    enabled: false
+    enabled: {{ 'true' if langfuse_enabled else 'false' }}
+    endpoint: http://langfuse-collector.{{ langfuse_namespace }}.svc:4317
+    protocol: grpc
+  capture:
+    messageContent: false
+    rawApiBodies: false

@@ -81,3 +81,15 @@ message InvokeSessionOutput {
   lf.a2a.v1.TaskState state = 4;
   string text = 5;
 }
+
+// Native kagent MCP structs from go/core/internal/mcp/server.go.
+message SessionSummary {
+  string id = 1;
+  string agent = 2;
+  string state = 3;
+}
+
+message ListSessionsOutput {
+  repeated SessionSummary sessions = 1;
+  string next_page_token = 2;
+}

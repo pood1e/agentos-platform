@@ -22,6 +22,8 @@ export function reviewDelegations(tree: TaskTree) {
         targetAgentId: review.agentId,
         sourceTaskId: source.id,
         targetTaskId: review.id,
+        sourceContextId: source.contextId,
+        targetContextId: review.contextId,
         requestId: interaction.requestId,
         state: runState(review),
         startedAt: stamp(review.createdAt),

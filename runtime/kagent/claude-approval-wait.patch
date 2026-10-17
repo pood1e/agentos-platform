@@ -1,0 +1,95 @@
+--- a/go/harness/claude/config/config.go
++++ b/go/harness/claude/config/config.go
+@@ -91,7 +91,9 @@
+ 	URL             string            `json:"url"`
+ 	Headers         map[string]string `json:"headers,omitempty"`
+ 	RequireApproval bool              `json:"require_approval,omitempty"`
+-	Tools           []string          `json:"tools,omitempty"`
++	// TimeoutMillis is adapter-owned; it is not part of the compiled configuration.
++	TimeoutMillis int64    `json:"-"`
++	Tools         []string `json:"tools,omitempty"`
+ }
+ 
+ // Agent is one compiler-owned local Claude subagent passed through --agents.
+@@ -196,13 +198,14 @@
+ 		return nil, nil
+ 	}
+ 	type nativeMCPServer struct {
+-		Type    string            `json:"type"`
+-		URL     string            `json:"url"`
+-		Headers map[string]string `json:"headers,omitempty"`
++		Type          string            `json:"type"`
++		URL           string            `json:"url"`
++		Headers       map[string]string `json:"headers,omitempty"`
++		TimeoutMillis int64             `json:"timeout,omitempty"`
+ 	}
+ 	servers := make(map[string]nativeMCPServer, len(c.MCPServers))
+ 	for name, server := range c.MCPServers {
+-		servers[name] = nativeMCPServer{Type: server.Type, URL: server.URL, Headers: server.Headers}
++		servers[name] = nativeMCPServer{Type: server.Type, URL: server.URL, Headers: server.Headers, TimeoutMillis: server.TimeoutMillis}
+ 	}
+ 	raw, err := json.Marshal(struct {
+ 		Servers map[string]nativeMCPServer `json:"mcpServers"`
+--- a/go/harness/claude/internal/adapter/adapter.go
++++ b/go/harness/claude/internal/adapter/adapter.go
+@@ -10,6 +10,7 @@
+ 	"path/filepath"
+ 	"slices"
+ 	"strings"
++	"time"
+ 
+ 	"github.com/kagent-dev/kagent/go/core/pkg/agentplugins"
+ 	"github.com/kagent-dev/kagent/go/harness/claude/config"
+@@ -19,7 +20,12 @@
+ 	"github.com/kagent-dev/kagent/go/pkg/tracing"
+ )
+ 
+-const approvalMCPServerName = "kagent_hitl"
++const (
++	approvalMCPServerName = "kagent_hitl"
++	// Match Claude's default tool budget explicitly so its shorter HTTP request
++	// and idle timers do not expire while the runtime is paused for a human.
++	approvalWaitTimeout = 100_000_000 * time.Millisecond
++)
+ 
+ // Input contains compiler output and Actor-owned locations used to construct
+ // the Claude driver.
+@@ -113,6 +119,7 @@
+ 		maps.Copy(mcpServers, cfg.MCPServers)
+ 		mcpServers[approvalMCPServerName] = config.MCPServer{
+ 			Type: "http", URL: approvalBroker.URL(), Headers: approvalBroker.Headers(),
++			TimeoutMillis: approvalWaitTimeout.Milliseconds(),
+ 		}
+ 		cfg.MCPServers = mcpServers
+ 	}
+--- a/go/harness/claude/internal/adapter/adapter_test.go
++++ b/go/harness/claude/internal/adapter/adapter_test.go
+@@ -119,9 +119,10 @@
+ 	}
+ 	var materialized struct {
+ 		Servers map[string]struct {
+-			Type    string            `json:"type"`
+-			URL     string            `json:"url"`
+-			Headers map[string]string `json:"headers"`
++			Type          string            `json:"type"`
++			URL           string            `json:"url"`
++			Headers       map[string]string `json:"headers"`
++			TimeoutMillis int64             `json:"timeout"`
+ 		} `json:"mcpServers"`
+ 	}
+ 	if err := json.Unmarshal(mcpConfig, &materialized); err != nil {
+@@ -131,6 +132,14 @@
+ 	if approvalServer.Type != "http" || !strings.HasPrefix(approvalServer.URL, "http://127.0.0.1:") ||
+ 		!strings.HasPrefix(approvalServer.Headers["Authorization"], "Bearer ") {
+ 		t.Fatalf("private approval MCP server = %#v", approvalServer)
++	}
++	if approvalServer.TimeoutMillis != 100_000_000 {
++		t.Fatalf("approval timeout = %d; human waiting must not inherit the HTTP request deadline", approvalServer.TimeoutMillis)
++	}
++	for _, name := range []string{"protected", "readonly"} {
++		if materialized.Servers[name].TimeoutMillis != 0 {
++			t.Fatalf("operation server %q inherited the human approval timeout", name)
++		}
+ 	}
+ 	if len(materialized.Servers) != 3 {
+ 		t.Fatalf("materialized MCP servers = %#v", materialized.Servers)

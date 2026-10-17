@@ -38,7 +38,23 @@
 {{- end -}}
 {{- if $write -}}
 {{- $changeServer := dict "kind" "RemoteMCPServer" "name" (printf "%s-changes" $server.name) -}}
-{{- $bindings = append $bindings (dict "mcp" (dict "server" $changeServer "tools" $write "requireApproval" (eq $managed.governance "approval"))) -}}
+{{- $toolset := index $.root.Values.global.agentos.toolsets $project -}}
+{{- $approval := $toolset.write | default list -}}
+{{- if hasKey $toolset "approval" -}}
+{{- $approval = $toolset.approval -}}
+{{- end -}}
+{{- range $requiresReview := list false true -}}
+{{- $selected := list -}}
+{{- range $tool := $write -}}
+{{- $name := trimPrefix (printf "%s-%s_" $environment $project) $tool -}}
+{{- if eq $requiresReview (and (eq $managed.governance "approval") (has $name $approval)) -}}
+{{- $selected = append $selected $tool -}}
+{{- end -}}
+{{- end -}}
+{{- if $selected -}}
+{{- $bindings = append $bindings (dict "mcp" (dict "server" $changeServer "tools" $selected "requireApproval" $requiresReview)) -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

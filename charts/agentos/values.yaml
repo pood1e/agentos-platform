@@ -14,6 +14,20 @@ image:
 imagePullSecrets: []
 pack:
   image: ''
+automation:
+  enabled: false
+evaluation:
+  enabled: false
+  namespace: ''
+  kagentURL: ''
+  langfuseURL: ''
+  langfuseNamespace: ''
+  langfuseSecret: langfuse-project
+  feedbackURL: ''
+  feedbackSecret: evaluation-feedback
+  baseline: {}
+  judge:
+    spec: {}
 kagent:
   endpoint: http://kagent-controller:8083
   userId: agentos
@@ -25,14 +39,12 @@ console:
     limits:
       cpu: '1'
       memory: 768Mi
-teamSessions:
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: '1'
-      memory: 512Mi
+authorization:
+  jwksUrl: ''
+  groupClaim: groups
+  viewerGroups: [agentos-viewers]
+  operatorGroups: [agentos-operators]
+  administratorGroups: [agentos-administrators]
 ingress:
   host: ''
   tlsSecret: agentos-ingress
@@ -82,7 +94,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: registry.example.com/agentos/claude-harness@sha256:4ed628e4dd5f211d22dfe83ebb4d6d65d7e6ff2ef1596c8257f22ccc52b29b6c
+      image: registry.example.com/agentos/claude-harness@sha256:6878f6361e9f4d3d9d37463ba5347086fb1be8e77a48ca87166b83572e225239
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
@@ -119,9 +131,11 @@ oauth2-proxy:
     scope: openid profile email
     redirect-url: /oauth2/callback
     reverse-proxy: 'true'
+    set-authorization-header: 'true'
     skip-provider-button: 'true'
     cookie-secure: 'true'
     cookie-samesite: lax
+    cookie-refresh: 2m
   serviceAccount:
     automountServiceAccountToken: false
   securityContext:
@@ -210,8 +224,8 @@ gateway:
         targets:
         - name: team-sessions
           static:
-            host: '{{ include "agentos.name" . }}-team-sessions'
-            port: 8081
+            host: '{{ include "agentos.name" . }}-console'
+            port: 8080
             path: /mcp
             policies:
               http: {requestTimeout: 10m}

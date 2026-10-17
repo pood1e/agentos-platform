@@ -35,7 +35,7 @@ def pinned(name):
 
 
 def render(path):
-    context = {**site, 'substrate_microvm_image': pinned('substrate_microvm_image')}
+    context = {**versions, **site, 'substrate_microvm_image': pinned('substrate_microvm_image')}
     return jinja2.Template(Path(path).read_text(), undefined=jinja2.StrictUndefined).render(context)
 
 
@@ -74,30 +74,39 @@ def check_bindings(templates, config):
     for template in templates:
         engineer = template['metadata']['name']
         profile = next((item for item in config['identities'] if item['name'] == engineer), None)
-        targets = [env for env in environments if profile and env['name'] in profile.get('environments', [e['name'] for e in environments])]
-        bindings = [binding['mcp'] for binding in template['spec']['tools']]
-        external = [binding for binding in bindings if binding['server']['name'] not in ('team-sessions', 'kagent-collaboration')]
-        expected = 0
+        expected = {}
         if profile:
-            for project, access in profile['services'].items():
-                writes = toolsets[project].get('write', []) + (toolsets[project].get('management', []) if access == 'manage' else [])
-                expected += 1 + bool(access in ('operate', 'manage') and writes)
-        assert len(external) == len(targets) * expected, f'{engineer}: unexpected environment bindings'
-        for binding in external:
-            writing = binding['server']['name'].endswith('-changes')
-            server = binding['server']['name'].removesuffix('-changes')
-            environment = next(env for env in targets if server.startswith(env['name'] + '-'))
-            project = server.removeprefix(environment['name'] + '-').removesuffix('-' + engineer)
-            access = profile['services'][project]
-            tiers = ['write', 'management'] if writing else ['readOnly', 'managementReadOnly']
-            expected_tools = [tool for tier in tiers if access == 'manage' or tier in ('readOnly', 'write') for tool in toolsets[project].get(tier, [])]
-            assert binding['requireApproval'] == (writing and environment['governance'] == 'approval'), f'{engineer}: approval differs from governance'
-            assert sorted(tool.removeprefix(f"{environment['name']}-{project}_") for tool in binding['tools']) == sorted(expected_tools), f'{engineer}: tools differ from tiers'
+            for env in environments:
+                if env['name'] not in profile.get('environments', [item['name'] for item in environments]):
+                    continue
+                for project, access in profile['services'].items():
+                    tools = toolsets[project]
+                    server = f"{env['name']}-{project}-{engineer}"
+                    read = tools.get('readOnly', []) + (tools.get('managementReadOnly', []) if access == 'manage' else [])
+                    write = tools.get('write', []) + (tools.get('management', []) if access == 'manage' else [])
+                    for tool in read:
+                        expected[(server, f"{env['name']}-{project}_{tool}")] = False
+                    if access in ('operate', 'manage'):
+                        reviewed = tools.get('approval', tools.get('write', []))
+                        for tool in write:
+                            expected[(server + '-changes', f"{env['name']}-{project}_{tool}")] = env['governance'] == 'approval' and tool in reviewed
+        actual = {}
+        for binding in template['spec']['tools']:
+            mcp = binding['mcp']
+            server = mcp['server']['name']
+            if server in ('team-sessions', 'kagent-collaboration'):
+                continue
+            for tool in mcp['tools']:
+                key = (server, tool)
+                assert key not in actual, f'{engineer}: duplicate tool binding'
+                actual[key] = mcp['requireApproval']
+        assert actual == expected, f'{engineer}: environment scope or native review policy differs'
 
 
 for name, source, overrides, presets, config in [
     ('platform', chart, ['-f', values], system_presets, None),
     ('alternate', chart, ['-f', values, '--namespace', 'operations'], system_presets, None),
+    ('evaluation', chart, ['-f', values, '-f', 'tests/fixtures/evaluation-values.yaml'], system_presets, None),
     ('solution', solution, ['--namespace', 'agentos'], system_presets | solution_presets, solution_values),
     ('direct-only', solution, ['--namespace', 'agentos', '--set-json', f'global.agentos.environments={direct_only}'], system_presets | solution_presets,
      {**solution_values, 'environments': json.loads(direct_only)}),
@@ -108,6 +117,9 @@ for name, source, overrides, presets, config in [
     docs = [doc for doc in yaml.safe_load_all(manifest) if doc]
     identities = [(doc['apiVersion'], doc['kind'], doc['metadata'].get('namespace', ''), doc['metadata']['name']) for doc in docs]
     assert len(identities) == len(set(identities)), f'{name}: duplicate resources'
+    for policy in [doc for doc in docs if doc['kind'] == 'AgentgatewayPolicy' and 'traffic' in doc['spec']]:
+        targets = policy['spec'].get('targetRefs', []) + policy['spec'].get('targetSelectors', [])
+        assert all(target['kind'] in {'Gateway', 'HTTPRoute', 'GRPCRoute', 'ListenerSet', 'InferencePool'} for target in targets), f'{name}: traffic policy targets an unsupported resource'
     gateway_secret = next(doc for doc in docs if doc['kind'] == 'Secret' and doc['metadata']['name'] == 'agentos-gateway')
     token = base64.b64decode(gateway_secret['data']['api-key'])
     keys = next(doc for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'agentos-gateway-keys')
@@ -128,14 +140,20 @@ for name, source, overrides, presets, config in [
     platform_bindings = [binding['mcp'] for binding in assistant['spec']['tools'] if binding['mcp']['server']['name'] == 'team-sessions']
     assert len(platform_bindings) == 1 and set(platform_bindings[0]['tools']) == {'delegate_coordinator', 'search_knowledge'}, 'Chat assistant has unrestricted delegation tools'
     assert all('agentos.dev/display-name' not in doc['metadata'].get('annotations', {}) for doc in templates)
-    team = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-team-sessions'))
-    env = {item['name']: item for item in team['spec']['template']['spec']['containers'][0]['env']}
+    api = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-console'))
+    assert api['spec']['strategy'] == {'type': 'Recreate'}
+    container = api['spec']['template']['spec']['containers'][0]
+    assert container['command'] == ['node', 'build/server/platform/main.js']
+    env = {item['name']: item for item in container['env']}
     assert env['AGENTOS_GATEWAY_URL']['value'].startswith('http://agentos-gateway.')
     assert env['AGENTOS_GATEWAY_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'api-key'
-    role = next(doc for doc in docs if doc['kind'] == 'Role' and doc['metadata']['name'].endswith('-team-sessions'))
-    assert role['rules'] == [{'apiGroups': ['agentgateway.dev'], 'resources': ['agentgatewaybackends'], 'verbs': ['list']}]
+    assert env['AGENTOS_MCP_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'token'
+    assert not any(doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-team-sessions') for doc in docs)
+    workspace = next(doc for doc in docs if doc['kind'] == 'AgentgatewayBackend' and doc['metadata']['name'] == 'team-sessions')
+    target = workspace['spec']['mcp']['targets'][0]['static']
+    assert target['host'] == api['metadata']['name'] and target['port'] == 8080
     policy = next(doc for doc in docs if doc['kind'] == 'NetworkPolicy' and doc['metadata']['name'].endswith('-gateway'))
-    assert any(peer.get('podSelector', {}).get('matchLabels', {}).get('app.kubernetes.io/component') == 'team-sessions' for rule in policy['spec']['ingress'] for peer in rule['from'])
+    assert any(peer.get('podSelector', {}).get('matchLabels', {}).get('app.kubernetes.io/component') == 'console' for rule in policy['spec']['ingress'] for peer in rule['from'])
     assert not any(doc['kind'] == 'Namespace' for doc in docs), 'Agent chart owns a target namespace'
     if config:
         check_bindings(templates, config)
@@ -152,7 +170,7 @@ for name, source, overrides, presets, config in [
         assert not any(doc['kind'] == 'HTTPRoute' and doc['metadata']['name'].endswith('-skill-repository') for doc in docs)
     subprocess.run(['.cache/bin/kubeconform', '-strict', '-summary', '-kubernetes-version', '1.37.1', '-schema-location', 'default', '-schema-location', str(cache) + '/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json', str(path)], check=True)
 
-for invalid in [['--set', 'image.digest=latest'], ['--set', 'pack.image=latest'], ['--set', 'managedEnvironments={env}'], ['--set', 'gateway.skillRepository.host=git.example.test']]:
+for invalid in [['--set', 'image.digest=latest'], ['--set', 'pack.image=latest'], ['--set', 'managedEnvironments={env}'], ['--set', 'gateway.skillRepository.host=git.example.test'], ['--set', 'evaluation.enabled=true'], ['--set', 'evaluation.unrecognized=true']]:
     result = subprocess.run([helm, 'template', 'invalid', chart, '-f', values, *invalid], capture_output=True)
     assert result.returncode != 0, f'Invalid values were accepted: {invalid}'
 

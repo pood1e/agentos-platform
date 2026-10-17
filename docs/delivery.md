@@ -11,7 +11,8 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
 | `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness 镜像，推送到 `$CI_REGISTRY_IMAGE` |
-| `release` | 仅默认分支：打包带镜像摘要的平台 Chart，发布到项目的 Helm Package Registry，已发布版本不覆盖 |
+| `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按 Git 提交固定 |
+| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表；功能分支版本追加提交摘要 |
 
 仓库内的镜像以摘要固定、注册表用占位符：Chart 值使用 `registry.example.com/agentos`，部署变量使用 `agentos_image_registry`。
 发布时占位符替换为 `$CI_REGISTRY_IMAGE`。运行时镜像更新分两步：运行时作业构建出新摘要后，在 `deploy/vars.yaml` 与
@@ -47,8 +48,9 @@ all:
 | `agentos_domain` | 控制台域名 |
 | `agentos_image_registry` | 平台运行时镜像所在的注册表路径，即构建时的 `$CI_REGISTRY_IMAGE` |
 | `dns_zone` | Cloudflare 托管的 DNS 区域，用于域名记录与 ACME DNS-01 |
-| `app_chart_repository` | 应用 Chart 所在的 Helm 仓库地址 |
+| `app_chart_repository` | 应用 Chart 所在的 OCI 仓库，如 `oci://registry.example.com/team/platform/charts` |
 | `app_chart`、`app_chart_version` | 应用 Chart 名称与版本，默认平台 Chart `agentos` 与仓库内版本；方案部署填方案 Chart |
+| `app_release_name` | Helm 发布名称，默认 `agentos` |
 | `app_values` | 应用 Chart 的值：入口域名、OIDC、模型、`global.agentos` 等 |
 | `agentos_namespace` | 平台命名空间，默认 `agentos` |
 | `node_hosts` | 可选，节点 `/etc/hosts` 追加的 `{name, address}` |

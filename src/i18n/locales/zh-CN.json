@@ -75,7 +75,7 @@
     "reject": "拒绝执行",
     "submitAnswer": "提交回答",
     "answerPlaceholder": "请输入回答",
-    "submitFailed": "审批已过期或提交失败，请刷新后核对当前状态。",
+    "submitFailed": "审批提交失败，请刷新后核对当前状态。",
     "operationsApproved": "操作已批准",
     "operationsRejected": "操作已拒绝"
   },
@@ -88,10 +88,12 @@
     "searchPlaceholder": "搜索任务…",
     "noMatches": "没有匹配的任务",
     "noTasks": "还没有任务",
-    "notFound": "任务不存在或已不可见。"
+    "notFound": "任务不存在或已不可见。",
+    "expandContent": "展开全文",
+    "collapseContent": "收起全文"
   },
   "graph": {
-    "title": "协作过程",
+    "title": "协作图",
     "fit": "适应画布",
     "zoomIn": "放大",
     "zoomOut": "缩小",
@@ -103,7 +105,11 @@
     "requestApproval": "请求审批",
     "review": "提交审核",
     "resumeExecution": "继续执行",
-    "requestInput": "请求输入"
+    "requestInput": "请求输入",
+    "ticket": "工单 #{{id}}",
+    "rounds": "{{count}} 轮",
+    "join": "汇合",
+    "reuseResult": "复用结果"
   },
   "drawer": {
     "title": "执行详情",
@@ -111,7 +117,13 @@
     "result": "执行结果",
     "loading": "正在加载执行详情…",
     "unavailable": "暂时无法加载执行详情。",
-    "retry": "重试"
+    "retry": "重试",
+    "execution": "执行记录",
+    "rounds": "往返记录",
+    "roundNumber": "第 {{number}} 轮",
+    "approvals": "审批记录",
+    "executionNumber": "第 {{number}} 次执行",
+    "waitingExecution": "等待实例开始执行。"
   },
   "common": {
     "close": "关闭"
@@ -230,7 +242,7 @@
     "unobserved": "状态未上报"
   },
   "interaction": {
-    "stale": "该请求已被处理或已过期，请核对当前状态。",
+    "stale": "该请求已被处理，请核对当前状态。",
     "invalidAnswer": "回答与当前问题不匹配，请检查后重试。"
   },
   "request": {
@@ -250,7 +262,20 @@
       "EXECUTING": "执行中",
       "SUCCEEDED": "已完成",
       "FAILED": "执行失败",
-      "EXPIRED": "已过期"
+      "EXPIRED": "已过期",
+      "CANCELED": "已关闭"
+    },
+    "plan": {
+      "impact": "影响分析",
+      "validation": "验证计划",
+      "rollback": "回退计划",
+      "simulation": "仿真验证与适用边界",
+      "source": "查看仿真任务"
+    },
+    "blockers": {
+      "ASSESSMENT_REQUIRED": "方案缺少影响、验证、回退或仿真证据，尚不能执行。",
+      "PLAN_CHANGED": "方案在批准后发生变化，需要重新审批。",
+      "NORMAL_CHANGE_REQUIRED": "当前执行流程只支持正常变更。"
     }
   },
   "harness": {

@@ -11,6 +11,7 @@ import type { OperationsConfig } from "../../gen/agentos/governance/v1/change_pb
 import type { KagentClients } from "../kagent/clients.js";
 import type { BindingView } from "../operations/bindings.js";
 import { changes } from "../operations/views.js";
+import { accessProfile } from "../platform/authorization.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
@@ -20,6 +21,7 @@ import { invalid, notFound, unavailable } from "../shared/errors.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
 import type { TemplateWriter } from "./template-writer.js";
+import { ticketReferences } from "./ticket-references.js";
 import { watch } from "./watch.js";
 
 export interface ConsoleDependencies {
@@ -31,6 +33,7 @@ export interface ConsoleDependencies {
   roleDefaults: RoleDefaults;
   replaceTemplate: TemplateWriter;
   pack: Pack;
+  platformTools?: Parameters<typeof roleCommands>[5];
 }
 
 function required(role?: RoleDefinition): RoleDefinition {
@@ -47,14 +50,24 @@ export function consoleService({
   roleDefaults,
   replaceTemplate,
   pack,
+  platformTools,
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const index = sync.index;
   const messages = messageCommands(sync, clients);
-  const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate);
+  const roles = roleCommands(
+    clients,
+    namespace,
+    access,
+    roleDefaults,
+    replaceTemplate,
+    platformTools,
+  );
+  const tickets = ticketReferences(sync, operations);
   const ready = () => {
     if (!sync.healthy()) throw unavailable();
   };
   return {
+    getAccessProfile: (_request, context) => ({ profile: context.values.get(accessProfile) }),
     listEngineers() {
       ready();
       return { engineers: engineers(index) };
@@ -64,11 +77,17 @@ export function consoleService({
       return listTasks(index, request);
     },
     watchTask(request, context) {
-      return watch(sync, WatchTaskResponseSchema, context.signal, () => {
-        const task = taskDetail(index, request.taskId);
-        if (!task) throw notFound("task.notFound");
-        return create(WatchTaskResponseSchema, { task });
-      });
+      return watch(
+        sync,
+        WatchTaskResponseSchema,
+        context.signal,
+        async () => {
+          const task = taskDetail(index, request.taskId);
+          if (!task) throw notFound("task.notFound");
+          return create(WatchTaskResponseSchema, { task: await tickets(task) });
+        },
+        true,
+      );
     },
     async getTaskRun(request) {
       ready();
@@ -94,6 +113,7 @@ export function consoleService({
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
     explainTools: (request) => roles.explain(request.engineer),
-    listChanges: (request) => changes(sync, operations, request.taskId, request.requestId),
+    listChanges: (request, context) =>
+      changes(sync, operations, request.taskId, request.requestId, { signal: context.signal }),
   };
 }

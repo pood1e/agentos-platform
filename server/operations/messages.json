@@ -1,0 +1,10 @@
+{
+  "zh": {
+    "rejected": "审批人已拒绝本次变更，未执行操作。",
+    "closed": "工单已关闭，本次操作未执行。"
+  },
+  "en": {
+    "rejected": "The approver rejected this change. No operation was executed.",
+    "closed": "The work order was closed. No operation was executed."
+  }
+}

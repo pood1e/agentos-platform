@@ -12,8 +12,16 @@
 {% for view in ['readOnly', 'write'] %}
 {% set allowed = reads if view == 'readOnly' else writes %}
 {% if allowed and (view == 'readOnly' or access in ['operate', 'manage']) %}
-{% set selected = allowed | map('regex_replace', '^', service + '_') | list %}
-{% set unused = bindings.append({'mcp': {'server': {'kind': 'RemoteMCPServer', 'name': server + ('-changes' if view == 'write' else '')}, 'tools': selected, 'requireApproval': view == 'write' and environment_governance == 'approval'}}) %}
+{% for reviewed in [false, true] %}
+{% set review_tools = tools.approval if 'approval' in tools else tools.write | default([]) %}
+{% set selected = [] %}
+{% for tool in allowed if reviewed == (view == 'write' and environment_governance == 'approval' and tool in review_tools) %}
+{% set unused = selected.append(service + '_' + tool) %}
+{% endfor %}
+{% if selected %}
+{% set unused = bindings.append({'mcp': {'server': {'kind': 'RemoteMCPServer', 'name': server + ('-changes' if view == 'write' else '')}, 'tools': selected, 'requireApproval': reviewed}}) %}
+{% endif %}
+{% endfor %}
 {% endif %}
 {% endfor %}
 {% endif %}

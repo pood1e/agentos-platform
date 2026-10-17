@@ -25,6 +25,7 @@ export const runSummary = (entry: TaskEntry, background: boolean): TaskRun =>
   create(TaskRunSchema, {
     taskId: entry.id,
     agentId: entry.agentId,
+    contextId: entry.contextId,
     state: runState(entry),
     background,
     updatedAt: stamp(entry.statusAt),

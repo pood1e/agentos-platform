@@ -2,6 +2,7 @@ import { GitBranch, Layers3, MessageCircle, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAccess } from "@/lib/access";
 import { usePack } from "@/lib/pack";
 import { Connection } from "./Connection.js";
 import { LanguageSelect } from "./LanguageSelect.js";
@@ -18,6 +19,7 @@ export function Topbar() {
   const navigate = useNavigate();
   const section = useLocation().pathname.split("/")[1] || "chat";
   const title = usePack().title || "AgentOS";
+  const access = useAccess();
   return (
     <header className="shrink-0 border-b bg-card px-4 sm:px-7">
       <div className="flex flex-wrap items-center gap-3 py-3 sm:gap-5 sm:py-4">
@@ -38,12 +40,14 @@ export function Topbar() {
           className="order-last shrink-0 lg:order-none"
         >
           <TabsList aria-label={t("navigation.main")}>
-            {sections.map(({ value, label, icon: Icon }) => (
-              <TabsTrigger key={value} value={value}>
-                <Icon className="hidden size-4 sm:block" />
-                {t(label)}
-              </TabsTrigger>
-            ))}
+            {sections
+              .filter(({ value }) => value !== "engineers" || access.data?.manage)
+              .map(({ value, label, icon: Icon }) => (
+                <TabsTrigger key={value} value={value}>
+                  <Icon className="hidden size-4 sm:block" />
+                  {t(label)}
+                </TabsTrigger>
+              ))}
           </TabsList>
         </Tabs>
         <div className="ml-auto flex items-center gap-2">

@@ -5,10 +5,21 @@ export async function fakeZammad() {
   const app = Fastify();
   const records = new Map<number, Ticket>();
   const histories = new Map<number, HistoryEntry[]>();
-  const notes = new Map<number, { id: number; subject: string; body: string }[]>();
+  const notes = new Map<
+    number,
+    { id: number; subject: string; body: string; message_id?: string }[]
+  >();
+  const uploaded: {
+    ticket_id: number;
+    subject: string;
+    body: string;
+    message_id?: string;
+    attachments?: { filename: string; data: string; "mime-type": string }[];
+  }[] = [];
   let created = 0,
     reported = 0,
     failResult = false;
+  let clock = Date.now();
   function update(id: number, fields: Partial<Ticket>, user: number) {
     const ticket = records.get(id);
     if (!ticket) throw new Error("Missing fixture ticket");
@@ -22,7 +33,7 @@ export async function fakeZammad() {
         value_from: String(previous ?? ""),
         value_to: String(value),
         created_by_id: user,
-        created_at: new Date().toISOString(),
+        created_at: new Date(++clock).toISOString(),
       });
     }
     Object.assign(ticket, fields);
@@ -30,15 +41,6 @@ export async function fakeZammad() {
     return ticket;
   }
   function decide(id: number, value: string, user: number, reason = "Scope and recovery verified") {
-    update(
-      id,
-      {
-        agentos_impact: "Lab only",
-        agentos_validation: "Read back",
-        agentos_rollback: "Delete lab object",
-      },
-      user,
-    );
     update(id, { agentos_decision: value, agentos_reason: reason }, user);
   }
   app.post("/api/v1/tickets/search", async (request) => {
@@ -47,17 +49,22 @@ export async function fakeZammad() {
     ).condition["ticket.agentos_change_key"].value;
     return [...records.values()].filter((ticket) => ticket.agentos_change_key === query);
   });
-  app.post("/api/v1/tickets", async (request) => {
-    const ticket = {
-      ...(request.body as Ticket),
-      id: ++created,
-      number: String(created),
-      created_by_id: 1,
-      state: "open",
-    };
-    records.set(ticket.id, ticket);
-    return ticket;
-  });
+  app.post<{ Body: Ticket & { article?: { body?: string } } }>(
+    "/api/v1/tickets",
+    async (request, reply) => {
+      if (!request.body.title?.trim() || !request.body.article?.body?.trim())
+        return reply.code(422).send({ error: "Title and article body are required" });
+      const ticket = {
+        ...request.body,
+        id: ++created,
+        number: String(created),
+        created_by_id: 1,
+        state: "open",
+      };
+      records.set(ticket.id, ticket);
+      return ticket;
+    },
+  );
   app.get<{ Params: { id: string } }>("/api/v1/tickets/:id", async (request) =>
     records.get(Number(request.params.id)),
   );
@@ -89,9 +96,15 @@ export async function fakeZammad() {
       failResult = false;
       return reply.code(503).send();
     }
-    const note = request.body as { ticket_id: number; subject: string; body: string };
+    const note = request.body as (typeof uploaded)[number];
+    uploaded.push(note);
     const entries = notes.get(note.ticket_id) ?? [];
-    const result = { id: ++reported, subject: note.subject, body: note.body };
+    const result = {
+      id: ++reported,
+      subject: note.subject,
+      body: note.body,
+      message_id: note.message_id,
+    };
     entries.push(result);
     notes.set(note.ticket_id, entries);
     return result;
@@ -104,6 +117,7 @@ export async function fakeZammad() {
     histories,
     created: () => created,
     reported: () => reported,
+    uploaded,
     failNextResult: () => {
       failResult = true;
     },
