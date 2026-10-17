@@ -1,10 +1,12 @@
+import { create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Role } from "../gen/a2a_pb.js";
+import { Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
 import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { DelegationKind, InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { millis } from "../server/read-model/decode/messages.js";
+import { ingest } from "../server/read-model/entry.js";
 import { listConversations } from "../server/read-model/views/conversation.js";
 import { engineers } from "../server/read-model/views/engineers.js";
 import { listTasks, taskDetail } from "../server/read-model/views/task.js";
@@ -12,6 +14,21 @@ import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent
 
 describe("task entries", () => {
   const index = fixtureIndex();
+
+  it.each([false, true])("reports runtime failure with partial output=%s", (partial) => {
+    const reason = "agent run failed: failed to initialize MCP session";
+    const task = create(TaskSchema, {
+      id: "failed-runtime",
+      status: {
+        state: TaskState.FAILED,
+        message: { role: Role.AGENT, parts: [{ content: { case: "text", value: reason } }] },
+      },
+      artifacts: partial
+        ? [{ parts: [{ content: { case: "text", value: "Starting the inspection" } }] }]
+        : [],
+    });
+    expect(ingest(task, "agentos/inspection").answer).toBe(reason);
+  });
 
   it("derives approved, rejected and answered decisions from native HITL records", () => {
     const approved = index.entry(ids.approved);
