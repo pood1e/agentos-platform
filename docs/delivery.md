@@ -65,6 +65,9 @@ all:
 
 凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。控制台页面和 RPC 直接访问；模型网关、MCP 与运维环境继续使用各自的机器凭据。升级应用后清理旧控制台 OIDC Secret。
 
+升级到 0.3 时，从站点平台值中移除 `authorization`、`oauth2-proxy`，并删除部署变量 `oidc_secret_file`；方案 Chart 的平台值位于 `app_values.agentos`。
+部署入口使用 `reset_values: true`，旧登录资源由 Helm 移除，OIDC Secret 在升级成功后清理。控制台访问者共享当前工作空间的操作与管理能力。
+
 ```sh
 python3 -m venv .cache/deploy-venv
 .cache/deploy-venv/bin/pip install -r deploy/requirements.txt
