@@ -3,6 +3,7 @@ stages: [verify, package, release]
 include:
   - local: ci/build.gitlab-ci.yml
   - local: ci/runtime.gitlab-ci.yml
+  - local: ci/langfuse.gitlab-ci.yml
 
 .shell:
   tags: [$AGENTOS_SHELL_RUNNER]
