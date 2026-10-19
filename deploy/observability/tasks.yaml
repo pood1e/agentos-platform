@@ -2,7 +2,6 @@
   ansible.builtin.assert:
     that:
       - langfuse_domain | default('') | length > 0
-      - langfuse_oidc_secret_file | default('') | length > 0
       - langfuse_admin_email | default('') | length > 0
 
 - name: Ensure observability namespace
@@ -15,15 +14,25 @@
 - name: Configure observability ingress
   ansible.builtin.import_tasks: ingress.yaml
 
-- name: Configure native Langfuse OIDC provider
+- name: Discover platform image pull credentials
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: agentos-registry
+    namespace: "{{ agentos_namespace }}"
+  register: langfuse_registry
+  no_log: true
+
+- name: Configure Langfuse image pull credentials
   kubernetes.core.k8s:
     definition:
       apiVersion: v1
       kind: Secret
-      metadata: {name: langfuse-oidc, namespace: "{{ langfuse_namespace }}"}
-      type: Opaque
-      stringData: "{{ lookup('ansible.builtin.file', langfuse_oidc_secret_file) | from_json }}"
+      metadata: {name: agentos-registry, namespace: "{{ langfuse_namespace }}"}
+      type: kubernetes.io/dockerconfigjson
+      data: "{{ langfuse_registry.resources[0].data }}"
   no_log: true
+  diff: false
 
 - name: Discover persisted project initialization credentials
   kubernetes.core.k8s_info:
@@ -153,6 +162,16 @@
       {{ lookup('ansible.builtin.template', 'observability/values.yaml.j2') | from_yaml
          | combine(langfuse_values | default({}), recursive=true) }}
   no_log: true
+
+- name: Retire Langfuse OIDC credentials
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Secret
+    name: langfuse-oidc
+    namespace: "{{ langfuse_namespace }}"
+    state: absent
+  no_log: true
+  diff: false
 
 - name: Restrict observability traffic
   kubernetes.core.k8s:

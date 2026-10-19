@@ -10,7 +10,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `verify` | 生成、构建、Biome / buf lint / tsc、单元测试（临时 PostgreSQL）与浏览器测试 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
-| `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness 镜像，推送到 `$CI_REGISTRY_IMAGE` |
+| `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness、Langfuse Web 镜像，推送到 `$CI_REGISTRY_IMAGE` |
 | `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按 Git 提交固定 |
 | `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表；功能分支版本追加提交摘要 |
 
@@ -78,3 +78,14 @@ ANSIBLE_CONFIG=deploy/ansible.cfg .cache/deploy-venv/bin/ansible-playbook deploy
 标签 `node`、`runtime`、`model`、`ingress`、`app` 可单独执行；更新应用使用 `--tags app`。不使用 Cloudflare 时跳过 `ingress`，自行准备域名解析与
 TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服务端 dry-run 校验 microVM 资源；在节点上执行
 `python3 deploy/verify-runtime.py <namespace>` 创建一次 microVM 沙箱，核验执行、挂起恢复后的文件与 KVM 进程。
+
+## Langfuse
+
+`--tags observability` 管理独立的 Langfuse 与 OpenTelemetry Collector。站点传入 `langfuse_enabled: true`、
+`langfuse_namespace`、`langfuse_domain` 和 `langfuse_admin_email`；镜像与 Chart 版本固定在 `deploy/vars.yaml`。
+Web 使用[共享会话镜像](../runtime/langfuse/README.md)，访问者直接使用预置运维账号的组织和项目权限，页面和内部 RPC 免登录。
+项目 API Key、采集身份与数据加密密钥继续保留。镜像拉取凭据从平台命名空间同步到观测命名空间。
+
+从 OIDC 部署升级时，删除站点变量 `langfuse_oidc_secret_file` 及 `langfuse_values.langfuse.auth.providers`，
+并删除 `additionalEnv` 中的 `AUTH_KEYCLOAK_ALLOW_ACCOUNT_LINKING`。站点覆盖值中的 `langfuse.web.image`
+使用新镜像及摘要；成功升级后清理旧的 `langfuse-oidc` Secret。

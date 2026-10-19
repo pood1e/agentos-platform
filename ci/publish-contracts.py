@@ -14,7 +14,7 @@ root = Path("dist/contracts")
 epoch = int(subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], text=True))
 bundle = root / "deployment.tar.gz"
 with bundle.open("wb") as target, gzip.GzipFile(fileobj=target, mode="wb", filename="", mtime=epoch) as compressed:
-    content = subprocess.check_output(["git", "archive", "--format=tar", "HEAD", "deploy", "environments", "charts", "ci", "docs", "LICENSE"])
+    content = subprocess.check_output(["git", "archive", "--format=tar", "HEAD", "deploy", "environments", "charts", "ci", "docs", "runtime/langfuse", "LICENSE"])
     compressed.write(content)
 files = [bundle, *root.glob("*.whl")]
 manifest = {

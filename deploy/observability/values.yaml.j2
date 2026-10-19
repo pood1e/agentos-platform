@@ -1,15 +1,10 @@
 langfuse:
   image: {tag: '{{ langfuse_version }}', pullPolicy: IfNotPresent}
-  features: {telemetryEnabled: false}
+  features: {telemetryEnabled: false, signUpDisabled: true}
   salt: {secretKeyRef: {name: langfuse-cryptography, key: salt}}
   encryptionKey: {secretKeyRef: {name: langfuse-cryptography, key: encryption-key}}
   auth:
     disableUsernamePassword: true
-    providers:
-      keycloak:
-        clientId: {secretKeyRef: {name: langfuse-oidc, key: client-id}}
-        clientSecret: {secretKeyRef: {name: langfuse-oidc, key: client-secret}}
-        issuer: {secretKeyRef: {name: langfuse-oidc, key: issuer}}
   nextauth:
     url: 'https://{{ langfuse_domain }}'
     secret: {secretKeyRef: {name: langfuse-cryptography, key: nextauth-secret}}
@@ -43,9 +38,11 @@ langfuse:
       valueFrom: {secretKeyRef: {name: langfuse-project, key: public-key}}
     - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
       valueFrom: {secretKeyRef: {name: langfuse-project, key: secret-key}}
-    - {name: AUTH_KEYCLOAK_ALLOW_ACCOUNT_LINKING, value: 'true'}
   web:
-    image: {tag: '{{ langfuse_version }}@sha256:b40241743c639226a4bcba90e8a4d7bcb3335bd9947f84034c99dd85e60580a2'}
+    image:
+      repository: '{{ agentos_image_registry }}/langfuse-web'
+      tag: '{{ langfuse_web_image_tag }}'
+      pullSecrets: [{name: agentos-registry}]
     resources:
       requests: {cpu: 250m, memory: 512Mi}
       limits: {cpu: '2', memory: 2Gi}
