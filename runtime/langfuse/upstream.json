@@ -1,5 +1,9 @@
 {
   "file": "/app/web/.next/server/chunks/_1otk8_j._.js",
   "sha256": "e08f19f779e7e9ba879f1a7fc5fa0cdf230dcdd64e53a0bef3ad8b864f66cba5",
-  "function": { "name": "i", "start": 225654, "end": 227427 }
+  "function": { "name": "i", "start": 225654, "end": 227427 },
+  "sdk": {
+    "file": "/app/node_modules/.pnpm/next-auth@4.24.15_patch_hash=298683aaa31566643f1899990a065b342ad777d8613f50a25ddc44dd46_2c193298961813df8d85e32a441219d8/node_modules/next-auth/core/routes/session.js",
+    "sha256": "ccfa6bb994774381de04c2d9289c7c7ce02a17e4245859b15ad917d7c6da0c00"
+  }
 }
