@@ -16,7 +16,7 @@ export interface ConsoleRoutes {
   staticRoot?: string;
   /** Solution pack assets served under /pack/. */
   packRoot?: string;
-  authorization?: Interceptor;
+  context?: Interceptor;
   evaluation?: ServiceImpl<typeof EvaluationService>;
   staging?: Interceptor;
 }
@@ -25,7 +25,7 @@ export async function registerConsole(app: FastifyInstance, routes: ConsoleRoute
   await app.register(fastifyConnectPlugin, {
     interceptors: [
       consoleErrors(app.log),
-      ...(routes.authorization ? [routes.authorization] : []),
+      ...(routes.context ? [routes.context] : []),
       createValidateInterceptor(),
       ...(routes.staging ? [routes.staging] : []),
     ],

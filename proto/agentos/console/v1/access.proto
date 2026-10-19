@@ -9,16 +9,6 @@ message AccessProfile {
   bool manage = 4;
 }
 
-message AuthorizationConfig {
-  string issuer = 1;
-  string audience = 2;
-  string jwks_url = 3;
-  repeated string viewer_groups = 4;
-  repeated string operator_groups = 5;
-  repeated string administrator_groups = 6;
-  string group_claim = 7;
-}
-
 message GetAccessProfileRequest {}
 message GetAccessProfileResponse {
   AccessProfile profile = 1;

@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/select";
 import { type Harness, HarnessSchema } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
 import { managementClient } from "../../lib/console.js";
+import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { localizedSchema, object, translateSchema } from "./connection-schema.js";
-import { harnessName, runtimeName } from "./HarnessPicker.js";
+import { harnessName } from "./HarnessPicker.js";
 import { SaveButton } from "./ResourceDialog.js";
 import { Failure } from "./ResourcePage.js";
 
@@ -114,6 +115,10 @@ export function HarnessEditor({
           <SelectContent>
             {runtimes.map((key) => (
               <SelectItem key={key} value={key}>
+                <HarnessIcon
+                  runtime={key}
+                  className="size-5 rounded-none border-0 bg-transparent"
+                />
                 {runtimeName(key)}
               </SelectItem>
             ))}

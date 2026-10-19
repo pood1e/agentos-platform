@@ -7,9 +7,6 @@ app.kubernetes.io/part-of: agentos
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end -}}
-{{- define "agentos.authService" -}}
-{{- include "oauth2-proxy.fullname" (index .Subcharts "oauth2-proxy") -}}
-{{- end -}}
 {{- define "agentos.securityContext" -}}
 runAsNonRoot: true
 runAsUser: 1000

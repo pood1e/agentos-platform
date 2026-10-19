@@ -51,7 +51,7 @@ all:
 | `app_chart_repository` | 应用 Chart 所在的 OCI 仓库，如 `oci://registry.example.com/team/platform/charts` |
 | `app_chart`、`app_chart_version` | 应用 Chart 名称与版本，默认平台 Chart `agentos` 与仓库内版本；方案部署填方案 Chart |
 | `app_release_name` | Helm 发布名称，默认 `agentos` |
-| `app_values` | 应用 Chart 的值：入口域名、OIDC、模型、`global.agentos` 等 |
+| `app_values` | 应用 Chart 的值：入口域名、模型、`global.agentos` 等 |
 | `agentos_namespace` | 平台命名空间，默认 `agentos` |
 | `node_hosts` | 可选，节点 `/etc/hosts` 追加的 `{name, address}` |
 
@@ -60,12 +60,10 @@ all:
 | `CLOUDFLARE_API_TOKEN` 或 `cloudflare_token_file` | DNS 记录与 ACME challenge |
 | `registry_config_file` | Docker JSON，创建镜像拉取凭据 `agentos-registry` |
 | `model_key_file` | 首次创建模型 API Key Secret `model-credentials` |
-| `oidc_secret_file` | JSON，含 `client-id`、`client-secret`、`cookie-secret`，创建 `agentos-oidc` |
 | `skill_repository_credential_file` | 可选，JSON，含只读 Git 仓库的 `Authorization` 请求头，创建 `agentos-skill-repository` |
 | `AGENTOS_CHART_USER`、`AGENTOS_CHART_TOKEN` | 可选，下载私有 Helm 包 |
 
-凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。OIDC 回调地址为 `https://<agentos_domain>/oauth2/callback`；cookie-secret 为
-32 个随机字节的 URL-safe base64，可用 `openssl rand -base64 32 | tr -- '+/' '-_'` 生成。
+凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。控制台页面和 RPC 直接访问；模型网关、MCP 与运维环境继续使用各自的机器凭据。升级应用后清理旧控制台 OIDC Secret。
 
 ```sh
 python3 -m venv .cache/deploy-venv

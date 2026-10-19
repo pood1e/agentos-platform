@@ -24,7 +24,6 @@ spec:
         app.kubernetes.io/component: console
       annotations:
         checksum/tools: {{ include (print $.Template.BasePath "/execution-tools.yaml") . | sha256sum }}
-        checksum/authorization: {{ include (print $.Template.BasePath "/authorization.yaml") . | sha256sum }}
         {{- if .Values.evaluation.enabled }}
         checksum/evaluation: {{ include (print $.Template.BasePath "/evaluation-config.yaml") . | sha256sum }}
         {{- end }}
@@ -69,10 +68,6 @@ spec:
             - {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
             {{- end }}
             - {name: AGENTOS_HOST, value: '0.0.0.0'}
-            - {name: AGENTOS_AUTH_CONFIG, value: /etc/agentos-authorization/authorization.json}
-            - name: AGENTOS_OIDC_AUDIENCE
-              valueFrom:
-                secretKeyRef: {name: {{ index .Values "oauth2-proxy" "config" "existingSecret" }}, key: client-id}
             - {name: AGENTOS_PORT, value: '8080'}
             - {name: AGENTOS_RELEASE, value: {{ include "agentos.name" . }}}
             - {name: KAGENT_URL, value: {{ .Values.kagent.endpoint | quote }}}
@@ -109,7 +104,6 @@ spec:
             {{- if .Values.evaluation.enabled }}
             - {name: evaluation, mountPath: /etc/agentos-evaluation, readOnly: true}
             {{- end }}
-            - {name: authorization, mountPath: /etc/agentos-authorization, readOnly: true}
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             {{- if .Values.global.agentos.environments }}
             - {name: operations, mountPath: /etc/agentos-operations, readOnly: true}
@@ -122,8 +116,6 @@ spec:
         - name: evaluation
           configMap: {name: {{ include "agentos.name" . }}-evaluation}
         {{- end }}
-        - name: authorization
-          configMap: {name: {{ include "agentos.name" . }}-authorization}
         - name: tools
           configMap: {name: {{ include "agentos.name" . }}-tools}
       {{- if .Values.pack.image }}

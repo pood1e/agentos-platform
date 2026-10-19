@@ -39,8 +39,6 @@ def render(path):
     return jinja2.Template(Path(path).read_text(), undefined=jinja2.StrictUndefined).render(context)
 
 
-subprocess.run([helm, 'repo', 'add', 'oauth2-proxy', 'https://oauth2-proxy.github.io/manifests'], check=True)
-subprocess.run([helm, 'dependency', 'build', chart, '--skip-refresh'], check=True)
 subprocess.run([helm, 'dependency', 'build', solution, '--skip-refresh'], check=True)
 subprocess.run([helm, 'lint', chart, '-f', values, '--strict'], check=True)
 subprocess.run([helm, 'lint', solution, '--strict'], check=True)
@@ -148,6 +146,11 @@ for name, source, overrides, presets, config in [
     assert env['AGENTOS_GATEWAY_URL']['value'].startswith('http://agentos-gateway.')
     assert env['AGENTOS_GATEWAY_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'api-key'
     assert env['AGENTOS_MCP_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'token'
+    assert not {'AGENTOS_AUTH_CONFIG', 'AGENTOS_OIDC_AUDIENCE'} & env.keys()
+    assert not any(doc['kind'] == 'Middleware' for doc in docs)
+    assert not any('oauth2-proxy' in doc['metadata']['name'] for doc in docs)
+    console_ingress = next(doc for doc in docs if doc['kind'] == 'Ingress' and doc['metadata']['name'].endswith('-console'))
+    assert 'traefik.ingress.kubernetes.io/router.middlewares' not in console_ingress['metadata'].get('annotations', {})
     assert not any(doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-team-sessions') for doc in docs)
     workspace = next(doc for doc in docs if doc['kind'] == 'AgentgatewayBackend' and doc['metadata']['name'] == 'team-sessions')
     target = workspace['spec']['mcp']['targets'][0]['static']
@@ -170,7 +173,7 @@ for name, source, overrides, presets, config in [
         assert not any(doc['kind'] == 'HTTPRoute' and doc['metadata']['name'].endswith('-skill-repository') for doc in docs)
     subprocess.run(['.cache/bin/kubeconform', '-strict', '-summary', '-kubernetes-version', '1.37.1', '-schema-location', 'default', '-schema-location', str(cache) + '/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json', str(path)], check=True)
 
-for invalid in [['--set', 'image.digest=latest'], ['--set', 'pack.image=latest'], ['--set', 'managedEnvironments={env}'], ['--set', 'gateway.skillRepository.host=git.example.test'], ['--set', 'evaluation.enabled=true'], ['--set', 'evaluation.unrecognized=true']]:
+for invalid in [['--set', 'image.digest=latest'], ['--set', 'pack.image=latest'], ['--set', 'managedEnvironments={env}'], ['--set', 'gateway.skillRepository.host=git.example.test'], ['--set', 'evaluation.enabled=true'], ['--set', 'evaluation.unrecognized=true'], ['--set', 'authorization.jwksUrl=https://id.example.test'], ['--set', 'oauth2-proxy.extraArgs.provider=oidc']]:
     result = subprocess.run([helm, 'template', 'invalid', chart, '-f', values, *invalid], capture_output=True)
     assert result.returncode != 0, f'Invalid values were accepted: {invalid}'
 

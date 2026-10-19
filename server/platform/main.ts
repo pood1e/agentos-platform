@@ -27,7 +27,7 @@ import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { startContinuations } from "../team-sessions/continuation.js";
 import { sessionTools } from "../team-sessions/tools.js";
-import { authorizationConfig, humanAuthorization } from "./authorization.js";
+import { workspaceContext } from "./access.js";
 import { automationTools } from "./automation.js";
 import { collaborationGuardrails } from "./guardrails.js";
 import { machineIdentities } from "./machine-identities.js";
@@ -120,7 +120,7 @@ const { alignRoles } = roleCommands(
   identities.bind,
 );
 await registerConsole(app, {
-  authorization: humanAuthorization(config.namespace, authorizationConfig()),
+  context: workspaceContext(config.namespace),
   ...services(activeClients),
   ...evaluation.routes,
   ready: sync.healthy,

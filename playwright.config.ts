@@ -31,7 +31,6 @@ export default defineConfig({
           reuseExistingServer: false,
           env: {
             AGENTOS_PORT: "8090",
-            AGENTOS_AUTH_DISABLED_FOR_TESTS: "true",
             AGENTOS_MCP_TOKEN: "playwright-team-token",
             KAGENT_URL: `http://127.0.0.1:${kagent.port}`,
             AGENTOS_GATEWAY_URL: `http://127.0.0.1:${kagent.control}`,

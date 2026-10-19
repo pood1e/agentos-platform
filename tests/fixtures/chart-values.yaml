@@ -2,8 +2,3 @@ image:
   digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 ingress:
   host: agentos.example.test
-authorization:
-  jwksUrl: https://id.example.test/realms/agentos/protocol/openid-connect/certs
-oauth2-proxy:
-  extraArgs:
-    oidc-issuer-url: https://id.example.test/realms/agentos

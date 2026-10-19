@@ -115,3 +115,7 @@ change-control 只保存方案摘要、工单关联、有效期、执行占用�
 
 Zammad 参考实现使用官方 REST API 与原生角色，工单组为 `AgentOS Changes`。方案登记后 1 小时内有效，批准后的执行准备窗口为 5 分钟，
 均由平台固定。
+
+## 运行时图标
+
+Harness 列表、选择器与编辑器共用运行时图标。kagent 沿用仓库内图标，Codex 使用 [OpenAI 开发者站图标](https://developers.openai.com/favicon.svg)，Claude Code 使用[官方文档图标](https://code.claude.com/docs/en/overview)；BYO 和未知运行时使用 Lucide Blocks。工具图标仍优先采用方案包配置。

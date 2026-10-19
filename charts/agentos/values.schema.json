@@ -275,37 +275,6 @@
       },
       "required": ["image", "model", "digest", "storage", "resources"]
     },
-    "oauth2-proxy": {
-      "type": "object",
-      "required": ["config", "extraArgs"],
-      "properties": {
-        "config": {
-          "type": "object",
-          "required": ["existingSecret"],
-          "properties": {
-            "existingSecret": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        },
-        "extraArgs": {
-          "type": "object",
-          "required": ["oidc-issuer-url"],
-          "properties": {
-            "provider": {
-              "type": "string",
-              "minLength": 1
-            },
-            "oidc-issuer-url": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^https://"
-            }
-          }
-        }
-      }
-    },
     "gateway": {
       "type": "object",
       "additionalProperties": false,
@@ -377,51 +346,6 @@
               "type": "string"
             }
           }
-        }
-      }
-    },
-    "authorization": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "jwksUrl",
-        "viewerGroups",
-        "operatorGroups",
-        "administratorGroups",
-        "groupClaim"
-      ],
-      "properties": {
-        "jwksUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "viewerGroups": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "uniqueItems": true
-        },
-        "operatorGroups": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "uniqueItems": true
-        },
-        "administratorGroups": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "uniqueItems": true
-        },
-        "groupClaim": {
-          "type": "string",
-          "minLength": 1
         }
       }
     },
@@ -571,11 +495,9 @@
     "harnesses",
     "knowledgeMemory",
     "embedding",
-    "oauth2-proxy",
     "gateway",
     "systemAgents",
-    "pack",
-    "authorization"
+    "pack"
   ],
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$defs": {

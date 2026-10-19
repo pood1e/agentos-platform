@@ -48,8 +48,6 @@ values['image'] = {'repository': registry, 'digest': digest}
 for harness in harnesses.values():
     harness['workload']['image'] = published(harness['workload']['image'])
 (chart / 'values.yaml').write_text(yaml.safe_dump(values, sort_keys=False))
-subprocess.run(['.cache/bin/helm', 'repo', 'add', 'oauth2-proxy', 'https://oauth2-proxy.github.io/manifests'], check=True)
-subprocess.run(['.cache/bin/helm', 'dependency', 'build', str(chart), '--skip-refresh'], check=True)
 subprocess.run(['.cache/bin/helm', 'package', str(chart), '--destination', 'dist'], check=True)
 release = {'version': info['version'], 'image': f'{registry}@{digest}'}
 release.update({name: published(image) for name, image in pins.items()})

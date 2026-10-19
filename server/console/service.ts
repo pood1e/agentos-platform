@@ -11,7 +11,7 @@ import type { OperationsConfig } from "../../gen/agentos/governance/v1/change_pb
 import type { KagentClients } from "../kagent/clients.js";
 import type { BindingView } from "../operations/bindings.js";
 import { changes } from "../operations/views.js";
-import { accessProfile } from "../platform/authorization.js";
+import { accessProfile } from "../platform/access.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";

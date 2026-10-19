@@ -4,7 +4,7 @@ import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import type { ConsoleRoutes } from "../console/app.js";
 import type { ResourceStore } from "../management/resources.js";
-import { accessProfile } from "../platform/authorization.js";
+import { accessProfile } from "../platform/access.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { configurationDraft } from "./draft.js";
 import type { candidateDrafts } from "./service.js";

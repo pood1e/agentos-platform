@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "agentos.name" . }}-authorization
-  labels:
-    {{- include "agentos.labels" . | nindent 4 }}
-data:
-  authorization.json: |
-    {{- dict "issuer" (index .Values "oauth2-proxy" "extraArgs" "oidc-issuer-url") "jwksUrl" (required "authorization.jwksUrl is required" .Values.authorization.jwksUrl) "groupClaim" .Values.authorization.groupClaim "viewerGroups" .Values.authorization.viewerGroups "operatorGroups" .Values.authorization.operatorGroups "administratorGroups" .Values.authorization.administratorGroups | toJson | nindent 4 }}
