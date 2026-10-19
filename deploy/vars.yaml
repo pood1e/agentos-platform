@@ -37,7 +37,7 @@ langfuse_namespace: agentos-observability
 agentos_evaluation_namespace: agentos-evaluation
 langfuse_chart_version: 2.1.4
 langfuse_version: 4.62.0
-langfuse_web_image_tag: 4.62.0@sha256:a2789180c71b1536a75b3caef1f63d6f9c7b40e4f3bd5e8b01f8a20f83cb88b1
+langfuse_web_image_tag: 4.62.0@sha256:d346dc8343774d18a721d9a1bea7efcbdd60979edee5b1ea1f20aea9746dfca0
 clickhouse_operator_version: 0.0.8
 langfuse_issuer_name: letsencrypt
 otel_collector_chart_version: 0.176.0
