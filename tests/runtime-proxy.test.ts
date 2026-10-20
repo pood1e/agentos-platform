@@ -14,6 +14,7 @@ import { environment } from "./harness.js";
 
 it("exposes only native persistence RPCs, derives workload identity and denies foreign contexts before forwarding", async () => {
   const received: Headers[] = [],
+    memoryOwners: string[] = [],
     connections = new Set<ServerHttp2Session>();
   const server = createServer(
     connectNodeAdapter({
@@ -33,7 +34,8 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
           },
         });
         router.service(MemoryService, {
-          search: (_r, c) => {
+          search: (r, c) => {
+            memoryOwners.push(r.userId);
             received.push(c.requestHeader);
             return {};
           },
@@ -57,7 +59,8 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
     creator: "server-user",
     agent: { namespace: "workspace", name: "assistant" },
   });
-  let revoked = false;
+  let revoked = false,
+    subject = "user:alice";
   const runtime = {
     authenticatedActor: async (headers: Headers) => {
       if (headers.get("x-substrate-actor-token") !== "Bearer host-signed")
@@ -77,7 +80,7 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
       },
       resolve: async () => {
         if (revoked) throw new ConnectError("Revoked", Code.PermissionDenied);
-        return { write: false };
+        return { write: false, identity: { subject } };
       },
     },
   } as unknown as ExecutionRuntime;
@@ -92,6 +95,7 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
         userId: "console",
       },
       clients,
+      { agentName: "workspace__NS__knowledge", userId: "team-knowledge" },
     ),
   );
   const tasks = createClient(TaskStoreService, transport),
@@ -134,7 +138,7 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
     ).rejects.toMatchObject({ code: Code.Unimplemented });
     await expect(
       memory.addSession(
-        { memory: { agentName: "workspace/assistant", userId: "admin" } },
+        { memory: { agentName: "workspace__NS__assistant", userId: "admin" } },
         { headers },
       ),
     ).rejects.toMatchObject({ code: Code.PermissionDenied });
@@ -142,14 +146,25 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
       memory.search({ agentName: "other/assistant", userId: "admin" }, { headers }),
     ).rejects.toMatchObject({ code: Code.PermissionDenied });
     expect(received).toHaveLength(1);
-    await memory.search({ agentName: "workspace/assistant", userId: "admin" }, { headers });
+    await memory.search({ agentName: "workspace__NS__assistant", userId: "admin" }, { headers });
+    expect(memoryOwners).toEqual(["user:alice"]);
     expect(received).toHaveLength(2);
+    subject = "user:bob";
+    await memory.search(
+      { agentName: "workspace__NS__assistant", userId: "user:alice" },
+      { headers },
+    );
+    await memory.search(
+      { agentName: "workspace__NS__knowledge", userId: "user:alice" },
+      { headers },
+    );
+    expect(memoryOwners).toEqual(["user:alice", "user:bob", "team-knowledge"]);
     revoked = true;
     await expect(
       tasks.createTask({ sessionId: "own", task: { id: "next", contextId: "own" } }, { headers }),
     ).rejects.toMatchObject({ code: Code.PermissionDenied });
     await tasks.getTask({ sessionId: "own", taskId: "task" }, { headers });
-    expect(received).toHaveLength(3);
+    expect(received).toHaveLength(5);
   } finally {
     sync.close();
     for (const connection of connections) connection.destroy();

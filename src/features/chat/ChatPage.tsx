@@ -4,15 +4,8 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { SquarePen } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { useAccess } from "../../lib/access.js";
 import { HistoryList } from "../shared/HistoryList.js";
@@ -29,23 +22,9 @@ export function ChatPage() {
   const { contextId = "" } = useParams();
   const paging = usePaging();
   const access = useAccess();
-  const [search] = useSearchParams();
-  const name = search.get("agent") || access.data?.entryAgent?.name || "assistant";
+  const name = access.data?.entryAgent?.name ?? "assistant";
   const agent = { namespace: access.data?.workspace ?? "", name };
-  const suffix = `?agent=${encodeURIComponent(name)}`;
-  const members = useQuery(ConsoleService.method.listEngineers, {});
-  const choices = [
-    ...new Map(
-      [
-        {
-          id: `${agent.namespace}/${access.data?.entryAgent?.name ?? "assistant"}`,
-          name: access.data?.entryAgent?.name ?? "assistant",
-        },
-        ...(members.data?.engineers ?? []),
-      ].map((item) => [item.id, item]),
-    ).values(),
-  ];
-  const chat = useChat(agent, contextId, (id) => navigate(`/chat/${id}${suffix}`));
+  const chat = useChat(agent, contextId, (id) => navigate(`/chat/${id}`));
   const list = useQuery(
     ConsoleService.method.listConversations,
     agent.namespace
@@ -59,8 +38,8 @@ export function ChatPage() {
     { refetchInterval: 3_000, placeholderData: keepPreviousData },
   );
   useEffect(() => {
-    rememberConversation(contextId, suffix);
-  }, [contextId, suffix]);
+    if (access.data) rememberConversation(access.data, contextId);
+  }, [contextId, access.data]);
   const title = chat.conversation?.title;
   return (
     <div
@@ -78,29 +57,13 @@ export function ChatPage() {
         paging={paging.controls(list.data?.nextPageToken)}
         selectedId={contextId}
         selectedTitle={title}
-        onSelect={(id) => navigate(`/chat/${id}${suffix}`)}
+        onSelect={(id) => navigate(`/chat/${id}`)}
         disabled={chat.sending}
       />
       <ConversationRuntime key={`${name}:${contextId}`} chat={chat}>
         <ThreadPrimitive.Root data-testid="conversation" className="flex min-h-0 min-w-0 flex-col">
           <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
             <div className="flex min-w-0 items-center gap-3">
-              <Select
-                value={name}
-                disabled={chat.sending}
-                onValueChange={(value) => navigate(`/chat?agent=${encodeURIComponent(value)}`)}
-              >
-                <SelectTrigger aria-label={t("chat.agent")} className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {choices.map((choice) => (
-                    <SelectItem key={choice.id} value={choice.id.split("/").at(-1) ?? ""}>
-                      {choice.name || choice.id.split("/").at(-1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <h1 className="min-w-0 truncate text-sm font-medium">
                 {title || t("chat.assistant")}
               </h1>
@@ -113,7 +76,7 @@ export function ChatPage() {
               disabled={chat.sending || access.data?.operate !== true}
               onClick={() => {
                 chat.reset();
-                navigate(`/chat${suffix}`);
+                navigate("/chat");
               }}
             >
               <SquarePen />

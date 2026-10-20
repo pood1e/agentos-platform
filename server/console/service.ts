@@ -22,6 +22,7 @@ import { taskRun } from "../read-model/views/run.js";
 import { listTasks, taskDetail } from "../read-model/views/task.js";
 import { invalid, notFound, unavailable } from "../shared/errors.js";
 import { approvalReferences } from "./approval-references.js";
+import { chatTarget, executionHistory } from "./history.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
 import type { TemplateWriter } from "./template-writer.js";
@@ -38,6 +39,7 @@ export interface ConsoleDependencies {
   pack: Pack;
   platformTools?: Parameters<typeof roleCommands>[5];
   executions?: Executions;
+  entryAgent?: string;
   authorizeTools?: (
     session: import("../../gen/kagent/api/v1alpha1/sessions_pb.js").Session,
     tools: string[],
@@ -60,9 +62,11 @@ export function consoleService({
   pack,
   platformTools,
   executions,
+  entryAgent = "assistant",
   authorizeTools,
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const index = sync.index;
+  const history = executionHistory(index, executions);
   const messages = messageCommands(sync, clients, operations, executions, authorizeTools);
   const roles = roleCommands(
     clients,
@@ -113,13 +117,13 @@ export function consoleService({
   };
   return {
     getAccessProfile: (_request, context) => ({ profile: context.values.get(accessProfile) }),
-    listEngineers() {
+    async listEngineers(_request, context) {
       ready();
-      return { engineers: engineers(index) };
+      return { engineers: engineers(await history(context.values.get(requestIdentity))) };
     },
-    listTasks(request) {
+    async listTasks(request, context) {
       ready();
-      return listTasks(index, request);
+      return listTasks(await history(context.values.get(requestIdentity)), request);
     },
     watchTask(request, context) {
       return watch(
@@ -127,7 +131,8 @@ export function consoleService({
         WatchTaskResponseSchema,
         context.signal,
         async () => {
-          const task = taskDetail(index, request.taskId);
+          const view = await history(context.values.get(requestIdentity));
+          const task = taskDetail(view, request.taskId);
           if (!task) throw notFound("task.notFound");
           const entry = index.entry(request.taskId);
           task.operate =
@@ -144,16 +149,19 @@ export function consoleService({
         true,
       );
     },
-    async getTaskRun(request) {
+    async getTaskRun(request, context) {
       ready();
+      const view = await history(context.values.get(requestIdentity));
+      if (!view.entry(request.taskId)) throw notFound("task.notFound");
       const run = await taskRun(sync, request.taskId);
       if (!run) throw notFound("task.notFound");
       return { run };
     },
     async cancelTask({ taskId }, context) {
       ready();
-      const root = index.operationRoot(taskId);
-      const tree = root && taskTree(index, root.id);
+      const visible = await history(context.values.get(requestIdentity));
+      const root = visible.operationRoot(taskId);
+      const tree = root && taskTree(visible, root.id);
       if (!tree) throw notFound("task.notFound");
       if (executions) {
         const { session } = await clients.sessions.getSession({ sessionId: tree.root.contextId });
@@ -170,13 +178,24 @@ export function consoleService({
       await cancelTree(clients, sync, tree, context.signal);
       return {};
     },
-    listConversations(request) {
+    async listConversations(request, context) {
       ready();
-      return listConversations(index, request.agent, request);
+      const identity = context.values.get(requestIdentity);
+      chatTarget(namespace, entryAgent, request.agent, identity);
+      return listConversations(await history(identity), request.agent, request);
     },
     watchConversation(request, context) {
       return watch(sync, WatchConversationResponseSchema, context.signal, async () => {
-        const view = await conversation(sync, request.agent, request.contextId);
+        const identity = context.values.get(requestIdentity);
+        chatTarget(namespace, entryAgent, request.agent, identity);
+        const visible = await history(identity);
+        if (
+          request.contextId &&
+          visible.session(request.contextId)?.agentId !==
+            `${request.agent?.namespace}/${request.agent?.name}`
+        )
+          throw notFound("chat.invalidConversation");
+        const view = await conversation(sync, request.agent, request.contextId, visible);
         view.operate =
           !request.contextId ||
           (await canOperate(request.contextId, context.values.get(requestIdentity).subject));
@@ -189,15 +208,28 @@ export function consoleService({
         return create(WatchConversationResponseSchema, { conversation: view });
       });
     },
-    sendMessage: (request, context) => messages.send(request, context.values.get(requestIdentity)),
-    respondInteraction: (request, context) =>
-      messages.respond(request, context.values.get(requestIdentity)),
+    sendMessage: (request, context) => {
+      const identity = context.values.get(requestIdentity);
+      chatTarget(namespace, entryAgent, request.agent, identity);
+      return messages.send(request, identity);
+    },
+    async respondInteraction(request, context) {
+      if (!(await history(context.values.get(requestIdentity))).entry(request.taskId))
+        throw notFound("task.notFound");
+      return messages.respond(request, context.values.get(requestIdentity));
+    },
     getConfiguration: () => roles.configuration(),
     getPack: () => ({ pack }),
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
     explainTools: (request) => roles.explain(request.engineer),
-    listApprovals: (request, context) =>
-      approvals(sync, operations, request.taskId, request.requestId, { signal: context.signal }),
+    async listApprovals(request, context) {
+      ready();
+      if (!(await history(context.values.get(requestIdentity))).entry(request.taskId))
+        throw notFound("task.notFound");
+      return approvals(sync, operations, request.taskId, request.requestId, {
+        signal: context.signal,
+      });
+    },
   };
 }

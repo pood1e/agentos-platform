@@ -7,7 +7,15 @@ import { TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { fixtureTasks } from "../fixtures/kagent.js";
-import { client, ids, observeTask, resetKagent, seedOperations, taskState } from "./kagent.js";
+import {
+  bindSessions,
+  client,
+  ids,
+  observeTask,
+  resetKagent,
+  seedOperations,
+  taskState,
+} from "./kagent.js";
 
 test("keeps many executions in one instance and opens the exact linked continuation", async ({
   page,
@@ -25,6 +33,7 @@ test("keeps many executions in one instance and opens the exact linked continuat
     requestId: randomUUID(),
   });
   if (!session) throw new Error("coordinator session missing");
+  await bindSessions(request, [session.id]);
   for (let round = 0; round <= 68; round++) {
     const task = clone(TaskSchema, source);
     task.id = `long-round-${round}`;
@@ -117,38 +126,13 @@ test("enlarges and shrinks the centered workflow with the available desktop spac
               right <= bounds.right &&
               top >= bounds.top &&
               bottom <= bounds.bottom,
-            centerX: Math.round(Math.abs((left + right - bounds.left - bounds.right) / 2)),
-            centerY: Math.round(Math.abs((top + bottom - bounds.top - bounds.bottom) / 2)),
+            centered:
+              Math.abs((left + right - bounds.left - bounds.right) / 2) < 20 &&
+              Math.abs((top + bottom - bounds.top - bounds.bottom) / 2) < 20,
           };
         }),
       )
-      .toMatchObject({ fits: true });
-    const center = await page.locator(".react-flow").evaluate((canvas) => {
-      const bounds = canvas.getBoundingClientRect();
-      const diagram = [
-        ...canvas.querySelectorAll(
-          ".react-flow__node, .react-flow__edge-path, .react-flow__edgelabel-renderer button",
-        ),
-      ].map((node) => node.getBoundingClientRect());
-      return {
-        x: Math.abs(
-          (Math.min(...diagram.map((item) => item.left)) +
-            Math.max(...diagram.map((item) => item.right)) -
-            bounds.left -
-            bounds.right) /
-            2,
-        ),
-        y: Math.abs(
-          (Math.min(...diagram.map((item) => item.top)) +
-            Math.max(...diagram.map((item) => item.bottom)) -
-            bounds.top -
-            bounds.bottom) /
-            2,
-        ),
-      };
-    });
-    expect(center.x).toBeLessThan(20);
-    expect(center.y).toBeLessThan(20);
+      .toMatchObject({ fits: true, centered: true });
     scales.push(await zoom());
   }
   expect(scales[0]).toBeGreaterThan(1);

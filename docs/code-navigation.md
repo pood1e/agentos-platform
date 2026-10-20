@@ -11,6 +11,7 @@
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/console` | 控制台服务：Connect RPC、静态资源、方案包加载、角色模板读写 |
 | `server/read-model` | kagent 任务与事件的读模型：会话、调用、交互、协作画布 |
+| `server/authorization` | 执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/knowledge` | 团队知识检索 |

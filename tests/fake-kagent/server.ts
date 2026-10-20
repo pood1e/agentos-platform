@@ -37,6 +37,13 @@ createHttpServer(async (request, response) => {
     fake.memory.reset();
     fake.templates.clear();
     for (const template of templates()) fake.templates.set(template.ref?.name ?? "", template);
+  } else if (request.method === "POST" && url.pathname === "/bind") {
+    const sessions = url.searchParams.getAll("session").map((id) => {
+      const session = fake.sessions.get(id);
+      if (!session) throw new Error("Fixture session missing");
+      return session;
+    });
+    await execution.seed(sessions);
   } else if (request.method === "POST" && url.pathname === "/seed") {
     const { sessions, tasks } = syntheticOperations(Number(url.searchParams.get("count") ?? "20"));
     fake.load({

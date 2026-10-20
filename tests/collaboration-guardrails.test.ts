@@ -6,7 +6,12 @@ import {
   McpRequestSchema,
   McpResponseSchema,
 } from "../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
+import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { executions } from "../server/authorization/executions.js";
+import type { ExecutionRuntime } from "../server/authorization/runtime.js";
 import { collaborationGuardrails } from "../server/platform/guardrails.js";
+import { memoryStore } from "./fixtures/execution-store.js";
 import { environment } from "./harness.js";
 
 it("rejects cross-workspace invocation and native task methods outside the exposed tools", async () => {
@@ -72,4 +77,67 @@ it("filters both structured and readable session results using the verified work
   expect(filtered.structuredContent.next_page_token).toBe("opaque-native-cursor");
   expect(filtered.content[0].text).toContain("owned");
   expect(filtered.content[0].text).not.toMatch(/other|foreign|unfiltered/);
+});
+
+it("keeps native discovery inside the signed caller's execution tree", async () => {
+  const { clients, fake, sync } = environment([]);
+  const registry = executions(memoryStore());
+  const alice = create(ExecutionIdentitySchema, {
+    subject: "user:alice",
+    credential: { case: "service", value: true },
+  });
+  const bob = create(ExecutionIdentitySchema, { ...alice, subject: "user:bob" });
+  const sessions = ["root", "child", "other-root", "foreign", "unbound"].map((id) =>
+    create(SessionSchema, { id, agent: { namespace: "agentos", name: "assistant" } }),
+  );
+  fake.load({ sessions, tasks: [] });
+  await registry.bind(sessions[0], alice);
+  await registry.bind(sessions[1], alice, sessions[0]);
+  await registry.bind(sessions[2], alice);
+  await registry.bind(sessions[3], bob);
+  const execution = {
+    registry,
+    actor: async (headers: Record<string, string>) =>
+      headers["x-substrate-actor-token"] === "Bearer signed-root" ? sessions[0] : undefined,
+  } as unknown as ExecutionRuntime;
+  const guard = createClient(
+    ExtMcp,
+    createRouterTransport((router) =>
+      router.service(ExtMcp, collaborationGuardrails(new Map([["agentos", clients]]), execution)),
+    ),
+  );
+  const request = create(McpResponseSchema, {
+    method: "tools/call",
+    metadataContext: {
+      workspace: "agentos",
+      toolName: "list_sessions",
+      runtimeIdentity: "Bearer signed-root",
+    },
+    mcpResponse: new TextEncoder().encode(
+      JSON.stringify({
+        content: [{ type: "text", text: "unfiltered foreign sessions" }],
+        structuredContent: {
+          sessions: sessions.map((session) => ({
+            id: session.id,
+            agent: "agentos/assistant",
+            state: "ready",
+          })),
+        },
+      }),
+    ),
+  });
+  try {
+    const response = await guard.checkResponse(request);
+    if (response.result.case !== "mutated") throw new Error("Expected filtered native output");
+    const output = JSON.parse(new TextDecoder().decode(response.result.value));
+    expect(output.structuredContent.sessions.map((session: { id: string }) => session.id)).toEqual([
+      "root",
+      "child",
+    ]);
+    expect(output.content[0].text).not.toMatch(/foreign|unfiltered|other-root|unbound/);
+    request.metadataContext = { ...request.metadataContext, runtimeIdentity: "" };
+    expect((await guard.checkResponse(request)).result.case).toBe("error");
+  } finally {
+    sync.close();
+  }
 });
