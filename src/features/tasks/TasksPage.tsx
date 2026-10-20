@@ -129,7 +129,7 @@ function TaskView({
           {detail.runs.some(
             (run) => !run.background && (active(run.state) || awaiting(run.state)),
           ) &&
-            summary && <StopTask taskId={summary.id} />}
+            summary && <StopTask taskId={summary.id} operate={detail.operate} />}
         </div>
       </div>
       <Tabs value={view} onValueChange={setView}>

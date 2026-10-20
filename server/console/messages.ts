@@ -7,12 +7,14 @@ import type {
   SendMessageRequest,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
+import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import {
   AskUserResponseSchema,
   ToolApprovalResponseSchema,
 } from "../../gen/agentos/kagent/v1/wire_pb.js";
 import { shortTitle } from "../../shared/title.js";
+import type { Executions } from "../authorization/executions.js";
 import { approvalEnvironment } from "../governance/client.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { agentKey, sessionInfo } from "../read-model/agents.js";
@@ -28,6 +30,11 @@ export function messageCommands(
   sync: KagentSync,
   clients: KagentClients,
   governance?: GovernanceConfig,
+  executions?: Executions,
+  authorizeTools?: (
+    session: import("../../gen/kagent/api/v1alpha1/sessions_pb.js").Session,
+    tools: string[],
+  ) => Promise<void>,
 ) {
   const index = sync.index;
   const inflight = new Set<string>();
@@ -42,11 +49,16 @@ export function messageCommands(
     }
   }
 
-  async function target(request: SendMessageRequest) {
+  async function target(request: SendMessageRequest, identity?: ExecutionIdentity) {
     const ref = request.agent;
     if (!ref?.name || ref.namespace !== sync.namespace) throw invalid("chat.invalidConversation");
     const id = agentKey(ref);
     if (request.contextId) {
+      if (executions) {
+        const { session } = await clients.sessions.getSession({ sessionId: request.contextId });
+        if (!session || !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
+        await executions.own(session, identity);
+      }
       const session = index.session(request.contextId);
       if (!session || session.agentId !== id) throw precondition("chat.invalidConversation");
       const view = await conversation(sync, ref, request.contextId);
@@ -62,17 +74,28 @@ export function messageCommands(
       { timeoutMs: 30_000 },
     );
     if (!session) throw unavailable();
+    if (executions) {
+      if (!identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
+      await executions.bind(session, identity);
+    }
     index.setSession(sessionInfo(session));
     return { agentId: agentKey(session.agent), contextId: session.id };
   }
 
-  async function send(request: SendMessageRequest) {
+  async function send(request: SendMessageRequest, identity?: ExecutionIdentity) {
     const text = request.text.trim();
     if (!text) throw invalid("chat.invalidMessage");
     return exclusive(request.contextId || request.messageId, async () => {
       const accepted = index.taskOfMessage(request.messageId);
-      if (accepted) return { contextId: accepted.contextId, taskId: accepted.id };
-      const { agentId, contextId } = await target(request);
+      if (accepted) {
+        if (executions) {
+          const { session } = await clients.sessions.getSession({ sessionId: accepted.contextId });
+          if (!session || !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
+          await executions.own(session, identity);
+        }
+        return { contextId: accepted.contextId, taskId: accepted.id };
+      }
+      const { agentId, contextId } = await target(request, identity);
       const task = await sync.send(
         agentId,
         create(MessageSchema, {
@@ -81,16 +104,24 @@ export function messageCommands(
           role: Role.USER,
           parts: [{ content: { case: "text", value: text } }],
           extensions: [hitlExtension],
-          metadata: { [timelineKey]: new Date().toISOString() },
+          metadata: {
+            [timelineKey]: new Date().toISOString(),
+            ...(identity ? { "agentos.initiator": identity.subject } : {}),
+          },
         }),
       );
       return { contextId: task.contextId, taskId: task.id };
     });
   }
 
-  async function respond(request: RespondInteractionRequest) {
+  async function respond(request: RespondInteractionRequest, identity?: ExecutionIdentity) {
     const entry = index.entry(request.taskId);
     if (!entry) throw notFound("interaction.stale");
+    if (executions) {
+      const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
+      if (!session || !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
+      await executions.own(session, identity);
+    }
     return exclusive(request.taskId, async () => {
       const task = await clients.a2a.getTask(
         { tenant: entry.agentId, id: request.taskId },
@@ -106,6 +137,18 @@ export function messageCommands(
       const decision = request.decision;
       const target = { taskId: task.id, contextId: task.contextId };
       if (pending.kind === InteractionKind.APPROVAL && decision.case === "approval") {
+        if (authorizeTools && decision.value.approvals.some((item) => item.approved)) {
+          const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
+          if (!session) throw fail(Code.PermissionDenied, "approval.executionDenied");
+          await authorizeTools(
+            session,
+            pending.tools
+              .filter((tool) =>
+                decision.value.approvals.some((item) => item.id === tool.id && item.approved),
+              )
+              .map((tool) => tool.name),
+          );
+        }
         if (
           pending.tools.some(
             (tool) => approvalEnvironment(governance?.environments ?? [], tool.name)?.approvalUrl,

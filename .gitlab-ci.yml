@@ -19,7 +19,7 @@ verify:
     - npm ci --prefer-offline
   script:
     - ci/with-postgres.sh npm run verify
-    - npm run test:e2e
+    - ci/with-postgres.sh npm run test:e2e
   artifacts:
     when: always
     expire_in: 1 day

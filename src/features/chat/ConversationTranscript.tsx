@@ -101,7 +101,7 @@ export function ConversationTranscript({ chat }: { chat: Chat }) {
           </ThreadPrimitive.Messages>
           {chat.pending.map((interaction) => (
             <div key={interaction.id} className="rounded-xl border p-3">
-              <Approval interaction={interaction} />
+              <Approval interaction={interaction} operate={chat.conversation?.operate ?? false} />
             </div>
           ))}
           {(chat.sending || chat.busy) && !chat.pending.length && (

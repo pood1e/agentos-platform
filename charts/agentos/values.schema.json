@@ -560,6 +560,31 @@
           }
         }
       ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["databaseSecret", "databaseCASecret", "substrateURL", "actorIssuer"],
+      "properties": {
+        "databaseSecret": {
+          "type": "string",
+          "minLength": 1
+        },
+        "databaseCASecret": {
+          "type": "string",
+          "minLength": 1
+        },
+        "substrateURL": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://"
+        },
+        "actorIssuer": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://"
+        }
+      }
     }
   },
   "required": [

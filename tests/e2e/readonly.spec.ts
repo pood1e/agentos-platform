@@ -6,12 +6,15 @@ const token = await identityToken([], "reader-test");
 test.use({ extraHTTPHeaders: { authorization: `Bearer ${token}` } });
 test.beforeEach(async ({ request }) => resetKagent(request));
 
-test("shows read-only chat without a message composer", async ({ page }) => {
+test("lets a reader query through a new conversation", async ({ page }) => {
   await page.goto("/chat");
-  await expect(page.getByText("只读访问，可查看会话与任务。", { exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "消息", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "发送", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "新对话", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "新对话", exact: true })).toBeEnabled();
+  await page.getByRole("textbox", { name: "消息", exact: true }).fill("你好，说明一下如何协作");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect(page).toHaveURL(/\/chat\/[^/]+/);
+  await expect(page.getByTestId("chat-message")).toHaveCount(2);
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
 });
 
 test("keeps pending approval details readable without mutation controls", async ({ page }) => {

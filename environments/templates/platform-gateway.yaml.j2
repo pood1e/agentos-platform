@@ -39,6 +39,14 @@ spec:
         static: {{ target | combine({'policies': policies}) | to_json }}
   policies:
     mcp:
+      guardrails:
+        processors:
+          - methods: {'*': Full}
+            remote:
+              backendRef: {name: {{ platform_release }}-console, port: 9090}
+              failureMode: FailClosed
+              allowedRequestHeaders: [x-substrate-actor-token]
+              metadata: {execution: 'true'}
       authorization:
         action: Require
         policy:

@@ -15,7 +15,9 @@ spec:
             remote:
               backendRef: {name: {{ include "agentos.name" . }}-console, port: 9090}
               failureMode: FailClosed
+              allowedRequestHeaders: [x-substrate-actor-token]
               metadata:
                 workspace: apiKey.workspace
                 agentPrefix: "has(apiKey.agentPrefix) ? apiKey.agentPrefix : ''"
                 toolName: "has(mcp.tool) ? mcp.tool.name : ''"
+                service: "has(apiKey.service) ? apiKey.service : ''"

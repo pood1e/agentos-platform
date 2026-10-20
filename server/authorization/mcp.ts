@@ -5,7 +5,9 @@ import type { CallToolRequest } from "@modelcontextprotocol/server";
 import {
   AuthorizationError_Code,
   type ExtMcp,
+  type HeaderMutation,
   type McpRequest,
+  type McpRequestResult,
   McpRequestResultSchema,
   McpResponseResultSchema,
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
@@ -27,8 +29,9 @@ export function mcpAuthorization(
     session: Session,
     tool: CallToolRequest["params"],
     target: Pick<McpRequest, "serviceNames" | "metadataContext">,
-  ) => Promise<void>,
-): ServiceImpl<typeof ExtMcp> {
+  ) => Promise<Pick<McpRequestResult, "headerMutation" | "metadata">> | Promise<void>,
+  discoveryHeaders?: HeaderMutation,
+): Required<ServiceImpl<typeof ExtMcp>> {
   return {
     async checkRequest(request) {
       try {
@@ -44,12 +47,17 @@ export function mcpAuthorization(
           const params = CallToolRequestParamsSchema.parse(
             JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(request.mcpRequest)),
           );
-          await authorize(session, params, {
+          const authorized = await authorize(session, params, {
             serviceNames: request.serviceNames,
             metadataContext: request.metadataContext,
           });
+          const response = create(McpRequestResultSchema, { result: { case: "pass", value: {} } });
+          return Object.assign(response, authorized);
         }
-        return create(McpRequestResultSchema, { result: { case: "pass", value: {} } });
+        return create(McpRequestResultSchema, {
+          result: { case: "pass", value: {} },
+          headerMutation: discoveryHeaders,
+        });
       } catch {
         return create(McpRequestResultSchema, {
           result: {

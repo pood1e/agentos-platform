@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
+import { executionKey } from "./tests/fixtures/executions.js";
 import { identityIssuer, testToken } from "./tests/fixtures/identity.js";
 
 const kagent = { port: "8093", control: "8094" };
@@ -42,6 +43,14 @@ export default defineConfig({
           reuseExistingServer: false,
           env: {
             AGENTOS_PORT: "8090",
+            AGENTOS_RUNTIME_PORT: "8096",
+            AGENTOS_EXECUTION_DATABASE_URL: process.env.CHANGE_TEST_DATABASE_URL ?? "",
+            AGENTOS_EXECUTION_KEY: executionKey,
+            AGENTOS_SUBSTRATE_URL: issuer,
+            AGENTOS_ACTOR_ISSUER: issuer,
+            AGENTOS_ACTOR_AUDIENCES: JSON.stringify(["http://runtime.test:8096"]),
+            AGENTOS_RUNTIME_CA: resolve("tests/fixtures/identity/tls.crt"),
+            AGENTOS_RUNTIME_TOKEN: resolve("tests/fixtures/identity/tls.crt"),
             AGENTOS_AUTH_MODE: "oidc",
             AGENTOS_OIDC_ISSUER: issuer,
             AGENTOS_OIDC_CLIENT_ID: "console",

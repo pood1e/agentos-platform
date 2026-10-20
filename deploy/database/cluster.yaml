@@ -62,6 +62,8 @@
           - from:
               - podSelector:
                   matchLabels: {app.kubernetes.io/name: kagent, app.kubernetes.io/component: controller}
+              - podSelector:
+                  matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/component: console}
               - namespaceSelector:
                   matchLabels: {kubernetes.io/metadata.name: ate-system}
                 podSelector:

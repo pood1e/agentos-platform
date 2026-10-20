@@ -33,4 +33,5 @@ message Conversation {
   repeated Interaction pending = 6;
   RoleDefinition role_draft = 7;
   string title = 8;
+  bool operate = 9;
 }

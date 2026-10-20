@@ -7,6 +7,7 @@ import {
   CaseRequestSchema,
 } from "../../gen/agentos/automation/v1/case_pb.js";
 import { InvokeSessionOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import referenceSchema from "../../gen/schema/agentos.automation.v1.CaseReference.jsonschema.bundle.json" with {
   type: "json",
 };
@@ -28,6 +29,7 @@ export function automationTools(
   workspace: string,
   environment: string,
   invoke: ReturnType<typeof nativeInvocation>,
+  authorize?: (session: Session, cancel?: boolean, contexts?: string[]) => Promise<void>,
 ) {
   const messageId = (ref: CaseReference) =>
     messageIdentity(workspace, environment, ref.agent?.name ?? "", ref.key, String(ref.version));
@@ -47,6 +49,7 @@ export function automationTools(
       { timeoutMs: 60_000 },
     );
     if (!session) throw new Error("Native case session is missing");
+    await authorize?.(session);
     return session;
   }
   function observed(ref: CaseReference, sessionId: string) {
@@ -119,6 +122,11 @@ export function automationTools(
         const ref = fromJson(CaseReferenceSchema, args),
           own = await session(ref);
         const current = observed(ref, own.id);
+        await authorize?.(
+          own,
+          true,
+          current.tree?.entries.map((entry) => entry.contextId),
+        );
         if (current.tree) await cancelTree(clients, sync, current.tree, context.mcpReq.signal);
         return result(InvokeSessionOutputSchema, observed(ref, own.id).output);
       },

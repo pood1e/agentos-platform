@@ -70,10 +70,13 @@ test("stops a delegated operation from the chat composer", async ({ page }) => {
   await page.getByRole("button", { name: "停止", exact: true }).click();
   await expect(page.getByRole("button", { name: "停止", exact: true })).toHaveCount(0);
   await expect(page.getByTestId("approval-detail")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "发送", exact: true })).toBeVisible();
+  await expect(page.getByText("当前会话只读，可新建对话发起查询。", { exact: true })).toBeVisible();
   await page.getByTestId("chat-task").click();
   await expect(page.getByTestId("task-title")).toBeVisible();
   await expect(page.getByText("已取消", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
 });
 
 test("shows execution, delegation and approval intervals with working drawers", async ({

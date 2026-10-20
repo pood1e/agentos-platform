@@ -168,6 +168,10 @@
       vars:
         ansible_python_interpreter: /usr/bin/python3
 
+    - name: Configure execution authorization boundaries
+      ansible.builtin.import_tasks: runtime-authorization.yaml
+      tags: [kagent]
+
     - name: Configure Agent Substrate authentication
       kubernetes.core.k8s:
         state: present
@@ -256,6 +260,7 @@
       environment:
         PATH: "{{ ansible_python_interpreter | dirname }}:{{ lookup('env', 'PATH') }}"
         AGENTOS_KAGENT_CONTROLLER_IMAGE: "{{ kagent_controller_image }}"
+        AGENTOS_KAGENT_RUNTIME_URL: "http://{{ app_release_name }}-console.{{ agentos_namespace }}.svc:9091"
       tags: [kagent]
 
     - name: Verify kagent controller rollout

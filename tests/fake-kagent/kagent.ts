@@ -39,6 +39,7 @@ const textPart = (value: string) => ({ content: { case: "text" as const, value }
 export class FakeKagent {
   readonly agents: Agent[];
   readonly sessions = new Map<string, Session>();
+  executionCreated?: (session: Session, parent: Session) => Promise<void>;
   readonly tasks = new Map<string, Task>();
   readonly templates = new Map(templates().map((item) => [item.ref?.name ?? "", item]));
   readonly toolServers = toolServers();
@@ -108,6 +109,18 @@ export class FakeKagent {
     return session;
   }
 
+  async createChildSession(
+    parentId: string,
+    agent: { namespace: string; name: string },
+    name: string,
+  ) {
+    const parent = this.sessions.get(parentId);
+    if (!parent) throw new Error("Fixture parent session missing");
+    const child = this.createSession(agent, randomUUID(), name);
+    await this.executionCreated?.(child, parent);
+    return child;
+  }
+
   /** Accepts a message the way kagent does, deduplicating initial messages by ID. */
   accept(message: Message): Task {
     this.received.push(message);
@@ -125,7 +138,7 @@ export class FakeKagent {
       metadata: { [createdAtKey]: new Date(this.now()).toISOString() },
     });
     this.update(task, TaskState.WORKING);
-    setTimeout(() => execute(this, task, message), 200);
+    setTimeout(() => void execute(this, task, message), 200);
     return task;
   }
 

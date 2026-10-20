@@ -7,6 +7,8 @@ import {
   McpResponseResultSchema,
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { ListSessionsOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { actorTokenHeader } from "../authorization/actor.js";
+import type { ExecutionRuntime } from "../authorization/runtime.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { object, text } from "../read-model/decode/messages.js";
 
@@ -27,7 +29,8 @@ const denied = (reason: string) => ({
 /** Agentgateway supplies verified key metadata; native sessions remain in their workspace. */
 export function collaborationGuardrails(
   workspaces: ReadonlyMap<string, KagentClients>,
-): ServiceImpl<typeof ExtMcp> {
+  execution?: ExecutionRuntime,
+): Required<ServiceImpl<typeof ExtMcp>> {
   const scope = (metadata?: JsonObject) => {
     const workspace = text(metadata?.workspace),
       prefix = text(metadata?.agentPrefix);
@@ -47,6 +50,21 @@ export function collaborationGuardrails(
         if (!methods.has(request.method))
           throw new Error("MCP method is outside collaboration scope");
         if (request.method === "tools/call") {
+          const actorHeaders = request.headers.filter(
+            (header) => header.key.toLowerCase() === actorTokenHeader,
+          );
+          if (actorHeaders.length > 1) throw new Error("One signed runtime identity is required");
+          const parent =
+            execution && actorHeaders[0]
+              ? await execution.actor({
+                  [actorTokenHeader]: new TextDecoder().decode(actorHeaders[0].value),
+                })
+              : undefined;
+          if (execution) {
+            if (parent) await execution.registry.resolve(parent);
+            else if (!["platform", "evaluation"].includes(text(request.metadataContext?.service)))
+              throw new Error("Signed runtime identity required");
+          }
           const params = object(JSON.parse(new TextDecoder().decode(request.mcpRequest)));
           if (params.name !== "invoke_session" && params.name !== "list_sessions")
             throw new Error("MCP tool is outside collaboration scope");
@@ -62,6 +80,15 @@ export function collaborationGuardrails(
               !access.accepts(`${session.agent.namespace}/${session.agent.name}`)
             )
               throw new Error("Session belongs to another workspace or evaluation");
+            if (execution && access.workspace === session.agent.namespace) {
+              if (parent) {
+                await execution.registry.delegate(parent, session);
+              } else {
+                const target = await execution.registry.resolve(session);
+                if (target.identity.credential.case !== "service")
+                  throw new Error("A service cannot invoke a user's execution");
+              }
+            }
           }
         }
         return create(McpRequestResultSchema, { result: { case: "pass", value: {} } });

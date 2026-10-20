@@ -216,7 +216,12 @@ export function AgentDrawer({
               </Select>
             )}
             {interaction ? (
-              <Approval key={interaction.id} interaction={interaction} record={activity?.record} />
+              <Approval
+                key={interaction.id}
+                interaction={interaction}
+                record={activity?.record}
+                operate={detail.operate}
+              />
             ) : (
               <>
                 {!taskId && (
@@ -264,7 +269,7 @@ export function AgentDrawer({
                       item.id !== inspected.interactionId,
                   )
                   .map((item) => (
-                    <Approval key={item.id} interaction={item} />
+                    <Approval key={item.id} interaction={item} operate={detail.operate} />
                   ))}
                 {result && (
                   <section>

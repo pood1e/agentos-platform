@@ -53,8 +53,9 @@ spec:
         - name: console
           image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
           command: [node, build/server/platform/main.js]
-          ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}]
+          ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}, {name: runtime, containerPort: 9091}]
           env:
+            {{- include "agentos.executionEnv" . | nindent 12 }}
             - {name: AGENTOS_AUTH_MODE, value: {{ .Values.identity.mode | quote }}}
             {{- if eq .Values.identity.mode "oidc" }}
             - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" .Values.identity.issuer | quote }}}
@@ -110,6 +111,8 @@ spec:
           securityContext:
             {{- include "agentos.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
+            - {name: runtime-identity, mountPath: /etc/agentos-runtime, readOnly: true}
+            - {name: execution-database, mountPath: /etc/agentos-database, readOnly: true}
             {{- if .Values.evaluation.enabled }}
             - {name: evaluation, mountPath: /etc/agentos-evaluation, readOnly: true}
             {{- end }}
@@ -165,6 +168,22 @@ spec:
             {{- include "agentos.containerSecurityContext" . | nindent 12 }}
         {{- end }}
       volumes:
+        - name: execution-database
+          secret:
+            secretName: {{ .Values.execution.databaseCASecret }}
+            items: [{key: ca.crt, path: ca.crt}]
+        - name: runtime-identity
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: {{ (urlParse .Values.execution.substrateURL).host | quote }}
+                  expirationSeconds: 600
+                  path: token
+              - clusterTrustBundle:
+                  signerName: servicedns.podcert.ate.dev/identity
+                  labelSelector:
+                    matchLabels: {podcert.ate.dev/canarying: live}
+                  path: ca.crt
         {{- if .Values.evaluation.enabled }}
         - name: evaluation
           configMap: {name: {{ include "agentos.name" . }}-evaluation}

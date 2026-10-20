@@ -71,6 +71,32 @@ export class ToolBindings {
     return !target || (!target.catalog && target.engineer === engineer);
   }
 
+  permitsCall(engineer: string, services: string[], tool: string, write: boolean) {
+    for (const target of this.targets.values()) {
+      if (target.catalog || target.engineer !== engineer || !services.includes(target.service))
+        continue;
+      const name = tool.startsWith(`${target.service}_`)
+        ? tool.slice(target.service.length + 1)
+        : tool;
+      const tier = this.catalog.projects.get(target.project)?.get(name);
+      if (target.environment && target.access !== (tier === "read" ? "readOnly" : "write"))
+        continue;
+      if (tier === "read" || (write && tier === "write")) return true;
+    }
+    return false;
+  }
+
+  selectedCall(bindings: ToolBinding[], services: string[], tool: string) {
+    return bindings.some((binding) => {
+      const target = this.targets.get(binding.server);
+      return (
+        target &&
+        services.includes(target.service) &&
+        binding.tools.some((name) => name === tool || name === `${target.service}_${tool}`)
+      );
+    });
+  }
+
   private writes(server: string, tool: string) {
     const target = this.targets.get(server);
     const name =
@@ -82,6 +108,30 @@ export class ToolBindings {
         name,
       ) !== "read"
     );
+  }
+
+  permitsTool(engineer: string, tool: string, write: boolean) {
+    if (
+      this.permitsCall(
+        engineer,
+        [...this.targets.values()].map((target) => target.service),
+        tool,
+        write,
+      )
+    )
+      return true;
+    for (const [server, tools] of this.catalog.servers) {
+      if (
+        (server === "team-sessions" && ["create_session", "dispatch_session"].includes(tool)) ||
+        (server === "kagent-collaboration" && tool === "invoke_session")
+      )
+        return true;
+      const tier =
+        tools.get(tool) ??
+        tools.get(tool.startsWith(`${server}_`) ? tool.slice(server.length + 1) : "");
+      if (tier === "read" || (write && tier === "write")) return true;
+    }
+    return false;
   }
 
   requiresApproval(server: string, tool: string) {

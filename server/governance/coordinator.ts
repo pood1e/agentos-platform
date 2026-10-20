@@ -3,7 +3,7 @@ import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { FastifyBaseLogger } from "fastify";
 import { LRUCache } from "lru-cache";
-import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
+import { type Interaction, InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import {
   type Approval,
@@ -26,11 +26,65 @@ export function approvalCoordinator(
   sync: KagentSync,
   config: GovernanceConfig,
   log: FastifyBaseLogger,
+  authorize?: (contextId: string, tools: string[]) => Promise<void>,
 ) {
   const completed = new LRUCache<string, boolean>({ max: 5000 });
   const errors = new LRUCache<string, number>({ max: 1000 });
   let running = false,
     stopped = false;
+  async function permitted(
+    entry: { id: string; contextId: string; agentId: string },
+    interaction: Interaction,
+  ) {
+    if (!authorize) return true;
+    try {
+      await authorize(
+        entry.contextId,
+        interaction.tools.map((tool) => tool.name),
+      );
+      return true;
+    } catch (error) {
+      const code = ConnectError.from(error).code;
+      if ([Code.PermissionDenied, Code.Unauthenticated].includes(code)) {
+        try {
+          await sync.send(
+            entry.agentId,
+            hitlReply(
+              { taskId: entry.id, contextId: entry.contextId },
+              messageIdentity("authorization", entry.id, interaction.requestId),
+              {
+                type: "tool_approval_response",
+                value: create(ToolApprovalResponseSchema, {
+                  approvals: interaction.tools.map((tool) => ({
+                    id: tool.id,
+                    approved: false,
+                    rejectionReason: "Execution permissions do not allow this operation",
+                  })),
+                }),
+              },
+              "The operation was rejected by execution authorization",
+            ),
+          );
+          completed.set(interaction.id, true);
+        } catch {
+          if (Date.now() - (errors.get(interaction.id) ?? 0) > 60_000) {
+            log.warn(
+              { taskId: entry.id },
+              "Authorization rejection could not be recorded; the operation remains paused",
+            );
+            errors.set(interaction.id, Date.now());
+          }
+        }
+      } else if (Date.now() - (errors.get(interaction.id) ?? 0) > 60_000) {
+        log.warn(
+          { taskId: entry.id },
+          "Execution authorization is unavailable; the operation remains paused",
+        );
+        errors.set(interaction.id, Date.now());
+      }
+      return false;
+    }
+  }
   async function run() {
     if (running || stopped) return;
     running = true;
@@ -43,6 +97,7 @@ export function approvalCoordinator(
             (!awaiting(interaction.state) && !terminal(entry.state))
           )
             continue;
+          if (awaiting(interaction.state) && !(await permitted(entry, interaction))) continue;
           const targets = interaction.tools.map((tool) => ({
             tool,
             connection: approvalEnvironment(config.environments, tool.name),
@@ -139,6 +194,7 @@ export function approvalCoordinator(
                 );
               };
               if (!pending()) continue;
+              if (!(await permitted(entry, interaction))) continue;
               for (const preparation of preparations) {
                 try {
                   await preparation.client.prepareApproval(

@@ -31,6 +31,7 @@ message TaskDetail {
   google.protobuf.Timestamp completed_at = 8;
   // Native session identities and names used by this operation.
   repeated kagent.api.v1alpha1.Session sessions = 9;
+  bool operate = 10;
 }
 
 enum DelegationKind {
@@ -105,4 +106,5 @@ message Interaction {
   // Decisions and external references supplied by the configured approval service.
   repeated agentos.governance.v1.Approval approvals = 14;
   bool external = 15;
+  bool approve = 16;
 }

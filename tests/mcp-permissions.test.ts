@@ -65,6 +65,23 @@ const servers = [
 ];
 
 describe("engineer tool access", () => {
+  it("intersects the caller's write permission with the Agent's environment ceiling and denies unknown tools", () => {
+    expect(access.permitsCall("inspection", ["lab-kubernetes"], "pods_list", false)).toBe(true);
+    expect(
+      access.permitsCall("inspection", ["lab-kubernetes"], "resources_create_or_update", true),
+    ).toBe(false);
+    expect(
+      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", false),
+    ).toBe(false);
+    expect(
+      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", true),
+    ).toBe(true);
+    expect(access.permitsCall("remediation", ["lab-kubernetes"], "unknown", true)).toBe(false);
+    expect(access.permitsCall("remediation", ["unrelated"], "pods_list", true)).toBe(false);
+    expect(access.permitsTool("remediation", write, false)).toBe(false);
+    expect(access.permitsTool("inspection", write, true)).toBe(false);
+    expect(access.permitsTool("inspection", "create_session", false)).toBe(true);
+  });
   it("offers only the engineer's own identities and platform servers", () => {
     const permissions = access.requirements("inspection", servers);
     expect(new Set(permissions.map((item) => item.server))).toEqual(

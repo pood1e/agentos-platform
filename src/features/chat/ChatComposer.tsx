@@ -11,7 +11,7 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
   const { t } = useTranslation();
   const access = useAccess();
   if (!access.data) return null;
-  if (!access.data.operate)
+  if (chat.conversation && !chat.conversation.operate)
     return (
       <div className="mx-auto w-full max-w-3xl shrink-0 p-3 sm:p-4">
         <Alert>
@@ -21,6 +21,9 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
     );
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 space-y-2 p-3 sm:p-4">
+      {!access.data.manage && (
+        <p className="text-xs text-muted-foreground">{t("access.readOnlyTools")}</p>
+      )}
       {chat.error && (
         <Alert variant="destructive">
           <AlertDescription>{t(chat.error)}</AlertDescription>
@@ -42,7 +45,10 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
         />
         {chat.busy && chat.conversation?.messages.at(-1)?.taskId ? (
           <div className="self-end">
-            <StopTask taskId={chat.conversation.messages.at(-1)?.taskId ?? ""} />
+            <StopTask
+              taskId={chat.conversation.messages.at(-1)?.taskId ?? ""}
+              operate={chat.conversation.operate}
+            />
           </div>
         ) : (
           <ComposerPrimitive.Send asChild>

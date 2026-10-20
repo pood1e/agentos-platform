@@ -10,7 +10,7 @@
 
 `actor-identity.patch` 为已声明的 HTTP(S) 目标增加原生 ActorJWTSource，按包含明确端口的 origin 限定 audience，令牌有效期为五分钟。
 运行时请求的 `x-substrate-actor-token` 占位值由宿主机替换；Secret 凭据保留独立规则，身份头作为保留字段。验证使用维护中的 Giant Swarm agentgateway-upstream 2.6.3。
-该补丁提供 MCP 身份注入，原生 TaskStore 的签名认证与生产接线按[身份实施计划](../../docs/authorization-plan.md)完成。
+`runtime-api.patch` 将托管 Harness 的 API 地址与出站目标统一到执行入口。入口只开放原生持久化 RPC，使用签名 Actor 解析实际会话并重建私有控制面身份；原生管理 API 的访问由 NetworkPolicy 限制。生产接线见[执行授权](../../docs/execution-authorization.md)。
 
 变更审批使用原生 HITL 暂停与恢复。目标环境按身份、工具和参数匹配已准备的变更，在网关内核验审批并原子占用执行权。
 

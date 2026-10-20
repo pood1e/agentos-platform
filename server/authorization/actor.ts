@@ -9,7 +9,7 @@ export const actorTokenHeader = "x-substrate-actor-token";
 const denied = () => new ConnectError("Runtime identity is invalid", Code.Unauthenticated);
 
 /** Verifies the deployed Substrate issuer's Actor claims before using any identity fields. */
-export function actorVerifier(keys: JWTVerifyGetKey, issuer: string, audience: string) {
+export function actorVerifier(keys: JWTVerifyGetKey, issuer: string, audience: string | string[]) {
   if (!issuer || !audience) throw new Error("Actor issuer and audience are required");
   return async (token: string) => {
     let payload: JWTPayload;
@@ -53,29 +53,30 @@ export function runtimeIdentity(
   verify: ReturnType<typeof actorVerifier>,
   substrate: Client<typeof Control>,
   sessions: KagentClients["sessions"],
-  workspace: string,
+  workspace: string | ReadonlySet<string>,
 ) {
+  const workspaces = typeof workspace === "string" ? new Set([workspace]) : workspace;
   return async (token: string): Promise<Session> => {
     const identity = await verify(token);
     const id = identity.name.slice("session-".length);
     if (
-      identity.atespace !== workspace ||
+      !workspaces.has(identity.atespace) ||
       !/^session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(identity.name)
     )
       throw denied();
     const [actor, { session }] = await Promise.all([
       substrate.getActor(
-        { actor: { atespace: workspace, name: identity.name } },
+        { actor: { atespace: identity.atespace, name: identity.name } },
         { timeoutMs: 5_000 },
       ),
       sessions.getSession({ sessionId: id }, { timeoutMs: 5_000 }),
     ]);
     if (
       actor.metadata?.uid !== identity.uid ||
-      actor.metadata.atespace !== workspace ||
+      actor.metadata.atespace !== identity.atespace ||
       actor.metadata.name !== identity.name ||
       session?.id !== id ||
-      session.agent?.namespace !== workspace
+      session.agent?.namespace !== identity.atespace
     )
       throw denied();
     return session;
