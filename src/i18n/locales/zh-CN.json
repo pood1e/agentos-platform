@@ -1,4 +1,7 @@
 {
+  "access": {
+    "readOnly": "只读访问，可查看会话与任务。"
+  },
   "navigation": {
     "home": "AgentOS 工作台首页",
     "main": "主导航",

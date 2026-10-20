@@ -5,6 +5,7 @@ import { Role } from "../../../gen/a2a_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ChatMessageSchema } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
+import { useAccess } from "../../lib/access.js";
 import { consoleClient } from "../../lib/console.js";
 import { errorKey } from "../../lib/errors.js";
 import { useWatch } from "../../lib/use-watch.js";
@@ -33,6 +34,7 @@ export function useChat(
   contextId: string,
   onStarted: (contextId: string) => void,
 ) {
+  const access = useAccess();
   const { value: conversation, error: watchError } = useWatch(
     agent.namespace && agent.name ? `${agent.namespace}/${agent.name}:${contextId}` : undefined,
     (signal) => follow(agent, contextId, signal),
@@ -52,7 +54,7 @@ export function useChat(
   const ready = conversation?.ready ?? false;
   const busy = conversation?.busy ?? false;
   const pending = conversation?.pending ?? [];
-  const blocked = send.isPending || busy || !ready;
+  const blocked = access.data?.operate !== true || send.isPending || busy || !ready;
 
   async function submit(input: string): Promise<boolean> {
     const text = input.trim();

@@ -3,11 +3,22 @@ import { ArrowUp, LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useAccess } from "../../lib/access.js";
 import { StopTask } from "../tasks/StopTask.js";
 import type { Chat } from "./use-chat.js";
 
 export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: boolean }) {
   const { t } = useTranslation();
+  const access = useAccess();
+  if (!access.data) return null;
+  if (!access.data.operate)
+    return (
+      <div className="mx-auto w-full max-w-3xl shrink-0 p-3 sm:p-4">
+        <Alert>
+          <AlertDescription>{t("access.readOnly")}</AlertDescription>
+        </Alert>
+      </div>
+    );
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 space-y-2 p-3 sm:p-4">
       {chat.error && (
