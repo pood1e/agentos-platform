@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, type ConnectRouter } from "@connectrpc/connect";
-import { A2AService } from "../../gen/a2a_pb.js";
+import { A2AService, TaskState } from "../../gen/a2a_pb.js";
 import {
   AgentTemplateSchema,
   AgentTemplateService,
@@ -14,6 +14,7 @@ import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
 import { millis, object } from "../../server/read-model/decode/messages.js";
+import { terminal } from "../../server/read-model/state.js";
 import type { FakeKagent } from "./kagent.js";
 
 const page = <T>(items: T[], token: string, size: number) => {
@@ -120,6 +121,13 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
     getTask(request) {
       fake.fetched.push(request.id);
       return fake.task(request.id);
+    },
+    cancelTask(request) {
+      const task = fake.task(request.id);
+      if (fake.tenantOf(task) !== request.tenant)
+        throw new ConnectError("task not found", Code.NotFound);
+      if (!terminal(task.status?.state)) fake.update(task, TaskState.CANCELED);
+      return task;
     },
     subscribeToTask: (request, context) => fake.follow(request.id, context.signal),
     async *sendStreamingMessage(request, context) {

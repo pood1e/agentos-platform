@@ -146,6 +146,8 @@ message SampleResult {
   string error = 7;
   string candidate_task_id = 8;
   string released_task_id = 9;
+  string candidate_trace_url = 10;
+  string released_trace_url = 11;
 }
 
 message EvaluationReport {

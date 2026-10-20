@@ -3,8 +3,9 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind, type TaskDetail } from "../../../gen/agentos/console/v1/task_pb.js";
@@ -21,8 +22,11 @@ import { Collaboration } from "./Collaboration.js";
 import { currentInteraction } from "./flow/approval-activities.js";
 import { collaborationFlow, type FlowActivity, instanceNodeId } from "./flow/collaboration-flow.js";
 import type { ConnectionBundle } from "./flow/connection-bundles.js";
+import { StopTask } from "./StopTask.js";
 import { TaskConclusion } from "./TaskConclusion.js";
+import { TaskFilters } from "./TaskFilters.js";
 import { TaskList } from "./TaskList.js";
+import { Timeline } from "./Timeline.js";
 
 async function* follow(taskId: string, signal: AbortSignal) {
   for await (const { task } of consoleClient.watchTask({ taskId }, { signal }))
@@ -32,16 +36,44 @@ async function* follow(taskId: string, signal: AbortSignal) {
 const concluded = (state: ActivityState) =>
   !active(state) && !awaiting(state) && state !== ActivityState.UNOBSERVED;
 
-function TaskView({ detail, focusTaskId }: { detail: TaskDetail; focusTaskId: string }) {
+function TaskView({
+  detail,
+  focusTaskId,
+  openApproval,
+}: {
+  detail: TaskDetail;
+  focusTaskId: string;
+  openApproval: boolean;
+}) {
   const { t } = useTranslation();
   const focus =
     detail.summary?.id !== focusTaskId
       ? detail.runs.find((run) => run.taskId === focusTaskId)
       : undefined;
+  const initialApproval = openApproval
+    ? detail.interactions.find(
+        (item) =>
+          item.kind === InteractionKind.APPROVAL &&
+          awaiting(item.state) &&
+          !detail.runs.some((run) => run.taskId === item.taskId && run.background),
+      )
+    : undefined;
   const [target, setTarget] = useState<DrawerTarget>(() =>
-    focus ? { taskId: focus.taskId, contextId: focus.contextId } : {},
+    initialApproval
+      ? { interactionId: initialApproval.id }
+      : focus
+        ? { taskId: focus.taskId, contextId: focus.contextId }
+        : {},
   );
-  const [open, setOpen] = useState(!!focus);
+  const [open, setOpen] = useState(!!focus || !!initialApproval);
+  const [view, setView] = useState("graph");
+  const initialApprovalId = initialApproval?.id;
+  useEffect(() => {
+    if (initialApprovalId) {
+      setTarget({ interactionId: initialApprovalId });
+      setOpen(true);
+    }
+  }, [initialApprovalId]);
   const summary = detail.summary;
   const flow = useMemo(() => collaborationFlow(detail), [detail]);
   const collaborative = flow.activities.length > 1;
@@ -94,9 +126,27 @@ function TaskView({ detail, focusTaskId }: { detail: TaskDetail; focusTaskId: st
               setOpen(true);
             }}
           />
+          {detail.runs.some(
+            (run) => !run.background && (active(run.state) || awaiting(run.state)),
+          ) &&
+            summary && <StopTask taskId={summary.id} />}
         </div>
       </div>
-      {collaborative ? (
+      <Tabs value={view} onValueChange={setView}>
+        <TabsList aria-label={t("task.view")}>
+          <TabsTrigger value="graph">{t("graph.title")}</TabsTrigger>
+          <TabsTrigger value="timeline">{t("task.timeline")}</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {view === "timeline" ? (
+        <Timeline
+          detail={detail}
+          onSelect={(next) => {
+            setTarget(next);
+            setOpen(true);
+          }}
+        />
+      ) : collaborative ? (
         <Collaboration
           participants={detail.participants}
           flow={flow}
@@ -127,7 +177,7 @@ function TaskView({ detail, focusTaskId }: { detail: TaskDetail; focusTaskId: st
           </Button>
         )
       )}
-      {detail.answer && concluded(state) && !pending.length && (
+      {detail.answer && state !== ActivityState.CANCELED && concluded(state) && !pending.length && (
         <TaskConclusion answer={detail.answer} collaborative={collaborative} />
       )}
       <AgentDrawer detail={detail} flow={flow} target={target} open={open} onOpenChange={setOpen} />
@@ -139,34 +189,70 @@ export function TasksPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { taskId = "" } = useParams();
-  const paging = usePaging();
+  const [search, setSearch] = useSearchParams();
+  const stateValue = ActivityState[search.get("state") as keyof typeof ActivityState];
+  const state =
+    typeof stateValue === "number" && stateValue !== ActivityState.UNSPECIFIED
+      ? stateValue
+      : undefined;
+  const engineer = search.get("engineer") ?? "";
+  const paging = usePaging(`${state ?? ""}:${engineer}`, {
+    value: search.get("query") ?? "",
+    onChange: (value) => {
+      const next = new URLSearchParams(search);
+      if (value) next.set("query", value);
+      else next.delete("query");
+      setSearch(next, { replace: true });
+    },
+  });
   const list = useQuery(
     ConsoleService.method.listTasks,
-    { pageToken: paging.pageToken, pageSize: paging.pageSize, query: paging.query },
+    {
+      pageToken: paging.pageToken,
+      pageSize: paging.pageSize,
+      query: paging.query,
+      states: state === undefined ? [] : [state],
+      engineer,
+    },
     { refetchInterval: 3_000, placeholderData: keepPreviousData },
   );
-  const selected = taskId || list.data?.tasks[0]?.id || "";
+  const selected = taskId || (!list.isPlaceholderData && list.data?.tasks[0]?.id) || "";
+  const suffix = search.size ? `?${search}` : "";
   useEffect(() => {
-    if (!taskId && selected) void navigate(`/tasks/${selected}`, { replace: true });
-  }, [taskId, selected, navigate]);
+    if (!taskId && selected) void navigate(`/tasks/${selected}${suffix}`, { replace: true });
+  }, [taskId, selected, suffix, navigate]);
   const { value: detail, error } = useWatch(selected || undefined, (signal) =>
     follow(selected, signal),
   );
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 lg:grid-cols-[200px_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
-      <TaskList
-        tasks={list.data?.tasks ?? []}
-        total={list.data?.totalSize ?? 0}
-        paging={paging.controls(list.data?.nextPageToken)}
-        selectedId={detail?.summary?.id ?? selected}
-        selectedTitle={detail?.summary?.title}
-        onSelect={(id) => navigate(`/tasks/${id}`)}
-      />
+      <div className="flex min-h-0 flex-col gap-2">
+        <TaskFilters
+          state={state}
+          engineer={engineer}
+          onChange={(field, value) => {
+            const next = new URLSearchParams(search);
+            if (value === "all") next.delete(field);
+            else next.set(field, value);
+            if (field === "state" && value !== "AWAITING_APPROVAL") next.delete("approval");
+            navigate(`/tasks${next.size ? `?${next}` : ""}`);
+          }}
+        />
+        <TaskList
+          tasks={list.data?.tasks ?? []}
+          total={list.data?.totalSize ?? 0}
+          paging={paging.controls(list.data?.nextPageToken)}
+          selectedId={detail?.summary?.id ?? selected}
+          selectedTitle={detail?.summary?.title}
+          onSelect={(id) => navigate(`/tasks/${id}${suffix}`)}
+        />
+      </div>
       {detail ? (
         <TaskView
           key={`${detail.summary?.id}:${selected}`}
           detail={detail}
           focusTaskId={selected}
+          openApproval={search.get("approval") === "1"}
         />
       ) : (
         <p className="flex items-center justify-center text-sm text-muted-foreground">

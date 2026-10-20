@@ -7,6 +7,7 @@ import {
   ConfigurationSnapshotSchema,
   type EvaluationReport,
 } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
+import { scoreRuleFailures } from "../../shared/evaluation.js";
 
 export function snapshotDigest(snapshot: ConfigurationSnapshot): string {
   return createHash("sha256")
@@ -60,15 +61,7 @@ export function evaluationFailures(
         failures.add("evaluation.invalidScore");
     }
     for (const rule of baseline.rules) {
-      const candidate = sample.candidate.find((score) => score.name === rule.name);
-      const released = sample.released.find((score) => score.name === rule.name);
-      if (!candidate || !released) {
-        failures.add("evaluation.scoreMissing");
-        continue;
-      }
-      if (candidate.value < rule.minimum) failures.add("evaluation.belowThreshold");
-      if (released.value - candidate.value > rule.maximumRegression)
-        failures.add("evaluation.regression");
+      for (const failure of scoreRuleFailures(rule, sample)) failures.add(failure);
     }
   }
   if (expected.size !== observed.size || [...expected].some((key) => !observed.has(key)))

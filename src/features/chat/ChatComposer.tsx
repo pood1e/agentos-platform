@@ -3,6 +3,7 @@ import { ArrowUp, LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { StopTask } from "../tasks/StopTask.js";
 import type { Chat } from "./use-chat.js";
 
 export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: boolean }) {
@@ -28,16 +29,22 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
           cancelOnEscape={false}
           addAttachmentOnPaste={false}
         />
-        <ComposerPrimitive.Send asChild>
-          <Button
-            size="icon-sm"
-            aria-label={t(builder ? "configuration.generate" : "chat.send")}
-            title={t(builder ? "configuration.generate" : "chat.send")}
-            className="self-end rounded-full"
-          >
-            {chat.sending ? <LoaderCircle className="motion-safe:animate-spin" /> : <ArrowUp />}
-          </Button>
-        </ComposerPrimitive.Send>
+        {chat.busy && chat.conversation?.messages.at(-1)?.taskId ? (
+          <div className="self-end">
+            <StopTask taskId={chat.conversation.messages.at(-1)?.taskId ?? ""} />
+          </div>
+        ) : (
+          <ComposerPrimitive.Send asChild>
+            <Button
+              size="icon-sm"
+              aria-label={t(builder ? "configuration.generate" : "chat.send")}
+              title={t(builder ? "configuration.generate" : "chat.send")}
+              className="self-end rounded-full"
+            >
+              {chat.sending ? <LoaderCircle className="motion-safe:animate-spin" /> : <ArrowUp />}
+            </Button>
+          </ComposerPrimitive.Send>
+        )}
       </ComposerPrimitive.Root>
     </div>
   );

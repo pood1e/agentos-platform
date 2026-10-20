@@ -9,6 +9,7 @@ import "agentos/console/v1/engineer.proto";
 import "agentos/console/v1/tool.proto";
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/task.proto";
+import "agentos/console/v1/state.proto";
 import "buf/validate/validate.proto";
 import "agentos/governance/v1/change.proto";
 import "kagent/api/v1alpha1/tools.proto";
@@ -25,6 +26,7 @@ service ConsoleService {
   // Sends the current operation tree, then again whenever it changes.
   rpc WatchTask(WatchTaskRequest) returns (stream WatchTaskResponse);
   rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse);
+  rpc CancelTask(CancelTaskRequest) returns (CancelTaskResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   // Sends the current conversation, then again whenever it changes.
   rpc WatchConversation(WatchConversationRequest) returns (stream WatchConversationResponse);
@@ -52,6 +54,11 @@ message ListTasksRequest {
   }];
   string page_token = 2 [(buf.validate.field).string.max_len = 2048];
   string query = 3 [(buf.validate.field).string.max_len = 200];
+  repeated ActivityState states = 4 [(buf.validate.field).repeated = {
+    unique: true
+    items: {enum: {defined_only: true, not_in: [0]}}
+  }];
+  string engineer = 5 [(buf.validate.field).string.max_len = 128];
 }
 
 message ListTasksResponse {
@@ -75,6 +82,11 @@ message GetTaskRunRequest {
 message GetTaskRunResponse {
   TaskRun run = 1;
 }
+
+message CancelTaskRequest {
+  string task_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+message CancelTaskResponse {}
 
 message ListConversationsRequest {
   ConversationKind kind = 1 [(buf.validate.field).enum = {

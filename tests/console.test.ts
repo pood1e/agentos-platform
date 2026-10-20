@@ -3,7 +3,7 @@ import { clone } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
 import { describe, expect, it } from "vitest";
-import type { Task } from "../gen/a2a_pb.js";
+import { type Task, TaskState } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
@@ -46,6 +46,29 @@ async function rejection(call: Promise<unknown>) {
 }
 
 describe("console service", () => {
+  it("cancels an operation through a child task and closes its pending approval interval", async () => {
+    const { client, sync, index, fake } = await workbench(pendingApprovalTasks());
+    try {
+      await client.cancelTask({ taskId: ids.approved });
+      expect(fake.task(ids.approved).status?.state).toBe(TaskState.CANCELED);
+      expect(fake.task(ids.approvalRoot).status?.state).toBe(TaskState.COMPLETED);
+      expect(
+        (await client.listTasks({ states: [ActivityState.AWAITING_APPROVAL] })).totalSize,
+      ).toBe(0);
+      expect((await client.listTasks({ query: ids.approvalRoot })).tasks[0]?.state).toBe(
+        ActivityState.CANCELED,
+      );
+      const approval = index.entry(ids.approved)?.interactions[0];
+      expect(approval?.state).toBe(ActivityState.CANCELED);
+      expect(approval?.requestedAt).toBeDefined();
+      expect(approval?.answeredAt).toBeDefined();
+      await expect(client.cancelTask({ taskId: "missing" })).rejects.toMatchObject({
+        code: Code.NotFound,
+      });
+    } finally {
+      sync.close();
+    }
+  });
   it("serves the solution pack presentation", async () => {
     const { client } = await workbench();
     const { pack } = await client.getPack({});

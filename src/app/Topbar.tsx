@@ -6,6 +6,7 @@ import { useAccess } from "@/lib/access";
 import { usePack } from "@/lib/pack";
 import { Connection } from "./Connection.js";
 import { LanguageSelect } from "./LanguageSelect.js";
+import { PendingApprovals } from "./PendingApprovals.js";
 import { ThemeSelect } from "./ThemeSelect.js";
 
 const sections = [
@@ -51,6 +52,7 @@ export function Topbar() {
           </TabsList>
         </Tabs>
         <div className="ml-auto flex items-center gap-2">
+          <PendingApprovals />
           <Connection />
           <ThemeSelect />
           <LanguageSelect />

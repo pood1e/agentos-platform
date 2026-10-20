@@ -91,7 +91,7 @@ export function HistoryList({
       </div>
       <Card
         data-testid={`${kind}-history`}
-        className="hidden min-h-0 gap-0 overflow-hidden py-0 shadow-none lg:flex"
+        className="hidden min-h-0 flex-1 gap-0 overflow-hidden py-0 shadow-none lg:flex"
       >
         <CardHeader className="flex shrink-0 flex-row items-center justify-between px-4 py-4">
           <CardTitle className="text-sm">{title}</CardTitle>

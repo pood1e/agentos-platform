@@ -20,6 +20,7 @@ interface Request {
   requestId: string;
   response?: Message;
   current: boolean;
+  canceled: boolean;
 }
 
 function requests(task: Task): Request[] {
@@ -49,7 +50,8 @@ function requests(task: Task): Request[] {
     });
     const current =
       task.status?.state === TaskState.INPUT_REQUIRED && message.messageId === status?.messageId;
-    return [{ message, payload, tools, requestId, response, current }];
+    const canceled = task.status?.state === TaskState.CANCELED && !response;
+    return [{ message, payload, tools, requestId, response, current, canceled }];
   });
 }
 
@@ -92,7 +94,7 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
   const seen = new Set<string>();
   return requests(task).flatMap((request) => {
     const id = `${task.id}:human:${request.requestId}`;
-    if ((!request.response && !request.current) || seen.has(id)) return [];
+    if ((!request.response && !request.current && !request.canceled) || seen.has(id)) return [];
     seen.add(id);
     const approval = request.payload.type === "tool_approval_request";
     const call = approval
@@ -122,19 +124,27 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
               }))
             : [],
         explanation: call?.intent || (/FunctionResponse|ToolConfirmation/.test(hint) ? "" : hint),
-        state: !request.response
-          ? approval
-            ? ActivityState.AWAITING_APPROVAL
-            : ActivityState.AWAITING_INPUT
-          : !approval || approved(request)
-            ? ActivityState.SUCCEEDED
-            : ActivityState.REJECTED,
+        state: request.canceled
+          ? ActivityState.CANCELED
+          : !request.response
+            ? approval
+              ? ActivityState.AWAITING_APPROVAL
+              : ActivityState.AWAITING_INPUT
+            : !approval || approved(request)
+              ? ActivityState.SUCCEEDED
+              : ActivityState.REJECTED,
         requestedAt: stamp(
           timeline(request.message.metadata) ??
             call?.startedAt ??
             (request.current ? millis(task.status?.timestamp) : undefined),
         ),
-        answeredAt: stamp(request.response ? timeline(request.response.metadata) : undefined),
+        answeredAt: stamp(
+          request.canceled
+            ? millis(task.status?.timestamp)
+            : request.response
+              ? timeline(request.response.metadata)
+              : undefined,
+        ),
         answers:
           answer?.type === "ask_user_response"
             ? answer.value.answers.map((item) => ({ values: item.answer }))

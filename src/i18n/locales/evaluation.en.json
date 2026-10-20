@@ -72,5 +72,18 @@
   "invalidScore": "The evaluator returned an invalid score.",
   "belowThreshold": "A score is below its threshold.",
   "regression": "A score regressed beyond its limit.",
-  "executionFailed": "A native evaluation or scoring step failed."
+  "executionFailed": "A native evaluation or scoring step failed.",
+  "ruleSummary": "Rule summary",
+  "rule": "Rule",
+  "candidateMean": "Candidate mean",
+  "releasedMean": "Released mean",
+  "delta": "Difference",
+  "threshold": "Per-case minimum",
+  "maximumRegression": "Maximum regression",
+  "verdict": "Verdict",
+  "ruleVerdictHint": "Each case and repetition must pass; means are for comparison.",
+  "traces": "Traces",
+  "candidateTrace": "Candidate trace",
+  "releasedTrace": "Released trace",
+  "error": "Error"
 }

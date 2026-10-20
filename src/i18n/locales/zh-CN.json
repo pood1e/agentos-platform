@@ -90,7 +90,25 @@
     "noTasks": "还没有任务",
     "notFound": "任务不存在或已不可见。",
     "expandContent": "展开全文",
-    "collapseContent": "收起全文"
+    "collapseContent": "收起全文",
+    "stop": "停止",
+    "cancelHint": "停止所有未结束的前台任务。已执行的变更仍需核验。",
+    "cancelledHint": "前台任务已停止，已执行的变更仍需核验。",
+    "cancelFailed": "停止任务失败，请重试。",
+    "pendingApprovals": "待审批",
+    "filterState": "筛选任务状态",
+    "filterEngineer": "筛选任务成员",
+    "allStates": "全部状态",
+    "allEngineers": "全部成员",
+    "view": "任务视图",
+    "timeline": "时间线",
+    "timelineBackground": "后台",
+    "timelineKinds": {
+      "execution": "执行",
+      "delegation": "委派",
+      "approval": "审批"
+    },
+    "fitTimeline": "显示全部"
   },
   "graph": {
     "title": "协作图",

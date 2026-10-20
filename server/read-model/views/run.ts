@@ -18,6 +18,7 @@ export async function taskRun(sync: KagentSync, taskId: string): Promise<TaskRun
     prompt: entry.prompt,
     output: entry.answer,
     calls: toolCalls(task, entry.agentId, approvals(task)),
+    startedAt: stamp(entry.createdAt),
     updatedAt: stamp(entry.statusAt),
   });
 }

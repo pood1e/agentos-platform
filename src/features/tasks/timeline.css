@@ -1,0 +1,23 @@
+.task-timeline .vis-label,
+.task-timeline .vis-time-axis .vis-text,
+.task-timeline .vis-item {
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.task-timeline .vis-timeline,
+.task-timeline .vis-panel,
+.task-timeline .vis-labelset .vis-label,
+.task-timeline .vis-time-axis .vis-grid {
+  border-color: var(--border);
+}
+
+.task-timeline .vis-item {
+  background: var(--muted);
+  cursor: pointer;
+}
+
+.task-timeline .vis-item.vis-selected {
+  background: var(--accent);
+}

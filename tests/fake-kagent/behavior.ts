@@ -116,7 +116,7 @@ function knowledge(fake: FakeKagent, task: Task) {
 
 /** Deterministic role behavior; every result is delivered through the native A2A protocol. */
 export function execute(fake: FakeKagent, task: Task, message: Message) {
-  if (fake.tasks.get(task.id) !== task) return;
+  if (fake.tasks.get(task.id) !== task || task.status?.state === TaskState.CANCELED) return;
   const role = fake.sessions.get(task.contextId)?.agent?.name;
   const text = messageText(message);
   if (role === "role-builder") {

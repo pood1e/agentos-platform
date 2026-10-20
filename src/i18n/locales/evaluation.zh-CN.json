@@ -72,5 +72,18 @@
   "invalidScore": "评分结果无效。",
   "belowThreshold": "评分未达到门槛。",
   "regression": "评分退化超出允许范围。",
-  "executionFailed": "原生执行或评分失败。"
+  "executionFailed": "原生执行或评分失败。",
+  "ruleSummary": "规则汇总",
+  "rule": "规则",
+  "candidateMean": "候选均值",
+  "releasedMean": "已发布均值",
+  "delta": "差值",
+  "threshold": "单例门槛",
+  "maximumRegression": "最大退化",
+  "verdict": "判定",
+  "ruleVerdictHint": "按每个用例、每轮评分判定；均值仅用于对比。",
+  "traces": "追踪",
+  "candidateTrace": "候选追踪",
+  "releasedTrace": "已发布追踪",
+  "error": "错误"
 }
