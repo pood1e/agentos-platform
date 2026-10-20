@@ -3,8 +3,9 @@ import { CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
 import { type ToolBinding, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { ToolRequirementSchema } from "../../gen/agentos/console/v1/tool_pb.js";
 import type { ToolServer } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+import { platformProfile } from "../../shared/platform-tools.js";
 import { object, text } from "../read-model/decode/messages.js";
-import { loadCatalog, type ToolCatalog } from "./catalog.js";
+import { loadCatalog, requiresChangeReview, type ToolCatalog } from "./catalog.js";
 
 interface Target {
   engineer: string;
@@ -64,6 +65,8 @@ export class ToolBindings {
   ) {}
 
   usable(engineer: string, server: string) {
+    const profile = platformProfile(server);
+    if (profile) return profile.role === engineer;
     const target = this.targets.get(server);
     return !target || (!target.catalog && target.engineer === engineer);
   }
@@ -82,7 +85,15 @@ export class ToolBindings {
   }
 
   requiresApproval(server: string, tool: string) {
-    return this.targets.get(server)?.governance !== "direct" && this.writes(server, tool);
+    const target = this.targets.get(server);
+    if (target?.governance === "direct") return false;
+    return target
+      ? requiresChangeReview(
+          this.catalog,
+          target.project,
+          tool.startsWith(`${target.service}_`) ? tool.slice(target.service.length + 1) : tool,
+        )
+      : this.writes(server, tool);
   }
 
   requirements(engineer: string, servers: ToolServer[]) {

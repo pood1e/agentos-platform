@@ -16,6 +16,7 @@ import { changeId } from "../server/shared/change-digest.js";
 import { collaborationFlow } from "../src/features/tasks/flow/collaboration-flow.js";
 import { collaborationLayout } from "../src/features/tasks/flow/collaboration-layout.js";
 import type { Link } from "../src/features/tasks/flow/links.js";
+import { collaborationDetail } from "./fixtures/collaboration.js";
 import { fixtureIndex, fixtureIds as ids } from "./fixtures/kagent.js";
 
 const engineer = "agentos/remediation";
@@ -43,6 +44,10 @@ const review = (id: string, requestId: string, start: number, end?: number): Lin
   startedAt: start,
   finishedAt: end,
   state: end === undefined ? ActivityState.WORKING : ActivityState.SUCCEEDED,
+  dependsOn: [],
+  returned: false,
+  sourceContextId: "context-operation",
+  targetContextId: `context-${id}`,
 });
 
 describe("native review projection", () => {
@@ -91,69 +96,84 @@ describe("native review projection", () => {
   });
 });
 
-describe("approval collaboration", () => {
+describe("approval instance collaboration", () => {
   const layout = (links: Link[], interactions: ReturnType<typeof interaction>[]) =>
     collaborationLayout(
-      collaborationFlow({
-        participants: [engineer, ...new Set(links.map((link) => link.target))],
-        root,
-        window: { start: 0 },
-        links,
-        interactions,
-      }),
+      collaborationFlow(
+        collaborationDetail(links, {
+          root: { ...root, contextId: "context-operation" },
+          interactions,
+        }),
+      ),
     );
 
-  it("shows a running reviewer and resumes only after the work-order decision", () => {
-    const pending = layout([review("review-a", "pause-a", 2_000)], [interaction("pause-a", 1_000)]);
-    expect(pending.activities.map((node) => node.kind)).toEqual(["entry", "review"]);
-    expect(pending.activities[1]).toMatchObject({ agentId: reviewer, taskId: "task-review-a" });
-    expect(pending.activities[1]?.step?.link.state).toBe(ActivityState.WORKING);
-    const finished = layout(
+  it("shows both the reviewer instance and the actual human approval", async () => {
+    const pending = await layout(
+      [review("review-a", "pause-a", 2_000)],
+      [interaction("pause-a", 1_000)],
+    );
+    expect(pending.activities.map((node) => node.kind)).toEqual([
+      "engineer",
+      "engineer",
+      "approval",
+    ]);
+    expect(pending.activities[1]).toMatchObject({
+      contextId: "context-review-a",
+      state: ActivityState.WORKING,
+    });
+    expect(
+      pending.connections.flatMap((edge) => edge.records).find((edge) => edge.phase === "approval")
+        ?.source,
+    ).toBe("session:context-review-a");
+  });
+
+  it("returns the human decision to the existing execution instance", async () => {
+    const finished = await layout(
       [review("review-a", "pause-a", 2_000, 4_000)],
       [interaction("pause-a", 1_000, 5_000)],
     );
-    expect(finished.activities.map((node) => [node.kind, node.column])).toEqual([
-      ["entry", 1],
-      ["review", 2],
-      ["continued", 3],
+    expect(finished.activities).toHaveLength(3);
+    expect(finished.connections.find((edge) => edge.source === "interaction:pause-a")?.target).toBe(
+      "session:context-operation",
+    );
+  });
+
+  it("keeps different reviewer contexts distinct and can reuse the same reviewer context", async () => {
+    const links = [
+      review("review-a", "pause-a", 2_000, 4_000),
+      { ...review("review-b", "pause-b", 7_000, 8_000), targetContextId: "context-review-a" },
+    ];
+    const result = await layout(links, [
+      interaction("pause-a", 1_000, 5_000),
+      interaction("pause-b", 6_000, 9_000),
+    ]);
+    expect(result.activities.filter((node) => node.agentId === reviewer)).toHaveLength(1);
+    expect(result.activities.filter((node) => node.kind === "approval")).toHaveLength(2);
+    expect(result.activities.find((node) => node.agentId === reviewer)?.taskIds).toEqual([
+      "task-review-a",
+      "task-review-b",
     ]);
   });
 
-  it("keeps repeated approvals in their actual request order", () => {
-    const result = layout(
-      [review("review-b", "pause-b", 7_000, 8_000), review("review-a", "pause-a", 2_000, 4_000)],
-      [interaction("pause-b", 6_000, 9_000), interaction("pause-a", 1_000, 5_000)],
-    );
-    expect(result.activities.map((node) => [node.kind, node.column])).toEqual([
-      ["entry", 1],
-      ["review", 2],
-      ["continued", 3],
-      ["review", 4],
-      ["continued", 5],
-    ]);
-    expect(result.connections.find((edge) => edge.id === "review-b:request")?.source).toBe(
-      "pause-a:continued",
-    );
-    expect(result.activities.some((node) => node.kind === "approval")).toBe(false);
-  });
-
-  it("keeps parallel reviewers in one column and waits for every review", () => {
-    const result = layout(
-      [
-        review("review-a", "pause", 2_000, 8_000),
-        { ...review("review-b", "pause", 3_000, 7_000), target: "agentos/reviewer-2" },
-      ],
+  it("keeps parallel review instances in the same row", async () => {
+    const result = await layout(
+      [review("review-a", "pause", 2_000, 8_000), review("review-b", "pause", 3_000, 7_000)],
       [interaction("pause", 1_000, 9_000)],
     );
-    expect(
-      result.activities.filter((node) => node.kind === "review").map((node) => node.column),
-    ).toEqual([2, 2]);
-    expect(result.connections.filter((edge) => edge.target === "pause:continued")).toHaveLength(2);
+    const reviewers = result.activities.filter((node) => node.agentId === reviewer);
+    expect(reviewers.map((node) => node.row)).toEqual([2, 2]);
+    expect(new Set(reviewers.map((node) => node.y)).size).toBe(1);
+    expect(result.connections.filter((edge) => edge.target === "interaction:pause")).toHaveLength(
+      2,
+    );
   });
 
-  it("keeps coordinates stable when only the review state changes", () => {
-    const before = layout([review("review-a", "pause", 2_000)], [interaction("pause", 1_000)]);
-    const after = layout(
+  it("keeps coordinates stable across review status updates", async () => {
+    const before = await layout(
+      [review("review-a", "pause", 2_000)],
+      [interaction("pause", 1_000)],
+    );
+    const after = await layout(
       [review("review-a", "pause", 2_000, 4_000)],
       [interaction("pause", 1_000)],
     );
@@ -163,44 +183,9 @@ describe("approval collaboration", () => {
     );
   });
 
-  it("preserves human approval when no engineer was assigned to review", () => {
+  it("keeps human-only approval visible without fabricating a reviewer", async () => {
     expect(
-      layout([], [interaction("human-pause", 1_000)]).activities.map((node) => node.kind),
-    ).toEqual(["entry", "approval"]);
-  });
-
-  it("returns to the coordinator after review and continued execution", () => {
-    const coordinator = "agentos/coordinator";
-    const result = collaborationLayout(
-      collaborationFlow({
-        participants: [coordinator, engineer, reviewer],
-        root: { taskId: "supervision", agentId: coordinator },
-        window: { start: 0 },
-        links: [
-          {
-            id: "delegate",
-            kind: "invoke",
-            source: coordinator,
-            target: engineer,
-            sourceTaskId: "supervision",
-            targetTaskId: root.taskId,
-            state: ActivityState.SUCCEEDED,
-            startedAt: 100,
-            finishedAt: 9_000,
-            endedAt: 10_000,
-          },
-          review("review-a", "pause", 2_000, 4_000),
-        ],
-        interactions: [interaction("pause", 1_000, 5_000)],
-      }),
-    );
-    expect(result.connections.find((edge) => edge.id === "return:delegate")?.source).toBe(
-      "pause:continued",
-    );
-    for (const edge of result.connections) {
-      const from = result.activities.find((node) => node.id === edge.source);
-      const to = result.activities.find((node) => node.id === edge.target);
-      expect(from?.x).toBeLessThan(to?.x ?? 0);
-    }
+      (await layout([], [interaction("human-pause", 1_000)])).activities.map((node) => node.kind),
+    ).toEqual(["engineer", "approval"]);
   });
 });

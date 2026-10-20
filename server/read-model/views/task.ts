@@ -10,16 +10,17 @@ import {
   type TaskSummary,
   TaskSummarySchema,
 } from "../../../gen/agentos/console/v1/task_pb.js";
+import { SessionSchema } from "../../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { shortTitle } from "../../shared/title.js";
 import { systemRoles } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";
 import { type PageRequest, pageOf } from "../page.js";
 import { awaiting, taskActivity, terminal } from "../state.js";
-import { foreground, type TaskTree, taskTree } from "../tree.js";
+import { busy, foreground, type TaskTree, taskTree } from "../tree.js";
 import { engineer } from "./engineers.js";
 import { reviewDelegations } from "./reviews.js";
 import { runState, runSummary, stamp } from "./runs.js";
-import { shortTitle } from "./title.js";
 
 function treeState(tree: TaskTree): ActivityState {
   const active = foreground(tree);
@@ -96,15 +97,24 @@ function delegations(index: TaskIndex, tree: TaskTree): Delegation[] {
           targetAgentId: target,
           sourceTaskId: entry.id,
           targetTaskId: child?.id ?? "",
+          sourceContextId: entry.contextId,
+          targetContextId: child?.contextId || ref.sessionId,
           callId: call.id,
           state: child ? runState(child) : call.state,
           startedAt: stamp(call.startedAt),
           returnedAt: ref.kind === DelegationKind.BACKGROUND ? undefined : stamp(call.endedAt),
           finishedAt: child && terminal(child.state) ? stamp(child.statusAt) : undefined,
+          dependsOn: call.dependsOn.map((id) => `call:${entry.id}:${id}`),
+          returned: ref.kind === DelegationKind.INVOKE && call.returned,
         }),
       ];
     });
-    const previous = byId.get(entry.resumedTaskId);
+    const parent = byId.get(index.relations().parents.get(entry.id) ?? "");
+    const previous =
+      byId.get(entry.resumedTaskId) ??
+      (parent?.agentId === entry.agentId && parent.contextId === entry.contextId
+        ? parent
+        : undefined);
     if (!previous) return calls;
     const done = terminal(entry.state);
     return [
@@ -116,7 +126,9 @@ function delegations(index: TaskIndex, tree: TaskTree): Delegation[] {
         targetAgentId: entry.agentId,
         sourceTaskId: previous.id,
         targetTaskId: entry.id,
-        state: done ? ActivityState.SUCCEEDED : ActivityState.WORKING,
+        sourceContextId: previous.contextId,
+        targetContextId: entry.contextId,
+        state: runState(entry),
         startedAt: stamp(previous.statusAt),
         finishedAt: done ? stamp(entry.statusAt) : undefined,
       }),
@@ -125,13 +137,17 @@ function delegations(index: TaskIndex, tree: TaskTree): Delegation[] {
 }
 
 export function taskDetail(index: TaskIndex, rootId: string): TaskDetail | undefined {
-  const tree = taskTree(index, rootId);
+  const root = index.operationRoot(rootId);
+  const tree = root && taskTree(index, root.id);
   if (!tree) return undefined;
   const links = [...delegations(index, tree), ...reviewDelegations(tree)];
   const agentIds = new Set([
     ...tree.entries.map((entry) => entry.agentId),
     ...links.map((link) => link.targetAgentId),
   ]);
+  const contexts = new Map(tree.entries.map((entry) => [entry.contextId, entry.agentId]));
+  for (const link of links)
+    if (link.targetContextId) contexts.set(link.targetContextId, link.targetAgentId);
   return create(TaskDetailSchema, {
     summary: taskSummary(index, tree),
     participants: [...agentIds].map((id) =>
@@ -142,10 +158,24 @@ export function taskDetail(index: TaskIndex, rootId: string): TaskDetail | undef
       ),
     ),
     delegations: links,
+    sessions: [...contexts]
+      .filter(([id]) => id)
+      .map(([id, agentId]) => {
+        const session = index.session(id);
+        const [namespace, name] = agentId.split("/");
+        return create(SessionSchema, {
+          id,
+          contextId: id,
+          agent: { namespace, name },
+          name: session?.name ?? "",
+          updatedAt: stamp(session?.updatedAt),
+        });
+      }),
     interactions: tree.entries.flatMap((entry) => entry.interactions),
     runs: tree.entries.map((entry) => runSummary(entry, tree.background.has(entry.id))),
     answer: tree.latest.answer,
     startedAt: stamp(tree.root.createdAt),
-    completedAt: terminal(tree.latest.state) ? stamp(tree.latest.statusAt) : undefined,
+    completedAt:
+      !busy(tree) && terminal(tree.latest.state) ? stamp(tree.latest.statusAt) : undefined,
   });
 }

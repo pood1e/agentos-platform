@@ -20,9 +20,11 @@ import { awaiting, terminal } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { taskRun } from "../read-model/views/run.js";
 import { changeId, digest } from "../shared/change-digest.js";
-import { loadCatalog } from "./catalog.js";
+import type { ToolCatalog } from "./catalog.js";
 import { changeClient } from "./client.js";
 import { approvalEvidence } from "./evidence.js";
+import messages from "./messages.json" with { type: "json" };
+import { preparedChange } from "./preparation.js";
 import { changeRequest, environmentFor } from "./requests.js";
 
 /** Bridges native tool pauses to environment-owned work orders and their decisions. */
@@ -30,9 +32,9 @@ export function operationsCoordinator(
   sync: KagentSync,
   config: OperationsConfig,
   log: FastifyBaseLogger,
+  catalog: ToolCatalog,
 ) {
   const connections = config.environments;
-  const catalog = loadCatalog();
   const completed = new LRUCache<string, boolean>({ max: 5000 });
   let running = false,
     stopped = false;
@@ -88,6 +90,21 @@ export function operationsCoordinator(
                 const run = await taskRun(sync, entry.id);
                 if (!run || !connection.environment)
                   throw new Error("Native execution evidence is unavailable");
+                request.preparation = preparedChange(
+                  run.calls,
+                  tool.callId,
+                  request.tool?.name ?? "",
+                  request.tool?.args ?? {},
+                );
+                if (!request.preparation) {
+                  decisions.push({
+                    id: tool.id,
+                    approved: false,
+                    rejectionReason:
+                      "变更方案未准备：请调用 prepare_change，提供准确工具和参数、影响、验证及回退计划；适用的仿真证据可一并提供。之后使用完全相同的参数调用写工具。未创建审批工单，未执行变更。",
+                  });
+                  continue;
+                }
                 request.evidence = approvalEvidence(
                   run.calls,
                   tool.callId,
@@ -97,7 +114,6 @@ export function operationsCoordinator(
                 ({ result } = await client.registerChange({ request }));
               }
               if (!result?.change) throw new Error("Environment did not return a change");
-              if (!result?.change) throw new Error("Missing change state");
               if (!awaiting(interaction.state)) {
                 const call = terminal(entry.state)
                   ? (await taskRun(sync, entry.id))?.calls.find((item) => item.id === tool.callId)
@@ -130,7 +146,7 @@ export function operationsCoordinator(
                 continue;
               }
               if (
-                ![ChangeState.APPROVED, ChangeState.REJECTED, ChangeState.EXPIRED].includes(
+                ![ChangeState.APPROVED, ChangeState.REJECTED, ChangeState.CANCELED].includes(
                   result.change.state,
                 )
               ) {
@@ -138,10 +154,15 @@ export function operationsCoordinator(
                 continue;
               }
               const approved = result.change.state === ChangeState.APPROVED;
+              const copy =
+                messages[/\p{Script=Han}/u.test(request.intent || request.prompt) ? "zh" : "en"];
               decisions.push({
                 id: tool.id,
                 approved,
-                rejectionReason: approved ? "" : result.change.reason || "变更被拒绝或已过期",
+                rejectionReason: approved
+                  ? ""
+                  : result.change.reason ||
+                    (result.change.state === ChangeState.REJECTED ? copy.rejected : copy.closed),
               });
               if (approved)
                 preparations.push({ client, id: result.change.id, index: decisions.length - 1 });

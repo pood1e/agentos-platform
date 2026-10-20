@@ -1,0 +1,21 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ include "agentos.name" . }}-collaboration-guardrails
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: agentgateway.dev, kind: AgentgatewayBackend, name: kagent-collaboration}
+  backend:
+    mcp:
+      guardrails:
+        processors:
+          - methods: {'*': Full}
+            remote:
+              backendRef: {name: {{ include "agentos.name" . }}-console, port: 9090}
+              failureMode: FailClosed
+              metadata:
+                workspace: apiKey.workspace
+                agentPrefix: "has(apiKey.agentPrefix) ? apiKey.agentPrefix : ''"
+                toolName: "has(mcp.tool) ? mcp.tool.name : ''"

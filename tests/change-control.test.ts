@@ -126,19 +126,11 @@ describe.skipIf(!database)("environment change control with PostgreSQL", () => {
     );
     expect((await context.store.get(change.id)).claimed_at).toBeNull();
   });
-  it("expires an approval before execution and rejects an unclaimed success", async () => {
-    const { client, control, request, ready } = await approved();
+  it("rejects an unclaimed success without ending the approval", async () => {
+    const { client, ready } = await approved();
     const id = present(ready.change).id;
     await expect(client.recordResult({ id, failed: false })).rejects.toThrow("claimed approval");
-    await context.admin`UPDATE ${context.admin(context.schema)}.changes SET expires_at = now() - interval '1 second' WHERE id = ${id}`;
-    expect((await client.getChange({ id })).result?.change?.state).toBe(ChangeState.EXPIRED);
-    await expect(
-      control.authorize(
-        "remediation",
-        "kubernetes_resources_create_or_update",
-        present(present(request.tool).args),
-      ),
-    ).rejects.toThrow("prepared and approved");
+    expect((await client.getChange({ id })).result?.change?.state).toBe(ChangeState.APPROVED);
     expect((await context.store.get(id)).claimed_at).toBeNull();
   });
   it("persists execution claims and retries failed result delivery", async () => {

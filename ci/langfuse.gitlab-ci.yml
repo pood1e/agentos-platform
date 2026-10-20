@@ -1,0 +1,19 @@
+langfuse-verify:
+  extends: .shell
+  stage: verify
+  rules: &langfuse-rules
+    - changes: [runtime/langfuse/**/*, ci/langfuse.gitlab-ci.yml]
+  script: [node --test runtime/langfuse/shared-session.test.cjs]
+
+build-langfuse-web:
+  extends: .build-image
+  needs: [langfuse-verify]
+  rules: *langfuse-rules
+  variables:
+    AGENTOS_BUILD_CONTEXT: runtime/langfuse
+    AGENTOS_DOCKERFILE_DIR: runtime/langfuse
+    AGENTOS_IMAGE_SUFFIX: /langfuse-web
+    AGENTOS_BUILD_METADATA: .cache/langfuse-build-metadata.json
+  artifacts:
+    paths: [.cache/langfuse-build-metadata.json]
+    expire_in: 7 days

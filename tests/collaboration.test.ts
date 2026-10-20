@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { collaborationFlow } from "../src/features/tasks/flow/collaboration-flow.js";
-import {
-  activityHeight,
-  collaborationLayout,
-} from "../src/features/tasks/flow/collaboration-layout.js";
+import { collaborationLayout } from "../src/features/tasks/flow/collaboration-layout.js";
 import type { Link } from "../src/features/tasks/flow/links.js";
 import { eventTime, sequenceFor } from "../src/features/tasks/flow/sequence.js";
+import { collaborationDetail } from "./fixtures/collaboration.js";
 
 const coordinator = "agentos/coordinator";
 const root = { taskId: "task-coordinator", agentId: coordinator };
-const window = { start: 1_000, completedAt: 32_000 };
 
 function link(id: string, startedAt?: number, endedAt?: number, fields: Partial<Link> = {}): Link {
   return {
@@ -18,11 +15,15 @@ function link(id: string, startedAt?: number, endedAt?: number, fields: Partial<
     source: "coordinator",
     target: id,
     sourceTaskId: "root-task",
+    sourceContextId: "context-coordinator",
+    targetContextId: `context-${fields.target ?? id}`,
     targetTaskId: `task-${id}`,
     kind: "invoke",
     state: ActivityState.SUCCEEDED,
     startedAt,
     endedAt,
+    dependsOn: [],
+    returned: endedAt !== undefined,
     ...fields,
   };
 }
@@ -38,6 +39,12 @@ function investigation(): Link[] {
       callKey: `${root.taskId}:delegate-${role}`,
       finishedAt,
       kind: endedAt === undefined ? "background" : "invoke",
+      dependsOn:
+        role === "remediation"
+          ? ["delegate-inspection", "delegate-diagnosis"]
+          : role === "knowledge"
+            ? ["delegate-remediation"]
+            : [],
     });
   return [
     step("inspection", 1_000, 16_000, 17_000),
@@ -47,10 +54,11 @@ function investigation(): Link[] {
   ];
 }
 
-const participants = (links: Link[]) => [coordinator, ...new Set(links.map((item) => item.target))];
-const layoutOf = (links: Link[], agents = participants(links)) =>
+const layoutOf = (links: Link[]) =>
   collaborationLayout(
-    collaborationFlow({ participants: agents, links, root, window, interactions: [] }),
+    collaborationFlow(
+      collaborationDetail(links, { root: { ...root, contextId: "context-coordinator" } }),
+    ),
   );
 
 describe("observed collaboration sequence", () => {
@@ -118,73 +126,69 @@ describe("observed collaboration sequence", () => {
   });
 });
 
-describe("left-to-right collaboration steps", () => {
-  it("places parallel branches in one column and advances later delegations", () => {
-    const layout = layoutOf(investigation());
-    const executions = layout.activities.filter((activity) => activity.step);
-    expect(executions.map((activity) => activity.column)).toEqual([2, 2, 4, 6]);
-    expect(executions[0]?.x).toBe(executions[1]?.x);
-    expect(layout.connections.filter((item) => item.phase === "dispatch")).toHaveLength(4);
-    expect(layout.connections.filter((item) => item.phase === "return")).toHaveLength(3);
-    for (const connection of layout.connections) {
-      const source = layout.activities.find((activity) => activity.id === connection.source);
-      const target = layout.activities.find((activity) => activity.id === connection.target);
-      expect(source?.x).toBeLessThan(target?.x ?? 0);
-    }
+describe("instance collaboration layout", () => {
+  it("places initially independent instances in one row and later work below", async () => {
+    const layout = await layoutOf(investigation());
+    expect(layout.activities.map((activity) => activity.row)).toEqual([1, 2, 2, 3, 4]);
+    expect(layout.activities[1]?.y).toBe(layout.activities[2]?.y);
+    expect(layout.activities[3]?.y).toBeGreaterThan(layout.activities[2]?.y ?? 0);
+    expect(layout.activities[4]?.y).toBeGreaterThan(layout.activities[3]?.y ?? 0);
+    expect(layout.connections).toHaveLength(4);
+    expect(
+      layout.connections
+        .flatMap((item) => item.records)
+        .filter((item) => item.phase === "dispatch"),
+    ).toHaveLength(4);
+    expect(
+      layout.connections.flatMap((item) => item.records).filter((item) => item.phase === "return"),
+    ).toHaveLength(3);
   });
 
-  it("centers every column on one horizontal line", () => {
-    const layout = layoutOf(investigation());
-    const columns = [...new Set(layout.activities.map((activity) => activity.column))].map(
-      (column) => layout.activities.filter((activity) => activity.column === column),
-    );
-    const centers = columns.map(
-      (column) =>
-        (Math.min(...column.map((activity) => activity.y)) +
-          Math.max(...column.map((activity) => activity.y + activityHeight))) /
-        2,
-    );
-    expect(new Set(centers).size).toBe(1);
-  });
-
-  it("keeps members sharing a role distinct and centers many parallel participants", () => {
-    const links = Array.from({ length: 12 }, (_, index) =>
-      link(`member-${index}`, 1_000, 17_000, {
+  it("keeps many independent contexts distinct even when they use the same engineer", async () => {
+    const links = Array.from({ length: 12 }, (_, i) =>
+      link(`member-${i}`, 1_000, 17_000, {
         source: coordinator,
         sourceTaskId: root.taskId,
-        target: `agentos/inspection-${index}`,
+        target: "agentos/inspection",
+        targetContextId: `context-${i}`,
         finishedAt: 17_000,
       }),
     );
-    const executions = layoutOf(links).activities.filter(
-      (activity) => activity.kind === "execution",
-    );
-    expect(new Set(executions.map((activity) => activity.agentId)).size).toBe(12);
-    expect(new Set(executions.map((activity) => activity.column))).toEqual(new Set([2]));
+    const instances = (await layoutOf(links)).activities.filter((node) => !node.root);
+    expect(instances).toHaveLength(12);
+    expect(new Set(instances.map((node) => node.contextId)).size).toBe(12);
+    expect(new Set(instances.map((node) => node.row))).toEqual(new Set([2]));
+    expect(new Set(instances.map((node) => node.y)).size).toBe(1);
+    expect(new Set(instances.map((node) => node.x)).size).toBe(12);
   });
 
-  it("attaches nested delegations to their actual invocation", () => {
+  it("uses the originating context for nested delegation and return", async () => {
     const [first, second] = investigation();
-    if (!first?.targetTaskId || !second) throw new Error("scenario");
-    const nested: Link = {
+    if (!first || !second) throw new Error("scenario");
+    const nested = {
       ...second,
       id: "nested",
       source: first.target,
-      sourceTaskId: first.targetTaskId,
-      startedAt: 3_000,
-      finishedAt: 9_000,
-      endedAt: 10_000,
+      sourceTaskId: first.targetTaskId ?? "",
+      sourceContextId: first.targetContextId,
+      targetContextId: "nested-context",
     };
-    const layout = layoutOf([first, nested]);
-    expect(layout.connections.find((edge) => edge.id === "dispatch:nested")?.source).toBe(first.id);
-    expect(layout.connections.find((edge) => edge.id === `return:${first.id}`)?.source).toBe(
-      "resume:nested",
-    );
+    const layout = await layoutOf([first, nested]);
+    expect(
+      layout.connections
+        .flatMap((edge) => edge.records)
+        .find((edge) => edge.phase === "dispatch" && edge.step.link.id === "nested")?.source,
+    ).toBe(`session:${first.targetContextId}`);
+    expect(
+      layout.connections
+        .flatMap((edge) => edge.records)
+        .find((edge) => edge.phase === "return" && edge.step.link.id === "nested")?.target,
+    ).toBe(`session:${first.targetContextId}`);
   });
 
-  it("keeps topology and coordinates stable across status-only updates", () => {
-    const before = layoutOf(investigation());
-    const after = layoutOf(
+  it("keeps topology and coordinates stable across status-only updates", async () => {
+    const before = await layoutOf(investigation());
+    const after = await layoutOf(
       investigation().map((item) => ({ ...item, state: ActivityState.WORKING })),
     );
     expect(after.key).toBe(before.key);
@@ -193,24 +197,23 @@ describe("left-to-right collaboration steps", () => {
     );
   });
 
-  it("does not invent a result-return path for handoffs", () => {
+  it("does not invent a return for a handoff or background dispatch", async () => {
     const [first] = investigation();
     if (!first) throw new Error("scenario");
-    const layout = layoutOf([{ ...first, kind: "handoff" }]);
-    expect(layout.activities.filter((activity) => activity.kind === "resume")).toHaveLength(0);
+    for (const kind of ["handoff", "background"] as const) {
+      const layout = await layoutOf([{ ...first, kind }]);
+      expect(
+        layout.connections
+          .flatMap((edge) => edge.records)
+          .filter((edge) => edge.phase === "return"),
+      ).toHaveLength(0);
+    }
   });
 
-  it("shows a single-agent task as one column and keeps an empty observation empty", () => {
-    const single = layoutOf([], [coordinator]);
-    expect(single.activities).toHaveLength(1);
-    expect(single.activities[0]).toMatchObject({
-      root: true,
-      final: true,
-      column: 1,
-      endedAt: 32_000,
-    });
-    const empty = collaborationLayout(
-      collaborationFlow({ participants: [], links: [], window: {}, interactions: [] }),
+  it("keeps one context in one node and empty observations empty", async () => {
+    expect((await layoutOf([])).activities).toHaveLength(1);
+    const empty = await collaborationLayout(
+      collaborationFlow(collaborationDetail([], { root: null })),
     );
     expect(empty.activities).toEqual([]);
   });

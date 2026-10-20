@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+message AccessProfile {
+  string workspace = 1;
+  string subject = 2;
+  bool operate = 3;
+  bool manage = 4;
+}
+
+message GetAccessProfileRequest {}
+message GetAccessProfileResponse {
+  AccessProfile profile = 1;
+}

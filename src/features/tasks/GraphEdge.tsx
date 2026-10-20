@@ -1,10 +1,4 @@
-import {
-  BaseEdge,
-  type Edge,
-  EdgeLabelRenderer,
-  type EdgeProps,
-  getBezierPath,
-} from "@xyflow/react";
+import { BaseEdge, type Edge, EdgeLabelRenderer, type EdgeProps } from "@xyflow/react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,20 +9,23 @@ export type CollaborationEdge = Edge<
     description: string;
     color: string;
     selected: boolean;
-    callKey?: string;
-    onCall: (id: string) => void;
+    onCall: () => void;
+    path: string;
+    labelPosition: { x: number; y: number };
   },
   "collaboration"
 >;
 
 export const GraphEdge = memo(function GraphEdge(props: EdgeProps<CollaborationEdge>) {
-  const [path, x, y] = getBezierPath({ ...props, curvature: 0.4 });
   const data = props.data;
+  if (!data) return null;
+  const { x, y } = data.labelPosition;
   return (
     <>
       <BaseEdge
         id={props.id}
-        path={path}
+        path={data.path}
+        markerStart={props.markerStart}
         markerEnd={props.markerEnd}
         style={props.style}
         interactionWidth={8}
@@ -38,13 +35,10 @@ export const GraphEdge = memo(function GraphEdge(props: EdgeProps<CollaborationE
           <Button
             variant="ghost"
             size="sm"
-            disabled={!data.callKey}
             aria-label={data.description}
-            onClick={() => {
-              if (data.callKey) data.onCall(data.callKey);
-            }}
+            onClick={data.onCall}
             className={cn(
-              "nodrag nopan pointer-events-auto absolute h-5 rounded-sm bg-background/95 px-1.5 text-[10px] font-normal disabled:opacity-100",
+              "nodrag nopan pointer-events-auto absolute z-10 h-auto min-h-5 max-w-[124px] whitespace-normal rounded-sm bg-background/95 px-1.5 py-0 text-center text-[10px] font-normal leading-5 disabled:opacity-100",
               data.selected && "ring-1 ring-primary/30",
             )}
             style={{

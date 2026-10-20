@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
+import type { Change } from "../../../gen/agentos/governance/v1/change_pb.js";
 import { errorKey } from "../../lib/errors.js";
 import { pretty } from "../../lib/format.js";
 import { awaiting } from "../status/activity.js";
@@ -26,7 +27,7 @@ function decisionLabel(interaction: Interaction) {
     : "approval.operationsApproved";
 }
 
-export function Approval({ interaction }: { interaction: Interaction }) {
+export function Approval({ interaction, ticket }: { interaction: Interaction; ticket?: Change }) {
   const { t } = useTranslation();
   const toolText = useToolText();
   const [answers, setAnswers] = useState<string[][]>(interaction.questions.map(() => []));
@@ -78,7 +79,7 @@ export function Approval({ interaction }: { interaction: Interaction }) {
               </div>
             );
           })}
-          <ChangeOrders interaction={interaction} />
+          <ChangeOrders interaction={interaction} ticket={ticket} />
           {interaction.rejectionReason && (
             <Alert variant="destructive" data-testid="rejection-reason">
               <AlertDescription>{interaction.rejectionReason}</AlertDescription>

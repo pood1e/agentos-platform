@@ -18,7 +18,7 @@ export function changeGuardrails(
         return create(McpRequestResultSchema, { result: { case: "pass", value: {} } });
       const context = request.metadataContext,
         engineer = text(context?.engineer);
-      const service = request.serviceNames[0] ?? "";
+      const service = text(context?.project);
       try {
         if (!engineer || !service) throw new Error("Missing authenticated environment identity");
         const params = object(JSON.parse(new TextDecoder().decode(request.mcpRequest)));

@@ -42,16 +42,27 @@ for environment in config['environments']:
             expression = backends[f'{project}-{identity["name"]}']['spec']['policies']['mcp']['authorization']['policy']['matchExpressions'][0]
             assert sorted(json.loads(expression.removeprefix('mcp.tool.name in '))) == allowed, f'{name}: {project} tools for {identity["name"]}'
     bindings = yaml.safe_load((out / f'{name}-initialize-tools.yaml').read_text())
-    assert all(item['mcp']['requireApproval'] == (approval and item['mcp']['server']['name'].endswith('-changes')) for item in bindings), f'{name}: approval bindings'
+    for item in bindings:
+        binding = item['mcp']
+        if binding['server']['name'] == 'team-sessions':
+            continue
+        project = next(project for project in toolsets if binding['server']['name'].startswith(f'{name}-{project}-'))
+        reviewed = toolsets[project].get('approval', toolsets[project].get('write', []))
+        assert all(binding['requireApproval'] == (approval and tool.removeprefix(f'{name}-{project}_') in reviewed) for tool in binding['tools']), f'{name}: approval bindings'
     pruned = yaml.safe_load((out / f'{name}-prune-tools.yaml').read_text())
     assert [item['mcp']['server']['name'] for item in pruned] == ['team-sessions'], f'{name}: retired bindings remain'
     routes = [doc for doc in load(f'{name}-platform-gateway.yaml') if doc['kind'] == 'HTTPRoute' and 'headers' in doc['spec']['rules'][0]['matches'][0]]
     assert all(route['spec']['rules'][0]['matches'][0]['headers'][0]['name'] == 'x-agentos-engineer' for route in routes)
 
 control = load('env-approval-change-control.yaml')
-policy = next(doc for doc in control if doc['kind'] == 'AgentgatewayPolicy')
-assert policy['spec']['targetSelectors'][0]['matchLabels'] == {'agentos.dev/component': 'environment-tool'}
-assert policy['spec']['backend']['mcp']['guardrails']['processors'][0]['remote']['failureMode'] == 'FailClosed'
+policies = [doc for doc in control if doc['kind'] == 'AgentgatewayPolicy']
+assert {policy['spec']['targetSelectors'][0]['matchLabels']['agentos.dev/project'] for policy in policies} == set(toolsets)
+for policy in policies:
+    labels = policy['spec']['targetSelectors'][0]['matchLabels']
+    assert labels['agentos.dev/component'] == 'environment-tool'
+    processor = policy['spec']['backend']['mcp']['guardrails']['processors'][0]['remote']
+    assert processor['failureMode'] == 'FailClosed'
+    assert processor['metadata']['project'] == repr(labels['agentos.dev/project'])
 secret = next(doc for doc in control if doc['kind'] == 'Secret')['stringData']
 assert json.loads(secret['environment.json']) == {'name': 'env-approval', 'governance': 'GOVERNANCE_APPROVAL', 'approvalUrl': 'https://tickets.example.test'}
 assert yaml.safe_load(secret['toolsets.yaml']) == toolsets

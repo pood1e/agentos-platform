@@ -105,6 +105,7 @@ export interface DelegationRef {
   agentName: string;
   messageId: string;
   taskId: string;
+  message?: string;
   invocation?: InvokeSessionOutput;
 }
 
@@ -158,6 +159,7 @@ export function delegationRef(
         agentName: "",
         messageId: text(args.message_id),
         taskId: result?.taskId ?? "",
+        message: text(args.message).trim(),
         invocation: result,
       };
     }

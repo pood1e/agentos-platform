@@ -6,7 +6,6 @@ metadata:
     {{- include "agentos.labels" . | nindent 4 }}
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.middlewares: {{ printf "%s-%s-login@kubernetescrd,%s-%s-auth@kubernetescrd" .Release.Namespace (include "agentos.name" .) .Release.Namespace (include "agentos.name" .) | quote }}
 spec:
   ingressClassName: traefik
   tls:

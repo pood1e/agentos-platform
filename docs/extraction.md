@@ -18,13 +18,13 @@
 | `src/`（不含下列业务资源） | 平台 | 环境页的门户链接改读 `Environment.links` |
 | `src/features/shared/Mascot*`、`design/mascots/`、`public/mascots/` | 方案包 `pack.json` | 平台按角色键加载头像与分件动画，缺省用通用图标 |
 | `src/features/shared/ToolIcon.tsx` 中的系统映射、`public/icons/`、业务工具标签与角色文案 | 方案包 `pack.json` | 平台保留通用文案与 kagent、MCP 图标 |
-| `charts/aiops-mvp/templates` | 平台 `charts/agentos` | 资源名前缀、入口域名、OIDC 与注册表参数化 |
+| `charts/aiops-mvp/templates` | 平台 `charts/agentos` | 资源名前缀、入口域名与注册表参数化 |
 | `charts/aiops-mvp/presets/system`、`presets/platform-tools.yaml` | 平台 | 入口与角色构建 Agent、平台服务分级 |
 | `charts/aiops-mvp/presets/engineers`、`identities.yaml`、`toolsets.yaml`、`skills.yaml` | 方案包 | 经 `global.agentos` 与 `agentos.presets` 提供 |
 | `skills/` | 方案包 | |
 | `runtime/kagent`、`runtime/substrate`、`runtime/harness-toolbox` | 平台 | 固定上游版本与补丁；镜像标签指向本仓库 |
 | `runtime/jumpserver-mcp`、`runtime/keycloak-mcp`、`runtime/zammad-mcp` | 方案包 | 连接器 |
-| `deploy/`（不含历史迁移剧本） | 平台 | 单节点参考部署；清单、域名、注册表、OIDC、模型与应用值改为部署时传入的站点变量 |
+| `deploy/`（不含历史迁移剧本） | 平台 | 单节点参考部署；清单、域名、注册表、模型与应用值改为部署时传入的站点变量 |
 | `deploy/migrate.yaml`、`deploy/cleanup-migration.yaml`、`deploy/database/*-migration.yaml`、`deploy/values/app.yaml` | 方案包 | 历史迁移与站点值 |
 | `environments/templates` 的 `gateway*`、`platform-*`、`change-control`，`environments/connect.yaml`，`bootstrap/zammad.rb` 的审批部分 | 平台环境套件 `environments/` | 连接器后端改为 `environment_connectors` 数据描述；团队配置读方案 Chart 的 `global.agentos`；Zammad 审批对象由套件引导，协调账号令牌由 Zammad 生成 |
 | `environments/` 其余（NetBox、JumpServer、Zammad、Keycloak、观测、存储、虚机、历史迁移） | 方案包 | 目标系统栈 |

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { shortTitle } from "../server/read-model/views/title.js";
+import { shortTitle } from "../server/shared/title.js";
 
 it("uses a short opening clause in either language without splitting URLs", () => {
   expect(shortTitle("检查支付服务延迟，定位根因并给出处置建议")).toBe("检查支付服务延迟");

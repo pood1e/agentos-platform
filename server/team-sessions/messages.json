@@ -1,0 +1,4 @@
+{
+  "en": "The delegated result is available; its state is {state}.\nEvidence: native Task {task}.\nResult: {result}\nContinue the original goal, verify missing evidence and report actual outcomes briefly in the original language.",
+  "zh-CN": "委派结果已返回，任务状态：{state}。\n证据：原生任务 {task}。\n结果：{result}\n继续原目标，补必要验证，简短报告实际结果。"
+}

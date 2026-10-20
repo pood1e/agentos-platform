@@ -2,6 +2,3 @@ image:
   digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 ingress:
   host: agentos.example.test
-oauth2-proxy:
-  extraArgs:
-    oidc-issuer-url: https://id.example.test/realms/agentos

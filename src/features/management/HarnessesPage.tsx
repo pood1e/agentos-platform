@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/table";
 import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
 import { managementClient } from "../../lib/console.js";
+import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
 import { HarnessEditor } from "./HarnessEditor.js";
-import { harnessMetadata, harnessName, runtimeName } from "./HarnessPicker.js";
+import { harnessMetadata, harnessName } from "./HarnessPicker.js";
 import { ConfirmDelete, ResourceSheet } from "./ResourceDialog.js";
 import { ResourcePage } from "./ResourcePage.js";
 
@@ -73,7 +74,12 @@ export function HarnessesPage() {
                 data-testid="harness-row"
                 data-harness={harnessName(item)}
               >
-                <TableCell className="font-medium">{harnessName(item)}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-3">
+                    <HarnessIcon runtime={item.runtime} />
+                    {harnessName(item)}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{runtimeName(item.runtime)}</Badge>
                 </TableCell>

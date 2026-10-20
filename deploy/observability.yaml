@@ -1,0 +1,16 @@
+- name: Install Langfuse observability and evaluation services
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  vars:
+    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+  module_defaults:
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+    kubernetes.core.k8s_info:
+      kubeconfig: "{{ kubeconfig_path }}"
+  tasks:
+    - name: Configure optional Langfuse release
+      ansible.builtin.include_tasks: observability/tasks.yaml
+      when: langfuse_enabled | bool

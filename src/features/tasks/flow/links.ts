@@ -12,12 +12,16 @@ export interface Link {
   kind: LinkKind;
   state: ActivityState;
   sourceTaskId: string;
+  sourceContextId: string;
+  targetContextId: string;
   targetTaskId?: string;
   callKey?: string;
   requestId?: string;
   startedAt?: number;
   endedAt?: number;
   finishedAt?: number;
+  dependsOn: string[];
+  returned: boolean;
 }
 
 const kinds: Record<DelegationKind, LinkKind> = {
@@ -39,12 +43,16 @@ export function linksOf(detail: TaskDetail): Link[] {
     kind: kinds[delegation.kind],
     state: delegation.state,
     sourceTaskId: delegation.sourceTaskId,
+    sourceContextId: delegation.sourceContextId,
+    targetContextId: delegation.targetContextId,
     targetTaskId: delegation.targetTaskId || undefined,
     callKey: delegation.callId ? callKey(delegation.sourceTaskId, delegation.callId) : undefined,
     requestId: delegation.requestId || undefined,
     startedAt: millis(delegation.startedAt),
     endedAt: millis(delegation.returnedAt),
     finishedAt: millis(delegation.finishedAt),
+    dependsOn: delegation.dependsOn,
+    returned: delegation.returned,
   }));
 }
 

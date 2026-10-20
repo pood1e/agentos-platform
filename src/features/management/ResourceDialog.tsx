@@ -18,6 +18,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { cn } from "../../lib/utils.js";
 import { Failure } from "./ResourcePage.js";
 
 export function ResourceSheet({
@@ -25,24 +26,31 @@ export function ResourceSheet({
   open,
   onOpenChange,
   children,
+  className,
 }: {
   title: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
+  className?: string;
 }) {
   const { t } = useTranslation();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         showCloseButton={false}
-        className="w-full gap-0 sm:max-w-2xl data-[side=right]:sm:max-w-2xl"
+        className={cn("w-full gap-0 sm:max-w-2xl data-[side=right]:sm:max-w-2xl", className)}
       >
         <SheetHeader className="border-b">
-          <div className="flex items-center justify-between">
-            <SheetTitle>{title}</SheetTitle>
+          <div className="flex items-start justify-between gap-3">
+            <SheetTitle className="min-w-0 text-base leading-6 break-words">{title}</SheetTitle>
             <SheetClose asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={t("common.close")}>
+              <Button
+                className="shrink-0"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("common.close")}
+              >
                 <X />
               </Button>
             </SheetClose>

@@ -1,0 +1,58 @@
+{{- if .Values.evaluation.enabled }}
+{{- $name := include "agentos.name" . }}
+{{- $upstream := urlParse .Values.evaluation.kagentURL }}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: evaluation-collaboration
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  mcp:
+    prefixMode: Never
+    targets:
+      - name: kagent-collaboration
+        static:
+          host: {{ regexReplaceAll ":[0-9]+$" $upstream.host "" }}
+          port: {{ $upstream.host | splitList ":" | last | int }}
+          path: /mcp
+          policies: {http: {requestTimeout: 10m}}
+          protocol: StreamableHTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: evaluation-collaboration
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  parentRefs: [{name: {{ $name }}-gateway, sectionName: http}]
+  rules:
+    - matches: [{path: {type: Exact, value: /mcp/evaluation-collaboration}}]
+      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: evaluation-collaboration}]
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: evaluation-collaboration
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  targetRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: evaluation-collaboration}]
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions: ["has(apiKey.tools) && 'kagent-collaboration' in apiKey.tools && mcp.tool.name in apiKey.tools['kagent-collaboration']"]
+      guardrails:
+        processors:
+          - methods: {'*': Full}
+            remote:
+              backendRef: {name: {{ $name }}-console, port: 9090}
+              failureMode: FailClosed
+              metadata:
+                workspace: apiKey.workspace
+                agentPrefix: apiKey.agentPrefix
+                toolName: "has(mcp.tool) ? mcp.tool.name : ''"
+{{- end }}

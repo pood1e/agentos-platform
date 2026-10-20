@@ -80,6 +80,7 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
           <TableHeader>
             <TableRow>
               <TableHead>{t("configuration.name")}</TableHead>
+              {!isMCP && <TableHead>{t("management.fields.model")}</TableHead>}
               <TableHead>{t("management.endpoint")}</TableHead>
               {isMCP ? (
                 <TableHead className="text-right">{t("management.toolCount")}</TableHead>
@@ -95,6 +96,7 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
             {list.data?.connections.map((connection) => {
               const name = connectionName(connection);
               const environment = connectionEnvironment(connection);
+              const model = String(object(object(native(connection).spec).match).model ?? "");
               return (
                 <TableRow key={name} data-testid="connection-row">
                   <TableCell>
@@ -131,6 +133,11 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
                       </div>
                     </div>
                   </TableCell>
+                  {!isMCP && (
+                    <TableCell className="max-w-80 truncate font-mono text-xs" title={model}>
+                      {model || "—"}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <span
                       className="inline-block max-w-48 truncate align-middle text-xs text-muted-foreground sm:max-w-80"

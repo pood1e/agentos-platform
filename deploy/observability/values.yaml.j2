@@ -1,0 +1,92 @@
+langfuse:
+  image: {tag: '{{ langfuse_version }}', pullPolicy: IfNotPresent}
+  features: {telemetryEnabled: false, signUpDisabled: true}
+  salt: {secretKeyRef: {name: langfuse-cryptography, key: salt}}
+  encryptionKey: {secretKeyRef: {name: langfuse-cryptography, key: encryption-key}}
+  auth:
+    disableUsernamePassword: true
+  nextauth:
+    url: 'https://{{ langfuse_domain }}'
+    secret: {secretKeyRef: {name: langfuse-cryptography, key: nextauth-secret}}
+  ingress:
+    enabled: true
+    className: traefik
+    annotations: {cert-manager.io/issuer: '{{ langfuse_issuer_name }}'}
+    hosts:
+      - host: '{{ langfuse_domain }}'
+        paths: [{path: /, pathType: Prefix}]
+    tls: {enabled: true, secretName: langfuse-ingress}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile: {type: RuntimeDefault}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities: {drop: [ALL]}
+  additionalEnv:
+    - {name: LANGFUSE_INIT_ORG_ID, value: '{{ agentos_namespace }}'}
+    - {name: LANGFUSE_INIT_ORG_NAME, value: AgentOS}
+    - {name: LANGFUSE_INIT_PROJECT_ID, value: '{{ agentos_namespace }}'}
+    - {name: LANGFUSE_INIT_PROJECT_NAME, value: '{{ agentos_namespace }}'}
+    - {name: LANGFUSE_INIT_USER_EMAIL, value: '{{ langfuse_admin_email }}'}
+    - {name: LANGFUSE_INIT_USER_NAME, value: Operator}
+    - name: LANGFUSE_INIT_USER_PASSWORD
+      valueFrom: {secretKeyRef: {name: langfuse-project, key: admin-password}}
+    - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+      valueFrom: {secretKeyRef: {name: langfuse-project, key: public-key}}
+    - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
+      valueFrom: {secretKeyRef: {name: langfuse-project, key: secret-key}}
+  web:
+    image:
+      repository: '{{ agentos_image_registry }}/langfuse-web'
+      tag: '{{ langfuse_web_image_tag }}'
+      pullSecrets: [{name: agentos-registry}]
+    resources:
+      requests: {cpu: 250m, memory: 512Mi}
+      limits: {cpu: '2', memory: 2Gi}
+  worker:
+    image: {tag: '{{ langfuse_version }}@sha256:050653ef8847a09cb9c264896f832a90550fbc0cf3367ac0a1f5bf6de6f23b19'}
+    resources:
+      requests: {cpu: 250m, memory: 512Mi}
+      limits: {cpu: '2', memory: 2Gi}
+postgresql:
+  deploy: false
+  host: langfuse-postgres-rw
+  port: 5432
+  auth:
+    username: langfuse
+    database: langfuse
+    existingSecret: langfuse-postgres-app
+    secretKeys: {userPasswordKey: password}
+    args: sslmode=require
+clickhouse:
+  cluster:
+    storage: {size: 30Gi, className: local-path}
+    resources:
+      requests: {cpu: '2', memory: 8Gi}
+      limits: {cpu: '4', memory: 8Gi}
+    logger: {level: warning}
+  keeper:
+    replicas: 1
+    storage: {size: 2Gi, className: local-path}
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: '1', memory: 512Mi}
+redis:
+  dataStorage: {requestedSize: 2Gi, className: local-path, keepPvc: true}
+  valkeyConfig: |
+    appendonly yes
+    maxmemory 512mb
+    maxmemory-policy noeviction
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: '1', memory: 1Gi}
+s3:
+  bucket: langfuse
+  eventUpload: {prefix: events/}
+  mediaUpload: {prefix: media/}
+  batchExport: {prefix: exports/}
+  allInOne:
+    data: {size: 10Gi, storageClass: local-path}

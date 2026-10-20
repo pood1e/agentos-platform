@@ -1,10 +1,11 @@
 # Platform defaults and pinned versions. Site variables (inventory, domain, image registry, credentials and
-# application values) are passed at deployment time; see docs/deployment.md.
+# application values) are passed at deployment time; see docs/delivery.md.
 agentos_namespace: agentos
 agentos_node: "{{ groups['agentos'][0] }}"
 agentos_address: "{{ hostvars[agentos_node].ansible_host }}"
 node_hosts: []
 app_chart: agentos
+app_release_name: agentos
 app_chart_version: "{{ (lookup('ansible.builtin.file', playbook_dir ~ '/../charts/agentos/Chart.yaml') | from_yaml).version }}"
 cnpg_chart_version: 0.29.1
 postgres_image: ghcr.io/cloudnative-pg/postgresql:18.6-202610120828-standard-trixie@sha256:c7747d8d1049fff9cf30d9cd83d14d609c957afb5ffbcd114145f393ea1850e1
@@ -18,7 +19,7 @@ substrate_api_image: "{{ agentos_image_registry }}/substrate/ateapi@sha256:7a2df
 substrate_microvm_image: "{{ agentos_image_registry }}/substrate/ateom-microvm@sha256:413aa36e37767035450c96d9db936ead445f6d1ae1338c338db07b949d251584"
 kubectl_ate_checksum: sha256:149d1dadc31dfe28a2d042bb66abd4f8e3faf6e784e4f15d7019f5a9b01548de
 kagent_version: 1.0.0-alpha11
-kagent_controller_image: "{{ agentos_image_registry }}/kagent-controller@sha256:6f7ce978925f34cc4dc87f79ee56c6e097958ff407c326024b7e5b1e84a5d278"
+kagent_controller_image: "{{ agentos_image_registry }}/kagent-controller@sha256:c9b4f82303e2ea6cd3c0fe4f8d53f1ad98d04a89ab8be5f1177271a7a413d397"
 kagent_cli_checksum: sha256:afc712066d0d460a64d5ae1656831a9ed866e06085a89a6f05a230ddafc2319c
 kubeconfig_path: "{{ playbook_dir }}/../.cache/kubeconfig.yaml"
 helm_binary: "{{ playbook_dir }}/../.cache/helm/linux-amd64/helm"
@@ -27,7 +28,17 @@ cloudflare_token_file: ""
 model_key_file: ""
 registry_config_file: ""
 skill_repository_credential_file: ""
-oidc_secret_file: ""
 agentgateway_version: v1.6.0
 helm_diff_version: v3.15.11
 gateway_api_version: v1.6.1
+langfuse_enabled: false
+agentos_evaluation_enabled: false
+langfuse_namespace: agentos-observability
+agentos_evaluation_namespace: agentos-evaluation
+langfuse_chart_version: 2.1.4
+langfuse_version: 4.62.0
+langfuse_web_image_tag: 4.62.0@sha256:d346dc8343774d18a721d9a1bea7efcbdd60979edee5b1ea1f20aea9746dfca0
+clickhouse_operator_version: 0.0.8
+langfuse_issuer_name: letsencrypt
+otel_collector_chart_version: 0.176.0
+otel_collector_version: 0.162.0

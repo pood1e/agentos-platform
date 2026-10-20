@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package agentos.automation.v1;
+
+import "buf/validate/validate.proto";
+
+message CaseReference {
+  string key = 1 [(buf.validate.field).string = {min_len: 1, max_len: 500}];
+  uint64 version = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message CaseRequest {
+  CaseReference case = 1 [(buf.validate.field).required = true];
+  string message = 2 [(buf.validate.field).string = {min_len: 1, max_len: 4000}];
+}

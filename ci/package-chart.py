@@ -15,6 +15,9 @@ digest = metadata['containerimage.digest']
 assert digest.startswith('sha256:') and len(digest) == 71
 info = yaml.safe_load((chart / 'Chart.yaml').read_text())
 assert info['appVersion'] == package['version']
+if os.environ.get('CI_COMMIT_BRANCH') and os.environ.get('CI_COMMIT_BRANCH') != os.environ.get('CI_DEFAULT_BRANCH'):
+    info['version'] = f"{info['version']}-{os.environ['CI_COMMIT_SHA'][:12]}"
+    (chart / 'Chart.yaml').write_text(yaml.safe_dump(info, sort_keys=False))
 values = yaml.safe_load((chart / 'values.yaml').read_text())
 versions = yaml.safe_load(Path('deploy/vars.yaml').read_text())
 harnesses = values['harnesses']
@@ -45,8 +48,6 @@ values['image'] = {'repository': registry, 'digest': digest}
 for harness in harnesses.values():
     harness['workload']['image'] = published(harness['workload']['image'])
 (chart / 'values.yaml').write_text(yaml.safe_dump(values, sort_keys=False))
-subprocess.run(['.cache/bin/helm', 'repo', 'add', 'oauth2-proxy', 'https://oauth2-proxy.github.io/manifests'], check=True)
-subprocess.run(['.cache/bin/helm', 'dependency', 'build', str(chart), '--skip-refresh'], check=True)
 subprocess.run(['.cache/bin/helm', 'package', str(chart), '--destination', 'dist'], check=True)
 release = {'version': info['version'], 'image': f'{registry}@{digest}'}
 release.update({name: published(image) for name, image in pins.items()})

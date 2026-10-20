@@ -12,8 +12,9 @@ import type { ModelConfig } from "../../../gen/kagent/api/v1alpha1/models_pb.js"
 import type { ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
 import { harnessToolsIssue } from "../../../shared/harness-model.js";
 import { RoleModel } from "../engineers/RoleModel.js";
+import { runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
-import { HarnessPicker, runtimeName } from "./HarnessPicker.js";
+import { HarnessPicker } from "./HarnessPicker.js";
 import { Failure } from "./ResourcePage.js";
 import { compatibleModels, runtimeModel } from "./runtime-models.js";
 

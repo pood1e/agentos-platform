@@ -16,5 +16,6 @@ spec:
   timeout: 10m
   headersFrom:
     - name: Authorization
-      valueFrom: {type: Secret, name: {{ platform_gateway }}, key: authorization}
+      valueFrom: {type: Secret, name: {{ environment_name }}-catalog, key: authorization}
+    - {name: X-Agentos-Engineer, value: catalog}
 {% endfor %}

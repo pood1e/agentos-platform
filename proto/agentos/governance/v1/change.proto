@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package agentos.governance.v1;
 
+import "a2a.proto";
 import "agentos/kagent/v1/wire.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
-import "google/protobuf/timestamp.proto";
 
 // Whether write tools in an environment wait for an approval.
 enum Governance {
@@ -49,6 +49,30 @@ message OperationsConfig {
   repeated EnvironmentConnection environments = 1;
 }
 
+message ChangePlan {
+  string impact = 1 [(buf.validate.field).string = {min_len: 1, max_len: 8000}];
+  string validation = 2 [(buf.validate.field).string = {min_len: 1, max_len: 8000}];
+  string rollback = 3 [(buf.validate.field).string = {min_len: 1, max_len: 8000}];
+  lf.a2a.v1.GetTaskRequest simulation = 4;
+}
+
+message PrepareChangeRequest {
+  string tool_name = 1 [(buf.validate.field).string.min_len = 1];
+  google.protobuf.Struct args = 2 [(buf.validate.field).required = true];
+  ChangePlan plan = 3 [(buf.validate.field).required = true];
+}
+
+message PrepareChangeResponse {
+  option (buf.validate.message).cel = {
+    id: "preparation.simulation_evidence"
+    message: "Simulation evidence requires its task reference"
+    expression: "has(this.plan.simulation) == (this.simulation_report != '')"
+  };
+  string operation_hash = 1 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
+  ChangePlan plan = 2 [(buf.validate.field).required = true];
+  string simulation_report = 3;
+}
+
 message ChangeRequest {
   string engineer = 1 [(buf.validate.field).string.min_len = 1];
   string task_id = 2 [(buf.validate.field).string.min_len = 1];
@@ -58,6 +82,7 @@ message ChangeRequest {
   string intent = 6 [(buf.validate.field).string.max_len = 8000];
   string prompt = 7 [(buf.validate.field).string.max_len = 24000];
   repeated agentos.kagent.v1.ToolActivity evidence = 8 [(buf.validate.field).repeated.max_items = 6];
+  PrepareChangeResponse preparation = 9 [(buf.validate.field).required = true];
 }
 
 enum ChangeState {
@@ -68,7 +93,16 @@ enum ChangeState {
   CHANGE_STATE_EXECUTING = 4;
   CHANGE_STATE_SUCCEEDED = 5;
   CHANGE_STATE_FAILED = 6;
-  CHANGE_STATE_EXPIRED = 7;
+  reserved 7;
+  reserved "CHANGE_STATE_EXPIRED";
+  CHANGE_STATE_CANCELED = 8;
+}
+
+enum ChangeBlocker {
+  CHANGE_BLOCKER_UNSPECIFIED = 0;
+  CHANGE_BLOCKER_ASSESSMENT_REQUIRED = 1;
+  CHANGE_BLOCKER_PLAN_CHANGED = 2;
+  CHANGE_BLOCKER_NORMAL_CHANGE_REQUIRED = 3;
 }
 
 message Change {
@@ -80,7 +114,9 @@ message Change {
   ChangeState state = 6;
   string reason = 7;
   string decided_by = 8;
-  google.protobuf.Timestamp expires_at = 9;
+  reserved 9, 10, 11;
+  reserved "expires_at", "review_session_id", "review_task_id";
+  ChangeBlocker blocker = 12;
 }
 
 

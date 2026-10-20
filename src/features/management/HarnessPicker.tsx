@@ -8,11 +8,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
 
 export const harnessName = (harness: Harness) => harness.ref?.name ?? "";
-export const runtimeName = (runtime: string) =>
-  ({ kagent: "kagent", codex: "Codex", claude: "Claude Code", byo: "BYO" })[runtime] ?? runtime;
 export const harnessMetadata = (harness: Harness) => object(harness.resource?.value?.metadata);
 
 export function HarnessPicker({
@@ -43,6 +42,10 @@ export function HarnessPicker({
             );
             return (
               <SelectItem key={name} value={name}>
+                <HarnessIcon
+                  runtime={harness.runtime}
+                  className="size-5 rounded-none border-0 bg-transparent"
+                />
                 {label} · {runtimeName(harness.runtime)}
               </SelectItem>
             );

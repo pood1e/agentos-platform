@@ -5,7 +5,9 @@ import { type JsonObject, create as makeMessage } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { parse } from "yaml";
 import { AgentSchema } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
+import { ToolServerSchema } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
 import { object, text } from "../../server/read-model/decode/messages.js";
+import { platformProfile } from "../../shared/platform-tools.js";
 import type { FakeKagent } from "./kagent.js";
 
 const harnesses = object(
@@ -19,6 +21,13 @@ export class FakeResources {
     this.reset();
   }
   reset() {
+    this.fake.toolServers.splice(
+      0,
+      this.fake.toolServers.length,
+      ...this.fake.toolServers.filter(
+        (server) => !platformProfile(server.ref.split("/").at(-1) ?? ""),
+      ),
+    );
     this.data.clear();
     this.version = 0;
     this.save(
@@ -192,6 +201,18 @@ export class FakeResources {
     }
     items.set(name, result);
     this.data.set(plural, items);
+    const profile = plural === "remotemcpservers" ? platformProfile(name) : undefined;
+    if (profile && !this.fake.toolServers.some((server) => server.ref === `agentos/${name}`)) {
+      const source = this.fake.toolServers.find(
+        (server) => server.ref === `agentos/${profile.service}`,
+      );
+      this.fake.toolServers.push(
+        makeMessage(ToolServerSchema, {
+          ref: `agentos/${name}`,
+          discoveredTools: source?.discoveredTools,
+        }),
+      );
+    }
     if (plural === "agents") {
       const agent = makeMessage(AgentSchema, {
         ref: { name, namespace: "agentos" },

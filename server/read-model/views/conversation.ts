@@ -80,8 +80,8 @@ export function listConversations(index: TaskIndex, kind: ConversationKind, requ
 function operations(index: TaskIndex, entry: TaskEntry) {
   const roots = new Set(index.relations().roots.map((root) => root.id));
   return entry.calls.flatMap((call) => {
-    const id = index.target(entry, call);
-    const tree = id && roots.has(id) ? taskTree(index, id) : undefined;
+    const root = index.operationRoot(index.target(entry, call) ?? "");
+    const tree = root && roots.has(root.id) ? taskTree(index, root.id) : undefined;
     return tree ? [taskSummary(index, tree)] : [];
   });
 }

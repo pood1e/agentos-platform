@@ -12,6 +12,7 @@ import { object, text } from "../read-model/decode/messages.js";
 import { pageOf } from "../read-model/page.js";
 import { conflict, invalid, precondition } from "../shared/errors.js";
 import { connectionBindings } from "./bindings.js";
+import { credentialReferences } from "./credential-references.js";
 import { credentialProfile, refreshCredentialProfiles, serviceBindings } from "./mcp-services.js";
 import { type GatewayConfig, meta, optional, resource } from "./native.js";
 
@@ -143,6 +144,8 @@ export function connectionCommands(
     if (!connection || !value || !text(meta(value).name)) throw invalid("management.invalid");
     const kind = connection.kind;
     const name = text(meta(value).name);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name) || name.length > 63)
+      throw invalid("management.invalid");
     if (value.kind !== nativeKind(kind) || value.apiVersion !== "agentgateway.dev/v1alpha1")
       throw invalid("management.invalid");
     if (meta(value).namespace && meta(value).namespace !== gateway.namespace)
@@ -205,6 +208,16 @@ export function connectionCommands(
         secretRef: { name: credentialName },
       };
     spec.policies = policies;
+    credentialReferences(
+      spec,
+      current?.spec,
+      request.credential?.trim()
+        ? {
+            path: "/policies/auth/secretRef",
+            reference: { name: credentialName },
+          }
+        : undefined,
+    );
     const saved = await store.save(
       keyFor(kind),
       {

@@ -3,6 +3,7 @@ stages: [verify, package, release]
 include:
   - local: ci/build.gitlab-ci.yml
   - local: ci/runtime.gitlab-ci.yml
+  - local: ci/langfuse.gitlab-ci.yml
 
 .shell:
   tags: [$AGENTOS_SHELL_RUNNER]
@@ -49,6 +50,20 @@ build-image:
     - job: deployment-check
       artifacts: false
 
+build-contracts:
+  extends: .shell
+  stage: package
+  before_script:
+    - . ci/shell-env.sh
+    - . ci/python-env.sh contracts/requirements.txt
+    - npm ci --prefer-offline
+  script:
+    - .cache/venv/bin/python ci/contracts.py
+    - .cache/venv/bin/python ci/publish-contracts.py
+  artifacts:
+    paths: [dist/contracts/]
+    expire_in: 7 days
+
 release:
   extends: .shell
   stage: release
@@ -67,7 +82,7 @@ release:
     - job: build-substrate-microvm
       optional: true
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH
   resource_group: agentos-release
   before_script:
     - . ci/shell-env.sh

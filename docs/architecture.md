@@ -10,7 +10,7 @@ flowchart LR
     Team[Agent 团队 / microVM] -->|模型 / MCP| Gateway[平台网关 · agentgateway]
     Gateway -->|模型| Models[内置推理 / 外部模型]
     Gateway -->|嵌入| Embedding[嵌入模型]
-    Gateway -->|协作 MCP| Sessions[team-sessions]
+    Gateway -->|协作 MCP| Console
     Gateway -->|会话 MCP| Kagent
     Sessions -->|官方 gRPC| Kagent
     Gateway -->|按 Agent 身份| EnvGateway[环境网关 · agentgateway]
@@ -35,7 +35,7 @@ flowchart LR
 | 平台资源 | 嵌入模型 | Ollama 与 EmbeddingGemma | 团队知识的 768 维向量 |
 | 存储 | CNPG PostgreSQL、S3 | 上游 | kagent 与 Substrate 状态、记忆向量、Actor 快照 |
 
-console、team-sessions 与 change-control 使用同一镜像的不同入口。依赖方向固定为平台服务调用 kagent，Agent 只经网关访问平台服务与环境，
+平台 API 在同一进程提供管理接口、协作 MCP、会话续接与治理协调，共享原生 A2A 读模型。change-control 在目标运维环境单独运行。依赖方向固定为平台服务调用 kagent，Agent 只经网关访问平台服务与环境，
 控制台不在 Agent 的执行路径上。
 
 ## 调用链路
@@ -58,7 +58,7 @@ console、team-sessions 与 change-control 使用同一镜像的不同入口。�
 | 独立 | 单独的集群或虚机，一个平台接入多套环境 | 每套环境部署环境网关、change-control、审批系统与方案包的连接器 |
 | 内嵌 | 目标集群中的独立命名空间 | 同上，与平台同集群 |
 
-平台需要有 KVM 的节点运行 microVM。平台 Chart 包含 console、team-sessions、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent；
+平台需要有 KVM 的节点运行 microVM。平台 Chart 包含单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent；
 环境套件包含环境网关、change-control 与凭据模板；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
 
 ## 安全边界
@@ -66,5 +66,11 @@ console、team-sessions 与 change-control 使用同一镜像的不同入口。�
 - Agent 运行在 microVM 中，出站按目标主机默认拒绝；模型与 MCP 凭据由 Substrate 注入，运行时拿不到明文。
 - 平台网关以 SHA-256 哈希校验服务密钥，后端凭据只在 Secret；NetworkPolicy 只放行声明的调用方。
 - 每个 Agent 在每个目标系统有独立账号，平台访问策略、目标系统账号权限与人工审批分别承担调用授权、实际权限上限与执行确认。
-- 控制台经 OAuth2 Proxy 与 OIDC 登录；审批身份来自审批系统自己的登录，不经 Agent 转述。
+- 控制台页面和 RPC 直接访问，工作空间操作与管理开放；审批身份来自审批系统自己的登录，不经 Agent 转述。模型网关、MCP 和目标系统使用独立机器凭据。
 - 执行凭证、审批账号密钥不进入提示词与浏览器响应；链路不承诺跨审批系统、数据库与目标系统的分布式事务，执行后故障须查询核验实际结果。
+
+## 观测与测评
+
+Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。登录使用原生 Keycloak OIDC。部署入口为 `deploy/observability.yaml`。
+
+测评契约定义于 `proto/agentos/evaluation/v1`。候选快照、Job、分数完整性与回归检查使用原生 Kubernetes 持久化；配置编辑先经过原有命令校验，再形成候选资源。发布接线、事件闭环与方案包迁移由 [目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。

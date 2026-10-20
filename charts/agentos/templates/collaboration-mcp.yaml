@@ -11,4 +11,4 @@ spec:
   sseReadTimeout: 10m
   headersFrom:
     - name: Authorization
-      valueFrom: {type: Secret, name: {{ include "agentos.name" . }}-gateway, key: authorization}
+      valueFrom: {type: Secret, name: {{ include "agentos.name" . }}-gateway, key: mcp-authorization}

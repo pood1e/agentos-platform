@@ -11,6 +11,7 @@ test("paginates task history with server cursors and searches the full collectio
   const history = page.getByTestId("task-history");
   await history.getByRole("textbox").fill("巡检第");
   await expect(history.getByTestId("history-entry")).toHaveCount(12);
+  await expect(history.getByTestId("history-entry").first()).toContainText("巡检第 29 组");
   const first = await history.getByTestId("history-entry").allTextContents();
   await history.getByRole("button", { name: "下一页", exact: true }).click();
   await expect
