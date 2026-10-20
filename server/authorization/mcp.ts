@@ -14,7 +14,7 @@ import {
 import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { actorTokenHeader, type runtimeIdentity } from "./actor.js";
 
-const discovery = new Set([
+export const discoveryMethods = new Set([
   "initialize",
   "notifications/initialized",
   "ping",
@@ -35,7 +35,7 @@ export function mcpAuthorization(
   return {
     async checkRequest(request) {
       try {
-        if (!discovery.has(request.method)) {
+        if (!discoveryMethods.has(request.method)) {
           if (request.method !== "tools/call") throw new Error("Unsupported MCP method");
           const headers = request.headers.filter(
             (header) => header.key.toLowerCase() === actorTokenHeader,

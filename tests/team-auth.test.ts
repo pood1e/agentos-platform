@@ -95,3 +95,56 @@ it("protects all MCP methods with a token while keeping health probes available"
     await app.close();
   }
 });
+
+it("allows authenticated discovery without execution authority and rejects method-header spoofing", async () => {
+  const { clients, fake, sync } = environment();
+  const app = Fastify();
+  const { discoveryMethods } = await import("../server/authorization/mcp.js");
+  await registerTeamSessions(
+    app,
+    sessionTools(clients, "agentos", testBindings(fake), {
+      search: vi.fn(async () => create(MemoryServiceSearchResponseSchema, { memories: [] })),
+    }),
+    "gateway-token",
+    async (role, _headers, method) => {
+      if (role === "catalog" && discoveryMethods.has(method)) return { scopes: ["create_session"] };
+      throw new Error("Signed execution required");
+    },
+  );
+  const url = await app.listen({ host: "127.0.0.1", port: 0 });
+  const sessions = fake.sessions.size;
+  try {
+    const request = (method: string) =>
+      fetch(`${url}/mcp`, {
+        method: "POST",
+        headers: {
+          authorization: "Bearer gateway-token",
+          "x-agentos-role": "catalog",
+          "mcp-method": "tools/list",
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method,
+          params: {
+            name: "create_session",
+            arguments: {
+              agent: { namespace: "agentos", name: "inspection" },
+              requestId: "discovery-bypass",
+              name: "forged",
+            },
+          },
+        }),
+      });
+    const discovery = await request("tools/list");
+    expect(discovery.status).toBe(200);
+    expect(await discovery.text()).toContain("create_session");
+    expect((await request("tools/call")).status).toBe(403);
+    expect(fake.sessions.size).toBe(sessions);
+  } finally {
+    await app.close();
+    sync.close();
+  }
+});
