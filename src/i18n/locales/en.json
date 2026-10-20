@@ -1,4 +1,7 @@
 {
+  "access": {
+    "readOnly": "Read-only access. You can view conversations and tasks."
+  },
   "navigation": {
     "home": "AgentOS home",
     "main": "Main navigation",

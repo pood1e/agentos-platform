@@ -9,6 +9,7 @@ import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
+import { useAccess } from "../../lib/access.js";
 import { errorKey } from "../../lib/errors.js";
 import { pretty } from "../../lib/format.js";
 import { awaiting } from "../status/activity.js";
@@ -33,12 +34,13 @@ export function Approval({
   record?: ApprovalRecord;
 }) {
   const { t } = useTranslation();
+  const access = useAccess();
   const toolText = useToolText();
   const [answers, setAnswers] = useState<string[][]>(interaction.questions.map(() => []));
   const respond = useMutation(ConsoleService.method.respondInteraction);
   const pending = awaiting(interaction.state);
   const approval = interaction.kind === InteractionKind.APPROVAL;
-  const locked = !pending || respond.isPending || respond.isSuccess;
+  const locked = !access.data?.operate || !pending || respond.isPending || respond.isSuccess;
   const recorded = (index: number) => interaction.answers[index]?.values ?? [];
   const submit = (decision: Parameters<typeof respond.mutate>[0]["decision"]) =>
     respond.mutate({ taskId: interaction.taskId, requestId: interaction.requestId, decision });
@@ -144,7 +146,7 @@ export function Approval({
           <AlertDescription>{t(errorKey(respond.error, "approval.submitFailed"))}</AlertDescription>
         </Alert>
       )}
-      {pending && (
+      {pending && access.data?.operate && (
         <div className="flex flex-wrap gap-2">
           {approval && !interaction.external && (
             <>

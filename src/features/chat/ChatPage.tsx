@@ -110,7 +110,7 @@ export function ChatPage() {
               size="icon-sm"
               aria-label={t("chat.new")}
               title={t("chat.new")}
-              disabled={chat.sending}
+              disabled={chat.sending || access.data?.operate !== true}
               onClick={() => {
                 chat.reset();
                 navigate(`/chat${suffix}`);
