@@ -9,6 +9,7 @@ import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity
 import { loadCatalog } from "../../shared/tool-catalog.js";
 import { scopedCollaboration } from "../authorization/context.js";
 import { relatedExecutions } from "../authorization/executions.js";
+import { discoveryMethods } from "../authorization/mcp.js";
 import { registerRuntime } from "../authorization/native.js";
 import { oidcIdentity } from "../authorization/oidc.js";
 import { executionRuntime } from "../authorization/runtime.js";
@@ -166,7 +167,7 @@ await registerTeamSessions(
   app,
   sessionTools(activeClients, config.namespace, access, knowledgeService(activeClients, knowledge)),
   token,
-  async (role, headers) => {
+  async (role, headers, method) => {
     if (role === "automation") {
       const environment = headers["x-agentos-environment"];
       if (
@@ -214,6 +215,7 @@ await registerTeamSessions(
       : role === "platform"
         ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
         : identities.authorize(role, clients).then((scopes) => ({ scopes })));
+    if (discoveryMethods.has(method)) return scope;
     const parent = await execution.actor(headers);
     await execution.registry.resolve(parent);
     return {

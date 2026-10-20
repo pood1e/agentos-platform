@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { IncomingHttpHeaders } from "node:http";
+import { JSONRPCMessageSchema } from "@modelcontextprotocol/core";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import type { FastifyInstance } from "fastify";
 import type { sessionTools } from "./tools.js";
@@ -11,6 +12,7 @@ export async function registerTeamSessions(
   authorize?: (
     role: string,
     headers: IncomingHttpHeaders,
+    method: string,
   ) => Promise<{
     scopes: string[];
     handler?: ReturnType<typeof sessionTools>;
@@ -31,7 +33,9 @@ export async function registerTeamSessions(
       if (authorize) {
         const role = request.headers["x-agentos-role"];
         if (typeof role !== "string") return reply.code(403).send();
-        const scope = await authorize(role, request.headers).catch(() => undefined);
+        const message = JSONRPCMessageSchema.safeParse(request.body);
+        const method = message.success && "method" in message.data ? message.data.method : "";
+        const scope = await authorize(role, request.headers, method).catch(() => undefined);
         if (!scope) return reply.code(403).send();
         Object.assign(request.raw, { auth: { token: "", clientId: role, scopes: scope.scopes } });
         if (scope.handler) {

@@ -4,7 +4,7 @@
 {% set writes = tools.write | default([]) + (tools.management | default([]) if access == 'manage' else []) %}
 {% set reads = tools.readOnly | default([]) + (tools.managementReadOnly | default([]) if access == 'manage' else []) %}
 {% set allowed = reads + (writes if access in ['operate', 'manage'] else []) %}
-{% set delegated = environment_connectors[project].targets | selectattr('userAuth', 'defined') | list | length > 0 %}
+{% set delegated = identity.name != 'catalog' and environment_connectors[project].targets | selectattr('userAuth', 'defined') | list | length > 0 %}
 {% for execution_kind in (['service', 'user'] if delegated else ['service']) %}
 {% set backend = project + '-' + identity.name + ('-user' if execution_kind == 'user' else '') %}
 ---
