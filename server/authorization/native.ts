@@ -37,9 +37,7 @@ export function registerRuntime(
       signal: context.signal,
       timeoutMs: 15_000,
       headers: {
-        "X-User-Id": session.creator,
         "x-kagent-insecure-runtime-identity": `${actor.atespace}/${actor.name}/${actor.uid}`,
-        ...(config.token ? { authorization: `Bearer ${config.token}` } : {}),
       },
     };
   }
