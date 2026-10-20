@@ -37,6 +37,9 @@
 
 验收：`npm run verify`（新增读模型筛选、取消与时间线数据的单元测试）、Playwright（筛选、待审批跳转、取消、时间线、测评汇总）、Chart 与环境校验、GitLab 流水线通过。
 
+已验证：含 PostgreSQL 的 246 项 TypeScript 测试、48 项 Playwright 测试、27 项 Python 测试、Ansible lint 与语法检查、Chart 和环境清单严格校验。
+取消回归覆盖已结束的调用者、等待审批的子任务、自动续接、后台任务隔离、部分失败与结束竞态。UI 复用 shadcn/ui，时间线使用 vis-timeline。
+
 ## 第二批
 
 - **Langfuse 深链**：核实或在 Collector 中把 `kagent.session.id` 映射为 Langfuse 会话；控制台配置 Langfuse 地址与项目，执行抽屉链接到对应会话。
