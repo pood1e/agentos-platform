@@ -1,7 +1,7 @@
 {{- if .Values.automation.enabled }}
 {{- $name := include "agentos.name" . }}
 {{- range .Values.global.agentos.environments }}
-{{- $credential := printf "%s-events-%s" $name .name }}
+{{- $credential := printf "%s-automation-%s" $name .name }}
 {{- $token := include "agentos.nativeToken" (dict "root" $ "name" $credential) }}
 ---
 apiVersion: v1

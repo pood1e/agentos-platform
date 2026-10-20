@@ -4,6 +4,7 @@ include:
   - local: ci/build.gitlab-ci.yml
   - local: ci/runtime.gitlab-ci.yml
   - local: ci/langfuse.gitlab-ci.yml
+  - local: ci/python.gitlab-ci.yml
 
 .shell:
   tags: [$AGENTOS_SHELL_RUNNER]
@@ -69,6 +70,8 @@ release:
   stage: release
   needs:
     - build-image
+    - build-evaluator
+    - build-automation
     - job: build-controller
       optional: true
     - job: build-claude-harness

@@ -9,10 +9,11 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | --- | --- |
 | `verify` | 生成、构建、Biome / buf lint / tsc、单元测试（临时 PostgreSQL）与浏览器测试 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
+| `python-verify` | 生成 Python 契约；ruff 检查与格式校验；测评作业与案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
-| `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness、Langfuse Web 镜像，推送到 `$CI_REGISTRY_IMAGE` |
-| `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按 Git 提交固定 |
-| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表；功能分支版本追加提交摘要 |
+| `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness、Langfuse Web、测评作业与案例自动化镜像，推送到 `$CI_REGISTRY_IMAGE` |
+| `build-contracts` | 发布 Python protobuf wheel、测评 SDK wheel、部署源码包及 SHA-256 清单，按 Git 提交固定；wheel 版本取 `package.json` |
+| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录测评作业与案例自动化镜像摘要；功能分支版本追加提交摘要 |
 
 仓库内的镜像以摘要固定、注册表用占位符：Chart 值使用 `registry.example.com/agentos`，部署变量使用 `agentos_image_registry`。
 发布时占位符替换为 `$CI_REGISTRY_IMAGE`。运行时镜像更新分两步：运行时作业构建出新摘要后，在 `deploy/vars.yaml` 与

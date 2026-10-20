@@ -9,6 +9,12 @@ plugins:
       - agentos.evaluation.v1.EvaluationExecutionService
       - agentos.evaluation.v1.EvaluationJobInput
       - agentos.evaluation.v1.EvaluationFeedback
+      - agentos.evaluation.v1.Expectation
       - agentos.automation.v1.CaseRequest
       - agentos.automation.v1.CaseReference
+      - agentos.automation.v1.AutomationConfig
+      - agentos.automation.v1.CaseSignal
+      - agentos.automation.v1.CaseWorkflowInput
+      - agentos.automation.v1.CaseFeedback
+      - agentos.automation.v1.CaseFact
       - agentos.kagent.v1.InvokeSessionOutput

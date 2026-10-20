@@ -5,6 +5,8 @@
 | `proto/agentos/console/v1` | 控制台 RPC：会话、任务、角色、工具、方案包展示（`pack.proto`） |
 | `proto/agentos/management/v1` | 管理 RPC：连接、模型、Harness、Skill、知识 |
 | `proto/agentos/governance/v1` | 环境、连接与变更方案 |
+| `proto/agentos/evaluation/v1` | 测评：候选、基线、执行与回报，内置评分器读取的 `Expectation` |
+| `proto/agentos/automation/v1` | 案例自动化：案例 MCP 入参、worker 配置、方案包的 `CaseTrigger` 与案例事实 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/console` | 控制台服务：Connect RPC、静态资源、方案包加载、角色模板读写 |
 | `server/read-model` | kagent 任务与事件的读模型：会话、调用、交互、协作画布 |
@@ -35,4 +37,6 @@
 | --- | --- |
 | `server/platform` | 进程入口、人类身份验证、机器权限与协作边界 |
 | `server/evaluation` | 候选快照、隔离运行、Job 与发布门禁 |
+| `evaluation` | 测评作业与 SDK（Python）：Langfuse 实验、评分器注册表与内置评分器、数据集冻结 |
+| `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、反馈与测评回报入口 |
 | `deploy/observability` | 官方 Langfuse、Collector 与独立存储 |

@@ -37,6 +37,9 @@ class PackageChartTest(unittest.TestCase):
         helm.chmod(0o700)
         self.digest = 'sha256:' + 'a' * 64
         self.metadata('build', self.digest)
+        self.workers = {name: f'sha256:{index}' + 'c' * 63 for index, name in enumerate(['evaluator', 'automation'])}
+        for name, digest in self.workers.items():
+            self.metadata(name + '-build', digest)
         versions = yaml.safe_load((ROOT / 'deploy/vars.yaml').read_text())
         harnesses = yaml.safe_load((ROOT / 'charts/agentos/values.yaml').read_text())['harnesses']
         self.images = {
@@ -65,6 +68,8 @@ class PackageChartTest(unittest.TestCase):
         self.assertEqual(release['image'], f'{REGISTRY}@{self.digest}')
         for name, image in self.images.items():
             self.assertEqual(release[name], f'{REGISTRY}/{relative(image)}')
+        for name, digest in self.workers.items():
+            self.assertEqual(release[name], f'{REGISTRY}/{name}@{digest}')
         values = yaml.safe_load((self.workspace / 'charts/agentos/values.yaml').read_text())
         self.assertEqual(values['image'], {'repository': REGISTRY, 'digest': self.digest})
         for harness in values['harnesses'].values():
