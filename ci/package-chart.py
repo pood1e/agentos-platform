@@ -51,5 +51,8 @@ for harness in harnesses.values():
 subprocess.run(['.cache/bin/helm', 'package', str(chart), '--destination', 'dist'], check=True)
 release = {'version': info['version'], 'image': f'{registry}@{digest}'}
 release.update({name: published(image) for name, image in pins.items()})
+for name in ('evaluator', 'automation'):
+    built = json.loads(Path(f'.cache/{name}-build-metadata.json').read_text())['containerimage.digest']
+    release[name] = f'{registry}/{name}@{built}'
 Path('dist/release.json').write_text(json.dumps(release, indent=2) + '\n')
 print('Release image:', digest)

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentos-evaluation"
+dynamic = ["version", "dependencies"]
+description = "AgentOS evaluation job, built-in scorers and dataset freezing"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+
+[project.scripts]
+agentos-evaluation-seed = "agentos_evaluation.seed:main"
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
+dependencies = {file = "requirements.txt"}
+
+[tool.setuptools.packages.find]
+include = ["agentos_evaluation*"]

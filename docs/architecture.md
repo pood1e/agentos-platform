@@ -22,6 +22,8 @@ flowchart LR
     Kagent --> PG[(CNPG PostgreSQL · pgvector)]
     Substrate --> PG
     Substrate --> S3[(S3 快照)]
+    Bus[(NATS JetStream)] <-->|源事件 / 案例事实| Automation[案例自动化 · Temporal]
+    Automation -->|案例 MCP| Gateway
 ```
 
 | 层 | 组件 | 来源 | 职责 |
@@ -31,7 +33,9 @@ flowchart LR
 | 底座 | agentgateway | 上游 v1.6.0 官方 Chart | 平台网关与环境网关：模型接入、MCP 汇聚、身份映射、读写视图、ExtMCP |
 | 平台服务 | console | 本仓库 | 聊天、任务协作画布、工具调用与审批状态，团队、Skill、知识、连接、Harness 与环境管理 |
 | 平台服务 | team-sessions | 本仓库 | 协作 MCP：委派、续接、知识检索、角色起草；写调用的审批协调 |
+| 平台服务 | 测评作业 | 本仓库 | 按冻结基线在隔离副本中比较候选与已发布配置，评分写入 Langfuse 原生实验 |
 | 环境侧 | change-control | 本仓库 | 写操作方案登记、审批核验、执行准备与原子放行；审批提供方可替换 |
+| 环境侧 | 案例自动化 | 本仓库 | 把源 CloudEvents 映射为版本化案例，以 Temporal 工作流交协调者处理；发布案例事实，受理人工反馈与测评回报 |
 | 平台资源 | 嵌入模型 | Ollama 与 EmbeddingGemma | 团队知识的 768 维向量 |
 | 存储 | CNPG PostgreSQL、S3 | 上游 | kagent 与 Substrate 状态、记忆向量、Actor 快照 |
 
@@ -60,6 +64,7 @@ flowchart LR
 
 平台需要有 KVM 的节点运行 microVM。平台 Chart 包含单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent；
 环境套件包含环境网关、change-control 与凭据模板；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
+测评作业与案例自动化以镜像随平台发布：前者由平台 API 在测评命名空间以 Job 运行，后者在环境侧按需部署，依赖 NATS JetStream 与 Temporal。
 
 ## 安全边界
 
@@ -71,6 +76,10 @@ flowchart LR
 
 ## 观测与测评
 
-Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。登录使用原生 Keycloak OIDC。部署入口为 `deploy/observability.yaml`。
+Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。Web 以预置运维账号共享会话，采集使用项目 API Key。部署入口为 `deploy/observability.yaml`。
 
-测评契约定义于 `proto/agentos/evaluation/v1`。候选快照、Job、分数完整性与回归检查使用原生 Kubernetes 持久化；配置编辑先经过原有命令校验，再形成候选资源。发布接线、事件闭环与方案包迁移由 [目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。
+测评契约定义于 `proto/agentos/evaluation/v1`。候选快照、Job、分数完整性与回归检查使用原生 Kubernetes 持久化；配置编辑先经过原有命令校验，再形成候选资源。
+测评作业读取固定版本的 Langfuse 数据集，按重复次数执行已发布与候选配置；基线规则按名称选择内置或方案包注册的评分器，逐例分数写入原生实验，报告经平台回报所属环境。
+
+案例自动化按方案包的 `CaseTrigger` 映射源事件：同一案例复用原生会话与确定性 messageId，超时取消并升级，事实类型的命名空间由方案包决定。
+评分器与触发器契约见[扩展契约](extension.md#测评)。环境侧部署接线由[目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。

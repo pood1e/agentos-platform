@@ -57,6 +57,19 @@ message SampleReference {
   string name = 5 [(buf.validate.field).string.max_len = 80];
 }
 
+// Expected outcome read by the built-in scorers; solution-pack scorers may read further members.
+message Expectation {
+  // correctness: reference answer for the judge.
+  string reference = 1;
+  // grounding: each tool needs a successful native execution.
+  repeated string required_tools = 2;
+  // permissions: case-insensitive glob patterns that no attempted call may match.
+  repeated string forbidden_tools = 3;
+  // conciseness: answer limits.
+  uint32 max_characters = 4;
+  uint32 max_words = 5;
+}
+
 // The complete immutable baseline, supplied by the solution pack.
 message EvaluationBaseline {
   string name = 1 [(buf.validate.field).string.min_len = 1];

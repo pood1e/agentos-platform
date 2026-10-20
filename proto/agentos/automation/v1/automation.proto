@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package agentos.automation.v1;
+
+import "google/protobuf/any.proto";
+
+// Environment-side worker that turns source CloudEvents into coordinator cases.
+message AutomationConfig {
+  string environment = 1;
+  string workspace = 2;
+  string nats_url = 3;
+  string nats_user = 4;
+  string nats_password_file = 5;
+  string source_stream = 6;
+  string source_subject = 7;
+  string durable = 8;
+  string temporal_address = 9;
+  string temporal_namespace = 10;
+  string task_queue = 11;
+  string platform_url = 12;
+  string platform_token_file = 13;
+  string evaluation_token_file = 14;
+  // Human feedback and metrics accept OIDC tokens of this issuer and audience.
+  string oidc_issuer = 15;
+  string oidc_audience = 16;
+  // Dotted path of the token claim that lists roles, such as realm_access.roles.
+  string role_claim = 17;
+  string feedback_role = 18;
+  // Bounded metrics RPC of the business event API; requests carry the caller's token.
+  string metrics_url = 19;
+  CaseTrigger trigger = 20;
+}
+
+// Solution-pack definition of how source events open cases and brief the coordinator.
+message CaseTrigger {
+  // CloudEvents type namespace of published facts, such as ops for ops.cases.updated.
+  string event_namespace = 1;
+  CaseSource source = 2;
+  // Coordinator instructions; ${summary} is replaced by the source summary.
+  string brief = 3;
+  uint32 timeout_seconds = 4;
+  uint32 cooldown_seconds = 5;
+}
+
+// Members of the source event data that identify and describe a case.
+message CaseSource {
+  string type_prefix = 1;
+  // The case key is the CloudEvents source joined with this member.
+  string key_field = 2;
+  string state_field = 3;
+  string summary_field = 4;
+  repeated string active_states = 5;
+  repeated string resolved_states = 6;
+}
+
+enum CaseState {
+  CASE_STATE_UNSPECIFIED = 0;
+  CASE_STATE_OTHER = 1;
+  CASE_STATE_ACTIVE = 2;
+  CASE_STATE_RESOLVED = 3;
+}
+
+message CaseSignal {
+  string key = 1;
+  string event_id = 2;
+  uint64 version = 3;
+  CaseState state = 4;
+  string summary = 5;
+  string environment = 6;
+}
+
+message CaseWorkflowInput {
+  string key = 1;
+  string environment = 2;
+  uint64 last_version = 3;
+  repeated string seen_events = 4;
+  uint32 timeout_seconds = 5;
+  uint32 cooldown_seconds = 6;
+}
+
+enum FeedbackDecision {
+  FEEDBACK_DECISION_UNSPECIFIED = 0;
+  FEEDBACK_DECISION_ACCEPTED = 1;
+  FEEDBACK_DECISION_REJECTED = 2;
+  FEEDBACK_DECISION_CORRECTED = 3;
+  FEEDBACK_DECISION_IGNORED = 4;
+}
+
+message CaseFeedback {
+  string id = 1;
+  string case_key = 2;
+  uint64 version = 3;
+  string conclusion_id = 4;
+  FeedbackDecision decision = 5;
+  string correction = 6;
+  string actor = 7;
+}
+
+enum CasePhase {
+  CASE_PHASE_UNSPECIFIED = 0;
+  CASE_PHASE_RECEIVED = 1;
+  CASE_PHASE_CONCLUSION = 2;
+  CASE_PHASE_ESCALATED = 3;
+  CASE_PHASE_SOURCE_RESOLVED = 4;
+}
+
+enum HandlingMode {
+  HANDLING_MODE_UNSPECIFIED = 0;
+  HANDLING_MODE_UNKNOWN = 1;
+  HANDLING_MODE_AUTONOMOUS = 2;
+  HANDLING_MODE_COLLABORATIVE = 3;
+  HANDLING_MODE_MANUAL = 4;
+}
+
+enum Verification {
+  VERIFICATION_UNSPECIFIED = 0;
+  VERIFICATION_PENDING = 1;
+  VERIFICATION_CORRECT = 2;
+  VERIFICATION_INCORRECT = 3;
+}
+
+message CaseFact {
+  string case_key = 1;
+  string environment = 2;
+  uint64 source_version = 3;
+  CasePhase phase = 4;
+  HandlingMode handling = 5;
+  Verification verification = 6;
+  google.protobuf.Any native = 7;
+}

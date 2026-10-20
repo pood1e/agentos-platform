@@ -32,6 +32,9 @@
 | `ci/`（不含连接器镜像与 `ci/runner`） | 平台 | 构建 console、kagent / Substrate 补丁与 Harness 镜像并发布平台 Chart；runner 标签、BuildKit 镜像与镜像源改为 CI/CD 变量 |
 | `ci/keycloak.gitlab-ci.yml`、`ci/zammad.gitlab-ci.yml`、`ci/runner/` | 方案包 | 连接器镜像与构建机置备 |
 | `third_party/` | 平台 | 官方协议与 CRD |
+| `evaluation/aiops_evaluation`、`evaluation/seed.py`（基线后新增） | 平台 `evaluation` | 评分器按基线规则从注册表选择；样本与基线数据留在方案包 |
+| `events/aiops_events`、`proto/aiops/events/v1/ingestion.proto`（基线后新增） | 平台 `automation`、`proto/agentos/automation/v1` | 告警字段、状态词表、简报与事件前缀改为 `CaseTrigger` 数据 |
+| `events/alerting`、`proto/aiops/events/v1/grafana.proto`（基线后新增） | 方案包 | 网络闭环演示的 Grafana 告警接收 |
 
 标签与注解前缀 `aiops.dev/` 改为 `agentos.dev/`；环境变量 `AIOPS_*` 改为 `AGENTOS_*`。
 

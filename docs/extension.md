@@ -15,6 +15,8 @@
 | 审批提供方 | change-control 的 `ApprovalProvider` | Zammad 参考实现 | 其他 ITSM 的适配 |
 | 模型 | agentgateway 原生 `AgentgatewayModel` | 管理页与 `ModelConfig` 同步 | 上游地址、协议与密钥 |
 | 展示 | `pack.json` 与资源文件（proto `Pack`） | 平台通用文案、通用头像与工具图标 | 标题、角色头像、工具图标与业务文案 |
+| 测评 | `evaluation.baseline`（proto `EvaluationBaseline`）、Langfuse 数据集与入口点 `agentos.evaluation.scorers` | 测评作业镜像、数据集冻结工具与内置评分器 | 样本、基线、Judge 提示与领域评分器 |
+| 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、委派协调者、超时取消与事实发布 | 源事件映射、协调者简报与事件命名空间 |
 
 ## 角色标识
 
@@ -119,3 +121,61 @@ Zammad 参考实现使用官方 REST API 与原生角色，工单组为 `AgentOS
 ## 运行时图标
 
 Harness 列表、选择器与编辑器共用运行时图标。kagent 沿用仓库内图标，Codex 使用 [OpenAI 开发者站图标](https://developers.openai.com/favicon.svg)，Claude Code 使用[官方文档图标](https://code.claude.com/docs/en/overview)；BYO 和未知运行时使用 Lucide Blocks。工具图标仍优先采用方案包配置。
+
+## 测评
+
+基线（proto `EvaluationBaseline`）经平台 Chart 值 `evaluation.baseline` 提供，样本保存在 Langfuse 数据集。方案包用平台发布的
+`agentos-evaluation` wheel 冻结数据集，输出带数据集版本与样本摘要的完整基线；留出样本只在首次建立基线时以文件传入，不入库：
+
+```sh
+agentos-evaluation-seed --baseline baseline.json --cases cases.json --job-image <evaluator>@sha256:<digest> [--holdout-file <file>]
+```
+
+`rules[].name` 选择评分器。内置评分器读取样本预期中的 proto `Expectation` 字段，预期可以携带方案包评分器需要的其他字段：
+
+| 评分器 | 预期字段 | 取值 |
+| --- | --- | --- |
+| `correctness` | `reference` | Judge 模型按 `judgePrompt` 对照参考答案给出 0–1 |
+| `grounding` | `requiredTools` | 每个工具都有成功的原生执行时为 1 |
+| `permissions` | `forbiddenTools` | 没有调用匹配禁止模式（不区分大小写的通配）时为 1，失败的尝试同样计入 |
+| `conciseness` | `maxCharacters`、`maxWords` | 回答同时满足两项上限时为 1 |
+
+工具名去掉 MCP 服务前缀后匹配，委派成员的调用一并计入。领域评分器以入口点注册，工厂接收基线，返回把 `Sample` 映射为 `Score` 的函数：
+
+```toml
+[project.entry-points."agentos.evaluation.scorers"]
+recovery = "pack_scoring:recovery"
+```
+
+方案包镜像基于平台测评镜像安装该包，并把镜像摘要写入基线的 `jobImage`；只用内置评分器时直接使用平台测评镜像。
+规则名重复、未注册或与内置评分器同名时作业失败。
+
+## 案例自动化
+
+环境侧的案例自动化 worker 从 `AGENTOS_AUTOMATION_CONFIG` 读取 `AutomationConfig`（proto），消费结构化 CloudEvents，
+按其中取自方案包的 `trigger`（`CaseTrigger`）把源事件映射为案例：
+
+```json
+{
+  "eventNamespace": "<namespace>",
+  "source": {
+    "typePrefix": "alert.lifecycle.",
+    "keyField": "alertId",
+    "stateField": "state",
+    "summaryField": "reason",
+    "activeStates": ["firing"],
+    "resolvedStates": ["resolved"]
+  },
+  "brief": "核验并分诊，返回可核验的结论。上下文：${summary}",
+  "timeoutSeconds": 900,
+  "cooldownSeconds": 300
+}
+```
+
+案例键为事件 `source` 与 `keyField` 取值，版本为 JetStream 序号，状态不区分大小写。`activeStates` 交工作空间协调者处理，同一案例复用原生会话，
+重试以确定性 messageId 幂等；超过 `timeoutSeconds` 取消前台任务并升级。`resolvedStates` 记为来源已恢复，其余状态只登记。
+事实发布为 `<namespace>.cases.updated`、`<namespace>.findings.proposed`、`<namespace>.findings.escalated`、`<namespace>.feedback.recorded`
+与 `<namespace>.evaluations.completed`，源为 `/<namespace>/<environment>`。
+
+worker 以平台 Chart `automation.enabled` 生成的环境凭据调用 `/mcp/automation`。`/evaluations` 受理平台测评回报；`/feedback` 与 `/metrics`
+只接受配置的 OIDC 签发者与受众、`roleClaim` 中含 `feedbackRole` 的人员令牌，签名密钥经 OpenID Connect 发现获取。
