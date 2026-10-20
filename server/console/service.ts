@@ -7,10 +7,10 @@ import {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
-import type { OperationsConfig } from "../../gen/agentos/governance/v1/change_pb.js";
+import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
+import type { BindingView } from "../governance/bindings.js";
+import { approvals } from "../governance/views.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { BindingView } from "../operations/bindings.js";
-import { changes } from "../operations/views.js";
 import { accessProfile } from "../platform/access.js";
 import { cancelTree } from "../read-model/cancel.js";
 import type { KagentSync } from "../read-model/sync.js";
@@ -20,10 +20,10 @@ import { engineers } from "../read-model/views/engineers.js";
 import { taskRun } from "../read-model/views/run.js";
 import { listTasks, taskDetail } from "../read-model/views/task.js";
 import { invalid, notFound, unavailable } from "../shared/errors.js";
+import { approvalReferences } from "./approval-references.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
 import type { TemplateWriter } from "./template-writer.js";
-import { ticketReferences } from "./ticket-references.js";
 import { watch } from "./watch.js";
 
 export interface ConsoleDependencies {
@@ -31,7 +31,7 @@ export interface ConsoleDependencies {
   clients: KagentClients;
   namespace: string;
   access: BindingView;
-  operations: OperationsConfig;
+  operations: GovernanceConfig;
   roleDefaults: RoleDefaults;
   replaceTemplate: TemplateWriter;
   pack: Pack;
@@ -55,7 +55,7 @@ export function consoleService({
   platformTools,
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const index = sync.index;
-  const messages = messageCommands(sync, clients);
+  const messages = messageCommands(sync, clients, operations);
   const roles = roleCommands(
     clients,
     namespace,
@@ -64,7 +64,7 @@ export function consoleService({
     replaceTemplate,
     platformTools,
   );
-  const tickets = ticketReferences(sync, operations);
+  const tickets = approvalReferences(sync, operations);
   const ready = () => {
     if (!sync.healthy()) throw unavailable();
   };
@@ -107,12 +107,12 @@ export function consoleService({
     },
     listConversations(request) {
       ready();
-      return listConversations(index, request.kind, request);
+      return listConversations(index, request.agent, request);
     },
     watchConversation(request, context) {
       return watch(sync, WatchConversationResponseSchema, context.signal, async () =>
         create(WatchConversationResponseSchema, {
-          conversation: await conversation(sync, request.kind, request.contextId),
+          conversation: await conversation(sync, request.agent, request.contextId),
         }),
       );
     },
@@ -123,7 +123,7 @@ export function consoleService({
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
     explainTools: (request) => roles.explain(request.engineer),
-    listChanges: (request, context) =>
-      changes(sync, operations, request.taskId, request.requestId, { signal: context.signal }),
+    listApprovals: (request, context) =>
+      approvals(sync, operations, request.taskId, request.requestId, { signal: context.signal }),
   };
 }

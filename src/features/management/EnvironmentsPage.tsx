@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Governance } from "../../../gen/agentos/governance/v1/change_pb.js";
+import { Governance } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { ManagementService } from "../../../gen/agentos/management/v1/management_pb.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { Failure } from "./ResourcePage.js";
@@ -40,7 +40,6 @@ export function EnvironmentsPage() {
             <TableHead>{t("operations.environment")}</TableHead>
             <TableHead>{t("operations.governance")}</TableHead>
             <TableHead>{t("operations.links")}</TableHead>
-            <TableHead>{t("operations.approvalPortal")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,17 +59,6 @@ export function EnvironmentsPage() {
                     <ExternalLink key={link.name} name={link.name} url={link.url} />
                   ))}
                 </div>
-              </TableCell>
-              <TableCell>
-                {environment.approvalUrl ? (
-                  <ExternalLink
-                    name="approval"
-                    url={environment.approvalUrl}
-                    label={t("operations.approvalPortal")}
-                  />
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
               </TableCell>
             </TableRow>
           ))}

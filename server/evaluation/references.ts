@@ -1,6 +1,6 @@
 import type { JsonValue } from "@bufbuild/protobuf";
 import type { V1Secret } from "@kubernetes/client-node";
-import { digest } from "../shared/change-digest.js";
+import { digest } from "../../shared/digest.js";
 
 /** Native schemas express Secret references in these Kubernetes and kagent forms. */
 export function secretReferences(value: JsonValue): Set<string> {

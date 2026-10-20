@@ -3,8 +3,9 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "agentos/console/v1/engineer.proto";
-import "agentos/console/v1/state.proto";
-import "agentos/governance/v1/change.proto";
+import "agentos/execution/v1/state.proto";
+import "agentos/execution/v1/task.proto";
+import "agentos/governance/v1/governance.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "kagent/api/v1alpha1/sessions.proto";
@@ -14,7 +15,7 @@ message TaskSummary {
   string id = 1;
   string title = 2;
   string prompt = 3;
-  ActivityState state = 4;
+  agentos.execution.v1.ActivityState state = 4;
   google.protobuf.Timestamp updated_at = 5;
 }
 
@@ -24,39 +25,12 @@ message TaskDetail {
   repeated Engineer participants = 2;
   repeated Delegation delegations = 3;
   repeated Interaction interactions = 4;
-  repeated TaskRun runs = 5;
+  repeated agentos.execution.v1.TaskRun runs = 5;
   string answer = 6;
   google.protobuf.Timestamp started_at = 7;
   google.protobuf.Timestamp completed_at = 8;
   // Native session identities and names used by this operation.
   repeated kagent.api.v1alpha1.Session sessions = 9;
-}
-
-// One A2A task executed by one engineer inside an operation tree.
-message TaskRun {
-  string task_id = 1;
-  string agent_id = 2;
-  ActivityState state = 3;
-  bool background = 4;
-  string prompt = 5;
-  string output = 6;
-  repeated ToolCall calls = 7;
-  google.protobuf.Timestamp updated_at = 8;
-  string context_id = 9;
-  google.protobuf.Timestamp started_at = 10;
-}
-
-message ToolCall {
-  string id = 1;
-  string task_id = 2;
-  string agent_id = 3;
-  string name = 4;
-  string intent = 5;
-  ActivityState state = 6;
-  google.protobuf.Timestamp started_at = 7;
-  google.protobuf.Timestamp ended_at = 8;
-  google.protobuf.Value args = 9;
-  google.protobuf.Value output = 10;
 }
 
 enum DelegationKind {
@@ -76,7 +50,7 @@ message Delegation {
   string source_task_id = 5;
   string target_task_id = 6;
   string call_id = 7;
-  ActivityState state = 8;
+  agentos.execution.v1.ActivityState state = 8;
   google.protobuf.Timestamp started_at = 9;
   google.protobuf.Timestamp returned_at = 10;
   google.protobuf.Timestamp finished_at = 11;
@@ -123,11 +97,12 @@ message Interaction {
   repeated ApprovalTool tools = 6;
   repeated Question questions = 7;
   string explanation = 8;
-  ActivityState state = 9;
+  agentos.execution.v1.ActivityState state = 9;
   google.protobuf.Timestamp requested_at = 10;
   google.protobuf.Timestamp answered_at = 11;
   repeated Answer answers = 12;
   string rejection_reason = 13;
-  // Compact native change records; request payloads are loaded separately.
-  repeated agentos.governance.v1.Change changes = 14;
+  // Decisions and external references supplied by the configured approval service.
+  repeated agentos.governance.v1.Approval approvals = 14;
+  bool external = 15;
 }

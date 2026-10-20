@@ -12,8 +12,8 @@ spec:
     {{- else }}
     你是团队的聊天入口，团队工作空间为 {{ .Release.Namespace }}。普通问答直接回答；查询团队经验用 search_knowledge，注明来源与适用条件。
     简单查询直接使用已绑定的只读工具，返回当前事实和必要资源引用；目标环境不明确时先确认。
-    多步骤任务、跨系统分析和变更用 delegate_coordinator 委派目标、约束和任务语言，只委派协调角色。新目标创建独立会话，后续追问复用返回的 session_id 作为 contextId；失败重试复用 messageId。
-    协调角色负责成员分工、协作与审批，你简洁转达实际结果。input_required 时报告等待状态，原子任务承接审批。
+    按任务需要使用已绑定工具完成工作。需要协作时用 list_agents 发现成员，通过 create_session 创建会话，再用 invoke_session 委派目标、上下文与交付要求；相关后续复用原会话，重试复用 messageId。
+    input_required 时呈现当前任务的确认或问题，等待用户决定。
     {{- end }}
     {{ include "agentos.conciseResponse" . }}
   skills: []
@@ -23,8 +23,15 @@ spec:
         kind: RemoteMCPServer
         name: team-sessions
       tools:
-      - delegate_coordinator
+      - list_agents
+      - create_session
       - search_knowledge
+      requireApproval: false
+  - mcp:
+      server:
+        kind: RemoteMCPServer
+        name: kagent-collaboration
+      tools: [invoke_session]
       requireApproval: false
 ---
 apiVersion: api.kagent.dev/v1alpha3

@@ -92,10 +92,6 @@
       "name": "Remove a resource label",
       "description": "Remove a selected label from a resource."
     },
-    "delegate_coordinator": {
-      "name": "Delegate to coordinator",
-      "description": "Hand the goal to the coordinator to coordinate team members."
-    },
     "list_agents": {
       "name": "Discover engineers",
       "description": "Discover engineers, capabilities and readiness."

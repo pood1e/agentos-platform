@@ -1,7 +1,5 @@
 agentos_values_file: "{{ playbook_dir }}/../tests/fixtures/solution-chart/values.yaml"
 platform_cidr: 192.0.2.10/32
-change_control_image: registry.example.com/agentos@sha256:0000000000000000000000000000000000000000000000000000000000000000
-change_control_database_url_file: "{{ playbook_dir }}/../tests/fixtures/environments/database-url"
 gateway_rules: ["apiKey.engineer == 'catalog' && request.path == '/openapi.json'"]
 environment_connectors:
   kubernetes:

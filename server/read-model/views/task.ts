@@ -1,6 +1,5 @@
 import { create } from "@bufbuild/protobuf";
 import type { ListTasksRequest } from "../../../gen/agentos/console/v1/console_service_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import {
   type Delegation,
   DelegationKind,
@@ -11,8 +10,9 @@ import {
   type TaskSummary,
   TaskSummarySchema,
 } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { SessionSchema } from "../../../gen/kagent/api/v1alpha1/sessions_pb.js";
-import { shortTitle } from "../../shared/title.js";
+import { shortTitle } from "../../../shared/title.js";
 import { systemRoles } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";

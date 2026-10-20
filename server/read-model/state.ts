@@ -1,5 +1,5 @@
 import { TaskState } from "../../gen/a2a_pb.js";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 
 export const terminal = (state?: TaskState) =>
   state === TaskState.COMPLETED ||

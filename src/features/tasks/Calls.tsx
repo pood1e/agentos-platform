@@ -6,8 +6,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
-import type { ToolCall } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import type { ToolCall } from "../../../gen/agentos/execution/v1/task_pb.js";
 import { duration, millis, pretty, time } from "../../lib/format.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { useToolText } from "../shared/use-tool-text.js";

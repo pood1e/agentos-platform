@@ -1,5 +1,5 @@
 import { skipToken, useQuery } from "@connectrpc/connect-query";
-import { ArrowUpRight, LoaderCircle, RefreshCw, X } from "lucide-react";
+import { LoaderCircle, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -157,32 +157,21 @@ export function AgentDrawer({
       >
         <SheetHeader className="border-b px-5 py-5 pr-14">
           <SheetTitle className="flex flex-wrap items-center gap-2">
-            {activity?.ticket ? (
-              <a
-                href={activity.ticket.ticketUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1"
-              >
-                {t("graph.ticket", { id: activity.ticket.ticketId })}
-                <ArrowUpRight className="size-3.5" />
-              </a>
-            ) : interaction ? (
-              t(
-                interaction.kind === InteractionKind.APPROVAL
-                  ? "approval.title"
-                  : "approval.userInput",
-              )
-            ) : agent ? (
-              title || engineerName(agent)
-            ) : (
-              t("drawer.title")
-            )}
+            {activity?.record
+              ? (activity.record.link?.name ?? t("approval.title"))
+              : interaction
+                ? t(
+                    interaction.kind === InteractionKind.APPROVAL
+                      ? "approval.title"
+                      : "approval.userInput",
+                  )
+                : agent
+                  ? title || engineerName(agent)
+                  : t("drawer.title")}
             {state !== undefined && <Status state={state} />}
           </SheetTitle>
           <SheetDescription className="text-xs leading-5">
-            {activity?.ticket?.environment?.name ??
-              (agent ? engineerDescription(agent) : t("drawer.title"))}
+            {agent ? engineerDescription(agent) : t("drawer.title")}
           </SheetDescription>
           <SheetClose asChild>
             <Button
@@ -227,7 +216,7 @@ export function AgentDrawer({
               </Select>
             )}
             {interaction ? (
-              <Approval key={interaction.id} interaction={interaction} ticket={activity?.ticket} />
+              <Approval key={interaction.id} interaction={interaction} record={activity?.record} />
             ) : (
               <>
                 {!taskId && (

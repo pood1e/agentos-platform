@@ -1,0 +1,20 @@
+{% set connections = [] %}
+{% for target in groups['environments'] %}
+{% set settings = hostvars[target] %}
+{% set governance = (agentos_config.environments | selectattr('name', 'equalto', settings.environment_name) | first).governance %}
+{% set environment = {'name': settings.environment_name, 'governance': 'GOVERNANCE_' + governance | upper, 'links': settings.environment_links | default([])} %}
+{% set connection = {'environment': environment} %}
+{% if settings.approval_service_url | default('') %}
+{% set connection = connection | combine({'approvalUrl': settings.approval_service_url}) %}
+{% if settings.approval_service_authorization_file | default('') %}
+{% set connection = connection | combine({'authorization': lookup('ansible.builtin.file', settings.approval_service_authorization_file)}) %}
+{% endif %}
+{% endif %}
+{% set unused = connections.append(connection) %}
+{% endfor %}
+apiVersion: v1
+kind: Secret
+metadata: {name: agentos-governance, namespace: {{ agentos_namespace }}}
+type: Opaque
+stringData:
+  connections.json: {{ {'environments': connections} | to_json | to_json }}

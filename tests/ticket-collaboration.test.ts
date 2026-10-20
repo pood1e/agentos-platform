@@ -1,10 +1,10 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind, InteractionSchema } from "../gen/agentos/console/v1/task_pb.js";
-import { ChangeSchema, Governance } from "../gen/agentos/governance/v1/change_pb.js";
-import { ticketNodeId } from "../src/features/tasks/flow/approval-activities.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { ApprovalSchema } from "../gen/agentos/governance/v1/governance_pb.js";
+import { approvalNodeId } from "../src/features/tasks/flow/approval-activities.js";
 import {
   collaborationFlow,
   instanceNodeId,
@@ -13,11 +13,9 @@ import { bundleConnections } from "../src/features/tasks/flow/connection-bundles
 import { collaborationDetail, link, root } from "./fixtures/collaboration.js";
 
 const ticket = (environment = "aiops-real", id = "19") =>
-  create(ChangeSchema, {
+  create(ApprovalSchema, {
     id: `change-${environment}-${id}`,
-    environment: { name: environment, governance: Governance.APPROVAL },
-    ticketId: id,
-    ticketUrl: `https://${environment}-zammad.example/#ticket/zoom/${id}`,
+    link: { name: `Review #${id}`, url: `https://${environment}.example/review/${id}` },
   });
 const approval = (id: string, taskId: string, time: number, state = ActivityState.SUCCEEDED) =>
   create(InteractionSchema, {
@@ -28,7 +26,7 @@ const approval = (id: string, taskId: string, time: number, state = ActivityStat
     kind: InteractionKind.APPROVAL,
     state,
     requestedAt: timestampFromMs(time),
-    changes: [ticket()],
+    approvals: [ticket()],
   });
 
 describe("native work-order nodes", () => {
@@ -42,7 +40,7 @@ describe("native work-order nodes", () => {
     const nodes = flow.activities.filter((item) => item.kind === "approval");
     expect(nodes).toHaveLength(1);
     expect(nodes[0]).toMatchObject({
-      id: ticketNodeId(ticket()),
+      id: approvalNodeId(ticket()),
       state: ActivityState.AWAITING_APPROVAL,
       taskIds: [root.taskId, "task-asset"],
     });
@@ -63,33 +61,33 @@ describe("native work-order nodes", () => {
   it("keeps equal ticket numbers in different environments separate", () => {
     const first = approval("first", root.taskId, 1);
     const second = approval("second", root.taskId, 2);
-    second.changes = [ticket("another-real")];
+    second.approvals = [ticket("another-real")];
     const flow = collaborationFlow(collaborationDetail([], { interactions: [first, second] }));
     expect(
       flow.activities.filter((item) => item.kind === "approval").map((item) => item.id),
-    ).toEqual([ticketNodeId(ticket()), ticketNodeId(ticket("another-real"))]);
+    ).toEqual([approvalNodeId(ticket()), approvalNodeId(ticket("another-real"))]);
   });
 
   it("deduplicates repeated change references without merging unrelated tickets or questions", () => {
     const first = approval("first", root.taskId, 1);
-    first.changes.push(ticket(), ticket("aiops-real", "20"));
+    first.approvals.push(ticket(), ticket("aiops-real", "20"));
     const question = approval("question", root.taskId, 2);
     question.kind = InteractionKind.QUESTION;
     const unknown = approval("unlinked", root.taskId, 3);
-    unknown.changes = [];
+    unknown.approvals = [];
     const flow = collaborationFlow(
       collaborationDetail([], { interactions: [first, question, unknown] }),
     );
     expect(
       flow.activities.filter((item) => item.kind === "approval").map((item) => item.id),
     ).toEqual([
-      ticketNodeId(ticket()),
-      ticketNodeId(ticket("aiops-real", "20")),
+      approvalNodeId(ticket()),
+      approvalNodeId(ticket("aiops-real", "20")),
       "interaction:question",
       "interaction:unlinked",
     ]);
     expect(
-      flow.activities.find((item) => item.id === ticketNodeId(ticket()))?.interactions,
+      flow.activities.find((item) => item.id === approvalNodeId(ticket()))?.interactions,
     ).toHaveLength(1);
   });
 });

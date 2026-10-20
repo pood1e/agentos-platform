@@ -16,6 +16,8 @@ class Platform:
     async def call(self, tool, reference, message=None):
         headers = {"Authorization": self.authorization}
         ref = CaseReference(key=reference["key"], version=int(reference["version"]))
+        ref.agent.CopyFrom(self.config.trigger.agent)
+        ref.agent.namespace = self.config.workspace
         arguments = MessageToDict(ref)
         if message is not None:
             arguments = MessageToDict(CaseRequest(case=ref, message=message))

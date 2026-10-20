@@ -4,23 +4,22 @@ import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
+import { loadCatalog } from "../../shared/tool-catalog.js";
 import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { roleCommands } from "../console/roles.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
 import { platformEvaluation } from "../evaluation/platform.js";
+import { toolBindings } from "../governance/bindings.js";
+import { governanceConfig } from "../governance/config.js";
+import { approvalCoordinator } from "../governance/coordinator.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
 import { nativeInvocation } from "../kagent/invoke-session.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
-import { toolBindings } from "../operations/bindings.js";
-import { loadCatalog } from "../operations/catalog.js";
-import { operationsConfig } from "../operations/config.js";
-import { operationsCoordinator } from "../operations/coordinator.js";
-import { changePreparation } from "../operations/preparation.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
@@ -46,7 +45,7 @@ const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log)
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const access = toolBindings(kubeConfig, config.namespace);
-const operations = operationsConfig();
+const operations = governanceConfig();
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
 const replaceTemplate = templateWriter(kubeConfig);
@@ -120,7 +119,7 @@ const { alignRoles } = roleCommands(
   identities.bind,
 );
 await registerConsole(app, {
-  context: workspaceContext(config.namespace),
+  context: workspaceContext(config.namespace, process.env.AGENTOS_ENTRY_AGENT ?? "assistant"),
   ...services(activeClients),
   ...evaluation.routes,
   ready: sync.healthy,
@@ -129,18 +128,7 @@ await registerConsole(app, {
 });
 await registerTeamSessions(
   app,
-  sessionTools(
-    activeClients,
-    config.namespace,
-    access,
-    knowledgeService(activeClients, knowledge),
-    nativeInvocation(
-      new URL("/mcp/kagent-collaboration", knowledge.url),
-      process.env.AGENTOS_COLLABORATION_TOKEN ?? knowledge.token,
-      config.userId,
-    ),
-    changePreparation(activeClients, config.namespace, operations.environments, catalog),
-  ),
+  sessionTools(activeClients, config.namespace, access, knowledgeService(activeClients, knowledge)),
   token,
   async (role, headers) => {
     if (role === "automation") {
@@ -173,7 +161,7 @@ await registerTeamSessions(
   },
 );
 const stopContinuations = startContinuations(sync, app.log);
-const stopOperations = operationsCoordinator(sync, operations, app.log, catalog);
+const stopOperations = approvalCoordinator(sync, operations, app.log);
 const processor = createServer(
   connectNodeAdapter({
     routes: (router) => router.service(ExtMcp, collaborationGuardrails(evaluation.workspaces)),

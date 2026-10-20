@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { create } from "@bufbuild/protobuf";
 import { KubeConfig } from "@kubernetes/client-node";
-import { OperationsConfigSchema } from "../gen/agentos/governance/v1/change_pb.js";
+import { GovernanceConfigSchema } from "../gen/agentos/governance/v1/governance_pb.js";
 import { resourceStore } from "../server/management/resources.js";
 import { managementService } from "../server/management/service.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
@@ -43,7 +43,7 @@ export async function managementEnvironment() {
       model: "embeddinggemma:300m",
       scope: { agentName: "agentos__NS__knowledge", userId: "agentos", ttlDays: 3650 },
     },
-    operations: create(OperationsConfigSchema),
+    operations: create(GovernanceConfigSchema),
   };
   return {
     ...env,

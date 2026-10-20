@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
-import { client, ids, resetKagent, seedOperations, startOperation, workOrders } from "./kagent.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
+import { client, ids, resetKagent, seedOperations, startOperation } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
@@ -33,7 +33,6 @@ test("resets task pagination when filtering states and combines member filters",
 test("opens the pending approval queue and work-order drawer from the top bar", async ({
   page,
 }) => {
-  await workOrders(page);
   await page.goto("/tasks");
   await page.getByTestId("task-history").getByRole("textbox").fill("没有这种任务");
   const pending = page.getByRole("link", { name: "待审批", exact: true });
@@ -42,8 +41,8 @@ test("opens the pending approval queue and work-order drawer from the top bar", 
   await expect(page).toHaveURL(/state=AWAITING_APPROVAL&approval=1/);
   const drawer = page.getByTestId("agent-drawer");
   await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole("link", { name: "#123" })).toBeVisible();
-  await expect(drawer.getByRole("button", { name: "批准并执行", exact: true })).toHaveCount(0);
+  await expect(drawer.getByRole("button", { name: "批准并继续", exact: true })).toBeVisible();
+  await expect(drawer.getByTestId("external-approvals")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("combobox", { name: "筛选任务状态", exact: true })).toContainText(
     "等待审批",
@@ -80,7 +79,6 @@ test("stops a delegated operation from the chat composer", async ({ page }) => {
 test("shows execution, delegation and approval intervals with working drawers", async ({
   page,
 }) => {
-  await workOrders(page);
   await page.goto(`/tasks/${ids.approvalRoot}`);
   await page.getByRole("tab", { name: "时间线", exact: true }).click();
   const timeline = page.getByTestId("task-timeline");
@@ -91,7 +89,9 @@ test("shows execution, delegation and approval intervals with working drawers", 
   await expect(page.getByTestId("agent-drawer").getByTestId("task-prompt")).toBeVisible();
   await page.keyboard.press("Escape");
   await timeline.getByTestId("timeline-approval").click();
-  await expect(page.getByTestId("agent-drawer").getByRole("link", { name: "#123" })).toBeVisible();
+  await expect(
+    page.getByTestId("agent-drawer").getByRole("button", { name: "批准并继续", exact: true }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await page.screenshot({ path: test.info().outputPath("timeline.png") });
   await page.setViewportSize({ width: 390, height: 844 });

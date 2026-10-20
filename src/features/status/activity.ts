@@ -1,4 +1,4 @@
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 
 export type Tone = "working" | "waiting" | "succeeded" | "failed" | "neutral" | "unavailable";
 

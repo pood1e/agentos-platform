@@ -66,8 +66,7 @@
     patch: [{op: remove, path: "/data/{{ item }}"}]
   loop: >-
     {{ (environment_gateway_keys.resources | first | default({})).get('data', {}).keys()
-      | difference((engineer_identities | map(attribute='name') | list)
-        + (['change-control'] if environment_governance == 'approval' else [])) | list }}
+      | difference((engineer_identities | map(attribute='name') | list)) | list }}
   no_log: true
 
 - name: Wait for environment gateway programming

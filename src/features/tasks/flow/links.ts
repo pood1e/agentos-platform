@@ -1,5 +1,5 @@
-import { ActivityState } from "../../../../gen/agentos/console/v1/state_pb.js";
 import { DelegationKind, type TaskDetail } from "../../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../../../lib/format.js";
 
 export type LinkKind = "invoke" | "background" | "handoff" | "resume" | "approval" | "review";

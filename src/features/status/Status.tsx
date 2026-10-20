@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
+import type { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { labelKey, type Tone, toneOf } from "./activity.js";
 
 const appearances: Record<Tone, { className: string; color: string }> = {

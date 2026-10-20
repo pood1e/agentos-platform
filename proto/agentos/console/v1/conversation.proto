@@ -4,15 +4,9 @@ package agentos.console.v1;
 
 import "a2a.proto";
 import "agentos/console/v1/role.proto";
-import "agentos/console/v1/state.proto";
 import "agentos/console/v1/task.proto";
+import "agentos/execution/v1/state.proto";
 import "google/protobuf/timestamp.proto";
-
-enum ConversationKind {
-  CONVERSATION_KIND_UNSPECIFIED = 0;
-  CONVERSATION_KIND_ASSISTANT = 1;
-  CONVERSATION_KIND_ROLE_BUILDER = 2;
-}
 
 message ConversationSummary {
   string context_id = 1;
@@ -34,7 +28,7 @@ message Conversation {
   string context_id = 1;
   bool ready = 2;
   bool busy = 3;
-  ActivityState state = 4;
+  agentos.execution.v1.ActivityState state = 4;
   repeated ChatMessage messages = 5;
   repeated Interaction pending = 6;
   RoleDefinition role_draft = 7;

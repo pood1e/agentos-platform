@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.server.json",
+  "compilerOptions": {
+    "outDir": "../.cache/node-contracts",
+    "declaration": true
+  },
+  "include": ["../gen/**/*.ts", "../shared/**/*.ts"]
+}

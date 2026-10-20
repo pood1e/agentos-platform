@@ -1,7 +1,5 @@
 team-sessions:
   readOnly:
-    - prepare_change
-    - delegate_coordinator
     - list_agents
     - create_session
     - dispatch_session

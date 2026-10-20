@@ -21,6 +21,7 @@ TRIGGER = {
 def load(tmp_path, monkeypatch, change=lambda value: None):
     value = AutomationConfig(**{field: f"{field}-value" for field in REQUIRED})
     ParseDict(TRIGGER, value.trigger)
+    value.trigger.agent.name = "analyst"
     change(value)
     path = tmp_path / "automation.json"
     path.write_text(MessageToJson(value))

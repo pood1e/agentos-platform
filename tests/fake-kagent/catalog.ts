@@ -24,7 +24,6 @@ export const toolServers = (): ToolServer[] => [
   ]),
   server("remediation-tools", ["k8s_apply_manifest"]),
   server("team-sessions", [
-    "delegate_coordinator",
     "list_agents",
     "create_session",
     "dispatch_session",

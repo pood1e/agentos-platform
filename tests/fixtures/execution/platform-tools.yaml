@@ -5,7 +5,7 @@ remediation-tools:
   readOnly: []
   write: [k8s_apply_manifest]
 team-sessions:
-  readOnly: [delegate_coordinator, list_agents, create_session, dispatch_session, list_role_tools, prepare_role, search_knowledge]
+  readOnly: [list_agents, create_session, dispatch_session, list_role_tools, prepare_role, search_knowledge]
   write: []
 kagent-collaboration:
   readOnly: [list_sessions, invoke_session]

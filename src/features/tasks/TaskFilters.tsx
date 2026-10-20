@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { engineerName } from "../shared/engineers.js";
 import { labelKey } from "../status/activity.js";
 

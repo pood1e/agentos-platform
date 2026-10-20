@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package agentos.evaluation.v1;
 
+import "agentos/kagent/v1/wire.proto";
 import "buf/validate/validate.proto";
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 import "kagent/api/v1alpha1/common.proto";
 import "kagent/api/v1alpha1/memory.proto";
-import "agentos/kagent/v1/wire.proto";
 
 service EvaluationService {
   rpc ListCandidates(ListCandidatesRequest) returns (ListCandidatesResponse);
@@ -51,7 +51,10 @@ message ScoreRule {
 
 message SampleReference {
   string id = 1 [(buf.validate.field).string.min_len = 1];
-  string split = 2 [(buf.validate.field).string.in = "train", (buf.validate.field).string.in = "holdout"];
+  string split = 2 [
+    (buf.validate.field).string.in = "train",
+    (buf.validate.field).string.in = "holdout"
+  ];
   string input_digest = 3 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
   string agent = 4 [(buf.validate.field).string.min_len = 1];
   string name = 5 [(buf.validate.field).string.max_len = 80];
@@ -82,12 +85,27 @@ message EvaluationBaseline {
   string judge_model = 8 [(buf.validate.field).string.min_len = 1];
   string judge_prompt = 9 [(buf.validate.field).string.min_len = 1];
   string scenario_version = 10 [(buf.validate.field).string.min_len = 1];
-  uint32 repetitions = 11 [(buf.validate.field).uint32 = {gte: 1, lte: 10}];
-  repeated SampleReference samples = 12 [(buf.validate.field).repeated = {min_items: 2, max_items: 1000}];
+  uint32 repetitions = 11 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 10
+  }];
+  repeated SampleReference samples = 12 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 1000
+  }];
   string job_image = 13 [(buf.validate.field).string.pattern = "^.+@sha256:[a-f0-9]{64}$"];
-  uint32 timeout_seconds = 14 [(buf.validate.field).uint32 = {gte: 60, lte: 7200}];
+  uint32 timeout_seconds = 14 [(buf.validate.field).uint32 = {
+    gte: 60
+    lte: 7200
+  }];
   string environment = 15 [(buf.validate.field).string.min_len = 1];
-  repeated string knowledge_seed = 16 [(buf.validate.field).repeated.max_items = 16, (buf.validate.field).repeated.items.string = {min_len: 1, max_len: 2000}];
+  repeated string knowledge_seed = 16 [
+    (buf.validate.field).repeated.max_items = 16,
+    (buf.validate.field).repeated.items.string = {
+      min_len: 1
+      max_len: 2000
+    }
+  ];
   string reference_agent = 17 [(buf.validate.field).string.min_len = 1];
 }
 
@@ -176,19 +194,29 @@ message Candidate {
 }
 
 message ListCandidatesRequest {}
-message ListCandidatesResponse { repeated Candidate candidates = 1; }
-message GetCandidateRequest { string id = 1 [(buf.validate.field).string.uuid = true]; }
+message ListCandidatesResponse {
+  repeated Candidate candidates = 1;
+}
+message GetCandidateRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
 message GetCandidateResponse {
   Candidate candidate = 1;
   ConfigurationSnapshot snapshot = 2;
 }
-message RunEvaluationRequest { string id = 1 [(buf.validate.field).string.uuid = true]; }
-message RunEvaluationResponse { Candidate candidate = 1; }
+message RunEvaluationRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message RunEvaluationResponse {
+  Candidate candidate = 1;
+}
 message PublishCandidateRequest {
   string id = 1 [(buf.validate.field).string.uuid = true];
   string binding_digest = 2 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
 }
-message PublishCandidateResponse { Candidate candidate = 1; }
+message PublishCandidateResponse {
+  Candidate candidate = 1;
+}
 
 // Evaluators receive a redacted runtime snapshot and the authoritative private binding digest.
 message EvaluationJobInput {
@@ -206,7 +234,10 @@ message ExecuteRequest {
   string candidate_id = 1 [(buf.validate.field).string.uuid = true];
   string sample_id = 2 [(buf.validate.field).string.min_len = 1];
   uint32 repetition = 3 [(buf.validate.field).uint32.gte = 1];
-  EvaluationVariant variant = 4 [(buf.validate.field).enum = {defined_only: true, not_in: [0]}];
+  EvaluationVariant variant = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
   google.protobuf.Struct input = 5 [(buf.validate.field).required = true];
 }
 message ExecuteResponse {

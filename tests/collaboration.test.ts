@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { collaborationFlow } from "../src/features/tasks/flow/collaboration-flow.js";
 import { collaborationLayout } from "../src/features/tasks/flow/collaboration-layout.js";
 import type { Link } from "../src/features/tasks/flow/links.js";

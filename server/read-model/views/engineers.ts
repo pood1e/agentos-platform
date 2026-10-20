@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { type Engineer, EngineerSchema } from "../../../gen/agentos/console/v1/engineer_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { type AgentInfo, systemRoles } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";

@@ -2,7 +2,7 @@
 import { create } from "@bufbuild/protobuf";
 import type { FastifyBaseLogger } from "fastify";
 import { type Message, MessageSchema, Role, TaskState } from "../../gen/a2a_pb.js";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
 import { parentTaskKey, resumedTaskKey } from "../read-model/decode/messages.js";
 import type { TaskEntry } from "../read-model/entry.js";

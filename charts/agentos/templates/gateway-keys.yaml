@@ -12,4 +12,4 @@ data:
   {{- end }}
   agentos: {{ dict "keyHash" (printf "sha256:%s" ($token | sha256sum)) "metadata" (dict "service" "agentos") | toJson | quote }}
   catalog: {{ dict "keyHash" (printf "sha256:%s" ((include "agentos.catalogToken" .) | sha256sum)) "metadata" (dict "service" "catalog" "workspace" .Release.Namespace) | toJson | quote }}
-  platform: {{ dict "keyHash" (printf "sha256:%s" ((include "agentos.collaborationToken" .) | sha256sum)) "metadata" (dict "service" "platform" "workspace" .Release.Namespace "tools" (dict "team-sessions" (list "prepare_change" "delegate_coordinator" "search_knowledge" "list_agents" "create_session" "dispatch_session" "list_role_tools" "prepare_role") "kagent-collaboration" (list "invoke_session" "list_sessions"))) | toJson | quote }}
+  platform: {{ dict "keyHash" (printf "sha256:%s" ((include "agentos.collaborationToken" .) | sha256sum)) "metadata" (dict "service" "platform" "workspace" .Release.Namespace "tools" (dict "team-sessions" (list "search_knowledge" "list_agents" "create_session" "dispatch_session" "list_role_tools" "prepare_role") "kagent-collaboration" (list "invoke_session" "list_sessions"))) | toJson | quote }}

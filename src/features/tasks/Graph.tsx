@@ -15,8 +15,8 @@ import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { Engineer } from "../../../gen/agentos/console/v1/engineer_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { engineerName } from "../shared/engineers.js";
 import { appearance } from "../status/Status.js";
 import { currentInteraction } from "./flow/approval-activities.js";
@@ -114,8 +114,8 @@ function Canvas(props: GraphProps) {
             height: activityHeight,
             handles: activity.handles,
             draggable: false,
-            ariaLabel: activity.ticket
-              ? t("graph.ticket", { id: activity.ticket.ticketId })
+            ariaLabel: activity.record
+              ? (activity.record.link?.name ?? t("approval.title"))
               : activity.kind === "approval"
                 ? t("approval.title")
                 : names.get(activity.id),
@@ -138,8 +138,8 @@ function Canvas(props: GraphProps) {
   );
   const edges: CollaborationEdge[] = useMemo(() => {
     const name = (activity?: FlowActivity) =>
-      activity?.ticket
-        ? t("graph.ticket", { id: activity.ticket.ticketId })
+      activity?.record
+        ? (activity.record.link?.name ?? t("approval.title"))
         : activity?.kind === "approval"
           ? t("approval.title")
           : (names.get(activity?.id ?? "") ?? "");

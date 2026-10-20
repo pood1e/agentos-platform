@@ -8,10 +8,10 @@ import {
   type ResourceReference,
   ResourceReferenceSchema,
 } from "../../gen/kagent/api/v1alpha1/common_pb.js";
+import type { BindingView } from "../governance/bindings.js";
 import { engineerTools } from "../kagent/builtin-tools.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { validateHarness } from "../kagent/harness.js";
-import type { BindingView } from "../operations/bindings.js";
 import { systemRoles } from "../read-model/agents.js";
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";

@@ -1,14 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { decideWorkOrder, ids, resetKagent, startOperation, workOrders } from "./kagent.js";
+import { decideApproval, ids, resetKagent, startOperation } from "./kagent.js";
 
 test("keeps an engineer successful after an earlier tool failure and exposes the actual call", async ({
   page,
   request,
 }) => {
   await resetKagent(request);
-  await workOrders(page);
   await startOperation(page);
-  await decideWorkOrder(page, request, true);
+  await decideApproval(page, request, true);
   await page.getByTestId("chat-task").click();
   const engineer = page
     .locator('[data-testid="collaboration-step"][data-agent="agentos/remediation"]')

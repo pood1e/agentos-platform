@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Engineer } from "../../../gen/agentos/console/v1/engineer_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { Avatar } from "../shared/Avatar.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { awaiting, labelKey, posture } from "../status/activity.js";
@@ -45,8 +45,8 @@ export const AgentCard = memo(function AgentCard({ data }: NodeProps<AgentNode>)
   const { activity, agent } = data;
   const human = currentInteraction(activity.interactions);
   const { state, label } = nodeState(activity);
-  const name = activity.ticket
-    ? t("graph.ticket", { id: activity.ticket.ticketId })
+  const name = activity.record
+    ? (activity.record.link?.name ?? t("approval.title"))
     : human
       ? t(human.kind === InteractionKind.APPROVAL ? "approval.title" : "approval.userInput")
       : data.name;
@@ -55,8 +55,7 @@ export const AgentCard = memo(function AgentCard({ data }: NodeProps<AgentNode>)
       data-testid={human ? "approval-node" : "collaboration-step"}
       data-agent={human ? "human" : agent.id}
       data-instance={human ? undefined : activity.contextId}
-      data-ticket={activity.ticket?.ticketId}
-      data-environment={activity.ticket?.environment?.name}
+      data-record={activity.record?.id}
       data-row={activity.row}
       data-phase={activity.kind}
       data-state={ActivityState[state]}
@@ -86,9 +85,9 @@ export const AgentCard = memo(function AgentCard({ data }: NodeProps<AgentNode>)
       </Tooltip>
       {human ? (
         <div className="flex h-[68px] items-center justify-center">
-          {activity.ticket ? (
+          {activity.record ? (
             <ToolIcon
-              name={activity.ticket.ticketUrl}
+              name={activity.record.link?.url ?? ""}
               className="size-12 border-0 bg-transparent [&_img]:size-9"
             />
           ) : (

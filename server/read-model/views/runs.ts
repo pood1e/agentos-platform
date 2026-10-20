@@ -1,11 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { type Timestamp, timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
-import {
-  InteractionKind,
-  type TaskRun,
-  TaskRunSchema,
-} from "../../../gen/agentos/console/v1/task_pb.js";
+import { InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import { type TaskRun, TaskRunSchema } from "../../../gen/agentos/execution/v1/task_pb.js";
 import type { TaskEntry } from "../entry.js";
 import { taskActivity } from "../state.js";
 

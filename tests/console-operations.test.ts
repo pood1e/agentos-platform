@@ -3,7 +3,7 @@ import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { cancelTree } from "../server/read-model/cancel.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { taskRun } from "../server/read-model/views/run.js";

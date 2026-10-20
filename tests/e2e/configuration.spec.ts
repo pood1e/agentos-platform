@@ -36,14 +36,14 @@ test("shows and counts runtime tools without persisting them as MCP bindings", a
 test("builds a role and preserves prompt, skill and MCP drafts across tabs", async ({ page }) => {
   await page.goto("/engineers");
   await expect(page.getByTestId("team-card")).toHaveCount(5);
-  await page.getByRole("button", { name: "新增工程师", exact: true }).click();
+  await page.getByRole("button", { name: "新增智能体", exact: true }).click();
   const editor = page.getByTestId("role-editor");
   await expect(editor.getByRole("tab")).toHaveCount(4);
   await editor.getByRole("tab", { name: "运行时", exact: true }).click();
   await editor.getByRole("combobox", { name: "Harness", exact: true }).click();
   await page.getByRole("option", { name: "Codex · Codex", exact: true }).click();
   await editor.getByRole("tab", { name: "提示词", exact: true }).click();
-  await editor.getByRole("textbox", { name: "工程师需求", exact: true }).fill("创建只读巡检工程师");
+  await editor.getByRole("textbox", { name: "智能体需求", exact: true }).fill("创建只读巡检工程师");
   await editor.getByRole("button", { name: "生成草稿", exact: true }).click();
   await expect(editor.getByLabel("名称", { exact: true })).toHaveValue("巡检助手");
   await editor.getByLabel("标识", { exact: true }).fill("browser-readonly");
@@ -58,7 +58,7 @@ test("builds a role and preserves prompt, skill and MCP drafts across tabs", asy
   await expect(editor.getByRole("checkbox", { name: "检索团队知识", exact: true })).toBeChecked();
   const search = editor.getByRole("textbox", { name: "搜索工具", exact: true });
   await search.fill("应用资源变更");
-  await expect(editor.getByRole("checkbox", { name: "应用资源变更", exact: true })).toBeDisabled();
+  await expect(editor.getByRole("checkbox", { name: "应用资源变更", exact: true })).toBeEnabled();
   await search.fill("");
   await editor.getByRole("tab", { name: "提示词", exact: true }).click();
   await expect(editor.getByLabel("职责与工作方式", { exact: true })).toHaveValue(/只读工具/);

@@ -1,3 +1,4 @@
+entryAgent: assistant
 global:
   agentos:
     environments: []

@@ -5,9 +5,7 @@ const localized = (key: string) => (i18n.exists(key) ? tr(key) : undefined);
 
 export function roleLabel(role: string): string {
   if (!role) return tr("team.unassignedRole");
-  return (
-    localized(role === "coordinator" ? "role.coordinator.name" : `role.${role}.shortName`) ?? role
-  );
+  return localized(`role.${role}.shortName`) ?? localized(`role.${role}.name`) ?? role;
 }
 
 /** Engineers without a display name are presets, named by their localized role. */

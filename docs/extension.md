@@ -1,6 +1,6 @@
 # 扩展契约
 
-方案包只提供数据与资源，不修改平台代码。平台定义格式、加载与校验，方案包提供内容。方案包通常是一个依赖平台 Chart 的业务 Chart，
+平台定义通用契约、加载与校验，方案包提供资源、展示内容及业务服务。方案包通常是一个依赖平台 Chart 的业务 Chart，
 加上一个展示镜像与环境侧的连接器。
 
 | 扩展点 | 形式 | 平台提供 | 方案包提供 |
@@ -11,12 +11,12 @@
 | 工具分级 | `global.agentos.toolsets` | 环境网关的读写视图与原生暂停绑定，未知工具按写处理 | 各连接器的分级 |
 | 身份档案 | `global.agentos.identities` | 生成各角色的 RemoteMCPServer 绑定与环境侧账号清单 | 各角色的环境范围与访问级别 |
 | 环境 | `global.agentos.environments` 与 `Environment`（proto） | 环境页、审批协调、凭据绑定 | 环境清单、治理模式与门户链接 |
-| 连接器 | 环境内的 MCP 服务与 `environment_connectors` 后端描述 | 环境网关、身份映射、读写视图、ExtMCP 守卫 | MCP 服务、目标系统与各身份的后端凭据 |
-| 审批提供方 | change-control 的 `ApprovalProvider` | Zammad 参考实现 | 其他 ITSM 的适配 |
+| 连接器 | 环境内的 MCP 服务与 `environment_connectors` 后端描述 | 环境网关、身份映射、读写视图 | MCP 服务、目标系统与各身份的后端凭据 |
+| 审批提供方 | proto `ApprovalService`，Connect RPC | 原生确认与外部决定协调 | 业务审批、方案、执行守卫与结果回写 |
 | 模型 | agentgateway 原生 `AgentgatewayModel` | 管理页与 `ModelConfig` 同步 | 上游地址、协议与密钥 |
 | 展示 | `pack.json` 与资源文件（proto `Pack`） | 平台通用文案、通用头像与工具图标 | 标题、角色头像、工具图标与业务文案 |
 | 测评 | `evaluation.baseline`（proto `EvaluationBaseline`）、Langfuse 数据集与入口点 `agentos.evaluation.scorers` | 测评作业镜像、数据集冻结工具与内置评分器 | 样本、基线、Judge 提示与领域评分器 |
-| 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、委派协调者、超时取消与事实发布 | 源事件映射、协调者简报与事件命名空间 |
+| 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、调用指定 Agent、超时取消与事实发布 | 源事件映射、Agent 简报与事件命名空间 |
 
 ## 角色标识
 
@@ -24,9 +24,10 @@
 
 | 角色键 | 含义 |
 | --- | --- |
-| `assistant` | 聊天入口，由平台 Chart 管理；只能经 `delegate_coordinator` 把任务交给协调者 |
+| `assistant` | 默认聊天入口，由平台 Chart 管理；可通过 `entryAgent` 选择其他入口 |
 | `role-builder` | 角色构建，由平台 Chart 管理 |
-| `coordinator` | 协调者，由方案包提供；每个工作空间唯一，负责调度其他成员 |
+
+`agentos.dev/role` 的业务角色键不限制执行拓扑。默认任务按原生 task 分组；需要把多轮执行展示为一个任务的 Agent 设置注解 `agentos.dev/task-scope: session`。
 
 注解 `agentos.dev/display-name` 与 `agentos.dev/description` 是用户在控制台修改的显示名与说明，优先于方案包文案。
 
@@ -89,34 +90,24 @@ global:
 
 ## 环境
 
-`Environment` 的治理模式与环境用途无关：
+环境及连接以 `proto/agentos/governance/v1/governance.proto` 为唯一模型。环境提供 `name`、`governance` 与通用门户 `links`；服务地址和凭据保存在 `EnvironmentConnection` 中。
 
-```proto
-message Environment {
-  string name = 1;
-  Governance governance = 2;          // APPROVAL：写调用逐次审批；DIRECT：按原生身份权限直接执行
-  optional string approval_url = 3;   // 审批系统入口，APPROVAL 时必填
-  repeated Link links = 4;            // 环境门户链接，名称与地址由方案包提供
-}
-```
+`approval` 环境按工具分级设置原生 `requireApproval`，`direct` 按目标身份权限执行。未配置外部服务的暂停由控制台提交批准或拒绝；配置外部服务后，控制台仅展示其决定与链接。
 
-审批模式的环境须同时提供 change-control 的地址与平台协调身份的凭据，凭据以 Kubernetes Secret 挂载。环境接入时，平台侧为每个连接器生成的
-网关后端带 `agentos.dev/environment`、`agentos.dev/project` 与 `agentos.dev/governance`（`approval` 或 `direct`）标签，服务端据此选择凭据与暂停策略。
-接入步骤与连接器约定见[环境接入](environments.md)。
+## 外部审批
 
-## 审批提供方
+方案包实现 Connect 服务 `agentos.governance.v1.ApprovalService`：
 
-change-control 只保存方案摘要、工单关联、有效期、执行占用与回写状态，审批决定以提供方为准。提供方实现 `ApprovalProvider`：
-
-| 方法 | 说明 |
+| 方法 | 职责 |
 | --- | --- |
-| `create` | 按方案创建审批工单，同一方案重复调用时复用已有工单 |
-| `decision` | 返回最新审批决定、操作者与理由；只认可持有审批角色的操作者，决定或方案变化时版本随之变化 |
-| `result` | 把执行结果写回工单 |
-| `url` | 返回工单的访问地址 |
+| `ReviewApproval` | 接收原生 Agent、task、session、tool 与已观察调用，登记业务审批 |
+| `GetApproval` | 按原生 task/tool 引用读取当前决定 |
+| `PrepareApproval` | 核验决定并准备本次执行 |
+| `RecordApprovalResult` | 接收原生调用结果；重试保持幂等 |
 
-Zammad 参考实现使用官方 REST API 与原生角色，工单组为 `AgentOS Changes`。方案登记后 1 小时内有效，批准后的执行准备窗口为 5 分钟，
-均由平台固定。
+批准返回 `SUCCEEDED`，拒绝返回 `REJECTED` 或 `CANCELED`，等待返回 `AWAITING_APPROVAL`。结果通过通用 `Approval` 展示状态、理由、决定者、链接与说明。外部请求失败时任务继续暂停，浏览器不能覆盖该服务的决定；同次原生工具暂停采用同一类决定来源。
+
+业务服务维护自身的业务协议、数据库、鉴权与执行守卫。AIOps 的 ChangePlan、Zammad 角色核验、`prepare_change` 与 ExtMCP 守卫由 aiops-mvp 提供，平台不解释这些业务字段。Node SDK `@agentos/contracts` 与 Python `agentos-contracts` 发布同一组 proto 生成代码；方案包引用 SDK 的 proto 源码生成业务协议。
 
 ## 运行时图标
 
@@ -157,6 +148,7 @@ recovery = "pack_scoring:recovery"
 
 ```json
 {
+  "agent": {"name": "<agent>"},
   "eventNamespace": "<namespace>",
   "source": {
     "typePrefix": "alert.lifecycle.",
@@ -172,7 +164,7 @@ recovery = "pack_scoring:recovery"
 }
 ```
 
-案例键为事件 `source` 与 `keyField` 取值，版本为 JetStream 序号，状态不区分大小写。`activeStates` 交工作空间协调者处理，同一案例复用原生会话，
+案例键为事件 `source` 与 `keyField` 取值，版本为 JetStream 序号，状态不区分大小写。`activeStates` 交 `trigger.agent` 选择的工作空间 Agent 处理，同一案例复用原生会话，
 重试以确定性 messageId 幂等；超过 `timeoutSeconds` 取消前台任务并升级。`resolvedStates` 记为来源已恢复，其余状态只登记。
 事实发布为 `<namespace>.cases.updated`、`<namespace>.findings.proposed`、`<namespace>.findings.escalated`、`<namespace>.feedback.recorded`
 与 `<namespace>.evaluations.completed`，源为 `/<namespace>/<environment>`。

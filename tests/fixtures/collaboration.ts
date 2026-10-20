@@ -1,12 +1,12 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
 import {
   DelegationKind,
   type Interaction,
   TaskDetailSchema,
-  type TaskRun,
 } from "../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
+import type { TaskRun } from "../../gen/agentos/execution/v1/task_pb.js";
 import type { Link } from "../../src/features/tasks/flow/links.js";
 
 const kinds = {

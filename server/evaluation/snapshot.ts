@@ -12,10 +12,10 @@ import {
   type MemorySummary,
   MemorySummarySchema,
 } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
+import { digest } from "../../shared/digest.js";
 import { resource } from "../management/native.js";
 import type { ResourceStore } from "../management/resources.js";
 import { object, text } from "../read-model/decode/messages.js";
-import { digest } from "../shared/change-digest.js";
 import { secretArtifact, secretReferences } from "./references.js";
 import { evaluationSubject } from "./subject.js";
 

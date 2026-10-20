@@ -5,7 +5,6 @@ import {
   type ChatMessage,
   ChatMessageSchema,
   type Conversation,
-  ConversationKind,
   ConversationSchema,
   type ConversationSummary,
   ConversationSummarySchema,
@@ -14,7 +13,9 @@ import {
   type RoleDefinition,
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
+import { agentKey } from "../agents.js";
 import { toolCalls } from "../calls.js";
 import { object } from "../decode/messages.js";
 import { toolBaseName } from "../decode/tools.js";
@@ -28,21 +29,19 @@ import { busy, foreground, taskTree } from "../tree.js";
 import { runState, stamp } from "./runs.js";
 import { taskSummary } from "./task.js";
 
-export const conversationRole = (kind: ConversationKind) =>
-  kind === ConversationKind.ROLE_BUILDER ? "role-builder" : "assistant";
-
-const members = (index: TaskIndex, kind: ConversationKind) =>
-  index.agents().filter((agent) => agent.role === conversationRole(kind));
-
 const lastActivity = (index: TaskIndex, contextId: string) =>
   Math.max(0, ...index.contextEntries(contextId).map((entry) => entry.statusAt ?? 0));
 
-export function listConversations(index: TaskIndex, kind: ConversationKind, request: PageRequest) {
-  const ids = new Set(members(index, kind).map((agent) => agent.id));
+export function listConversations(
+  index: TaskIndex,
+  agent: Pick<ResourceReference, "namespace" | "name"> | undefined,
+  request: PageRequest,
+) {
+  const id = agent ? agentKey(agent) : "";
   const needle = request.query.trim().toLowerCase();
   const matches = index
     .sessions()
-    .filter((session) => ids.has(session.agentId))
+    .filter((session) => session.agentId === id)
     .filter(
       (session) =>
         !needle ||
@@ -58,7 +57,7 @@ export function listConversations(index: TaskIndex, kind: ConversationKind, requ
       at: Math.max(session.updatedAt ?? 0, lastActivity(index, session.id)),
     }))
     .sort((a, b) => b.at - a.at || a.session.id.localeCompare(b.session.id));
-  const page = pageOf(matches, request, `conversations:${kind}`, (entry) => ({
+  const page = pageOf(matches, request, `conversations:${id}`, (entry) => ({
     id: entry.session.id,
     time: entry.at,
   }));
@@ -137,11 +136,12 @@ async function roleDraft(sync: KagentSync, entry: TaskEntry): Promise<RoleDefini
 
 export async function conversation(
   sync: KagentSync,
-  kind: ConversationKind,
+  agent: Pick<ResourceReference, "namespace" | "name"> | undefined,
   contextId: string,
 ): Promise<Conversation> {
   const index = sync.index;
-  const ready = members(index, kind).some((agent) => agent.ready);
+  const member = agent ? index.agent(agentKey(agent)) : undefined;
+  const ready = member?.ready ?? false;
   const entries = index
     .contextEntries(contextId)
     .sort((a, b) => (a.createdAt ?? a.statusAt ?? 0) - (b.createdAt ?? b.statusAt ?? 0));
@@ -160,6 +160,6 @@ export async function conversation(
           entry.interactions.filter((item) => awaiting(item.state)),
         )
       : [],
-    roleDraft: kind === ConversationKind.ROLE_BUILDER ? await roleDraft(sync, latest) : undefined,
+    roleDraft: member?.role === "role-builder" ? await roleDraft(sync, latest) : undefined,
   });
 }

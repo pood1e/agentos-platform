@@ -6,11 +6,7 @@ import {
   SendMessageConfigurationSchema,
   SendMessageResponseSchema,
 } from "../../gen/a2a_pb.js";
-import { RoleDefinitionSchema, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
-import {
-  PrepareChangeRequestSchema,
-  PrepareChangeResponseSchema,
-} from "../../gen/agentos/governance/v1/change_pb.js";
+import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import {
   SearchKnowledgeRequestSchema,
   SearchKnowledgeResponseSchema,
@@ -26,9 +22,6 @@ import {
 } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { ListToolServersResponseSchema } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
 import roleSchema from "../../gen/schema/agentos.console.v1.RoleDefinition.jsonschema.bundle.json" with {
-  type: "json",
-};
-import changeSchema from "../../gen/schema/agentos.governance.v1.PrepareChangeRequest.jsonschema.bundle.json" with {
   type: "json",
 };
 import searchSchema from "../../gen/schema/agentos.management.v1.SearchKnowledgeRequest.jsonschema.bundle.json" with {
@@ -47,14 +40,11 @@ import messageSchema from "../../gen/schema/lf.a2a.v1.Message.jsonschema.bundle.
   type: "json",
 };
 import manifest from "../../package.json" with { type: "json" };
+import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { nativeInvocation } from "../kagent/invoke-session.js";
 import type { knowledgeService } from "../knowledge/service.js";
-import type { BindingView } from "../operations/bindings.js";
-import { ChangePreparationError, type changePreparation } from "../operations/preparation.js";
 import { agentInfo, agentKey, systemRoles } from "../read-model/agents.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
-import { coordinatorDelegation } from "./delegate.js";
 import { inputSchema, result, validator } from "./schema.js";
 
 /** Workspace collaboration, role drafting and shared knowledge retrieval. */
@@ -63,10 +53,7 @@ export function sessionTools(
   namespace: string,
   access: BindingView,
   knowledge: Pick<ReturnType<typeof knowledgeService>, "search">,
-  invoke: ReturnType<typeof nativeInvocation>,
-  prepareChange: ReturnType<typeof changePreparation>,
 ) {
-  const delegate = coordinatorDelegation(clients, namespace, invoke);
   const inWorkspace = async () =>
     (await clients.tools.listToolServers({}, { timeoutMs: 10_000 })).toolServers.filter((server) =>
       server.ref.startsWith(`${namespace}/`),
@@ -80,41 +67,6 @@ export function sessionTools(
   return createMcpHandler(({ authInfo }) => {
     const server = new McpServer({ name: "team-sessions", version: manifest.version });
     const tools: Array<[string, import("@modelcontextprotocol/server").RegisteredTool]> = [];
-    tools.push([
-      "prepare_change",
-      server.registerTool(
-        "prepare_change",
-        {
-          description: `Prepare a real device or runtime operation marked requireApproval, with exact toolName and args, impact, validation and conditional rollback. Platform inventory, account custody and access-state management use native permissions directly without this tool or work orders. Simulation is optional: plan.simulation may reference the actual simulation Agent namespace/name and its completed Task ID. Workspace: ${namespace}. Call the reviewed tool with identical args for human approval. Credential fields are redacted publicly; execution retains exact private arguments. Preparation never executes or approves a change.`,
-          inputSchema: inputSchema(changeSchema),
-          annotations: { readOnlyHint: true, destructiveHint: false },
-        },
-        async (args) => {
-          try {
-            return result(
-              PrepareChangeResponseSchema,
-              await prepareChange(fromJson(PrepareChangeRequestSchema, args)),
-            );
-          } catch (error) {
-            if (!(error instanceof ChangePreparationError)) throw error;
-            return { isError: true, content: [{ type: "text" as const, text: error.message }] };
-          }
-        },
-      ),
-    ]);
-    tools.push([
-      "delegate_coordinator",
-      server.registerTool(
-        "delegate_coordinator",
-        {
-          description:
-            "Delegate an operation only to the workspace coordinator. Input is an A2A Message: use a fresh UUID messageId, ROLE_USER and text parts with concise goal, essential context, deliverable and scope. Preserve exact asset identifiers, paths, execution parameters, acceptance criteria and authorization boundaries; completeness determines the required length. Reference long evidence by an accessible task or attachment. A new session needs all essential context; an existing session can receive follow-up facts. Omit contextId for new work; reuse the returned session_id as contextId for follow-ups. Reuse the same messageId and inputs on retries. Returns the native kagent invocation result, including session_id, task_id, state and text. When input is required, report the wait and let the original task handle the response.",
-          inputSchema: inputSchema(messageSchema),
-          annotations: { destructiveHint: false, idempotentHint: true },
-        },
-        (args, context) => delegate(args, context.mcpReq.signal),
-      ),
-    ]);
     tools.push([
       "search_knowledge",
       server.registerTool(
@@ -255,15 +207,6 @@ export function sessionTools(
         },
         async (args) => {
           const role = fromJson(RoleDefinitionSchema, args);
-          if (
-            !role.tools.some(
-              (binding) =>
-                binding.server === "team-sessions" && binding.tools.includes("search_knowledge"),
-            )
-          )
-            role.tools.push(
-              create(ToolBindingSchema, { server: "team-sessions", tools: ["search_knowledge"] }),
-            );
           role.resourceVersion = "";
           const validation = validator.validate(RoleDefinitionSchema, role);
           if (validation.kind !== "valid") throw new Error(String(validation.error));

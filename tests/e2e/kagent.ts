@@ -4,7 +4,7 @@ import { createConnectTransport } from "@connectrpc/connect-node";
 import { type APIRequestContext, expect, type Page } from "@playwright/test";
 import { type Task, TaskSchema } from "../../gen/a2a_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { fixtureIds } from "../fixtures/kagent.js";
 
 const control = "http://127.0.0.1:8094";
@@ -50,39 +50,51 @@ export async function startOperation(
   await expect(page.getByTestId("chat-task")).toHaveCount(1);
 }
 
-/** A browser fixture for the external work-order authority; API boundaries use PostgreSQL tests. */
-export async function workOrders(page: Page) {
-  await page.route("**/agentos.console.v1.ConsoleService/ListChanges", async (route) => {
-    const { taskId } = route.request().postDataJSON() as { taskId: string };
-    await route.fulfill({
-      json: {
-        changes: [
-          {
-            id: taskId,
-            ticketId: "123",
-            ticketUrl: `${control}/orders/${taskId}`,
-            state: "CHANGE_STATE_PENDING",
-            environment: { name: "env-real", governance: "GOVERNANCE_APPROVAL" },
-          },
-        ],
-      },
-    });
-  });
-}
-
-export async function decideWorkOrder(
+/** Resolves the native pause through the same public API as the approval buttons. */
+export async function decideApproval(
   page: Page,
-  request: APIRequestContext,
+  _request: APIRequestContext,
   approved: boolean,
   reason = "",
 ) {
-  const link = page.getByTestId("change-orders").first().getByRole("link", { name: "#123" });
-  await expect(link).toBeVisible();
-  const href = await link.getAttribute("href");
-  const id = href?.split("/").at(-1);
-  if (!id) throw new Error("work-order reference missing");
-  const response = await request.post(
-    `${control}/decide?${new URLSearchParams({ id, approved: String(approved), reason })}`,
-  );
-  expect(response.ok()).toBe(true);
+  const approval = page.getByTestId("approval-detail").last();
+  if (reason) {
+    const taskId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+    const list = await client.listTasks({ states: [ActivityState.AWAITING_APPROVAL] });
+    const task = list.tasks.find((item) => item.id === taskId) ?? list.tasks[0];
+    if (!task) throw new Error("Pending task is missing");
+    const controller = new AbortController();
+    try {
+      for await (const { task: detail } of client.watchTask(
+        { taskId: task.id },
+        { signal: controller.signal },
+      )) {
+        const interaction = detail?.interactions.find(
+          (item) => item.state === ActivityState.AWAITING_APPROVAL,
+        );
+        if (!interaction) throw new Error("Pending interaction is missing");
+        await client.respondInteraction({
+          taskId: interaction.taskId,
+          requestId: interaction.requestId,
+          decision: {
+            case: "approval",
+            value: {
+              approvals: interaction.tools.map((tool) => ({
+                id: tool.id,
+                approved,
+                rejectionReason: reason,
+              })),
+            },
+          },
+        });
+        return;
+      }
+    } finally {
+      controller.abort();
+    }
+  } else {
+    await approval
+      .getByRole("button", { name: approved ? "批准并继续" : "拒绝", exact: true })
+      .click();
+  }
 }

@@ -1,5 +1,5 @@
 import type { ServiceImpl } from "@connectrpc/connect";
-import type { OperationsConfig } from "../../gen/agentos/governance/v1/change_pb.js";
+import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import mcpSchema from "../../gen/schema/agentgateway.mcp.json" with { type: "json" };
 import modelSchema from "../../gen/schema/agentgateway.model.json" with { type: "json" };
@@ -17,7 +17,7 @@ export interface ManagementDependencies {
   clients: KagentClients;
   gateway: GatewayConfig;
   knowledge: KnowledgeConfig;
-  operations: OperationsConfig;
+  operations: GovernanceConfig;
 }
 
 export function managementService({

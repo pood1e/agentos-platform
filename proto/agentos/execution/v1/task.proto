@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package agentos.execution.v1;
+
+import "agentos/execution/v1/state.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// One native A2A task executed by an Agent.
+message TaskRun {
+  string task_id = 1;
+  string agent_id = 2;
+  ActivityState state = 3;
+  bool background = 4;
+  string prompt = 5;
+  string output = 6;
+  repeated ToolCall calls = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  string context_id = 9;
+  google.protobuf.Timestamp started_at = 10;
+}
+
+message ToolCall {
+  string id = 1;
+  string task_id = 2;
+  string agent_id = 3;
+  string name = 4;
+  string intent = 5;
+  ActivityState state = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp ended_at = 8;
+  google.protobuf.Value args = 9;
+  google.protobuf.Value output = 10;
+}

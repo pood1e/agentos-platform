@@ -12,14 +12,16 @@ function recorded(events: [string, "call" | "reply", string?][]) {
     id: "operation",
     contextId: "coordinator-context",
     status: { state: "TASK_STATE_COMPLETED" },
-    artifacts: events.map(([id, kind, name = "delegate_coordinator"], index) => ({
+    artifacts: events.map(([id, kind, name = "invoke_session"], index) => ({
       artifactId: `event-${index}`,
       parts: [
         {
           data: {
             id,
             name,
-            ...(kind === "call" ? { args: {} } : { response: { output: {} } }),
+            ...(kind === "call"
+              ? { args: { session_id: "worker-session" } }
+              : { response: { output: {} } }),
           },
           metadata: { [partTypeKey]: `function_${kind === "call" ? "call" : "response"}` },
         },
@@ -51,6 +53,11 @@ it("extracts partial joins from observed replies without requiring a clock", () 
     { id: "d", dependsOn: ["b", "c"], returned: false },
   ]);
   const index = fixtureIndex([]);
+  index.setSession({
+    id: "worker-session",
+    agentId: "agentos/inspection",
+    name: "Independent worker",
+  });
   index.upsert(ingest(task, "agentos/coordinator"));
   expect(taskDetail(index, task.id)?.delegations.find((link) => link.callId === "d")).toMatchObject(
     { dependsOn: ["call:operation:b", "call:operation:c"], returned: false },

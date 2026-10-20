@@ -27,7 +27,7 @@ export class KagentSync {
 
   constructor(
     private clients: KagentClients,
-    private namespace: string,
+    readonly namespace: string,
     readonly index: TaskIndex,
     private log: FastifyBaseLogger,
   ) {

@@ -7,10 +7,8 @@
     out: "{{ playbook_dir }}/../.cache/environment-check"
     templates: "{{ playbook_dir }}/../environments/templates"
     gateway_credentials: >-
-      {{ dict((engineer_identities | map(attribute='name') | list + ['change-control'])
-        | zip((engineer_identities | map(attribute='name') | list + ['change-control']) | map('regex_replace', '^', 'key-'))) }}
-    zammad_coordinator_token: coordinator-token
-    zammad_approver_role: 4
+      {{ dict((engineer_identities | map(attribute='name') | list)
+        | zip((engineer_identities | map(attribute='name') | list) | map('regex_replace', '^', 'key-'))) }}
     existing_services: []
     existing_engineer_servers: []
   tasks:
@@ -25,18 +23,12 @@
         mode: "0700"
       loop: ["{{ out }}", "{{ environment_cache }}/secrets"]
 
-    - name: Store the change-control credential
-      ansible.builtin.copy:
-        content: "{{ gateway_credentials['change-control'] }}"
-        dest: "{{ environment_cache }}/secrets/gateway-change-control"
-        mode: "0600"
-
     - name: Render environment manifests
       ansible.builtin.copy:
         content: "{{ lookup('ansible.builtin.template', templates + '/' + item + '.yaml.j2') }}"
         dest: "{{ out }}/{{ environment_name }}-{{ item }}.yaml"
         mode: "0600"
-      loop: "{{ ['gateway', 'backends', 'platform-credentials', 'platform-services'] + (['change-control'] if environment_governance == 'approval' else []) }}"
+      loop: "{{ ['gateway', 'backends', 'platform-credentials', 'platform-services'] }}"
 
     - name: Load rendered platform services
       ansible.builtin.set_fact:
@@ -54,8 +46,8 @@
 
     - name: Render platform connections
       ansible.builtin.copy:
-        content: "{{ lookup('ansible.builtin.template', templates + '/platform-operations.yaml.j2') }}"
-        dest: "{{ out }}/platform-operations.yaml"
+        content: "{{ lookup('ansible.builtin.template', templates + '/platform-governance.yaml.j2') }}"
+        dest: "{{ out }}/platform-governance.yaml"
         mode: "0600"
       when: inventory_hostname == groups['environments'][-1]
 

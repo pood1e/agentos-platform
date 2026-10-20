@@ -15,6 +15,7 @@ export interface AgentInfo {
   displayName: string;
   description: string;
   ready: boolean;
+  sessionTasks?: boolean;
   reason: string;
   message: string;
 }
@@ -44,6 +45,7 @@ export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTem
       ? text(object(template.spec).description)
       : text(annotations["agentos.dev/description"]),
     ready,
+    sessionTasks: object(metadata.annotations)["agentos.dev/task-scope"] === "session",
     reason: ready ? "" : text(blocking?.reason),
     message: ready ? "" : text(blocking?.message),
   };

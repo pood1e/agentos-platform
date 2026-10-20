@@ -5,7 +5,7 @@ import {
   EnvironmentConnectionSchema,
   EnvironmentSchema,
   Governance,
-} from "../gen/agentos/governance/v1/change_pb.js";
+} from "../gen/agentos/governance/v1/governance_pb.js";
 
 describe("environment service boundaries", () => {
   const validator = createValidator();
@@ -18,27 +18,24 @@ describe("environment service boundaries", () => {
       ).kind,
     ).toBe("valid");
   });
-  it("requires an approval portal and change-control credentials for approval environments", () => {
+  it("uses native human decisions when no external approval service is configured", () => {
     const environment = create(EnvironmentSchema, {
-      name: "real",
+      name: "publishing",
       governance: Governance.APPROVAL,
-      links: [{ name: "Identity", url: "https://identity.example.com" }],
     });
-    expect(validator.validate(EnvironmentSchema, environment).kind).not.toBe("valid");
-    environment.approvalUrl = "https://tickets.example.com";
     expect(
       validator.validate(
         EnvironmentConnectionSchema,
         create(EnvironmentConnectionSchema, { environment }),
       ).kind,
-    ).not.toBe("valid");
+    ).toBe("valid");
     expect(
       validator.validate(
         EnvironmentConnectionSchema,
         create(EnvironmentConnectionSchema, {
           environment,
-          controlUrl: "https://control.example.com",
-          authorization: "Bearer native-service-credential",
+          approvalUrl: "https://decisions.example",
+          authorization: "Bearer service-credential",
         }),
       ).kind,
     ).toBe("valid");
