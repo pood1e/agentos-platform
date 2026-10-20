@@ -1,6 +1,6 @@
 # 身份与授权链路验证
 
-日期：2026-10-20。阶段：P0 进行中。
+日期：2026-10-20。阶段：授权基础验证与控制台 OIDC 接入。
 
 ## 固定组件
 
@@ -39,6 +39,25 @@ JWKS 服务复用原生签名池，私钥只由原生签发组件持有。接收
 自动化入口为 `tests/proofs`，模型与 SDK 测试进入 CI。真实环境验证使用独立测试资源，身份提供方测试 realm 在结束后删除。
 本次验证的临时工作负载与会话已清理，宿主机网关恢复原部署版本，站点健康检查通过。
 
+## AIOps 环境的 GitLab 与 OBO 实践
+
+环境为 `aiops-real`。GitLab 提供账号，现有 Keycloak 使用 OIDC 代理认证并根据受信组声明同步角色。
+控制台支持 `none` 和 `oidc`，AIOps 站点选择 OIDC；签名、issuer、audience、有效期和写角色由 RPC 独立校验。
+
+两个临时 GitLab 账号完成真实 Authorization Code、PKCE S256 与 Standard Token Exchange V2，交换后的 `sub` 与登录用户一致，audience 仅为 `aiops-real-kubernetes`，有效期 120 秒，无刷新令牌。
+使用交换令牌直接访问真实 Kubernetes API，结果如下：
+
+| 用户 | 读取 ConfigMap | 创建 ConfigMap |
+| --- | --- | --- |
+| `aiops` 组成员 | 200 | 201 |
+| 无组成员关系 | 200 | 403 |
+| 成员退组并重新登录 | 200 | 403 |
+
+平台使用官方 Protobuf `NO_SIDE_EFFECTS` 选项声明只读 RPC，其余方法均要求写角色。测试覆盖无身份、伪造签名、错误 audience、只读拒绝写入及跨 Origin 拒绝。
+Chart 验证覆盖两种认证模式；无 OIDC 模式不创建登录代理、不引用 OIDC 凭据。已有 49 个浏览器场景通过带签名身份的测试入口。
+
+此实践验证环境用户代办与目标 RBAC。现有 Agent 连接器仍使用服务身份，逐任务用户授权绑定继续由后续执行边界交付。
+
 ## 实施决策
 
 - 运行资源复用原生 Session、Actor、A2A Task 与生命周期 API。Actor JWT 表示工作负载身份；Session.creator 只表示创建者，当前发起者来自执行授权绑定。
@@ -46,7 +65,7 @@ JWKS 服务复用原生签名池，私钥只由原生签发组件持有。接收
 - 平台 OpenFGA 使用独立 store 和固定模型。Substrate 内嵌 OpenFGA 继续管理原生基础设施权限，其原生 AccessPolicy 模型与平台业务模型分别维护。
 - 用户 scope 通过明确客户端 scope 和原生角色映射收窄。Keycloak 标准交换依赖同一 realm；跨 realm 或外部提供方的生产连接需要独立用户授权与身份关联验收。
 - NetBox 首批采用服务身份桥接。实际账号的只读权限提供目标上限，业务资源过滤与用户许可由 AIOps 接线并在内容进入模型前执行。
-- 登录会话与执行关联使用平台 PostgreSQL 独立 schema；令牌采用服务端加密保存，浏览器保留不透明会话 ID。原生执行历史继续由 kagent 保存。
+- 浏览器登录会话交给 OAuth2 Proxy 维护；执行授权的服务端关联与令牌生命周期独立持久化，原生执行历史继续由 kagent 保存。
 
 ## 仍需完成的原生边界
 

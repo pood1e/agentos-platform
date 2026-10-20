@@ -14,7 +14,7 @@ spec:
             matchLabels: {kubernetes.io/metadata.name: kube-system}
           podSelector:
             matchLabels: {app.kubernetes.io/name: traefik}
-      ports: [{port: 8080, protocol: TCP}]
+      ports: [{port: {{ if eq .Values.identity.mode "oidc" }}4180{{ else }}8080{{ end }}, protocol: TCP}]
     - from:
         - podSelector:
             matchLabels: {agentos.dev/gateway: business}

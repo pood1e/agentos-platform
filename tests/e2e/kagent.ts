@@ -5,6 +5,7 @@ import { type APIRequestContext, expect, type Page } from "@playwright/test";
 import { type Task, TaskSchema } from "../../gen/a2a_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
+import { testToken } from "../fixtures/identity.js";
 import { fixtureIds } from "../fixtures/kagent.js";
 
 const control = "http://127.0.0.1:8094";
@@ -13,6 +14,12 @@ export const client = createClient(
   createConnectTransport({
     baseUrl: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:8090",
     httpVersion: "1.1",
+    interceptors: [
+      (next) => (request) => {
+        request.header.set("authorization", `Bearer ${testToken}`);
+        return next(request);
+      },
+    ],
   }),
 );
 export { fixtureIds as ids };

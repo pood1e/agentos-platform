@@ -55,6 +55,13 @@ spec:
           command: [node, build/server/platform/main.js]
           ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}]
           env:
+            - {name: AGENTOS_AUTH_MODE, value: {{ .Values.identity.mode | quote }}}
+            {{- if eq .Values.identity.mode "oidc" }}
+            - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" .Values.identity.issuer | quote }}}
+            - {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" .Values.identity.clientId | quote }}}
+            - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" .Values.identity.writerRole | quote }}}
+            {{- end }}
+            - {name: AGENTOS_ORIGIN, value: {{ printf "https://%s" .Values.ingress.host | quote }}}
             {{- if .Values.evaluation.enabled }}
             - {name: AGENTOS_EVALUATION_CONFIG, value: /etc/agentos-evaluation/configuration.json}
             - name: AGENTOS_EVALUATION_TOKEN
@@ -112,6 +119,50 @@ spec:
             {{- if .Values.pack.image }}
             - {name: pack, mountPath: /etc/agentos-pack, readOnly: true}
             {{- end }}
+        {{- if eq .Values.identity.mode "oidc" }}
+        - name: identity
+          image: {{ .Values.identity.proxy.image | quote }}
+          args:
+            - --provider=oidc
+            - --oidc-issuer-url={{ .Values.identity.issuer }}
+            - --client-id={{ .Values.identity.clientId }}
+            - --redirect-url=https://{{ .Values.ingress.host }}/auth/callback
+            - --proxy-prefix=/auth
+            - --http-address=0.0.0.0:4180
+            - --upstream=http://127.0.0.1:8080/
+            - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
+            - --code-challenge-method=S256
+            - --scope=openid profile email
+            - --pass-access-token=true
+            - --skip-provider-button=true
+            - --reverse-proxy=true
+            - --cookie-name=__Host-agentos
+            - --cookie-secure=true
+            - --cookie-samesite=lax
+            - --cookie-expire=5m
+            - --cookie-refresh=1m
+            - --request-logging=false
+            - --api-route=^/agentos\.
+          ports: [{name: identity, containerPort: 4180}]
+          env:
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: client-secret}
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: cookie-secret}
+          readinessProbe:
+            httpGet: {path: /ready, port: identity}
+            periodSeconds: 3
+          livenessProbe:
+            httpGet: {path: /ping, port: identity}
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.identity.proxy.resources | nindent 12 }}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
+        {{- end }}
       volumes:
         {{- if .Values.evaluation.enabled }}
         - name: evaluation

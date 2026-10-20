@@ -1,6 +1,10 @@
+import { resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
+import { identityIssuer, testToken } from "./tests/fixtures/identity.js";
 
 const kagent = { port: "8093", control: "8094" };
+const issuer = identityIssuer;
+const token = testToken;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -11,6 +15,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:8090",
     viewport: { width: 1512, height: 982 },
     trace: "retain-on-failure",
+    extraHTTPHeaders: process.env.PLAYWRIGHT_BASE_URL ? {} : { authorization: `Bearer ${token}` },
     launchOptions: {
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
       args: ["--no-proxy-server"],
@@ -19,6 +24,12 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : [
+        {
+          command: "npx tsx tests/fake-identity.ts",
+          url: `${issuer}/.well-known/openid-configuration`,
+          ignoreHTTPSErrors: true,
+          reuseExistingServer: false,
+        },
         {
           command: "npx tsx tests/fake-kagent/server.ts",
           url: `http://127.0.0.1:${kagent.control}/healthz`,
@@ -31,6 +42,12 @@ export default defineConfig({
           reuseExistingServer: false,
           env: {
             AGENTOS_PORT: "8090",
+            AGENTOS_AUTH_MODE: "oidc",
+            AGENTOS_OIDC_ISSUER: issuer,
+            AGENTOS_OIDC_CLIENT_ID: "console",
+            AGENTOS_OIDC_WRITER_ROLE: "writer",
+            AGENTOS_ORIGIN: "http://127.0.0.1:8090",
+            NODE_EXTRA_CA_CERTS: resolve("tests/fixtures/identity/tls.crt"),
             AGENTOS_MCP_TOKEN: "playwright-team-token",
             KAGENT_URL: `http://127.0.0.1:${kagent.port}`,
             AGENTOS_GATEWAY_URL: `http://127.0.0.1:${kagent.control}`,

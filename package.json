@@ -1,7 +1,7 @@
 {
   "name": "agentos-platform",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "engines": {
     "node": ">=24.13.0"
@@ -75,7 +75,8 @@
     "sonner": "2.0.8",
     "tw-animate-css": "1.4.0",
     "vis-timeline": "8.5.4",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "openid-client": "6.8.8"
   },
   "overrides": {
     "@openfga/sdk": {
@@ -93,7 +94,6 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
-    "openid-client": "6.8.8",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
