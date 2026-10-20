@@ -17,6 +17,9 @@ metadata:
 spec:
   mcp:
     prefixMode: Never
+{% if delegated %}
+    sessionRouting: Stateless
+{% endif %}
     targets:
 {% for target in environment_connectors[project].targets if target.access is not defined or access in target.access %}
       - name: {{ target.name | default(project) }}
