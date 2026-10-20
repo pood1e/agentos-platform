@@ -1,5 +1,5 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code } from "@connectrpc/connect";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { beforeEach, expect, it } from "vitest";
 import {
@@ -10,6 +10,7 @@ import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import { jwtIdentity } from "../server/authorization/oidc.js";
 import type { ExecutionStore } from "../server/authorization/store.js";
+import { memoryStore } from "./fixtures/execution-store.js";
 
 const issuer = "https://identity.test/realms/workspace";
 const keys = await generateKeyPair("RS256");
@@ -17,27 +18,6 @@ const verify = jwtIdentity(
   { issuer, audience: "platform", writerRole: "writer", origin: "https://console.test" },
   createLocalJWKSet({ keys: [await exportJWK(keys.publicKey)] }),
 );
-function memoryStore(): ExecutionStore {
-  const bindings = new Map(),
-    identities = new Map();
-  const read = async (values: Map<string, { value: object; version: string }>, id: string) =>
-    structuredClone(values.get(id));
-  const save = async (
-    values: Map<string, { value: object; version: string }>,
-    id: string,
-    value: object,
-    version?: string,
-  ) => {
-    if (values.get(id)?.version !== version) throw new ConnectError("Conflict", Code.Aborted);
-    values.set(id, { value: structuredClone(value), version: String(Number(version ?? 0) + 1) });
-  };
-  return {
-    binding: (id) => read(bindings, id),
-    identity: (id) => read(identities, id),
-    saveBinding: (value, version) => save(bindings, value.sessionId, value, version),
-    saveIdentity: (value, version) => save(identities, value.subject, value, version),
-  } as ExecutionStore;
-}
 const session = (id: string, name = "assistant") =>
   create(SessionSchema, { id, creator: "native-storage", agent: { namespace: "workspace", name } });
 const now = Math.floor(Date.now() / 1000);

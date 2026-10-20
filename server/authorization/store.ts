@@ -17,6 +17,7 @@ export interface Stored<T> {
 
 export interface ExecutionStore {
   binding(id: string): Promise<Stored<ExecutionBinding> | undefined>;
+  bindings(ids: string[]): Promise<ExecutionBinding[]>;
   identity(subject: string): Promise<Stored<ExecutionIdentity> | undefined>;
   saveBinding(value: ExecutionBinding, version?: string): Promise<void>;
   saveIdentity(value: ExecutionIdentity, version?: string): Promise<void>;
@@ -100,6 +101,18 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
   }
   return {
     binding: (id: string) => read(ExecutionBindingSchema, "execution", id),
+    async bindings(ids: string[]) {
+      if (!ids.length) return [];
+      const rows = await sql<{ id: string; value: Buffer }[]>`
+        select id, value from agentos_authorization.objects
+        where workspace=${workspace} and kind='execution' and id = any(${ids}::text[])
+      `.catch(() => {
+        throw new ConnectError("Execution state is unavailable", Code.Unavailable);
+      });
+      return rows.map((row) =>
+        fromBinary(ExecutionBindingSchema, open(row.value, "execution", row.id)),
+      );
+    },
     identity: (id: string) => read(ExecutionIdentitySchema, "identity", id),
     saveBinding: (value: ExecutionBinding, version?: string) =>
       save(ExecutionBindingSchema, "execution", value.sessionId, value, version),

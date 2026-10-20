@@ -1,10 +1,16 @@
+import {
+  addStaticKeyToTransport,
+  TransportProvider,
+  useTransport,
+} from "@connectrpc/connect-query";
 import { Activity, LoaderCircle } from "lucide-react";
 import { useTheme } from "next-themes";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useNavigate } from "react-router";
 import { Toaster, toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAccess } from "../lib/access.js";
 import { useOutage } from "../lib/connection.js";
 import { applyPackLocales, usePack } from "../lib/pack.js";
 import { Navigation } from "./Navigation.js";
@@ -14,6 +20,13 @@ export function Layout({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
   const outage = useOutage();
   const pack = usePack();
+  const access = useAccess();
+  const transport = useTransport();
+  const scope = JSON.stringify([access.data?.workspace, access.data?.subject]);
+  const scopedTransport = useMemo(
+    () => addStaticKeyToTransport(transport, scope),
+    [transport, scope],
+  );
   const navigate = useNavigate(),
     { resolvedTheme } = useTheme();
   useEffect(() => {
@@ -35,24 +48,26 @@ export function Layout({ children }: { children?: ReactNode }) {
     document.title = pack.title || "AgentOS";
   }, [pack]);
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
-      <Topbar />
-      <Toaster position="top-right" theme={resolvedTheme === "dark" ? "dark" : "light"} />
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-52 shrink-0 flex-col border-r bg-card lg:flex">
-          <Navigation />
-        </aside>
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-4 py-4 sm:px-6">
-          {outage && (
-            <Alert variant="destructive" data-testid="error-banner" className="shrink-0">
-              <Activity />
-              <AlertDescription>{t(outage)}</AlertDescription>
-            </Alert>
-          )}
-          {children ?? <Outlet />}
-        </main>
+    <TransportProvider key={scope} transport={scopedTransport}>
+      <div className="flex h-dvh flex-col overflow-hidden">
+        <Topbar />
+        <Toaster position="top-right" theme={resolvedTheme === "dark" ? "dark" : "light"} />
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-52 shrink-0 flex-col border-r bg-card lg:flex">
+            <Navigation />
+          </aside>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 px-4 py-4 sm:px-6">
+            {outage && (
+              <Alert variant="destructive" data-testid="error-banner" className="shrink-0">
+                <Activity />
+                <AlertDescription>{t(outage)}</AlertDescription>
+              </Alert>
+            )}
+            {children ?? <Outlet />}
+          </main>
+        </div>
       </div>
-    </div>
+    </TransportProvider>
   );
 }
 

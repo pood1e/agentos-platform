@@ -7,7 +7,15 @@ import { TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { fixtureTasks } from "../fixtures/kagent.js";
-import { client, ids, observeTask, resetKagent, seedOperations, taskState } from "./kagent.js";
+import {
+  bindSessions,
+  client,
+  ids,
+  observeTask,
+  resetKagent,
+  seedOperations,
+  taskState,
+} from "./kagent.js";
 
 test("keeps many executions in one instance and opens the exact linked continuation", async ({
   page,
@@ -25,6 +33,7 @@ test("keeps many executions in one instance and opens the exact linked continuat
     requestId: randomUUID(),
   });
   if (!session) throw new Error("coordinator session missing");
+  await bindSessions(request, [session.id]);
   for (let round = 0; round <= 68; round++) {
     const task = clone(TaskSchema, source);
     task.id = `long-round-${round}`;

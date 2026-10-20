@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 import { TaskSchema } from "../../gen/a2a_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { createdAtKey, partTypeKey, timelineKey } from "../../server/read-model/decode/messages.js";
-import { client, observeTask, resetKagent } from "./kagent.js";
+import { bindSessions, client, observeTask, resetKagent } from "./kagent.js";
 
 test("renders native forks, partial joins and returns between context instances", async ({
   page,
@@ -27,6 +27,10 @@ test("renders native forks, partial joins and returns between context instances"
       if (!session) throw new Error("DAG session missing");
       return session;
     }),
+  );
+  await bindSessions(
+    request,
+    sessions.map((session) => session.id),
   );
   const context = (role: string) => sessions[roles.indexOf(role)]?.id ?? "";
   const origin = Date.now() - 20000;
@@ -162,6 +166,7 @@ test("separates two contexts of one engineer and reuses the first without moving
       return session.id;
     }),
   );
+  await bindSessions(request, sessions);
   const [root = "", first = "", second = ""] = sessions;
   const origin = Date.now() - 20000;
   const at = (ms: number) => new Date(origin + ms).toISOString();

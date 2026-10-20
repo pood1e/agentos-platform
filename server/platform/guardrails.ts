@@ -99,7 +99,7 @@ export function collaborationGuardrails(
         });
       }
     },
-    checkResponse(request) {
+    async checkResponse(request) {
       try {
         const access = scope(request.metadataContext);
         if (
@@ -111,6 +111,32 @@ export function collaborationGuardrails(
         if (!result.structuredContent) throw new Error("Native session list is incomplete");
         const output = fromJson(ListSessionsOutputSchema, result.structuredContent);
         output.sessions = output.sessions.filter((session) => access.accepts(session.agent));
+        if (execution) {
+          const bearer = text(request.metadataContext?.runtimeIdentity);
+          const parent = bearer ? await execution.actor({ [actorTokenHeader]: bearer }) : undefined;
+          if (parent) await execution.registry.resolve(parent);
+          else if (!["platform", "evaluation"].includes(text(request.metadataContext?.service)))
+            throw new Error("Signed runtime identity required");
+          const allowed = [];
+          for (const item of output.sessions) {
+            const { session } = await access.clients.sessions.getSession(
+              { sessionId: item.id },
+              { timeoutMs: 5_000 },
+            );
+            if (!session) continue;
+            try {
+              if (parent) await execution.registry.delegate(parent, session);
+              else if (
+                (await execution.registry.resolve(session)).identity.credential.case !== "service"
+              )
+                continue;
+              allowed.push(item);
+            } catch {
+              /* Foreign executions are omitted from discovery. */
+            }
+          }
+          output.sessions = allowed;
+        }
         result.structuredContent = toJson(ListSessionsOutputSchema, output, {
           useProtoFieldName: true,
         });

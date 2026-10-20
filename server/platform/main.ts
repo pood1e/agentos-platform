@@ -105,6 +105,7 @@ function services(
       pack,
       platformTools: bind,
       executions: execution.registry,
+      entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
       authorizeTools: execution.authorizeTools,
     }),
     management: managementService({
@@ -265,7 +266,9 @@ const processor = createServer(
   }),
 );
 const runtimeProcessor = createServer(
-  connectNodeAdapter({ routes: (router) => registerRuntime(router, execution, config, clients) }),
+  connectNodeAdapter({
+    routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
+  }),
 );
 app.addHook("onClose", async () => {
   stopContinuations();

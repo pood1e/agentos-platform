@@ -35,3 +35,19 @@ test("shows a native pending approval in the same conversation and retains a rej
   await page.getByTestId("approval-node").first().click();
   await expect(page.getByTestId("rejection-reason")).toContainText("保持现状，先检查依赖");
 });
+
+test("keeps the chat entry fixed and never restores another user's last conversation", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("agentos-conversation", "/chat/foreign?agent=inspection"),
+  );
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/chat$/);
+  await page.goto("/chat?agent=inspection");
+  await expect(page.getByTestId("chat-workspace").getByRole("combobox")).toHaveCount(0);
+  await page.getByRole("textbox", { name: "消息", exact: true }).fill("你好，入口验收");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect(page).toHaveURL(/\/chat\/[^/?]+$/);
+  await expect(page.getByTestId("chat-message")).toHaveCount(2);
+});

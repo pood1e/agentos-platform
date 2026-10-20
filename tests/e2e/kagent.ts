@@ -24,6 +24,12 @@ export const client = createClient(
 );
 export { fixtureIds as ids };
 
+export async function bindSessions(request: APIRequestContext, ids: string[]) {
+  const query = new URLSearchParams(ids.map((id) => ["session", id]));
+  const response = await request.post(`${control}/bind?${query}`);
+  expect(response.ok()).toBe(true);
+}
+
 /** Restores the recorded kagent state, including the pending approval. */
 export async function resetKagent(request: APIRequestContext) {
   await request.post(`${control}/reset`);

@@ -138,8 +138,8 @@ export async function conversation(
   sync: KagentSync,
   agent: Pick<ResourceReference, "namespace" | "name"> | undefined,
   contextId: string,
+  index: TaskIndex = sync.index,
 ): Promise<Conversation> {
-  const index = sync.index;
   const member = agent ? index.agent(agentKey(agent)) : undefined;
   const ready = member?.ready ?? false;
   const entries = index

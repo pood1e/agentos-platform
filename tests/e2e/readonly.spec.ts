@@ -17,13 +17,11 @@ test("lets a reader query through a new conversation", async ({ page }) => {
   await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
 });
 
-test("keeps pending approval details readable without mutation controls", async ({ page }) => {
+test("hides another user's operations and approval payloads", async ({ page }) => {
   await page.goto("/tasks");
-  await page.getByRole("link", { name: "待审批", exact: true }).click();
-  const drawer = page.getByTestId("agent-drawer");
-  await expect(drawer.getByTestId("approval-detail")).toBeVisible();
-  await expect(drawer.getByTestId("approval-tool")).not.toHaveCount(0);
+  await expect(page.getByTestId("task-history")).toBeVisible();
+  await expect(page.getByTestId("task-history").getByTestId("history-entry")).toHaveCount(0);
+  await page.goto("/tasks/01a130a5-2363-76a6-8971-98a1a6459036");
+  await expect(page.getByTestId("approval-detail")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "批准并继续", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "拒绝", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "停止", exact: true })).toHaveCount(0);
 });

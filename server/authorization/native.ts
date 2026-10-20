@@ -9,6 +9,7 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
 import { TaskStoreService } from "../../gen/kagent/api/v1alpha1/task_store_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
+import type { KnowledgeConfig } from "../knowledge/service.js";
 import { agentKey } from "../read-model/agents.js";
 import { object, text } from "../read-model/decode/messages.js";
 import type { KagentConfig } from "../shared/config.js";
@@ -23,6 +24,7 @@ export function registerRuntime(
   runtime: ExecutionRuntime,
   config: KagentConfig,
   clients: KagentClients,
+  sharedKnowledge?: KnowledgeConfig["scope"],
 ) {
   const transport = createGrpcTransport({ baseUrl: config.url });
   const tasks = createClient(TaskStoreService, transport),
@@ -45,9 +47,10 @@ export function registerRuntime(
   async function memoryOptions(agentName: string, context: HandlerContext, write: boolean) {
     const { session } = await runtime.authenticatedActor(context.requestHeader);
     const execution = await runtime.registry.resolve(session);
-    if (!agentName.startsWith(`${session.agent?.namespace}/`)) throw denied();
+    const nativeName = agentName.replaceAll("__NS__", "/").replaceAll("_", "-");
+    if (!nativeName.startsWith(`${session.agent?.namespace}/`)) throw denied();
     if (write) {
-      if (!execution.write || agentName !== agentKey(session.agent)) throw denied();
+      if (!execution.write || nativeName !== agentKey(session.agent)) throw denied();
       const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
       if (!agent) throw denied();
       const spec = object(agent.resource?.value?.spec),
@@ -61,7 +64,10 @@ export function registerRuntime(
       if (!object(harnessSpec.kagent).memory) throw denied();
     }
     return {
-      userId: session.creator,
+      userId:
+        agentName === sharedKnowledge?.agentName
+          ? sharedKnowledge.userId
+          : execution.identity.subject,
       options: {
         signal: context.signal,
         timeoutMs: 15_000,

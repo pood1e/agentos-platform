@@ -2,10 +2,13 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { ConnectionKind } from "../../gen/agentos/management/v1/management_pb.js";
 import { lastConversation } from "../features/chat/conversation-storage.js";
 import { AdvancedLayout } from "../features/management/AdvancedLayout.js";
+import { useAccess } from "../lib/access.js";
 import { Layout, PendingLayout } from "./Layout.js";
 
 const home = () => {
-  const contextId = lastConversation();
+  const access = useAccess();
+  if (!access.data) return <PendingLayout />;
+  const contextId = lastConversation(access.data);
   return <Navigate to={contextId || "/chat"} replace />;
 };
 

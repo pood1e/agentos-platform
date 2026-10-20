@@ -152,7 +152,13 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
     await store.saveBinding(binding, stored.version);
   }
 
-  return { remember, record, resolve, own, bind, delegate, revoke };
+  const history = async (subject: string, contexts: string[]) =>
+    (await store.bindings(contexts)).filter(
+      (binding) =>
+        subject && (binding.subject === subject || binding.subject.startsWith("service:")),
+    );
+
+  return { remember, record, resolve, own, bind, delegate, revoke, history };
 }
 
 export type Executions = ReturnType<typeof executions>;

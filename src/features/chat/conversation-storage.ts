@@ -1,8 +1,12 @@
-const key = "agentos-conversation";
+import type { AccessProfile } from "../../../gen/agentos/console/v1/access_pb.js";
 
-export const lastConversation = () => localStorage.getItem(key) ?? "";
+const key = (profile: Pick<AccessProfile, "workspace" | "subject">) =>
+  `agentos-conversation:${JSON.stringify([profile.workspace, profile.subject])}`;
 
-export function rememberConversation(contextId: string, suffix: string) {
-  if (contextId) localStorage.setItem(key, `/chat/${encodeURIComponent(contextId)}${suffix}`);
-  else localStorage.removeItem(key);
+export const lastConversation = (profile: AccessProfile) =>
+  localStorage.getItem(key(profile)) ?? "";
+
+export function rememberConversation(profile: AccessProfile, contextId: string) {
+  if (contextId) localStorage.setItem(key(profile), `/chat/${encodeURIComponent(contextId)}`);
+  else localStorage.removeItem(key(profile));
 }

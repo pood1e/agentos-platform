@@ -47,9 +47,13 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
         agent: { namespace: workspace, name: "assistant" },
       });
       await restarted.saveBinding(binding);
+      expect(await restarted.bindings(["one", "missing"])).toEqual([binding]);
       await sql`insert into agentos_authorization.objects(workspace,kind,id,value)
       select workspace,kind,'two',value from agentos_authorization.objects where workspace=${workspace} and id='one'`;
       await expect(restarted.binding("two")).rejects.toMatchObject({ code: Code.PermissionDenied });
+      await expect(restarted.bindings(["two"])).rejects.toMatchObject({
+        code: Code.PermissionDenied,
+      });
       const wrong = await executionStore(uri, randomBytes(32), workspace);
       try {
         await expect(wrong.identity("alice")).rejects.toMatchObject({
