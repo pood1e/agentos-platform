@@ -5,6 +5,7 @@ import { KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { loadCatalog } from "../../shared/tool-catalog.js";
+import { oidcIdentity } from "../authorization/oidc.js";
 import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { roleCommands } from "../console/roles.js";
@@ -32,6 +33,17 @@ import { collaborationGuardrails } from "./guardrails.js";
 import { machineIdentities } from "./machine-identities.js";
 
 const config = kagentConfig();
+const authentication = process.env.AGENTOS_AUTH_MODE ?? "none";
+if (!["none", "oidc"].includes(authentication)) throw new Error("Unknown authentication mode");
+const identity =
+  authentication === "oidc"
+    ? await oidcIdentity({
+        issuer: process.env.AGENTOS_OIDC_ISSUER ?? "",
+        audience: process.env.AGENTOS_OIDC_AUDIENCE ?? "",
+        writerRole: process.env.AGENTOS_OIDC_WRITER_ROLE ?? "",
+        origin: process.env.AGENTOS_ORIGIN ?? "",
+      })
+    : undefined;
 const token = process.env.AGENTOS_MCP_TOKEN;
 if (!token) throw new Error("AGENTOS_MCP_TOKEN is required");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
@@ -119,7 +131,12 @@ const { alignRoles } = roleCommands(
   identities.bind,
 );
 await registerConsole(app, {
-  context: workspaceContext(config.namespace, process.env.AGENTOS_ENTRY_AGENT ?? "assistant"),
+  context: workspaceContext(
+    config.namespace,
+    process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
+    identity,
+    process.env.AGENTOS_ORIGIN ?? "",
+  ),
   ...services(activeClients),
   ...evaluation.routes,
   ready: sync.healthy,

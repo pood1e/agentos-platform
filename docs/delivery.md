@@ -66,10 +66,24 @@ all:
 | `skill_repository_credential_file` | 可选，JSON，含只读 Git 仓库的 `Authorization` 请求头，创建 `agentos-skill-repository` |
 | `AGENTOS_CHART_USER`、`AGENTOS_CHART_TOKEN` | 可选，下载私有 Helm 包 |
 
-凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。控制台页面和 RPC 直接访问；模型网关、MCP 与运维环境继续使用各自的机器凭据。升级应用后清理旧控制台 OIDC Secret。
+凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。模型网关、MCP 与运维环境继续使用各自的机器凭据。
 
-升级到 0.3 时，从站点平台值中移除 `authorization`、`oauth2-proxy`，并删除部署变量 `oidc_secret_file`；方案 Chart 的平台值位于 `app_values.agentos`。
-部署入口使用 `reset_values: true`，旧登录资源由 Helm 移除，OIDC Secret 在升级成功后清理。控制台访问者共享当前工作空间的操作与管理能力。
+控制台认证由平台值 `identity.mode` 选择，默认 `none`，直接提供工作空间访问。启用 `oidc` 时配置：
+
+```yaml
+identity:
+  mode: oidc
+  issuer: https://identity.example.com/realms/operations
+  clientId: agentos-console
+  audience: agentos-platform
+  writerRole: operations-writer
+  secretRef: agentos-identity
+```
+
+身份提供方由部署方提供，平台复用标准 OIDC Discovery、Authorization Code 与 PKCE S256。
+OAuth 应用回调为 `https://<ingress.host>/auth/callback`。引用的 Secret 包含 `client-secret` 与 `cookie-secret`，后者为 Base64 编码的 32 字节随机值。
+方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户只读。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
+RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作，未标记的方法按写操作授权。开放模式使用共享主体，不提供用户 OBO 身份。
 
 ```sh
 python3 -m venv .cache/deploy-venv

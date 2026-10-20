@@ -10,8 +10,12 @@ import "kagent/api/v1alpha1/common.proto";
 import "kagent/api/v1alpha1/memory.proto";
 
 service EvaluationService {
-  rpc ListCandidates(ListCandidatesRequest) returns (ListCandidatesResponse);
-  rpc GetCandidate(GetCandidateRequest) returns (GetCandidateResponse);
+  rpc ListCandidates(ListCandidatesRequest) returns (ListCandidatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetCandidate(GetCandidateRequest) returns (GetCandidateResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc RunEvaluation(RunEvaluationRequest) returns (RunEvaluationResponse);
   rpc PublishCandidate(PublishCandidateRequest) returns (PublishCandidateResponse);
 }

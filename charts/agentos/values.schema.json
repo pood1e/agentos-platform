@@ -487,6 +487,79 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issuer", "clientId", "writerRole", "secretRef", "proxy", "mode", "audience"],
+      "properties": {
+        "issuer": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "writerRole": {
+          "type": "string"
+        },
+        "secretRef": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["image", "resources"],
+          "properties": {
+            "image": {
+              "type": "string",
+              "pattern": "@sha256:[0-9a-f]{64}$"
+            },
+            "resources": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": ["string", "number"]
+                }
+              }
+            }
+          }
+        },
+        "mode": {
+          "enum": ["none", "oidc"]
+        },
+        "audience": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "oidc"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "issuer": {
+                "pattern": "^https://[^\\s]+$"
+              },
+              "clientId": {
+                "minLength": 1
+              },
+              "writerRole": {
+                "minLength": 1
+              },
+              "audience": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "required": [

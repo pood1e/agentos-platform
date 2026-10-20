@@ -15,25 +15,41 @@ import "kagent/api/v1alpha1/models.proto";
 import "kagent/api/v1alpha1/tools.proto";
 
 service ManagementService {
-  rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse);
-  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+  rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SaveConnection(SaveConnectionRequest) returns (SaveConnectionResponse);
   rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
-  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
   rpc DeleteSkill(DeleteSkillRequest) returns (DeleteSkillResponse);
-  rpc ListKnowledge(ListKnowledgeRequest) returns (ListKnowledgeResponse);
-  rpc SearchKnowledge(SearchKnowledgeRequest) returns (SearchKnowledgeResponse);
+  rpc ListKnowledge(ListKnowledgeRequest) returns (ListKnowledgeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SearchKnowledge(SearchKnowledgeRequest) returns (SearchKnowledgeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc AddKnowledge(AddKnowledgeRequest) returns (AddKnowledgeResponse);
   rpc DeleteKnowledge(DeleteKnowledgeRequest) returns (DeleteKnowledgeResponse);
   rpc ClearKnowledge(ClearKnowledgeRequest) returns (ClearKnowledgeResponse);
-  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse);
-  rpc ListHarnesses(kagent.api.v1alpha1.ListHarnessesRequest) returns (kagent.api.v1alpha1.ListHarnessesResponse);
+  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListHarnesses(kagent.api.v1alpha1.ListHarnessesRequest) returns (kagent.api.v1alpha1.ListHarnessesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc SaveHarness(SaveHarnessRequest) returns (kagent.api.v1alpha1.CreateHarnessResponse);
   rpc DeleteHarness(DeleteHarnessRequest) returns (kagent.api.v1alpha1.DeleteHarnessResponse);
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
-  rpc GetEngineerRuntime(kagent.api.v1alpha1.GetAgentRequest) returns (GetEngineerRuntimeResponse);
+  rpc GetEngineerRuntime(kagent.api.v1alpha1.GetAgentRequest) returns (GetEngineerRuntimeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SetEngineerRuntime(SetEngineerRuntimeRequest) returns (SetEngineerRuntimeResponse);
 }
 

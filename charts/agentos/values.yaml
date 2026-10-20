@@ -40,6 +40,18 @@ console:
     limits:
       cpu: '1'
       memory: 768Mi
+identity:
+  mode: none
+  issuer: ''
+  clientId: ''
+  audience: ''
+  writerRole: ''
+  secretRef: agentos-identity
+  proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5@sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 128Mi}
 ingress:
   host: ''
   tlsSecret: agentos-ingress
