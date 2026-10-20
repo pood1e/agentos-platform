@@ -1,0 +1,134 @@
+diff --git a/go/core/internal/substrate/policy.go b/go/core/internal/substrate/policy.go
+index 64bcb848..5cad3ba7 100644
+--- a/go/core/internal/substrate/policy.go
++++ b/go/core/internal/substrate/policy.go
+@@ -10,7 +10,9 @@ import (
+ 	"strings"
+ 
+ 	"github.com/agent-substrate/substrate/pkg/proto/ateapipb"
++	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
+ 	"github.com/kagent-dev/kagent/go/core/internal/egress"
++	"google.golang.org/protobuf/proto"
+ 	"k8s.io/apimachinery/pkg/util/validation"
+ )
+ 
+@@ -55,6 +57,9 @@ func ActorEgressPolicy(atespace string, destinations []string, credentials []egr
+ 	}
+ 	effects := map[string]*ateapipb.HttpRuleEffects{}
+ 	for _, binding := range credentials {
++		if strings.EqualFold(binding.Header, actorTokenHeader) || strings.EqualFold(binding.Header, apia2a.InsecureRuntimeIdentityHeader) {
++			return nil, fmt.Errorf("actor identity header %q cannot use a Secret credential", binding.Header)
++		}
+ 		if !hosts[binding.Hostname] {
+ 			return nil, fmt.Errorf("credential destination %q is not allowed", binding.Hostname)
+ 		}
+@@ -72,12 +77,23 @@ func ActorEgressPolicy(atespace string, destinations []string, credentials []egr
+ 	for _, origin := range names {
+ 		target := origins[origin]
+ 		ports := &ateapipb.Ports{Numbers: []int32{target.port}}
++		ruleEffects := &ateapipb.HttpRuleEffects{}
++		if configured := effects[target.hostname]; configured != nil {
++			ruleEffects = proto.Clone(configured).(*ateapipb.HttpRuleEffects)
++		}
++		ruleEffects.ReplaceHeaders = append(ruleEffects.ReplaceHeaders, &ateapipb.CredentialHeader{
++			Header: actorTokenHeader, Prefix: "Bearer ",
++			ActorJwt: &ateapipb.ActorJWTSource{Audiences: []string{origin}, ExpirationSeconds: 300},
++		})
++		if len(ruleEffects.ReplaceHeaders) > 16 {
++			return nil, fmt.Errorf("egress destination %q exceeds 16 credential headers", origin)
++		}
+ 		// Keep exactly one rule per host and port so an overlapping rule cannot
+ 		// bypass credential replacement.
+ 		if target.scheme == "https" {
+-			policy.Rules = append(policy.Rules, &ateapipb.EgressRule{Https: &ateapipb.HTTPSRule{Hostnames: []string{target.hostname}, Ports: ports, Effects: effects[target.hostname]}})
++			policy.Rules = append(policy.Rules, &ateapipb.EgressRule{Https: &ateapipb.HTTPSRule{Hostnames: []string{target.hostname}, Ports: ports, Effects: ruleEffects}})
+ 		} else {
+-			policy.Rules = append(policy.Rules, &ateapipb.EgressRule{Http: &ateapipb.HTTPRule{Hostnames: []string{target.hostname}, Ports: ports, Effects: effects[target.hostname]}})
++			policy.Rules = append(policy.Rules, &ateapipb.EgressRule{Http: &ateapipb.HTTPRule{Hostnames: []string{target.hostname}, Ports: ports, Effects: ruleEffects}})
+ 		}
+ 	}
+ 	if len(policy.Rules) > 256 {
+@@ -85,3 +101,5 @@ func ActorEgressPolicy(atespace string, destinations []string, credentials []egr
+ 	}
+ 	return policy, nil
+ }
++
++const actorTokenHeader = "x-substrate-actor-token"
+diff --git a/go/core/internal/substrate/actor_identity_test.go b/go/core/internal/substrate/actor_identity_test.go
+new file mode 100644
+index 00000000..8ac3b5b8
+--- /dev/null
++++ b/go/core/internal/substrate/actor_identity_test.go
+@@ -0,0 +1,72 @@
++package substrate
++
++import (
++	"fmt"
++	"testing"
++
++	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
++	"github.com/kagent-dev/kagent/go/core/internal/egress"
++)
++
++func TestActorIdentityIsBoundToEachEgressOrigin(t *testing.T) {
++	policy, err := ActorEgressPolicy("workspace", []string{
++		"http://gateway.example:8080", "https://gateway.example:8443",
++	}, []egress.Credential{{Hostname: "gateway.example", Header: "authorization", Prefix: "Bearer ", URI: "ate-secret://k8s.io/default/workspace/credential/token"}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(policy.GetRules()) != 2 {
++		t.Fatalf("rule count = %d, want 2", len(policy.GetRules()))
++	}
++	first := policy.GetRules()[0].GetHttp().GetEffects().GetReplaceHeaders()
++	second := policy.GetRules()[1].GetHttps().GetEffects().GetReplaceHeaders()
++	if len(first) != 2 || len(second) != 2 {
++		t.Fatal("each origin must carry its Secret credential and Actor identity")
++	}
++	for _, test := range []struct {
++		origin  string
++		headers []string
++	}{
++		{origin: "http://gateway.example:8080", headers: []string{first[1].GetActorJwt().GetAudiences()[0]}},
++		{origin: "https://gateway.example:8443", headers: []string{second[1].GetActorJwt().GetAudiences()[0]}},
++	} {
++		for _, audience := range test.headers {
++			if audience != test.origin {
++				t.Errorf("audience = %q, want %q", audience, test.origin)
++			}
++		}
++	}
++	if first[1].GetHeader() != actorTokenHeader {
++		t.Fatalf("identity header name = %q", first[1].GetHeader())
++	}
++	if first[1].GetActorJwt().GetExpirationSeconds() != 300 || first[1].GetPrefix() != "Bearer " {
++		t.Fatal("identity token is not short-lived bearer authentication")
++	}
++	first[0].Prefix = "changed"
++	if second[0].GetPrefix() != "Bearer " {
++		t.Fatal("origin-specific effects share mutable credential state")
++	}
++}
++
++func TestActorIdentityHeadersRejectSecretOverrides(t *testing.T) {
++	for _, header := range []string{actorTokenHeader, apia2a.InsecureRuntimeIdentityHeader, "X-Substrate-Actor-Token"} {
++		t.Run(header, func(t *testing.T) {
++			_, err := ActorEgressPolicy("workspace", []string{"https://gateway.example"}, []egress.Credential{{
++				Hostname: "gateway.example", Header: header, URI: "ate-secret://k8s.io/default/workspace/credential/token",
++			}})
++			if err == nil {
++				t.Fatal("Secret credential replaced the reserved actor identity")
++			}
++		})
++	}
++}
++
++func TestActorIdentityHeadersRespectNativePolicyLimits(t *testing.T) {
++	var credentials []egress.Credential
++	for i := range 16 {
++		credentials = append(credentials, egress.Credential{Hostname: "gateway.example", Header: fmt.Sprintf("x-credential-%d", i), URI: "ate-secret://k8s.io/default/workspace/credential/token"})
++	}
++	if _, err := ActorEgressPolicy("workspace", []string{"https://gateway.example"}, credentials); err == nil {
++		t.Fatal("policy exceeded the native credential header limit")
++	}
++}

@@ -25,6 +25,11 @@ verify:
     expire_in: 1 day
     paths: [build/, dist/, test-results/, playwright-report/]
 
+authorization-check:
+  extends: .shell
+  stage: verify
+  script: [npm run test:authorization]
+
 deployment-check:
   extends: .shell
   stage: verify
@@ -48,6 +53,8 @@ build-image:
   extends: .build-image
   needs:
     - verify
+    - job: authorization-check
+      artifacts: false
     - job: deployment-check
       artifacts: false
 

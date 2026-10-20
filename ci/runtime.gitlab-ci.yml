@@ -14,6 +14,7 @@ controller-verify:
         - runtime/harness-toolbox/**/*
         - runtime/substrate/**/*
         - third_party/kagent/**/*
+        - third_party/substrate/ateapi.proto
         - ci/verify-controller.sh
         - ci/prepare-substrate.sh
         - ci/shell-env.sh
@@ -31,6 +32,7 @@ substrate-verify:
   rules: &substrate-rules
     - changes:
         - runtime/substrate/**/*
+        - third_party/substrate/ateapi.proto
         - ci/verify-substrate.sh
         - ci/prepare-substrate.sh
         - ci/shell-env.sh

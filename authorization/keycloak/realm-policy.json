@@ -1,0 +1,20 @@
+{
+  "clientProfiles": {
+    "profiles": [
+      {
+        "name": "execution-downscope",
+        "executors": [{ "executor": "downscope-assertion-grant-enforcer", "configuration": {} }]
+      }
+    ]
+  },
+  "clientPolicies": {
+    "policies": [
+      {
+        "name": "execution-downscope",
+        "enabled": true,
+        "conditions": [{ "condition": "any-client", "configuration": {} }],
+        "profiles": ["execution-downscope"]
+      }
+    ]
+  }
+}

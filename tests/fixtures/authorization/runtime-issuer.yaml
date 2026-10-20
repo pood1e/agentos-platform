@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentos-authorization-issuer-proof
+  namespace: ate-system
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentos-authorization-issuer-proof
+  namespace: ate-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: agentos-authorization-issuer-proof}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: agentos-authorization-issuer-proof}
+    spec:
+      serviceAccountName: agentos-authorization-issuer-proof
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: issuer
+          image: ghcr.io/kagent-dev/substrate/ate-idp-server:v0.6.0-alpha3@sha256:fb60d2e8d23298983a38f2a66e9970a67a4fbf2148a5e5478865c9516064b7fb
+          args:
+            - --issuer=https://idp.ate-system.svc
+            - --actor-id-jwt-pool=/run/actor-jwt/pool.json
+            - --server-cred-bundle=/run/servicedns/credentials.pem
+          ports: [{name: https, containerPort: 8443}]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          startupProbe:
+            httpGet: {path: /openid/v1/jwks, port: https, scheme: HTTPS}
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /openid/v1/jwks, port: https, scheme: HTTPS}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: https, scheme: HTTPS}
+            periodSeconds: 10
+          volumeMounts:
+            - {name: jwt-pool, mountPath: /run/actor-jwt, readOnly: true}
+            - {name: servicedns, mountPath: /run/servicedns, readOnly: true}
+      volumes:
+        - name: jwt-pool
+          secret:
+            secretName: actor-id-jwt-pool
+            items: [{key: pool, path: pool.json}]
+        - name: servicedns
+          projected:
+            sources:
+              - podCertificate:
+                  signerName: servicedns.podcert.ate.dev/identity
+                  keyType: ECDSAP256
+                  credentialBundlePath: credentials.pem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: idp
+  namespace: ate-system
+spec:
+  selector: {app.kubernetes.io/name: agentos-authorization-issuer-proof}
+  ports: [{name: https, port: 443, targetPort: https}]

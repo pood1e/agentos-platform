@@ -1,6 +1,27 @@
-# AgentOS 控制台改进计划
+# AgentOS 平台实施计划
 
-## Context
+## 当前优先级：身份、Agent 权限与 OBO
+
+基线：平台 0.5.0，AIOps 方案包 1.1.1。当前控制台采用工作空间共享身份，环境连接器采用 Agent 服务账号；用户身份与执行授权尚未贯通。
+
+详细设计、改动范围、验收与迁移见[身份、Agent 权限与 OBO 实施计划](docs/authorization-plan.md)。
+当前已进入 P0，授权基础与真实组件证据见[链路验证](docs/authorization-validation.md)。
+
+| 阶段 | 交付 | 准入条件 |
+| --- | --- | --- |
+| P0 | 原生身份链路、网关逐调用授权、Token Exchange 验证及契约定稿 | 身份绑定跨委派与恢复可验证；明确每个连接器的认证能力 |
+| P1 | OIDC 登录、平台资源授权与数据隔离 | 两个用户的会话、知识、任务与管理操作相互隔离 |
+| P2 | 每次执行的授权、委派收敛与撤销 | 子 Agent 权限不扩大；撤销后后续调用与恢复均受阻 |
+| P3 | 网关执行检查、OAuth 用户代办与凭据桥接 | OAuth 目标和 API Token 目标分别通过真实链路验收 |
+| P4 | 审批复验、权限界面与审计 | 审批不扩大授权；可以追溯发起者、执行 Agent 与目标资源 |
+| P5 | 历史数据迁移与一次性切换 | 旧共享入口和绕过路径关闭；原生运行与 AIOps 回归通过 |
+
+依赖顺序为 P0 → P1 → P2 → P3 → P4 → P5；各阶段形成可测试提交，生产通过同一破坏性版本一次切换。
+平台承担通用身份、授权与执行边界；AIOps 提供业务资源映射、连接器和变更审批；目标环境提供真实账号、原生权限、API 认证能力和接入设施。代码归属与部署位置见[三方职责与交付物](docs/authorization-plan.md#三方职责与交付物)。
+
+以下为控制台改进记录与后续功能积压，身份与授权计划优先。
+
+## 控制台改进背景
 
 对照 agno AgentOS 控制平面（os.agno.com）与本仓库控制台（main `137bf3c`，fake kagent 逐页核对）：
 
@@ -15,7 +36,8 @@
 | 数据源 | 运行、委派、审批与工具调用只取 kagent 原生 A2A 读模型；模型 span、Token 与成本取 Langfuse，不在平台另建追踪存储 |
 | 审批 | 默认使用原生工具确认；业务方可通过 ApprovalService 接入外部决定、执行准备与结果回写 |
 | 取消 | 取消操作树中所有未结束的前台任务，复用案例自动化的取消逻辑；已执行的副作用仍需核验 |
-| 不跟进 | 按用户的记忆、多运行时切换、人员与角色管理（控制台已决定开放访问） |
+| 身份与权限 | 0.5.0 的开放访问属于当前基线，按身份与授权计划迁移；人员目录与登录复用身份提供方 |
+| 功能积压范围 | 按用户的记忆与多运行时切换暂不列入控制台改进 |
 
 ## 首批实施前的基线
 
@@ -27,7 +49,7 @@
 - kagent `SessionService` 有 `UpdateSessionName`、`DeleteSession`；fake kagent 未实现 `CancelTask`、`UpdateSessionName`、`DeleteSession`。
 - Collector 保留 `kagent.session.id`、`kagent.task.id`、`gen_ai.conversation.id`，Langfuse 会话映射未核实。
 
-## 第一批（本分支）
+## 第一批（已完成）
 
 - [x] **任务筛选**：`ListTasksRequest` 增加 `states`、`engineer`；游标绑定筛选条件；任务列表增加状态与成员筛选。
 - [x] **待审批入口**：顶栏显示待审批数（`ListTasks` 按 `AWAITING_APPROVAL` 计数），点击进入已筛选的任务列表并打开审批抽屉。
