@@ -43,6 +43,7 @@ message TaskRun {
   repeated ToolCall calls = 7;
   google.protobuf.Timestamp updated_at = 8;
   string context_id = 9;
+  google.protobuf.Timestamp started_at = 10;
 }
 
 message ToolCall {

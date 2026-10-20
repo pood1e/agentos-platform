@@ -6,6 +6,7 @@ import {
   EvaluationReportSchema,
 } from "../gen/agentos/evaluation/v1/evaluation_pb.js";
 import { evaluationFailures, snapshotDigest } from "../server/evaluation/gate.js";
+import { ruleSummaries } from "../shared/evaluation.js";
 
 function fixture() {
   const snapshot = create(ConfigurationSnapshotSchema, {
@@ -46,6 +47,44 @@ function fixture() {
 }
 
 describe("evaluation publication gate", () => {
+  it("reports means without hiding per-case threshold failures and regressions", () => {
+    const { snapshot, report } = fixture();
+    const baseline = snapshot.baseline;
+    const candidate = report.samples[0]?.candidate[0];
+    if (!baseline || !candidate) throw new Error("missing fixture");
+    candidate.value = 0.7;
+    const summary = ruleSummaries(baseline, report)[0];
+    expect(summary?.candidate).toBeCloseTo(0.925);
+    expect(summary?.released).toBe(1);
+    expect(summary?.delta).toBeCloseTo(-0.075);
+    expect(summary?.failures).toEqual(
+      expect.arrayContaining(["evaluation.belowThreshold", "evaluation.regression"]),
+    );
+    expect(evaluationFailures(snapshot, report)).toEqual(
+      expect.arrayContaining(summary?.failures ?? []),
+    );
+  });
+
+  it("does not pass rule summaries with missing, duplicate, erroneous or invalid results", () => {
+    for (const failure of ["missing", "duplicate", "error", "invalid", "score"]) {
+      const { snapshot, report } = fixture();
+      if (!snapshot.baseline || !report.samples[0]) throw new Error("missing fixture");
+      if (failure === "missing") report.samples.pop();
+      if (failure === "duplicate") report.samples[3] = report.samples[0];
+      if (failure === "error") report.samples[0].error = "evaluation.executionFailed";
+      if (failure === "invalid") report.samples[0].candidate[0].value = Number.NaN;
+      if (failure === "score") report.samples[0].candidate = [];
+      expect(ruleSummaries(snapshot.baseline, report)[0]?.failures.length).toBeGreaterThan(0);
+    }
+    const { snapshot, report } = fixture();
+    if (!snapshot.baseline) throw new Error("missing baseline");
+    expect(ruleSummaries(snapshot.baseline, report)[0]).toMatchObject({
+      candidate: 1,
+      released: 1,
+      delta: 0,
+      failures: [],
+    });
+  });
   it("requires every held-out sample and repetition for both configurations", () => {
     const { snapshot, report } = fixture();
     expect(evaluationFailures(snapshot, report)).toEqual([]);

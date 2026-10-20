@@ -3,10 +3,12 @@ import { expect, it, vi } from "vitest";
 import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { InvokeSessionOutputSchema } from "../gen/agentos/kagent/v1/wire_pb.js";
+import { cancelTree } from "../server/read-model/cancel.js";
 import { resumedTaskKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
+import { taskTree } from "../server/read-model/tree.js";
 import { startContinuations } from "../server/team-sessions/continuation.js";
-import { decidedTasks } from "./fake-kagent/scenario.js";
+import { decidedTasks, pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds } from "./fixtures/kagent.js";
 import { environment, silent, until } from "./harness.js";
 
@@ -167,6 +169,25 @@ it("allows a new request in a session whose earlier operation was canceled", asy
     await until(() => send.mock.calls.length > 0);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0]?.[1].contextId).toBe(parent.contextId);
+  } finally {
+    stop();
+    sync.close();
+  }
+});
+
+it("does not restart a completed caller after its pending foreground worker is canceled", async () => {
+  const { sync, index, clients } = environment(pendingApprovalTasks());
+  await sync.refresh();
+  const send = vi.spyOn(sync, "send");
+  const stop = startContinuations(sync, silent);
+  try {
+    const tree = taskTree(index, fixtureIds.approvalRoot);
+    if (!tree) throw new Error("missing operation");
+    await cancelTree(clients, sync, tree);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(send).not.toHaveBeenCalled();
+    expect(index.entry(fixtureIds.approvalRoot)?.state).toBe(TaskState.COMPLETED);
+    expect(index.entry(fixtureIds.approved)?.state).toBe(TaskState.CANCELED);
   } finally {
     stop();
     sync.close();

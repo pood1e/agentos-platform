@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import type { ListTasksRequest } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import {
   type Delegation,
@@ -17,7 +18,7 @@ import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";
 import { type PageRequest, pageOf } from "../page.js";
 import { awaiting, taskActivity, terminal } from "../state.js";
-import { busy, foreground, type TaskTree, taskTree } from "../tree.js";
+import { busy, foreground, outcomeState, type TaskTree, taskTree } from "../tree.js";
 import { engineer } from "./engineers.js";
 import { reviewDelegations } from "./reviews.js";
 import { runState, runSummary, stamp } from "./runs.js";
@@ -32,7 +33,7 @@ function treeState(tree: TaskTree): ActivityState {
       ? ActivityState.AWAITING_APPROVAL
       : ActivityState.AWAITING_INPUT;
   const running = active.find((entry) => !terminal(entry.state));
-  return running ? runState(running) : taskActivity(tree.latest.state);
+  return running ? runState(running) : taskActivity(outcomeState(tree));
 }
 
 /** The chat request that started this operation, when it was delegated from a conversation. */
@@ -53,8 +54,13 @@ export function taskSummary(index: TaskIndex, tree: TaskTree): TaskSummary {
 }
 
 /** Operations ordered by their latest activity, so moving work rises to the top. */
-export function listTasks(index: TaskIndex, request: PageRequest) {
+export function listTasks(
+  index: TaskIndex,
+  request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer">>,
+) {
   const needle = request.query.trim().toLowerCase();
+  const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
+  const engineer = request.engineer ?? "";
   const matches = index
     .relations()
     .roots.filter((root) => {
@@ -63,8 +69,10 @@ export function listTasks(index: TaskIndex, request: PageRequest) {
       return `${prompt} ${root.id}`.toLowerCase().includes(needle);
     })
     .flatMap((root) => taskTree(index, root.id) ?? [])
+    .filter((tree) => !states.length || states.includes(treeState(tree)))
+    .filter((tree) => !engineer || tree.entries.some((entry) => entry.agentId === engineer))
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0) || a.root.id.localeCompare(b.root.id));
-  const page = pageOf(matches, request, "tasks", (tree) => ({
+  const page = pageOf(matches, request, `tasks:${JSON.stringify([states, engineer])}`, (tree) => ({
     id: tree.root.id,
     time: tree.updatedAt ?? 0,
   }));

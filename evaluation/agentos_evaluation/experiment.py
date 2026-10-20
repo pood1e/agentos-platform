@@ -6,6 +6,7 @@ from agentos.evaluation.v1.evaluation_pb2 import (
     ExecuteRequest,
     ExecuteResponse,
     SampleResult,
+    Score,
 )
 from google.protobuf.json_format import MessageToDict, ParseDict
 from langfuse import Evaluation, Langfuse
@@ -80,10 +81,16 @@ def experiments(job: EvaluationJobInput, client: ExecutionClient) -> EvaluationR
                     row = rows[(item.item.id, repetition)]
                     scores = getattr(row, variant)
                     scores.extend(
-                        {"name": score.name, "value": float(score.value)}
+                        Score(name=score.name, value=float(score.value))
                         for score in item.evaluations
                     )
                     setattr(row, f"{variant}_trace_id", item.trace_id or "")
+                    if item.trace_id:
+                        setattr(
+                            row,
+                            f"{variant}_trace_url",
+                            langfuse.get_trace_url(trace_id=item.trace_id) or "",
+                        )
                     output = item.output if isinstance(item.output, dict) else {}
                     setattr(row, f"{variant}_task_id", output.get("taskId", ""))
                     if len(scores) != len(baseline.rules) or not output.get("taskId"):

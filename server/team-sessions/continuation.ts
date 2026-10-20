@@ -19,6 +19,8 @@ interface Continuation {
 }
 
 function stoppedOperation(index: TaskIndex, parent: TaskEntry): boolean {
+  const tree = taskTree(index, parent.id);
+  if (tree && foreground(tree).some((entry) => entry.state === TaskState.CANCELED)) return true;
   const ancestors = index.relations().causalParents;
   const seen = new Set<string>();
   for (let entry: TaskEntry | undefined = parent; entry && !seen.has(entry.id); ) {

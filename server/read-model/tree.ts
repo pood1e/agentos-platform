@@ -1,3 +1,4 @@
+import { TaskState } from "../../gen/a2a_pb.js";
 import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import type { TaskEntry } from "./entry.js";
 import type { TaskIndex } from "./index.js";
@@ -62,3 +63,11 @@ export const foreground = (tree: TaskTree) =>
   tree.entries.filter((entry) => !tree.background.has(entry.id));
 
 export const busy = (tree: TaskTree) => foreground(tree).some((entry) => !terminal(entry.state));
+
+export const outcomeState = (tree: TaskTree) =>
+  foreground(tree).some(
+    (entry) =>
+      entry.state === TaskState.CANCELED && (entry.statusAt ?? 0) >= (tree.latest.statusAt ?? 0),
+  )
+    ? TaskState.CANCELED
+    : tree.latest.state;

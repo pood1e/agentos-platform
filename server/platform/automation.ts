@@ -16,9 +16,9 @@ import requestSchema from "../../gen/schema/agentos.automation.v1.CaseRequest.js
 import type { KagentClients } from "../kagent/clients.js";
 import type { nativeInvocation } from "../kagent/invoke-session.js";
 import { agentInfo } from "../read-model/agents.js";
-import { terminal } from "../read-model/state.js";
+import { cancelTree } from "../read-model/cancel.js";
 import type { KagentSync } from "../read-model/sync.js";
-import { busy, foreground, taskTree } from "../read-model/tree.js";
+import { busy, outcomeState, taskTree } from "../read-model/tree.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { inputSchema, result, validator } from "../team-sessions/schema.js";
 
@@ -64,7 +64,11 @@ export function automationTools(
         sessionId,
         contextId: sessionId,
         taskId: latest?.id,
-        state: tree && busy(tree) ? TaskState.WORKING : (latest?.state ?? TaskState.WORKING),
+        state: tree
+          ? busy(tree)
+            ? TaskState.WORKING
+            : outcomeState(tree)
+          : (latest?.state ?? TaskState.WORKING),
         text: latest?.answer.slice(0, 4000) ?? "",
       }),
     };
@@ -114,18 +118,12 @@ export function automationTools(
         inputSchema: inputSchema(referenceSchema),
         annotations: { idempotentHint: true },
       },
-      async (args) => {
+      async (args, context) => {
         const ref = fromJson(CaseReferenceSchema, args),
           own = await session(ref);
         const current = observed(ref, own.id);
-        if (current.tree)
-          for (const entry of foreground(current.tree))
-            if (!terminal(entry.state))
-              await clients.a2a.cancelTask(
-                { tenant: entry.agentId, id: entry.id },
-                { timeoutMs: 30_000 },
-              );
-        return result(InvokeSessionOutputSchema, current.output);
+        if (current.tree) await cancelTree(clients, sync, current.tree, context.mcpReq.signal);
+        return result(InvokeSessionOutputSchema, observed(ref, own.id).output);
       },
     );
     return server;

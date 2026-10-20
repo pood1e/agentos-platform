@@ -12,7 +12,9 @@ import type { KagentClients } from "../kagent/clients.js";
 import type { BindingView } from "../operations/bindings.js";
 import { changes } from "../operations/views.js";
 import { accessProfile } from "../platform/access.js";
+import { cancelTree } from "../read-model/cancel.js";
 import type { KagentSync } from "../read-model/sync.js";
+import { taskTree } from "../read-model/tree.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
 import { taskRun } from "../read-model/views/run.js";
@@ -94,6 +96,14 @@ export function consoleService({
       const run = await taskRun(sync, request.taskId);
       if (!run) throw notFound("task.notFound");
       return { run };
+    },
+    async cancelTask({ taskId }, context) {
+      ready();
+      const root = index.operationRoot(taskId);
+      const tree = root && taskTree(index, root.id);
+      if (!tree) throw notFound("task.notFound");
+      await cancelTree(clients, sync, tree, context.signal);
+      return {};
     },
     listConversations(request) {
       ready();
