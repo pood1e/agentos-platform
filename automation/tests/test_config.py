@@ -36,6 +36,7 @@ def test_a_complete_trigger_is_accepted(tmp_path, monkeypatch):
     "change",
     [
         lambda value: value.ClearField("durable"),
+        lambda value: setattr(value, "nats_user", "automation"),
         lambda value: setattr(value.trigger, "event_namespace", "Ops Events"),
         lambda value: value.trigger.ClearField("brief"),
         lambda value: value.trigger.source.ClearField("key_field"),

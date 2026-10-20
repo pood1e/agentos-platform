@@ -27,6 +27,8 @@ def load_config():
     for field in REQUIRED:
         if not getattr(config, field):
             raise ValueError(f"Missing automation configuration: {field}")
+    if bool(config.nats_user) != bool(config.nats_password_file):
+        raise ValueError("NATS user and password file are configured together")
     if config.oidc_issuer and not (
         config.oidc_audience and config.role_claim and config.feedback_role
     ):

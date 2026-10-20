@@ -16,10 +16,13 @@ from .workflow import CaseWorkflow
 
 async def main():
     config = load_config()
+    password = None
+    if config.nats_password_file:
+        password = (await asyncio.to_thread(Path(config.nats_password_file).read_text)).strip()
     broker = await nats.connect(
         config.nats_url,
-        user=config.nats_user,
-        password=(await asyncio.to_thread(Path(config.nats_password_file).read_text)).strip(),
+        user=config.nats_user or None,
+        password=password,
         name="agentos-automation-" + config.environment,
     )
     bus = EventBus(broker, config.environment, config.trigger.event_namespace)
