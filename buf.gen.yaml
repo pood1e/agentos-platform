@@ -5,7 +5,8 @@ plugins:
     out: gen
     include_imports: true
     opt: [target=ts, import_extension=js]
-  - remote: buf.build/bufbuild/protoschema-jsonschema:v0.6.0
+  - local: .cache/bin/protoc-gen-jsonschema
+    strategy: all
     out: gen/schema
     types:
       - agentos.console.v1.RoleDefinition

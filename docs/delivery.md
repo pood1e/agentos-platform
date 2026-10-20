@@ -17,6 +17,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录测评作业与案例自动化镜像摘要；功能分支版本追加提交摘要 |
 
 仓库内的镜像以摘要固定、注册表用占位符：Chart 值使用 `registry.example.com/agentos`，部署变量使用 `agentos_image_registry`。
+协议生成使用本地官方工具：Protobuf 36.2 与 Buf JSON Schema 插件 0.6.0，由 `ci/tools.sh` 安装固定版本。
 发布时占位符替换为 `$CI_REGISTRY_IMAGE`。运行时镜像更新分两步：运行时作业构建出新摘要后，在 `deploy/vars.yaml` 与
 `charts/agentos/values.yaml` 更新固定摘要；发布作业核对本次构建的摘要与固定值一致。
 

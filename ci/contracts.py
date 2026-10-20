@@ -12,6 +12,7 @@ version = json.loads((root / "package.json").read_text())["version"]
 epoch = subprocess.check_output(
     ["git", "show", "-s", "--format=%ct", "HEAD"], cwd=root, text=True
 ).strip()
+subprocess.run([str(root / "ci/tools.sh"), "protoc"], cwd=root, check=True)
 subprocess.run(
     [str(root / "node_modules/.bin/buf"), "generate", "--template", "buf.python.gen.yaml"],
     cwd=root,

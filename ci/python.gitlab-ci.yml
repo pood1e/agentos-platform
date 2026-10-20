@@ -6,6 +6,7 @@ python-verify:
     - . ci/python-env.sh ci/python-requirements.txt
     - npm ci --prefer-offline
   script:
+    - ci/tools.sh protoc
     - node_modules/.bin/buf generate --template buf.python.gen.yaml
     - .cache/venv/bin/ruff check
     - .cache/venv/bin/ruff format --check

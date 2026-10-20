@@ -1,7 +1,9 @@
 version: v2
 clean: true
 plugins:
-  - remote: buf.build/protocolbuffers/python:v36.2
+  - protoc_builtin: python
+    protoc_path: .cache/bin/protoc
+    strategy: all
     out: gen/python
     include_imports: true
     types:
