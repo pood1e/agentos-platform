@@ -9,6 +9,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | --- | --- |
 | `verify` | 生成、构建、Biome / buf lint / tsc、单元测试（临时 PostgreSQL）与浏览器测试 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
+| `authorization-check` | OpenFGA 官方 CLI 校验授权模型、主体交集、分享、委派过期与撤销 |
 | `python-verify` | 生成 Python 契约；ruff 检查与格式校验；测评作业与案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
 | `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness、Langfuse Web、测评作业与案例自动化镜像，推送到 `$CI_REGISTRY_IMAGE` |

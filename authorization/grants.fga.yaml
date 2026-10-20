@@ -1,0 +1,60 @@
+name: Execution delegation and revocation
+model_file: ./model.fga
+tuples:
+  - {user: principal:alice, relation: initiator, object: grant:root}
+  - {user: principal:alice, relation: root, object: grant:root}
+  - {user: agent:team-a/reader, relation: assignee, object: grant:root}
+  - user: principal:alice
+    relation: live
+    object: grant:root
+    condition: {name: unexpired, context: {expires_at: "2026-10-20T10:00:00Z"}}
+  - {user: principal:alice, relation: initiator, object: grant:child}
+  - {user: grant:root, relation: parent, object: grant:child}
+  - {user: agent:team-a/operator, relation: assignee, object: grant:child}
+  - user: principal:alice
+    relation: live
+    object: grant:child
+    condition: {name: unexpired, context: {expires_at: "2026-10-20T11:00:00Z"}}
+  - {user: principal:bob, relation: initiator, object: grant:other-subject}
+  - {user: grant:root, relation: parent, object: grant:other-subject}
+  - user: principal:bob
+    relation: live
+    object: grant:other-subject
+    condition: {name: unexpired, context: {expires_at: "2026-10-20T11:00:00Z"}}
+tests:
+  - name: Parent chain retains its initiating principal
+    check:
+      - user: principal:alice
+        object: grant:root
+        context: {current_time: "2026-10-20T09:00:00Z"}
+        assertions: {can_execute: true}
+      - user: principal:alice
+        object: grant:child
+        context: {current_time: "2026-10-20T09:00:00Z"}
+        assertions: {can_execute: true}
+      - user: principal:bob
+        object: grant:child
+        context: {current_time: "2026-10-20T09:00:00Z"}
+        assertions: {can_execute: false}
+      - user: principal:bob
+        object: grant:other-subject
+        context: {current_time: "2026-10-20T09:00:00Z"}
+        assertions: {can_execute: false}
+  - name: Longer child lifetime cannot outlive its parent
+    check:
+      - user: principal:alice
+        object: grant:root
+        context: {current_time: "2026-10-20T10:00:00Z"}
+        assertions: {can_execute: false}
+      - user: principal:alice
+        object: grant:child
+        context: {current_time: "2026-10-20T10:00:00Z"}
+        assertions: {can_execute: false}
+  - name: Another Agent cannot claim the execution
+    check:
+      - user: agent:team-a/reader
+        object: grant:root
+        assertions: {assignee: true}
+      - user: agent:team-a/operator
+        object: grant:root
+        assertions: {assignee: false}

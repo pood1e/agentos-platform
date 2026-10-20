@@ -1,0 +1,55 @@
+name: Platform resource isolation
+model_file: ./model.fga
+tuples:
+  - {user: principal:alice, relation: member, object: workspace:team-a}
+  - {user: principal:bob, relation: member, object: workspace:team-b}
+  - {user: principal:bob, relation: member, object: workspace:team-a}
+  - {user: principal:admin, relation: administrator, object: workspace:team-a}
+  - {user: workspace:team-a, relation: workspace, object: agent:team-a/assistant}
+  - {user: workspace:team-b, relation: workspace, object: agent:team-b/assistant}
+  - {user: principal:alice, relation: caller, object: agent:team-a/assistant}
+  - {user: principal:bob, relation: editor, object: agent:team-a/assistant}
+  - {user: workspace:team-a, relation: workspace, object: session:alice}
+  - {user: workspace:team-b, relation: workspace, object: session:bob}
+  - {user: principal:alice, relation: owner, object: session:alice}
+  - {user: principal:bob, relation: owner, object: session:bob}
+tests:
+  - name: Agent invocation and editing are independent
+    check:
+      - user: principal:alice
+        object: agent:team-a/assistant
+        assertions: {can_invoke: true, can_manage: false}
+      - user: principal:bob
+        object: agent:team-a/assistant
+        assertions: {can_invoke: false, can_manage: true}
+      - user: principal:admin
+        object: agent:team-a/assistant
+        assertions: {can_invoke: true, can_manage: true}
+      - user: principal:admin
+        object: agent:team-b/assistant
+        assertions: {can_invoke: false, can_manage: false}
+  - name: Workspace membership does not share conversations
+    check:
+      - user: principal:alice
+        object: session:alice
+        assertions: {can_read: true, can_operate: true}
+      - user: principal:bob
+        object: session:alice
+        assertions: {can_read: false, can_operate: false}
+      - user: principal:admin
+        object: session:bob
+        assertions: {can_read: false, can_operate: false}
+    list_objects:
+      - user: principal:alice
+        type: session
+        assertions: {can_read: [session:alice], can_operate: [session:alice]}
+      - user: principal:bob
+        type: session
+        assertions: {can_read: [session:bob], can_operate: [session:bob]}
+  - name: Read sharing does not permit execution
+    tuples:
+      - {user: principal:bob, relation: reader, object: session:alice}
+    check:
+      - user: principal:bob
+        object: session:alice
+        assertions: {can_read: true, can_operate: false}

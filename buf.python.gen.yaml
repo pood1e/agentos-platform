@@ -18,3 +18,4 @@ plugins:
       - agentos.automation.v1.CaseFeedback
       - agentos.automation.v1.CaseFact
       - agentos.kagent.v1.InvokeSessionOutput
+      - ateapi.Control

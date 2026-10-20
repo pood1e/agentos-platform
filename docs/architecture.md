@@ -71,6 +71,8 @@ flowchart LR
 - 控制台页面和 RPC 直接访问，工作空间操作与管理开放；原生确认来自控制台操作；外部审批身份与决定由业务服务验证。模型网关、MCP 和目标系统使用独立机器凭据。
 - 执行凭证、审批账号密钥不进入提示词与浏览器响应；外部审批链路不承诺跨审批系统、数据库与目标系统的分布式事务，执行后故障须查询核验实际结果。
 
+以上为 0.5.0 的实现现状。用户身份、资源授权与 OBO 的目标方案及迁移阶段见[实施计划](authorization-plan.md)。
+
 ## 观测与测评
 
 Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。Web 以预置运维账号共享会话，采集使用项目 API Key。部署入口为 `deploy/observability.yaml`。

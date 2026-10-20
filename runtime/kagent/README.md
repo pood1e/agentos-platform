@@ -8,6 +8,10 @@
 
 `golden-skills.patch` 将运行配置声明的出站目标传递给 Substrate 的首次准备策略，凭证值仍由网关保管。运行模板版本参与 revision 摘要，升级后重建不可变模板；普通会话的凭证注入规则保持独立。依赖的 Substrate 协议和启动出站修复见 [Skill 启动修复](../substrate/README.md)。
 
+`actor-identity.patch` 为已声明的 HTTP(S) 目标增加原生 ActorJWTSource，按包含明确端口的 origin 限定 audience，令牌有效期为五分钟。
+运行时请求的 `x-substrate-actor-token` 占位值由宿主机替换；Secret 凭据保留独立规则，身份头作为保留字段。验证使用维护中的 Giant Swarm agentgateway-upstream 2.6.3。
+该补丁提供 MCP 身份注入，原生 TaskStore 的签名认证与生产接线按[身份实施计划](../../docs/authorization-plan.md)完成。
+
 变更审批使用原生 HITL 暂停与恢复。目标环境按身份、工具和参数匹配已准备的变更，在网关内核验审批并原子占用执行权。
 
 `claude-tool-selection.patch` 为 Claude 原生适配器补齐 MCP 工具子集。编译器保留 `mcp.tools`，将未选工具传给 Claude Code 官方 `--disallowedTools`；原生权限回调检查精确白名单，新增工具默认拒绝，选中工具按 `requireApproval` 决定直接执行或暂停。补丁同时更新 controller 和 Claude Harness，配置协议版本为 6。

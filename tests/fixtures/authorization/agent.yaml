@@ -1,0 +1,47 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: RemoteMCPServer
+metadata:
+  name: authorization-proof
+  labels:
+    agentos.dev/authorization-proof: "true"
+spec:
+  description: Signed runtime identity validation
+  protocol: STREAMABLE_HTTP
+  url: http://authorization-proof.${PROOF_WORKSPACE}.svc.cluster.local:8080/mcp/authorization-proof
+  headersFrom:
+    - name: x-substrate-actor-token
+      value: credential-injected
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: AgentTemplate
+metadata:
+  name: authorization-proof
+  labels:
+    agentos.dev/authorization-proof: "true"
+spec:
+  description: Signed runtime identity validation
+  modelConfig:
+    name: default-model-config
+  systemPrompt: For every user request, call inspect_identity with the requested
+    resource and nonce. Return its fresh JSON result. Report tool errors without
+    retrying.
+  tools:
+    - mcp:
+        server:
+          kind: RemoteMCPServer
+          name: authorization-proof
+        tools:
+          - inspect_identity
+        requireApproval: false
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: authorization-proof
+  labels:
+    agentos.dev/authorization-proof: "true"
+spec:
+  harnessRef:
+    name: standard
+  templateRef:
+    name: authorization-proof

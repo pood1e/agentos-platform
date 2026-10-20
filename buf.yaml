@@ -4,6 +4,7 @@ modules:
   - path: third_party/kagent
   - path: third_party/cloudevents
   - path: third_party/agentgateway/proto
+  - path: third_party/substrate
 deps:
   - buf.build/bufbuild/protovalidate
   - buf.build/googleapis/googleapis

@@ -89,7 +89,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: registry.example.com/agentos/claude-harness@sha256:6878f6361e9f4d3d9d37463ba5347086fb1be8e77a48ca87166b83572e225239
+      image: registry.example.com/agentos/claude-harness@sha256:961db7a3fcbe23b8185270d92d2f245fb25fa6797ccb25bb3f9e7630b5064a21
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
