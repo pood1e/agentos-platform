@@ -4,11 +4,14 @@
 {% set writes = tools.write | default([]) + (tools.management | default([]) if access == 'manage' else []) %}
 {% set reads = tools.readOnly | default([]) + (tools.managementReadOnly | default([]) if access == 'manage' else []) %}
 {% set allowed = reads + (writes if access in ['operate', 'manage'] else []) %}
+{% set delegated = environment_connectors[project].targets | selectattr('userAuth', 'defined') | list | length > 0 %}
+{% for execution_kind in (['service', 'user'] if delegated else ['service']) %}
+{% set backend = project + '-' + identity.name + ('-user' if execution_kind == 'user' else '') %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
 metadata:
-  name: {{ project }}-{{ identity.name }}
+  name: {{ backend }}
   namespace: {{ gateway_namespace }}
   labels: {agentos.dev/component: environment-tool, agentos.dev/project: {{ project }}}
 spec:
@@ -24,9 +27,10 @@ spec:
           path: {{ target.path }}
 {% endif %}
           protocol: {{ target.protocol | default('StreamableHTTP') }}
-{% if target.auth is defined %}
+{% set authentication = target.userAuth | default(target.auth | default({})) if execution_kind == 'user' else target.auth | default({}) %}
+{% if authentication %}
           policies:
-            auth: {{ target.auth | to_json | replace('<identity>', identity.name) }}
+            auth: {{ authentication | to_json | replace('<identity>', identity.name) | replace('<environment>', environment_name) }}
 {% endif %}
 {% endfor %}
   policies:
@@ -39,14 +43,19 @@ spec:
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
-metadata: {name: {{ project }}-{{ identity.name }}, namespace: {{ gateway_namespace }}}
+metadata: {name: {{ backend }}, namespace: {{ gateway_namespace }}}
 spec:
   parentRefs: [{name: mcp-gateway, sectionName: http}]
   rules:
     - matches:
         - path: {type: PathPrefix, value: /mcp/{{ project }}}
-          headers: [{name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}]
+          headers:
+            - {name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}
+{% if delegated %}
+            - {name: x-agentos-execution-kind, type: Exact, value: {{ execution_kind }}}
+{% endif %}
       backendRefs:
-        - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ project }}-{{ identity.name }}}
+        - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ backend }}}
+{% endfor %}
 {% endfor %}
 {% endfor %}

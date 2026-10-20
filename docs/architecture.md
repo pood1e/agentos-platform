@@ -8,6 +8,8 @@ flowchart LR
     Console -->|官方 gRPC| Kagent[kagent 控制面]
     Console -->|CRD| K8s[Kubernetes API]
     Team[Agent 团队 / microVM] -->|模型 / MCP| Gateway[平台网关 · agentgateway]
+    Team -->|签名 Actor · 持久化 RPC| Console
+    Gateway -->|逐次执行授权| Console
     Gateway -->|模型| Models[内置推理 / 外部模型]
     Gateway -->|嵌入| Embedding[嵌入模型]
     Gateway -->|协作 MCP| Console
@@ -37,19 +39,18 @@ flowchart LR
 | 存储 | CNPG PostgreSQL、S3 | 上游 | kagent 与 Substrate 状态、记忆向量、Actor 快照 |
 
 平台 API 在同一进程提供管理接口、协作 MCP、会话续接与治理协调，共享原生 A2A 读模型。业务审批、方案与执行守卫由方案包独立部署。依赖方向固定为平台服务调用 kagent，Agent 只经网关访问平台服务与环境，
-控制台不在 Agent 的执行路径上。
+平台授权服务处于工具执行路径，控制台页面通过 RPC 管理和观察任务。
 
 ## 调用链路
 
 - 对话与协作：会话选择工作空间内的任意 Agent；`entryAgent` 配置默认入口。Agent 经 `list_agents`、`create_session`、原生 `invoke_session` 或异步 `dispatch_session` 协作，目标直接使用 kagent 资源引用。重试与续接复用原生会话和确定性 messageId。
-- 工具访问：Agent 的模型与 MCP 请求只到平台网关，凭据由 Substrate 按目标主机注入。环境工具经环境网关，网关按 Agent 身份选择后端凭据，
-  把调用映射到目标系统中该 Agent 的账号；目标系统原生权限决定上限。
+- 工具访问：Agent 的模型与 MCP 请求只到平台网关，凭据由 Substrate 按目标主机注入。环境工具经环境网关，平台逐次校验用户、会话和 Agent 工具权限；环境按显式执行类型选择用户 OBO 或服务身份，目标系统原生权限决定资源上限。
 - 工具确认：声明需要确认的调用以 kagent 原生 HITL 暂停。默认由控制台提交精确工具 ID 的批准或拒绝；配置外部 `ApprovalService` 后，由服务决定、准备执行并接收结果，控制台展示状态和链接。外部服务不可用时保留暂停。同一次暂停的工具使用同一类决定来源。
 - 团队知识：知识角色以带向量记忆的 Harness 写入原生 MemoryService；其他成员经 `search_knowledge` 只读检索，范围与服务用户由服务端固定。
 - 轨迹：每条消息、委派、工具调用与审批都在 A2A 任务历史中，控制台据此绘制协作画布，不另建 trace 存储。
 
 任务列表按操作树的状态和参与成员筛选，分页游标绑定完整筛选条件。顶栏待审批入口定位到任务与原生审批记录，原生确认在控制台完成，外部审批在对应服务完成。
-停止操作取消树中所有未结束的前台任务，后台任务继续运行；已执行的副作用保留在原生历史中，仍需核验。控制台和案例自动化共用取消逻辑，
+停止操作取消树中所有未结束的前台任务，并撤销该会话及后代的工具执行权限；已执行的副作用保留在原生历史中，仍需核验。控制台和案例自动化共用取消逻辑，
 续接器遇到已取消的前台任务时停止自动续接。运行时间线使用 vis-timeline，执行、委派与审批区间直接来自原生时间戳，缺失时间不推断。
 
 ## 部署形态
@@ -68,10 +69,10 @@ flowchart LR
 - Agent 运行在 microVM 中，出站按目标主机默认拒绝；模型与 MCP 凭据由 Substrate 注入，运行时拿不到明文。
 - 平台网关以 SHA-256 哈希校验服务密钥，后端凭据只在 Secret；NetworkPolicy 只放行声明的调用方。
 - 每个 Agent 在每个目标系统有独立账号，平台访问策略、目标系统账号权限与人工审批分别承担调用授权、实际权限上限与执行确认。
-- 控制台按站点选择开放访问或 OIDC 登录。OIDC 模式使用 OAuth2 Proxy，RPC 独立验证签名、issuer、audience 和角色；认证用户默认只读，配置的写角色可操作。原生确认与外部审批继续独立执行。模型网关、MCP 和目标系统使用独立机器凭据。
+- 控制台按站点选择开放访问或 OIDC 登录。OIDC 模式使用 OAuth2 Proxy，RPC 独立验证签名、issuer、audience 和角色；认证用户可聊天及发起只读查询，配置的写角色可发起授权写操作。用户身份随会话、委派和后台任务传递，审批不扩大权限。目标系统支持时采用原生 OBO，其余连接器通过逐次授权的服务身份桥接。
 - 执行凭证、审批账号密钥不进入提示词与浏览器响应；外部审批链路不承诺跨审批系统、数据库与目标系统的分布式事务，执行后故障须查询核验实际结果。
 
-以上为 0.7.0 的实现现状。用户身份、资源授权与 OBO 的目标方案及迁移阶段见[实施计划](authorization-plan.md)。
+执行身份、运行时入口和环境 OBO 接线见[执行授权](execution-authorization.md)；逐资源授权与数据隔离的后续范围见[实施计划](authorization-plan.md)。
 
 ## 观测与测评
 

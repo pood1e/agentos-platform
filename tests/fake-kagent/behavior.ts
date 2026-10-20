@@ -50,20 +50,20 @@ function finish(fake: FakeKagent, task: Task, text: string, parts: Part[] = []) 
   fake.update(task, TaskState.COMPLETED);
 }
 
-function pausedOperation(fake: FakeKagent, text: string) {
+async function pausedOperation(fake: FakeKagent, text: string, parentId: string) {
   const fixtures = fixtureTasks();
   const root = fixtures.find((item) => item.id === fixtureIds.approvalRoot);
   const original = fixtures.find((item) => item.id === fixtureIds.approved);
   if (!root || !original) throw new Error("approval fixtures missing");
   const child = awaitingApproval(original);
-  const owner = fake.createSession(
+  const owner = await fake.createChildSession(
+    parentId,
     { namespace: "agentos", name: "coordinator" },
-    randomUUID(),
     text,
   );
-  const member = fake.createSession(
+  const member = await fake.createChildSession(
+    owner.id,
     { namespace: "agentos", name: "remediation" },
-    randomUUID(),
     text,
   );
   const replacements = new Map([
@@ -91,10 +91,10 @@ function pausedOperation(fake: FakeKagent, text: string) {
   return operation;
 }
 
-function knowledge(fake: FakeKagent, task: Task) {
-  const session = fake.createSession(
+async function knowledge(fake: FakeKagent, task: Task) {
+  const session = await fake.createChildSession(
+    task.contextId,
     { namespace: "agentos", name: "knowledge" },
-    randomUUID(),
     "沉淀执行结果",
   );
   const message = create(MessageSchema, {
@@ -115,7 +115,7 @@ function knowledge(fake: FakeKagent, task: Task) {
 }
 
 /** Deterministic role behavior; every result is delivered through the native A2A protocol. */
-export function execute(fake: FakeKagent, task: Task, message: Message) {
+export async function execute(fake: FakeKagent, task: Task, message: Message) {
   if (fake.tasks.get(task.id) !== task || task.status?.state === TaskState.CANCELED) return;
   const role = fake.sessions.get(task.contextId)?.agent?.name;
   const text = messageText(message);
@@ -142,7 +142,7 @@ export function execute(fake: FakeKagent, task: Task, message: Message) {
     );
   }
   if (role === "assistant" && /configmap/i.test(text) && !message.metadata?.[parentTaskKey]) {
-    const operation = pausedOperation(fake, text);
+    const operation = await pausedOperation(fake, text, task.contextId);
     const user = operation.history.find((item) => item.role === Role.USER);
     const output = create(InvokeSessionOutputSchema, {
       sessionId: operation.contextId,
@@ -167,7 +167,7 @@ export function execute(fake: FakeKagent, task: Task, message: Message) {
       fake,
       task,
       "用户决定已处理，执行结果已核验；知识正在后台沉淀。",
-      knowledge(fake, task),
+      await knowledge(fake, task),
     );
   if (role === "knowledge")
     return finish(fake, task, "知识已保存并回查来源。", [

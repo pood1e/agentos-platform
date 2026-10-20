@@ -32,6 +32,11 @@ evaluation:
 kagent:
   endpoint: http://kagent-controller:8083
   userId: agentos
+execution:
+  databaseSecret: kagent-postgres
+  databaseCASecret: kagent-postgres-ca
+  substrateURL: https://api.ate-system.svc
+  actorIssuer: https://idp.ate-system.svc
 console:
   resources:
     requests:
@@ -101,7 +106,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: registry.example.com/agentos/claude-harness@sha256:961db7a3fcbe23b8185270d92d2f245fb25fa6797ccb25bb3f9e7630b5064a21
+      image: registry.example.com/agentos/claude-harness@sha256:ead73d13022e82d6539c6f620d4feb9829753f3e983d4bb7161726394a8070df
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}

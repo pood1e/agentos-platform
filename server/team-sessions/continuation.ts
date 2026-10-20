@@ -100,7 +100,11 @@ function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
  * Returns a child's result to the calling session after its human decision.
  * Deterministic message IDs make a resend idempotent in kagent.
  */
-export function startContinuations(sync: KagentSync, log: FastifyBaseLogger): () => void {
+export function startContinuations(
+  sync: KagentSync,
+  log: FastifyBaseLogger,
+  authorize?: (parentContext: string, contexts: string[]) => Promise<void>,
+): () => void {
   const index = sync.index;
   const sending = new Set<string>();
   const retries = new Map<string, { attempts: number; after: number }>();
@@ -126,8 +130,14 @@ export function startContinuations(sync: KagentSync, log: FastifyBaseLogger): ()
         const retry = retries.get(childId);
         if (sending.has(childId) || (retry && retry.after > Date.now())) continue;
         sending.add(childId);
-        sync
-          .send(next.tenant, next.message)
+        Promise.resolve()
+          .then(async () => {
+            await authorize?.(
+              parent.contextId,
+              (taskTree(index, childId)?.entries ?? []).map((entry) => entry.contextId),
+            );
+            if (!stopped) await sync.send(next.tenant, next.message);
+          })
           .then(() => retries.delete(childId))
           .catch((error: unknown) => {
             const attempts = (retry?.attempts ?? 0) + 1;

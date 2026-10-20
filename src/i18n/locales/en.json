@@ -1,6 +1,7 @@
 {
   "access": {
-    "readOnly": "Read-only access. You can view conversations and tasks."
+    "readOnly": "This conversation is read-only. Start a new chat to query with an Agent.",
+    "readOnlyTools": "Agents can query and analyze. Write operations require permission."
   },
   "navigation": {
     "home": "AgentOS home",
@@ -87,7 +88,8 @@
     "operationsApproved": "Operations approved",
     "operationsRejected": "Operations rejected",
     "approve": "Approve and continue",
-    "externalDecision": "This operation is decided by the external approval service"
+    "externalDecision": "This operation is decided by the external approval service",
+    "executionDenied": "Execution permissions do not allow this approval."
   },
   "task": {
     "prompt": "Task description",
@@ -177,7 +179,8 @@
     "search": "Search chats",
     "viewTask": "View task: {{title}}",
     "scrollLatest": "Scroll to latest message",
-    "agent": "Conversation agent"
+    "agent": "Conversation agent",
+    "executionDenied": "This identity cannot continue the task. Start a new conversation."
   },
   "pagination": {
     "previous": "Previous page",

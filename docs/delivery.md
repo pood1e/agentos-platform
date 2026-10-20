@@ -82,8 +82,9 @@ identity:
 
 身份提供方由部署方提供，平台复用标准 OIDC Discovery、Authorization Code 与 PKCE S256。
 OAuth 应用回调为 `https://<ingress.host>/auth/callback`。引用的 Secret 包含 `client-secret` 与 `cookie-secret`，后者为 Base64 编码的 32 字节随机值。
-方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户只读。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
-RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作，未标记的方法按写操作授权。开放模式使用共享主体，不提供用户 OBO 身份。
+方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户可聊天和执行只读查询。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
+RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作；认证用户可管理自己的对话、交互和取消，配置写操作要求写角色。实际工具调用独立校验会话与 Agent 权限，见[执行授权](execution-authorization.md)。开放模式使用共享服务主体。
+执行授权复用 PostgreSQL 连接及 CA Secret；`<release>-execution` 保存加密密钥，升级保留，备份时与数据库一并保存。
 
 ```sh
 python3 -m venv .cache/deploy-venv

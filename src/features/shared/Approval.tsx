@@ -29,9 +29,11 @@ function decisionLabel(interaction: Interaction) {
 export function Approval({
   interaction,
   record,
+  operate,
 }: {
   interaction: Interaction;
   record?: ApprovalRecord;
+  operate: boolean;
 }) {
   const { t } = useTranslation();
   const access = useAccess();
@@ -40,7 +42,8 @@ export function Approval({
   const respond = useMutation(ConsoleService.method.respondInteraction);
   const pending = awaiting(interaction.state);
   const approval = interaction.kind === InteractionKind.APPROVAL;
-  const locked = !access.data?.operate || !pending || respond.isPending || respond.isSuccess;
+  const locked =
+    !operate || !access.data?.operate || !pending || respond.isPending || respond.isSuccess;
   const recorded = (index: number) => interaction.answers[index]?.values ?? [];
   const submit = (decision: Parameters<typeof respond.mutate>[0]["decision"]) =>
     respond.mutate({ taskId: interaction.taskId, requestId: interaction.requestId, decision });
@@ -146,12 +149,12 @@ export function Approval({
           <AlertDescription>{t(errorKey(respond.error, "approval.submitFailed"))}</AlertDescription>
         </Alert>
       )}
-      {pending && access.data?.operate && (
+      {pending && operate && access.data?.operate && (
         <div className="flex flex-wrap gap-2">
           {approval && !interaction.external && (
             <>
               <Button
-                disabled={locked}
+                disabled={locked || !interaction.approve}
                 onClick={() =>
                   submit({
                     case: "approval",

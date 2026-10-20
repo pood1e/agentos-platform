@@ -193,3 +193,24 @@ it("does not restart a completed caller after its pending foreground worker is c
     sync.close();
   }
 });
+
+it("does not resume through runtime-controlled task links when the execution roots differ", async () => {
+  const { sync, index } = environment(decidedTasks());
+  await sync.refresh();
+  let checks = 0;
+  const send = vi.spyOn(sync, "send");
+  const stop = startContinuations(sync, silent, async (_parent, contexts) => {
+    checks++;
+    expect(contexts.length).toBeGreaterThan(0);
+    throw new Error("Different execution root");
+  });
+  try {
+    await until(() => checks > 0);
+    expect(send).not.toHaveBeenCalled();
+    index.flush();
+    expect(send).not.toHaveBeenCalled();
+  } finally {
+    stop();
+    sync.close();
+  }
+});

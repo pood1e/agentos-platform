@@ -192,12 +192,12 @@ original = [
     {'apiVersion': 'api.kagent.dev/v1alpha3', 'kind': 'RemoteMCPServer', 'metadata': {'name': 'kagent-api'}, 'spec': {'url': 'http://kagent-controller:8083/mcp', 'protocol': 'STREAMABLE_HTTP'}},
 ]
 rendered = subprocess.check_output([sys.executable, 'deploy/gateway/kagent-post-renderer.py'], input=yaml.safe_dump_all(original) + '\n---\n', text=True,
-                                   env={**os.environ, 'AGENTOS_KAGENT_CONTROLLER_IMAGE': pinned('kagent_controller_image')})
+                                   env={**os.environ, 'AGENTOS_KAGENT_CONTROLLER_IMAGE': pinned('kagent_controller_image'), 'AGENTOS_KAGENT_RUNTIME_URL': 'http://agentos-console.agentos.svc:9091'})
 patched = list(yaml.safe_load_all(rendered))
 assert len(patched) == 3, 'Duplicate direct kagent API registration was retained'
 assert patched[0] == original[0], 'Post-renderer modified an external environment connection'
 assert patched[1] == original[1], 'Post-renderer modified an unrelated resource'
-assert patched[2]['spec']['template']['spec']['containers'] == [{'name': 'controller', 'image': pinned('kagent_controller_image')}, {'name': 'sidecar', 'image': 'sidecar'}]
+assert patched[2]['spec']['template']['spec']['containers'] == [{'name': 'controller', 'image': pinned('kagent_controller_image'), 'env': [{'name': 'KAGENT_API_URL', 'value': 'http://agentos-console.agentos.svc:9091'}]}, {'name': 'sidecar', 'image': 'sidecar'}]
 substrate_deployment = {
     'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'ate-api-server'},
     'spec': {'template': {'spec': {'containers': [{'name': 'ate-api-server', 'image': 'upstream'}]}}},

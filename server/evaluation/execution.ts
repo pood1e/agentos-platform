@@ -24,12 +24,16 @@ export interface ExecutionDependencies {
   store: EvaluationStore;
   jobs: ReturnType<typeof evaluationJobs>;
   sandboxes: ReturnType<typeof evaluationSandboxes>;
+  bindExecution?: (
+    session: import("../../gen/kagent/api/v1alpha1/sessions_pb.js").Session,
+  ) => Promise<void>;
 }
 
 export function evaluationExecution({
   store,
   jobs,
   sandboxes,
+  bindExecution,
 }: ExecutionDependencies): ServiceImpl<typeof EvaluationExecutionService> {
   const schemas = new Ajv({ strict: true, allErrors: false });
   async function running(id: string) {
@@ -99,6 +103,7 @@ export function evaluationExecution({
       );
       if (!session)
         throw new ConnectError("Native evaluation Session was not returned", Code.Unavailable);
+      await bindExecution?.(session);
       const invoke = await sandboxes.invoke(request.candidateId, variant);
       const response = await invoke(
         session.id,

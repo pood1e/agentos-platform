@@ -11,7 +11,7 @@ createServer(
     response.setHeader("content-type", "application/json");
     response.end(
       JSON.stringify(
-        request.url === "/jwks"
+        ["/jwks", "/openid/v1/jwks"].includes(request.url ?? "")
           ? { keys: [{ ...publicKey, alg: "RS256", use: "sig" }] }
           : { issuer, jwks_uri: `${issuer}/jwks` },
       ),

@@ -1,11 +1,17 @@
 import { createServer } from "node:http2";
 import { resolve } from "node:path";
+import { create } from "@bufbuild/protobuf";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
+import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { loadCatalog } from "../../shared/tool-catalog.js";
+import { scopedCollaboration } from "../authorization/context.js";
+import { relatedExecutions } from "../authorization/executions.js";
+import { registerRuntime } from "../authorization/native.js";
 import { oidcIdentity } from "../authorization/oidc.js";
+import { executionRuntime } from "../authorization/runtime.js";
 import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { roleCommands } from "../console/roles.js";
@@ -57,6 +63,7 @@ const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log)
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const access = toolBindings(kubeConfig, config.namespace);
+const execution = await executionRuntime(clients, config.namespace, access, identity);
 const operations = governanceConfig();
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
@@ -96,6 +103,8 @@ function services(
       replaceTemplate: replace,
       pack,
       platformTools: bind,
+      executions: execution.registry,
+      authorizeTools: execution.authorizeTools,
     }),
     management: managementService({
       clients: native,
@@ -118,6 +127,15 @@ const evaluation = await platformEvaluation({
   userId: config.userId,
   mcpUrl: gateway.mcpUrl,
   bind: identities.bind,
+  bindExecution: (session) =>
+    execution.registry.bind(
+      session,
+      create(ExecutionIdentitySchema, {
+        subject: `service:evaluation:${session.agent?.namespace}`,
+        write: false,
+        credential: { case: "service", value: true },
+      }),
+    ),
   services: (draft) =>
     services(draft.clients(clients), draft.store, draft.replace, async (_role, tools) => tools),
 });
@@ -136,6 +154,7 @@ await registerConsole(app, {
     process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
     identity,
     process.env.AGENTOS_ORIGIN ?? "",
+    execution.registry.remember,
   ),
   ...services(activeClients),
   ...evaluation.routes,
@@ -167,28 +186,92 @@ await registerTeamSessions(
             process.env.AGENTOS_COLLABORATION_TOKEN ?? knowledge.token,
             config.userId,
           ),
+          async (session, cancel, contexts) => {
+            const principal = create(ExecutionIdentitySchema, {
+              subject: `service:automation:${environment}`,
+              write: true,
+              credential: { case: "service", value: true },
+            });
+            await execution.registry.bind(session, principal);
+            if (cancel) {
+              await relatedExecutions(
+                execution.registry,
+                clients.sessions,
+                session,
+                contexts ?? [],
+                true,
+              );
+              await execution.registry.revoke(session, principal);
+            }
+          },
         ),
       };
     }
-    return headers["x-agentos-workspace"] && headers["x-agentos-workspace"] !== config.namespace
+    const scope: { scopes: string[]; handler?: ReturnType<typeof sessionTools> } = await (headers[
+      "x-agentos-workspace"
+    ] && headers["x-agentos-workspace"] !== config.namespace
       ? evaluation.machine(headers, role)
       : role === "platform"
         ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
-        : identities.authorize(role, clients).then((scopes) => ({ scopes }));
+        : identities.authorize(role, clients).then((scopes) => ({ scopes })));
+    const parent = await execution.actor(headers);
+    await execution.registry.resolve(parent);
+    return {
+      ...scope,
+      handler: scopedCollaboration(
+        scope.handler ??
+          sessionTools(
+            activeClients,
+            config.namespace,
+            access,
+            knowledgeService(activeClients, knowledge),
+          ),
+        parent,
+        execution.registry,
+      ),
+    };
   },
 );
-const stopContinuations = startContinuations(sync, app.log);
-const stopOperations = approvalCoordinator(sync, operations, app.log);
+const stopContinuations = startContinuations(sync, app.log, async (contextId, contexts) => {
+  const { session: parent } = await clients.sessions.getSession({ sessionId: contextId });
+  if (!parent) throw new Error("Execution session is unavailable");
+  await relatedExecutions(execution.registry, clients.sessions, parent, contexts);
+});
+const stopOperations = approvalCoordinator(sync, operations, app.log, async (contextId, tools) => {
+  const { session } = await clients.sessions.getSession(
+    { sessionId: contextId },
+    { timeoutMs: 5_000 },
+  );
+  if (!session) throw new Error("Execution session is unavailable");
+  await execution.authorizeTools(session, tools);
+});
 const processor = createServer(
   connectNodeAdapter({
-    routes: (router) => router.service(ExtMcp, collaborationGuardrails(evaluation.workspaces)),
+    routes: (router) => {
+      const collaboration = collaborationGuardrails(evaluation.workspaces, execution);
+      router.service(ExtMcp, {
+        checkRequest: (request, context) =>
+          request.metadataContext?.execution === true
+            ? execution.guardrails.checkRequest(request, context)
+            : collaboration.checkRequest(request, context),
+        checkResponse: (request, context) =>
+          request.metadataContext?.execution === true
+            ? execution.guardrails.checkResponse(request, context)
+            : collaboration.checkResponse(request, context),
+      });
+    },
   }),
+);
+const runtimeProcessor = createServer(
+  connectNodeAdapter({ routes: (router) => registerRuntime(router, execution, config, clients) }),
 );
 app.addHook("onClose", async () => {
   stopContinuations();
   stopOperations();
   sync.close();
   await new Promise<void>((resolve) => processor.close(() => resolve()));
+  await new Promise<void>((resolve) => runtimeProcessor.close(() => resolve()));
+  await execution.close();
 });
 sync.start();
 // Engineer bindings follow the access policy, including after upgrades.
@@ -207,3 +290,4 @@ align();
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => void app.close());
 await app.listen(listenConfig());
 processor.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), listenConfig().host);
+runtimeProcessor.listen(Number(process.env.AGENTOS_RUNTIME_PORT ?? "9091"), listenConfig().host);

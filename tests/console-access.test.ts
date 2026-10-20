@@ -76,18 +76,18 @@ it("rejects anonymous, forged and wrong-audience identities", async () => {
     });
 });
 
-it("allows every authenticated user to read and denies writes to readers", async () => {
+it("lets readers start executions while denying configuration writes and forged group headers", async () => {
   const value = await headers();
   value.set("x-auth-request-groups", "writer");
   expect((await client.getAccessProfile({}, { headers: value })).profile).toMatchObject({
     workspace: "workspace",
     subject: `${issuer}#user-42`,
-    operate: false,
+    operate: true,
     manage: false,
   });
-  await expect(client.sendMessage({}, { headers: value })).rejects.toMatchObject({ code: 7 });
+  await client.sendMessage({}, { headers: value });
   await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
-  expect(send).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalled();
   expect(update).not.toHaveBeenCalled();
 });
 

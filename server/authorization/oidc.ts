@@ -1,6 +1,8 @@
+import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { createRemoteJWKSet, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { discovery } from "openid-client";
+import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 
 export interface OIDCIdentityConfig {
   issuer: string;
@@ -25,11 +27,11 @@ export function jwtIdentity(config: OIDCIdentityConfig, keys: JWTVerifyGetKey) {
       });
       if (typeof payload.sub !== "string" || !payload.sub.trim())
         throw new Error("Missing subject");
-      return {
+      return create(ExecutionIdentitySchema, {
         subject: `${config.issuer}#${payload.sub}`,
         write: Array.isArray(payload.roles) && payload.roles.includes(config.writerRole),
-        token,
-      };
+        credential: { case: "accessToken", value: token },
+      });
     } catch {
       throw new ConnectError("Authentication is invalid or expired", Code.Unauthenticated);
     }

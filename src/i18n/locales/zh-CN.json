@@ -1,6 +1,7 @@
 {
   "access": {
-    "readOnly": "只读访问，可查看会话与任务。"
+    "readOnly": "当前会话只读，可新建对话发起查询。",
+    "readOnlyTools": "可让 Agent 查询和分析，写操作需要相应权限。"
   },
   "navigation": {
     "home": "AgentOS 工作台首页",
@@ -82,7 +83,8 @@
     "operationsApproved": "操作已批准",
     "operationsRejected": "操作已拒绝",
     "approve": "批准并继续",
-    "externalDecision": "此操作由外部审批服务处理"
+    "externalDecision": "此操作由外部审批服务处理",
+    "executionDenied": "执行权限不足，无法批准此操作。"
   },
   "task": {
     "prompt": "任务内容",
@@ -172,7 +174,8 @@
     "search": "搜索聊天",
     "viewTask": "查看任务：{{title}}",
     "scrollLatest": "回到最新消息",
-    "agent": "对话 Agent"
+    "agent": "对话 Agent",
+    "executionDenied": "当前身份无权继续此任务，请新建对话。"
   },
   "pagination": {
     "previous": "上一页",

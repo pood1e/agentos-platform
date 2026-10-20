@@ -8,6 +8,18 @@ environment_connectors:
       - host: kubernetes-mcp.mcp.svc.cluster.local
         port: 8000
         auth: {secretRef: {name: backend-<identity>, key: kubernetes}}
+        userAuth:
+          oauthTokenExchange:
+            url: https://identity.example.test/realms/<environment>/protocol/openid-connect/token
+            grantType: TokenExchange
+            audiences: [<environment>-kubernetes]
+            subjectToken:
+              source: {header: {name: x-agentos-subject-token, prefix: 'Bearer '}}
+              tokenType: AccessToken
+            clientAuth:
+              clientId: agentos-obo
+              method: ClientSecretBasic
+              secretRef: {name: agentos-obo, key: client-secret}
   tickets:
     title: Tickets
     targets:

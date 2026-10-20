@@ -38,6 +38,7 @@ interface PlatformEvaluation {
   mcpUrl: string;
   bind: ReturnType<typeof machineIdentities>["bind"];
   services: StagingDependencies["services"];
+  bindExecution?: import("./execution.js").ExecutionDependencies["bindExecution"];
 }
 
 /** One API owns editing, native evaluation Jobs, publication and recovery. */
@@ -128,6 +129,7 @@ export async function platformEvaluation(options: PlatformEvaluation) {
       store,
       jobs,
       sandboxes,
+      bindExecution: options.bindExecution,
     }),
     token,
   );

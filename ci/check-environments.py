@@ -33,6 +33,7 @@ for environment in config['environments']:
     assert set(keys) == {item['name'] for item in identities}, f'{name}: gateway keys'
     backends = {doc['metadata']['name']: doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'AgentgatewayBackend'}
     expected = {f'{project}-{item["name"]}' for item in identities for project in toolsets if project in item['services']}
+    expected |= {f'kubernetes-{item["name"]}-user' for item in identities if 'kubernetes' in item['services']}
     assert set(backends) == expected, f'{name}: backends follow identities'
     for identity in identities:
         for project, access in identity['services'].items():
@@ -40,6 +41,14 @@ for environment in config['environments']:
             allowed = sorted(tool for tier in tiers for tool in toolsets[project].get(tier, []))
             expression = backends[f'{project}-{identity["name"]}']['spec']['policies']['mcp']['authorization']['policy']['matchExpressions'][0]
             assert sorted(json.loads(expression.removeprefix('mcp.tool.name in '))) == allowed, f'{name}: {project} tools for {identity["name"]}'
+            if project == 'kubernetes':
+                delegated = backends[f'{project}-{identity["name"]}-user']['spec']
+                assert delegated['policies']['mcp']['authorization']['policy']['matchExpressions'][0] == expression
+                exchange = delegated['mcp']['targets'][0]['static']['policies']['auth']['oauthTokenExchange']
+                assert exchange['audiences'] == [f'{name}-kubernetes']
+                assert exchange['subjectToken']['source']['header']['name'] == 'x-agentos-subject-token'
+    user_routes = [doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'HTTPRoute' and doc['metadata']['name'].endswith('-user')]
+    assert user_routes and all(route['spec']['rules'][0]['matches'][0]['headers'][1]['value'] == 'user' for route in user_routes)
     bindings = yaml.safe_load((out / f'{name}-initialize-tools.yaml').read_text())
     for item in bindings:
         binding = item['mcp']

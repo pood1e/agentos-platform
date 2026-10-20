@@ -30,7 +30,7 @@ flowchart LR
 
 
 `environment_connectors` 按服务描述环境网关的后端目标，`auth` 为 agentgateway 原生后端鉴权，`<identity>` 在渲染时替换为身份名；
-`access` 限定目标只对指定访问级别生效：
+`access` 限定目标只对指定访问级别生效。可选 `userAuth` 使用相同的原生 BackendAuth 结构声明用户委派，`<environment>` 替换为环境名；配置后按已授权的执行类型分别路由，凭证交换失败直接拒绝。接线与生命周期见[执行授权](execution-authorization.md)。
 
 ```yaml
 environment_connectors:

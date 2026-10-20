@@ -16,7 +16,10 @@ import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js"
 import { ingest } from "../server/read-model/entry.js";
 import { environment, silent, until } from "./harness.js";
 
-async function setup(provider: Partial<ServiceImpl<typeof ApprovalService>>) {
+async function setup(
+  provider: Partial<ServiceImpl<typeof ApprovalService>>,
+  authorize?: Parameters<typeof approvalCoordinator>[3],
+) {
   const server = createServer(
     connectNodeAdapter({ routes: (router) => router.service(ApprovalService, provider) }),
   );
@@ -63,7 +66,7 @@ async function setup(provider: Partial<ServiceImpl<typeof ApprovalService>>) {
       { environment: { name: "publishing" }, approvalUrl: `http://127.0.0.1:${address.port}` },
     ],
   });
-  const stop = approvalCoordinator(env.sync, config, silent);
+  const stop = approvalCoordinator(env.sync, config, silent, authorize);
   return {
     ...env,
     task,
@@ -154,6 +157,64 @@ it("does not resume a task canceled while its external authorization is being pr
     expect(env.fake.received).toHaveLength(0);
   } finally {
     release();
+    await env.close();
+  }
+});
+
+it("rejects an unauthorized write before contacting the external approval service", async () => {
+  let external = 0;
+  const env = await setup(
+    {
+      getApproval: () => {
+        external++;
+        return {};
+      },
+      reviewApproval: () => {
+        external++;
+        return {};
+      },
+    },
+    async () => {
+      throw new ConnectError("Read-only execution", Code.PermissionDenied);
+    },
+  );
+  try {
+    await until(() => env.fake.received.length > 0);
+    expect(external).toBe(0);
+    expect(hitlPayload(env.fake.received[0])).toMatchObject({
+      type: "tool_approval_response",
+      value: { approvals: [{ approved: false }] },
+    });
+  } finally {
+    await env.close();
+  }
+});
+
+it("rechecks execution permissions after an external approval and before preparation", async () => {
+  let checks = 0,
+    preparations = 0;
+  const env = await setup(
+    {
+      getApproval: () => ({
+        approval: create(ApprovalSchema, { id: "review", state: ActivityState.SUCCEEDED }),
+      }),
+      prepareApproval: () => {
+        preparations++;
+        return {};
+      },
+    },
+    async () => {
+      if (++checks > 1) throw new ConnectError("Revoked", Code.PermissionDenied);
+    },
+  );
+  try {
+    await until(() => env.fake.received.length > 0);
+    expect(checks).toBeGreaterThanOrEqual(2);
+    expect(preparations).toBe(0);
+    expect(hitlPayload(env.fake.received[0])).toMatchObject({
+      value: { approvals: [{ approved: false }] },
+    });
+  } finally {
     await env.close();
   }
 });

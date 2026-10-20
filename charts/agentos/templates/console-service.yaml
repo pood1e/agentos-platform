@@ -15,3 +15,4 @@ spec:
     - {name: identity, port: 4180, targetPort: identity}
     {{- end }}
     - {name: guardrails, port: 9090, targetPort: guardrails}
+    - {name: runtime, port: 9091, targetPort: runtime}
