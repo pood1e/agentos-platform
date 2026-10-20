@@ -108,12 +108,13 @@
 +const actorTokenHeader = apia2a.ActorTokenHeader
 --- /dev/null
 +++ b/go/core/internal/translator/adkconfig/workload_identity_test.go
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +package adkconfig
 +
 +import (
-+	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
 +	"testing"
++
++	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
 +)
 +
 +func TestMCPRequestsHostActorCredential(t *testing.T) {
@@ -127,12 +128,13 @@
 +}
 --- /dev/null
 +++ b/go/core/internal/translator/claude/workload_identity_test.go
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +package claude
 +
 +import (
-+	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
 +	"testing"
++
++	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
 +)
 +
 +func TestMCPRequestsHostActorCredential(t *testing.T) {
@@ -146,12 +148,13 @@
 +}
 --- /dev/null
 +++ b/go/core/internal/translator/codex/workload_identity_test.go
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,17 @@
 +package codex
 +
 +import (
-+	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
 +	"testing"
++
++	apia2a "github.com/kagent-dev/kagent/go/api/a2a"
 +)
 +
 +func TestMCPRequestsHostActorCredential(t *testing.T) {
