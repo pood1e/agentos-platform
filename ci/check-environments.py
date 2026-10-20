@@ -43,6 +43,8 @@ for environment in config['environments']:
             assert sorted(json.loads(expression.removeprefix('mcp.tool.name in '))) == allowed, f'{name}: {project} tools for {identity["name"]}'
             if project == 'kubernetes' and identity['name'] != 'catalog':
                 delegated = backends[f'{project}-{identity["name"]}-user']['spec']
+                assert delegated['mcp']['sessionRouting'] == 'Stateless'
+                assert backends[f'{project}-{identity["name"]}']['spec']['mcp']['sessionRouting'] == 'Stateless'
                 assert delegated['policies']['mcp']['authorization']['policy']['matchExpressions'][0] == expression
                 exchange = delegated['mcp']['targets'][0]['static']['policies']['auth']['oauthTokenExchange']
                 assert exchange['audiences'] == [f'{name}-kubernetes']
@@ -61,6 +63,10 @@ for environment in config['environments']:
     assert [item['mcp']['server']['name'] for item in pruned] == ['team-sessions'], f'{name}: retired bindings remain'
     routes = [doc for doc in load(f'{name}-platform-gateway.yaml') if doc['kind'] == 'HTTPRoute' and 'headers' in doc['spec']['rules'][0]['matches'][0]]
     assert all(route['spec']['rules'][0]['matches'][0]['headers'][0]['name'] == 'x-agentos-engineer' for route in routes)
+    for route in routes:
+        headers = route['spec']['rules'][0]['filters'][0]['requestHeaderModifier']
+        assert headers['set'] == [{'name': 'x-agentos-execution-kind', 'value': 'service'}]
+        assert headers['remove'] == ['x-agentos-subject-token']
 
 connections = json.loads(load('platform-governance.yaml')[0]['stringData']['connections.json'])['environments']
 assert [(item['environment']['name'], item['environment']['governance']) for item in connections] == [

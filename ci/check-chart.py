@@ -190,6 +190,9 @@ original = [
     {'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'other'}, 'spec': {'ports': [{'port': 8080}]}},
     {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'kagent-controller'}, 'spec': {'template': {'spec': {'containers': [{'name': 'controller', 'image': 'upstream'}, {'name': 'sidecar', 'image': 'sidecar'}]}}}},
     {'apiVersion': 'api.kagent.dev/v1alpha3', 'kind': 'RemoteMCPServer', 'metadata': {'name': 'kagent-api'}, 'spec': {'url': 'http://kagent-controller:8083/mcp', 'protocol': 'STREAMABLE_HTTP'}},
+    {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'kagent-ui'}},
+    {'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'kagent-ui'}},
+    {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'kagent-ui-config'}},
 ]
 rendered = subprocess.check_output([sys.executable, 'deploy/gateway/kagent-post-renderer.py'], input=yaml.safe_dump_all(original) + '\n---\n', text=True,
                                    env={**os.environ, 'AGENTOS_KAGENT_CONTROLLER_IMAGE': pinned('kagent_controller_image'), 'AGENTOS_KAGENT_RUNTIME_URL': 'http://agentos-console.agentos.svc:9091'})

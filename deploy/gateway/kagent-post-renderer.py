@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pin the controller and omit its duplicate direct MCP registration."""
+"""Pin the controller and expose management through the platform console."""
 import os
 import sys
 
@@ -7,7 +7,7 @@ import yaml
 
 resources = [
     resource for resource in yaml.safe_load_all(sys.stdin)
-    if resource and not (
+    if resource and not resource['metadata']['name'].startswith('kagent-ui') and not (
         resource.get('kind') == 'RemoteMCPServer'
         and resource['metadata']['name'] == 'kagent-api'
     )

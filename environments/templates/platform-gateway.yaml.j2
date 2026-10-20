@@ -82,6 +82,11 @@ spec:
     - matches:
         - path: {type: PathPrefix, value: {{ route_path }}}
           headers: [{name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}]
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set: [{name: x-agentos-execution-kind, value: service}]
+            remove: [x-agentos-subject-token]
       backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ profile }}}]
 {% endfor %}
 {% endfor %}
