@@ -44,6 +44,7 @@ identity:
   mode: none
   issuer: ''
   clientId: ''
+  audience: ''
   writerRole: ''
   secretRef: agentos-identity
   proxy:

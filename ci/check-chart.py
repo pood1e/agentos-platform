@@ -152,7 +152,7 @@ for name, source, overrides, presets, config in [
     assert env['AGENTOS_GATEWAY_URL']['value'].startswith('http://agentos-gateway.')
     assert env['AGENTOS_GATEWAY_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'api-key'
     assert env['AGENTOS_MCP_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'token'
-    assert not {'AGENTOS_AUTH_CONFIG', 'AGENTOS_OIDC_AUDIENCE'} & env.keys()
+    assert 'AGENTOS_AUTH_CONFIG' not in env
     assert not any(doc['kind'] == 'Middleware' for doc in docs)
     assert not any('oauth2-proxy' in doc['metadata']['name'] for doc in docs)
     console_ingress = next(doc for doc in docs if doc['kind'] == 'Ingress' and doc['metadata']['name'].endswith('-console'))

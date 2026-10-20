@@ -35,7 +35,7 @@ it("supports open access without an OIDC provider", async () => {
 
 beforeAll(async () => {
   const identity = jwtIdentity(
-    { issuer, audience: "console", writerRole: "writer", origin },
+    { issuer, audience: "platform", writerRole: "writer", origin },
     createLocalJWKSet({ keys: [await exportJWK(keys.publicKey)] }),
   );
   client = createClient(
@@ -52,7 +52,7 @@ beforeAll(async () => {
   );
 });
 
-async function headers(roles: string[] = [], audience = "console", signingKey = keys.privateKey) {
+async function headers(roles: string[] = [], audience = "platform", signingKey = keys.privateKey) {
   const token = await new SignJWT({ roles })
     .setProtectedHeader({ alg: "RS256" })
     .setIssuer(issuer)
@@ -67,8 +67,9 @@ async function headers(roles: string[] = [], audience = "console", signingKey = 
 it("rejects anonymous, forged and wrong-audience identities", async () => {
   for (const value of [
     new Headers(),
+    await headers(["writer"], "console"),
     await headers([], "other"),
-    await headers([], "console", other.privateKey),
+    await headers([], "platform", other.privateKey),
   ])
     await expect(client.getAccessProfile({}, { headers: value })).rejects.toMatchObject({
       code: 16,

@@ -59,6 +59,7 @@ spec:
             {{- if eq .Values.identity.mode "oidc" }}
             - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" .Values.identity.issuer | quote }}}
             - {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" .Values.identity.clientId | quote }}}
+            - {name: AGENTOS_OIDC_AUDIENCE, value: {{ required "identity.audience is required" .Values.identity.audience | quote }}}
             - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" .Values.identity.writerRole | quote }}}
             {{- end }}
             - {name: AGENTOS_ORIGIN, value: {{ printf "https://%s" .Values.ingress.host | quote }}}

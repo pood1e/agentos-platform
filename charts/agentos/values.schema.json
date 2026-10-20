@@ -491,7 +491,7 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["issuer", "clientId", "writerRole", "secretRef", "proxy", "mode"],
+      "required": ["issuer", "clientId", "writerRole", "secretRef", "proxy", "mode", "audience"],
       "properties": {
         "issuer": {
           "type": "string"
@@ -528,6 +528,9 @@
         },
         "mode": {
           "enum": ["none", "oidc"]
+        },
+        "audience": {
+          "type": "string"
         }
       },
       "allOf": [
@@ -548,6 +551,9 @@
                 "minLength": 1
               },
               "writerRole": {
+                "minLength": 1
+              },
+              "audience": {
                 "minLength": 1
               }
             }

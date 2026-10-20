@@ -75,13 +75,14 @@ identity:
   mode: oidc
   issuer: https://identity.example.com/realms/operations
   clientId: agentos-console
+  audience: agentos-platform
   writerRole: operations-writer
   secretRef: agentos-identity
 ```
 
 身份提供方由部署方提供，平台复用标准 OIDC Discovery、Authorization Code 与 PKCE S256。
 OAuth 应用回调为 `https://<ingress.host>/auth/callback`。引用的 Secret 包含 `client-secret` 与 `cookie-secret`，后者为 Base64 编码的 32 字节随机值。
-方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户只读。
+方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户只读。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
 RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作，未标记的方法按写操作授权。开放模式使用共享主体，不提供用户 OBO 身份。
 
 ```sh

@@ -39,7 +39,7 @@ const identity =
   authentication === "oidc"
     ? await oidcIdentity({
         issuer: process.env.AGENTOS_OIDC_ISSUER ?? "",
-        audience: process.env.AGENTOS_OIDC_CLIENT_ID ?? "",
+        audience: process.env.AGENTOS_OIDC_AUDIENCE ?? "",
         writerRole: process.env.AGENTOS_OIDC_WRITER_ROLE ?? "",
         origin: process.env.AGENTOS_ORIGIN ?? "",
       })

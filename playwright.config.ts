@@ -45,6 +45,7 @@ export default defineConfig({
             AGENTOS_AUTH_MODE: "oidc",
             AGENTOS_OIDC_ISSUER: issuer,
             AGENTOS_OIDC_CLIENT_ID: "console",
+            AGENTOS_OIDC_AUDIENCE: "console",
             AGENTOS_OIDC_WRITER_ROLE: "writer",
             AGENTOS_ORIGIN: "http://127.0.0.1:8090",
             NODE_EXTRA_CA_CERTS: resolve("tests/fixtures/identity/tls.crt"),
