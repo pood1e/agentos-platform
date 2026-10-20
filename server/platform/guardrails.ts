@@ -68,6 +68,7 @@ export function collaborationGuardrails(
           const params = object(JSON.parse(new TextDecoder().decode(request.mcpRequest)));
           if (params.name !== "invoke_session" && params.name !== "list_sessions")
             throw new Error("MCP tool is outside collaboration scope");
+          if (execution && parent) await execution.authorizeTools(parent, [params.name]);
           if (params.name === "invoke_session") {
             const id = text(object(params.arguments).session_id);
             if (!id) throw new Error("Native session is required");
