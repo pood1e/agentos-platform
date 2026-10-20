@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { parseCatalog } from "../server/operations/catalog.js";
+import { parseCatalog } from "../shared/tool-catalog.js";
 
 it("requires write approval for asset administration independently of device operations", () => {
   const catalog = parseCatalog(

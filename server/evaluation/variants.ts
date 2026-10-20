@@ -6,8 +6,8 @@ import {
   platformProfile,
   platformServices,
 } from "../../shared/platform-tools.js";
+import { serverTargets } from "../governance/bindings.js";
 import { meta } from "../management/native.js";
-import { serverTargets } from "../operations/bindings.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { type Variant, variantName } from "./names.js";
 import { subjectProbe } from "./subject.js";

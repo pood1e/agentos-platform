@@ -30,8 +30,7 @@ for environment in config['environments']:
     name, approval = environment['name'], environment['governance'] == 'approval'
     identities = [item for item in config['identities'] if name in item.get('environments', [name])]
     keys = next(doc for doc in load(f'{name}-gateway.yaml') if doc['kind'] == 'ConfigMap')['data']
-    assert set(keys) == {item['name'] for item in identities} | ({'change-control'} if approval else set()), f'{name}: gateway keys'
-    assert (out / f'{name}-change-control.yaml').exists() == approval, f'{name}: change control follows governance'
+    assert set(keys) == {item['name'] for item in identities}, f'{name}: gateway keys'
     backends = {doc['metadata']['name']: doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'AgentgatewayBackend'}
     expected = {f'{project}-{item["name"]}' for item in identities for project in toolsets if project in item['services']}
     assert set(backends) == expected, f'{name}: backends follow identities'
@@ -54,20 +53,9 @@ for environment in config['environments']:
     routes = [doc for doc in load(f'{name}-platform-gateway.yaml') if doc['kind'] == 'HTTPRoute' and 'headers' in doc['spec']['rules'][0]['matches'][0]]
     assert all(route['spec']['rules'][0]['matches'][0]['headers'][0]['name'] == 'x-agentos-engineer' for route in routes)
 
-control = load('env-approval-change-control.yaml')
-policies = [doc for doc in control if doc['kind'] == 'AgentgatewayPolicy']
-assert {policy['spec']['targetSelectors'][0]['matchLabels']['agentos.dev/project'] for policy in policies} == set(toolsets)
-for policy in policies:
-    labels = policy['spec']['targetSelectors'][0]['matchLabels']
-    assert labels['agentos.dev/component'] == 'environment-tool'
-    processor = policy['spec']['backend']['mcp']['guardrails']['processors'][0]['remote']
-    assert processor['failureMode'] == 'FailClosed'
-    assert processor['metadata']['project'] == repr(labels['agentos.dev/project'])
-secret = next(doc for doc in control if doc['kind'] == 'Secret')['stringData']
-assert json.loads(secret['environment.json']) == {'name': 'env-approval', 'governance': 'GOVERNANCE_APPROVAL', 'approvalUrl': 'https://tickets.example.test'}
-assert yaml.safe_load(secret['toolsets.yaml']) == toolsets
-connections = json.loads(load('platform-operations.yaml')[0]['stringData']['connections.json'])['environments']
-assert [(item['environment']['name'], item['environment']['governance'], item.get('controlUrl')) for item in connections] == [
-    ('env-approval', 'GOVERNANCE_APPROVAL', 'http://192.0.2.21:31000'), ('env-direct', 'GOVERNANCE_DIRECT', None)]
-assert connections[0]['authorization'] == 'Bearer key-change-control' and connections[0]['environment']['links']
+connections = json.loads(load('platform-governance.yaml')[0]['stringData']['connections.json'])['environments']
+assert [(item['environment']['name'], item['environment']['governance']) for item in connections] == [
+    ('env-approval', 'GOVERNANCE_APPROVAL'), ('env-direct', 'GOVERNANCE_DIRECT')]
+assert all('approvalUrl' not in item and 'authorization' not in item for item in connections)
+assert connections[0]['environment']['links']
 print('Environment validation passed')

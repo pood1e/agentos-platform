@@ -3,8 +3,9 @@ syntax = "proto3";
 package agentos.automation.v1;
 
 import "google/protobuf/any.proto";
+import "kagent/api/v1alpha1/common.proto";
 
-// Environment-side worker that turns source CloudEvents into coordinator cases.
+// Environment-side worker that turns source CloudEvents into Agent executions.
 message AutomationConfig {
   string environment = 1;
   string workspace = 2;
@@ -31,15 +32,16 @@ message AutomationConfig {
   CaseTrigger trigger = 20;
 }
 
-// Solution-pack definition of how source events open cases and brief the coordinator.
+// Solution-pack definition of how source events open cases and brief the target Agent.
 message CaseTrigger {
   // CloudEvents type namespace of published facts, such as ops for ops.cases.updated.
   string event_namespace = 1;
   CaseSource source = 2;
-  // Coordinator instructions; ${summary} is replaced by the source summary.
+  // Agent instructions; ${summary} is replaced by the source summary.
   string brief = 3;
   uint32 timeout_seconds = 4;
   uint32 cooldown_seconds = 5;
+  .kagent.api.v1alpha1.ResourceReference agent = 6;
 }
 
 // Members of the source event data that identify and describe a case.

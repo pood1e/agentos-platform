@@ -3,16 +3,16 @@ syntax = "proto3";
 package agentos.management.v1;
 
 import "agentos/console/v1/role.proto";
+import "agentos/governance/v1/governance.proto";
 import "buf/validate/validate.proto";
-import "agentos/governance/v1/change.proto";
 import "google/protobuf/struct.proto";
+import "kagent/api/v1alpha1/agent_templates.proto";
+import "kagent/api/v1alpha1/agents.proto";
 import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1alpha1/harnesses.proto";
 import "kagent/api/v1alpha1/memory.proto";
 import "kagent/api/v1alpha1/models.proto";
 import "kagent/api/v1alpha1/tools.proto";
-import "kagent/api/v1alpha1/agents.proto";
-import "kagent/api/v1alpha1/agent_templates.proto";
-import "kagent/api/v1alpha1/harnesses.proto";
 
 service ManagementService {
   rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse);
@@ -219,4 +219,6 @@ message ClearKnowledgeRequest {
 message ClearKnowledgeResponse {}
 
 message ListEnvironmentsRequest {}
-message ListEnvironmentsResponse { repeated agentos.governance.v1.Environment environments = 1; }
+message ListEnvironmentsResponse {
+  repeated agentos.governance.v1.Environment environments = 1;
+}

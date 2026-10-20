@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
-import { client, decideWorkOrder, resetKagent, startOperation, workOrders } from "./kagent.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
+import { client, decideApproval, resetKagent, startOperation } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
@@ -8,7 +8,6 @@ test("completes chat delegation, approval, worker continuation and background kn
   page,
   request,
 }) => {
-  await workOrders(page);
   await startOperation(page);
   await page.getByTestId("chat-task").click();
   await expect(page).toHaveURL(/\/tasks\/[^/]+$/);
@@ -17,8 +16,8 @@ test("completes chat delegation, approval, worker continuation and background kn
   await page.getByRole("button", { name: "等待审批", exact: true }).click();
   const drawer = page.getByTestId("agent-drawer");
   await expect(drawer.getByTestId("approval-arguments")).toContainText("approval-smoke");
-  await expect(drawer.getByRole("button", { name: "批准并执行", exact: true })).toHaveCount(0);
-  await decideWorkOrder(page, request, true);
+  await expect(drawer.getByRole("button", { name: "批准并继续", exact: true })).toBeVisible();
+  await decideApproval(page, request, true);
   await expect
     .poll(async () => (await client.listTasks({ query: id })).tasks[0]?.state, { timeout: 20_000 })
     .toBe(ActivityState.SUCCEEDED);

@@ -1,6 +1,6 @@
-import { ActivityState } from "../../../../gen/agentos/console/v1/state_pb.js";
 import type { Interaction, TaskDetail } from "../../../../gen/agentos/console/v1/task_pb.js";
-import type { Change } from "../../../../gen/agentos/governance/v1/change_pb.js";
+import { ActivityState } from "../../../../gen/agentos/execution/v1/state_pb.js";
+import type { Approval } from "../../../../gen/agentos/governance/v1/governance_pb.js";
 import { millis } from "../../../lib/format.js";
 import { active, awaiting } from "../../status/activity.js";
 import { approvalActivities, currentInteraction } from "./approval-activities.js";
@@ -20,7 +20,7 @@ export interface FlowActivity {
   rank: number;
   state: ActivityState;
   interactions: Interaction[];
-  ticket?: Change;
+  record?: Approval;
 }
 
 export interface FlowConnection {
@@ -132,7 +132,7 @@ export function collaborationFlow(detail: TaskDetail) {
       ({ link }) => activities.get(instanceNodeId(link.targetContextId)) ?? [],
     );
     const rank = Math.max(owner.rank, ...authorities.map((item) => item.rank)) + 1;
-    for (const { id, ticket } of approvalActivities(interaction)) {
+    for (const { id, record } of approvalActivities(interaction)) {
       const known = activities.get(id);
       const approvals = [...(known?.interactions ?? []), interaction];
       const current = currentInteraction(approvals) ?? interaction;
@@ -145,7 +145,7 @@ export function collaborationFlow(detail: TaskDetail) {
         taskIds: [...new Set(approvals.map((item) => item.taskId))],
         kind: "approval",
         interactions: approvals,
-        ticket,
+        record,
         root: false,
         rank: Math.min(known?.rank ?? rank, rank),
         state: current.state,

@@ -3,10 +3,8 @@ import { useMutation } from "@connectrpc/connect-query";
 import { useState } from "react";
 import { Role } from "../../../gen/a2a_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
-import {
-  ChatMessageSchema,
-  type ConversationKind,
-} from "../../../gen/agentos/console/v1/conversation_pb.js";
+import { ChatMessageSchema } from "../../../gen/agentos/console/v1/conversation_pb.js";
+import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
 import { consoleClient } from "../../lib/console.js";
 import { errorKey } from "../../lib/errors.js";
 import { useWatch } from "../../lib/use-watch.js";
@@ -17,9 +15,13 @@ interface Outgoing {
   contextId: string;
 }
 
-async function* follow(kind: ConversationKind, contextId: string, signal: AbortSignal) {
+async function* follow(
+  agent: Pick<ResourceReference, "namespace" | "name">,
+  contextId: string,
+  signal: AbortSignal,
+) {
   for await (const { conversation } of consoleClient.watchConversation(
-    { kind, contextId },
+    { agent, contextId },
     { signal },
   ))
     if (conversation) yield conversation;
@@ -27,12 +29,13 @@ async function* follow(kind: ConversationKind, contextId: string, signal: AbortS
 
 /** One conversation with an assistant role: its live state and the message composer. */
 export function useChat(
-  kind: ConversationKind,
+  agent: Pick<ResourceReference, "namespace" | "name">,
   contextId: string,
   onStarted: (contextId: string) => void,
 ) {
-  const { value: conversation, error: watchError } = useWatch(`${kind}:${contextId}`, (signal) =>
-    follow(kind, contextId, signal),
+  const { value: conversation, error: watchError } = useWatch(
+    agent.namespace && agent.name ? `${agent.namespace}/${agent.name}:${contextId}` : undefined,
+    (signal) => follow(agent, contextId, signal),
   );
   const send = useMutation(ConsoleService.method.sendMessage);
   const [outgoing, setOutgoing] = useState<Outgoing>();
@@ -61,7 +64,7 @@ export function useChat(
         : crypto.randomUUID();
     setOutgoing({ id, text, contextId });
     try {
-      const response = await send.mutateAsync({ kind, contextId, messageId: id, text });
+      const response = await send.mutateAsync({ agent, contextId, messageId: id, text });
       // Stays visible until the conversation stream includes it.
       setOutgoing({ id, text, contextId: response.contextId });
       if (response.contextId !== contextId) onStarted(response.contextId);

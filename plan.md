@@ -1,4 +1,4 @@
-# 控制台运维能力改进计划
+# AgentOS 控制台改进计划
 
 ## Context
 
@@ -13,16 +13,16 @@
 | 项 | 决策 |
 | --- | --- |
 | 数据源 | 运行、委派、审批与工具调用只取 kagent 原生 A2A 读模型；模型 span、Token 与成本取 Langfuse，不在平台另建追踪存储 |
-| 审批 | 决定仍在审批系统（Zammad 等）完成；控制台提供待审批入口与工单链接，不提供批准按钮 |
+| 审批 | 默认使用原生工具确认；业务方可通过 ApprovalService 接入外部决定、执行准备与结果回写 |
 | 取消 | 取消操作树中所有未结束的前台任务，复用案例自动化的取消逻辑；已执行的副作用仍需核验 |
 | 不跟进 | 按用户的记忆、多运行时切换、人员与角色管理（控制台已决定开放访问） |
 
-## 现状事实（代码核实）
+## 首批实施前的基线
 
 - `ListTasks` 只有文字 `query`；任务状态由 `treeState` 计算，含 `AWAITING_APPROVAL`。分页游标绑定 `scope` 与 `query`。
 - `TaskRun` 只有 `updated_at`，读模型 `TaskEntry.createdAt` 已有开始时间但未输出。
 - 取消逻辑在 `server/platform/automation.ts` 的 `cancel_case`：遍历 `foreground(tree)`，对未结束任务调用 `a2a.cancelTask`。
-- 审批工单经 `ticketReferences` 按交互补齐（`ListChanges`）；任务页点击状态可打开审批抽屉。
+- 审批记录经 `approvalReferences` 按交互补齐（`ListApprovals`）；任务页点击状态可打开审批抽屉。
 - 测评候选页已有逐例、逐规则的候选/已发布分数与实验链接；缺规则汇总、退化判定、单例错误与 trace 链接。
 - kagent `SessionService` 有 `UpdateSessionName`、`DeleteSession`；fake kagent 未实现 `CancelTask`、`UpdateSessionName`、`DeleteSession`。
 - Collector 保留 `kagent.session.id`、`kagent.task.id`、`gen_ai.conversation.id`，Langfuse 会话映射未核实。
@@ -52,4 +52,11 @@
 
 - **定时任务**：Temporal Schedule 驱动案例自动化，控制台管理计划、启停、手动触发与运行历史。
 - **案例与反馈**：接入案例自动化的 `/feedback`、`/metrics`，提供案例列表、结论反馈与运营指标。
-- **指定成员对话**：需先确定与“入口只委派协调者”治理边界的关系。
+- [x] **指定 Agent 对话**：会话显式选择工作空间 Agent，默认入口由 `entryAgent` 配置。
+
+## 平台边界重构
+
+- [x] 平台仅定义执行、会话、工具确认与可选外部审批契约。
+- [x] AIOps 变更方案、Zammad 审批、计划工具和执行守卫迁入 aiops-mvp。
+- [x] 通用执行不依赖唯一协调者，案例触发显式选择 Agent。
+- [x] 控制台参考 Agno 的能力导航，复用 shadcn/ui、assistant-ui、React Flow 与 vis-timeline。

@@ -21,6 +21,6 @@ test("paginates task history with server cursors and searches the full collectio
   await expect.poll(() => history.getByTestId("history-entry").allTextContents()).toEqual(first);
   await history.getByRole("textbox").fill("巡检第 2 组");
   await expect(history.getByTestId("history-entry")).toHaveCount(1);
-  await page.getByRole("tab", { name: "聊天", exact: true }).click();
+  await page.getByRole("link", { name: "聊天", exact: true }).click();
   await expect(page.getByTestId("chat-history").getByRole("textbox")).toHaveValue("");
 });

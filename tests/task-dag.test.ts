@@ -2,8 +2,8 @@ import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { EngineerSchema } from "../gen/agentos/console/v1/engineer_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind, InteractionSchema } from "../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import {
   collaborationFlow,
   instanceNodeId,

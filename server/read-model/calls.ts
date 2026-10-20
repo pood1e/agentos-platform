@@ -1,12 +1,9 @@
 import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Role, type Task } from "../../gen/a2a_pb.js";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
-import {
-  DelegationKind,
-  type ToolCall,
-  ToolCallSchema,
-} from "../../gen/agentos/console/v1/task_pb.js";
+import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
+import { type ToolCall, ToolCallSchema } from "../../gen/agentos/execution/v1/task_pb.js";
 import { intentKey, text, timeline } from "./decode/messages.js";
 import {
   type DelegationRef,

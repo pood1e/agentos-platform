@@ -1,23 +1,23 @@
 import { type Interaction, InteractionKind } from "../../../../gen/agentos/console/v1/task_pb.js";
-import type { Change } from "../../../../gen/agentos/governance/v1/change_pb.js";
-import { ticketIdentity } from "../../shared/ticket-identity.js";
+import type { Approval } from "../../../../gen/agentos/governance/v1/governance_pb.js";
+import { approvalIdentity } from "../../shared/approval-identity.js";
 import { awaiting } from "../../status/activity.js";
 
-export const ticketNodeId = (change: Change) => {
-  const identity = ticketIdentity(change);
-  return identity ? `ticket:${identity}` : undefined;
+export const approvalNodeId = (change: Approval) => {
+  const identity = approvalIdentity(change);
+  return identity ? `record:${identity}` : undefined;
 };
 
 export function approvalActivities(interaction: Interaction) {
-  const tickets = new Map<string, { id: string; ticket: Change }>();
+  const tickets = new Map<string, { id: string; record: Approval }>();
   if (interaction.kind === InteractionKind.APPROVAL)
-    for (const change of interaction.changes) {
-      const id = ticketNodeId(change);
-      if (id) tickets.set(id, { id, ticket: change });
+    for (const change of interaction.approvals) {
+      const id = approvalNodeId(change);
+      if (id) tickets.set(id, { id, record: change });
     }
   return tickets.size
     ? [...tickets.values()]
-    : [{ id: `interaction:${interaction.id}`, ticket: undefined }];
+    : [{ id: `interaction:${interaction.id}`, record: undefined }];
 }
 
 export const currentInteraction = (interactions: Interaction[]) =>

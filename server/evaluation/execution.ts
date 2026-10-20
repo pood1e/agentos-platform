@@ -9,8 +9,8 @@ import {
   EvaluationVariant,
 } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import { InvokeSessionOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { digest } from "../../shared/digest.js";
 import { text } from "../read-model/decode/messages.js";
-import { digest } from "../shared/change-digest.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { evaluationFailures } from "./gate.js";
 import type { evaluationJobs } from "./jobs.js";

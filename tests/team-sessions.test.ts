@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { knowledgeConfig } from "../server/knowledge/config.js";
 import { knowledgeService } from "../server/knowledge/service.js";
-import { ChangePreparationError } from "../server/operations/preparation.js";
 import { parentTaskKey, resumedTaskKey } from "../server/read-model/decode/messages.js";
 import { startContinuations } from "../server/team-sessions/continuation.js";
 import { sessionTools } from "../server/team-sessions/tools.js";
@@ -9,11 +8,6 @@ import { decidedTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment, silent, testBindings, until } from "./harness.js";
 import { managementEnvironment } from "./management-harness.js";
-
-const invoke = vi.fn(async () => ({ content: [] }));
-const prepare = vi.fn(async () => {
-  throw new Error("Unexpected change preparation");
-});
 
 async function mcp(handler: ReturnType<typeof sessionTools>, method: string, params = {}) {
   const response = await handler.fetch(
@@ -32,42 +26,6 @@ async function mcp(handler: ReturnType<typeof sessionTools>, method: string, par
 }
 
 describe("team sessions", () => {
-  it("returns actionable preparation failures as MCP tool errors", async () => {
-    const { clients, fake } = environment();
-    const handler = sessionTools(
-      clients,
-      "agentos",
-      testBindings(fake),
-      knowledgeService(
-        clients,
-        knowledgeConfig({ namespace: "agentos", userId: "agentos", url: "http://localhost" }),
-      ),
-      invoke,
-      async () => {
-        throw new ChangePreparationError(
-          "Use the actual simulation Agent namespace/name in agentos",
-        );
-      },
-    );
-    const response = await mcp(handler, "tools/call", {
-      name: "prepare_change",
-      arguments: {
-        toolName: "aiops-real-jumpserver_ops_jobs_create",
-        args: { name: "host" },
-        plan: {
-          impact: "Register an inactive host",
-          validation: "Read it back",
-          rollback: "Keep it inactive",
-          simulation: { tenant: "workspace/simulation-engineer", id: "sim-task" },
-        },
-      },
-    });
-    expect(response).toMatchObject({
-      isError: true,
-      content: [{ type: "text", text: expect.stringContaining("actual simulation Agent") }],
-    });
-  });
-
   it("returns a decided child result to the waiting coordinator exactly once", async () => {
     const { fake, sync, index } = environment(decidedTasks());
     await sync.refresh();
@@ -121,8 +79,6 @@ describe("team sessions", () => {
         clients,
         knowledgeConfig({ namespace: "agentos", userId: "agentos", url: "http://localhost" }),
       ),
-      invoke,
-      prepare,
     );
     const listed = await mcp(handler, "tools/call", {
       name: "list_agents",
@@ -161,7 +117,6 @@ describe("team sessions", () => {
     });
     expect(drafted.structuredContent.tools).toEqual([
       { server: "kagent-tool-server", tools: ["k8s_get_resources", "k8s_describe_resource"] },
-      { server: "team-sessions", tools: ["search_knowledge"] },
     ]);
     const denied = await mcp(handler, "tools/call", {
       name: "prepare_role",
@@ -172,21 +127,16 @@ describe("team sessions", () => {
         tools: [{ server: "remediation-tools", tools: ["k8s_apply_manifest"] }],
       },
     });
-    expect(denied).toMatchObject({ isError: true });
+    expect(denied.structuredContent.tools).toEqual([
+      { server: "remediation-tools", tools: ["k8s_apply_manifest"], requireApproval: true },
+    ]);
   });
 
   it("shares curator memory through read-only MCP with a fixed workspace and service identity", async () => {
     const env = await managementEnvironment();
     try {
       const knowledge = knowledgeService(env.clients, env.dependencies.knowledge);
-      const handler = sessionTools(
-        env.clients,
-        "agentos",
-        testBindings(env.fake),
-        knowledge,
-        invoke,
-        prepare,
-      );
+      const handler = sessionTools(env.clients, "agentos", testBindings(env.fake), knowledge);
       const tools = await mcp(handler, "tools/list");
       const search = tools.tools.find((tool: { name: string }) => tool.name === "search_knowledge");
       expect(search.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
@@ -248,14 +198,7 @@ describe("team sessions", () => {
         ...env.dependencies.knowledge,
         token: "invalid-token",
       });
-      const handler = sessionTools(
-        env.clients,
-        "agentos",
-        testBindings(env.fake),
-        knowledge,
-        invoke,
-        prepare,
-      );
+      const handler = sessionTools(env.clients, "agentos", testBindings(env.fake), knowledge);
       const nativeSearch = vi.spyOn(env.clients.memory, "search");
       expect(
         await mcp(handler, "tools/call", {

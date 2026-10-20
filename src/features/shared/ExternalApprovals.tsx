@@ -1,0 +1,60 @@
+import { useQuery } from "@connectrpc/connect-query";
+import { ArrowUpRight, LoaderCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
+import type { Interaction } from "../../../gen/agentos/console/v1/task_pb.js";
+import type { Approval } from "../../../gen/agentos/governance/v1/governance_pb.js";
+import { Failure } from "../management/ResourcePage.js";
+import { labelKey } from "../status/activity.js";
+import { Status } from "../status/Status.js";
+import { approvalIdentity } from "./approval-identity.js";
+import { Markdown } from "./Markdown.js";
+
+export function ExternalApprovals({
+  interaction,
+  record,
+}: {
+  interaction: Interaction;
+  record?: Approval;
+}) {
+  const { t } = useTranslation();
+  const result = useQuery(
+    ConsoleService.method.listApprovals,
+    { taskId: interaction.taskId, requestId: interaction.requestId },
+    { refetchInterval: 2_000 },
+  );
+  const approvals = [
+    ...new Map(
+      (result.data?.approvals ?? interaction.approvals)
+        .filter((item) => !record || approvalIdentity(item) === approvalIdentity(record))
+        .map((item) => [approvalIdentity(item), item]),
+    ).values(),
+  ];
+  return (
+    <div className="space-y-2" data-testid="external-approvals">
+      <Failure error={result.error} />
+      {!approvals.length && !result.error && <LoaderCircle className="size-4 animate-spin" />}
+      {approvals.map((approval) => (
+        <div key={approvalIdentity(approval)} className="space-y-3 rounded-lg border p-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <Status state={approval.state}>{t(labelKey(approval.state))}</Status>
+            {approval.decidedBy && (
+              <span className="text-muted-foreground">{approval.decidedBy}</span>
+            )}
+            {approval.link && (
+              <Button variant="link" size="sm" className="ml-auto h-auto p-0 text-xs" asChild>
+                <a href={approval.link.url} target="_blank" rel="noreferrer">
+                  {approval.link.name}
+                  <ArrowUpRight className="size-3" />
+                </a>
+              </Button>
+            )}
+          </div>
+          {approval.reason && <p>{approval.reason}</p>}
+          {approval.description && <Markdown>{approval.description}</Markdown>}
+        </div>
+      ))}
+    </div>
+  );
+}

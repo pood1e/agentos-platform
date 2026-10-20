@@ -6,7 +6,7 @@ import { Layout, PendingLayout } from "./Layout.js";
 
 const home = () => {
   const contextId = lastConversation();
-  return <Navigate to={contextId ? `/chat/${contextId}` : "/chat"} replace />;
+  return <Navigate to={contextId || "/chat"} replace />;
 };
 
 export const router = createBrowserRouter([

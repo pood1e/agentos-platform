@@ -6,14 +6,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
-import type { Change } from "../../../gen/agentos/governance/v1/change_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { errorKey } from "../../lib/errors.js";
 import { pretty } from "../../lib/format.js";
 import { awaiting } from "../status/activity.js";
 import { Status } from "../status/Status.js";
-import { ChangeOrders } from "./ChangeOrders.js";
+import { ExternalApprovals } from "./ExternalApprovals.js";
 import { Markdown } from "./Markdown.js";
 import { ToolIcon } from "./ToolIcon.js";
 import { useToolText } from "./use-tool-text.js";
@@ -22,12 +22,16 @@ function decisionLabel(interaction: Interaction) {
   const approval = interaction.kind === InteractionKind.APPROVAL;
   if (awaiting(interaction.state)) return approval ? "approval.pending" : "activity.awaitingInput";
   if (!approval) return "approval.answered";
-  return interaction.state === ActivityState.REJECTED
-    ? "approval.operationsRejected"
-    : "approval.operationsApproved";
+  return interaction.state === ActivityState.REJECTED ? "approval.rejected" : "approval.approved";
 }
 
-export function Approval({ interaction, ticket }: { interaction: Interaction; ticket?: Change }) {
+export function Approval({
+  interaction,
+  record,
+}: {
+  interaction: Interaction;
+  record?: ApprovalRecord;
+}) {
   const { t } = useTranslation();
   const toolText = useToolText();
   const [answers, setAnswers] = useState<string[][]>(interaction.questions.map(() => []));
@@ -50,7 +54,7 @@ export function Approval({ interaction, ticket }: { interaction: Interaction; ti
       {interaction.explanation && <Markdown>{interaction.explanation}</Markdown>}
       {approval ? (
         <>
-          {pending && (
+          {pending && interaction.external && (
             <p className="text-xs text-muted-foreground">{t("approval.operationNotice")}</p>
           )}
           {interaction.tools.map((tool) => {
@@ -79,7 +83,7 @@ export function Approval({ interaction, ticket }: { interaction: Interaction; ti
               </div>
             );
           })}
-          <ChangeOrders interaction={interaction} ticket={ticket} />
+          {interaction.external && <ExternalApprovals interaction={interaction} record={record} />}
           {interaction.rejectionReason && (
             <Alert variant="destructive" data-testid="rejection-reason">
               <AlertDescription>{interaction.rejectionReason}</AlertDescription>
@@ -142,6 +146,41 @@ export function Approval({ interaction, ticket }: { interaction: Interaction; ti
       )}
       {pending && (
         <div className="flex flex-wrap gap-2">
+          {approval && !interaction.external && (
+            <>
+              <Button
+                disabled={locked}
+                onClick={() =>
+                  submit({
+                    case: "approval",
+                    value: {
+                      approvals: interaction.tools.map((tool) => ({ id: tool.id, approved: true })),
+                    },
+                  })
+                }
+              >
+                {t("approval.approve")}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={locked}
+                onClick={() =>
+                  submit({
+                    case: "approval",
+                    value: {
+                      approvals: interaction.tools.map((tool) => ({
+                        id: tool.id,
+                        approved: false,
+                        rejectionReason: t("approval.rejected"),
+                      })),
+                    },
+                  })
+                }
+              >
+                {t("approval.reject")}
+              </Button>
+            </>
+          )}
           {!approval && (
             <Button
               disabled={

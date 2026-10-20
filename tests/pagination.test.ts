@@ -2,7 +2,6 @@ import { clone } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { TaskSchema } from "../gen/a2a_pb.js";
-import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
 import { ingest } from "../server/read-model/entry.js";
 import { listConversations } from "../server/read-model/views/conversation.js";
 import { listTasks } from "../server/read-model/views/task.js";
@@ -74,19 +73,27 @@ describe("history cursors", () => {
     await sync.refresh();
     try {
       const request = { query: "", pageSize: 1, pageToken: "" };
-      const first = listConversations(index, ConversationKind.ASSISTANT, request);
+      const first = listConversations(index, { namespace: "agentos", name: "assistant" }, request);
       expect(first.totalSize).toBe(2);
-      const second = listConversations(index, ConversationKind.ASSISTANT, {
-        ...request,
-        pageToken: first.nextPageToken,
-      });
+      const second = listConversations(
+        index,
+        { namespace: "agentos", name: "assistant" },
+        {
+          ...request,
+          pageToken: first.nextPageToken,
+        },
+      );
       expect(second.conversations[0]?.contextId).not.toBe(first.conversations[0]?.contextId);
       expect(second.nextPageToken).toBe("");
       expect(() =>
-        listConversations(index, ConversationKind.ROLE_BUILDER, {
-          ...request,
-          pageToken: first.nextPageToken,
-        }),
+        listConversations(
+          index,
+          { namespace: "agentos", name: "role-builder" },
+          {
+            ...request,
+            pageToken: first.nextPageToken,
+          },
+        ),
       ).toThrow("pagination.invalidPage");
     } finally {
       sync.close();

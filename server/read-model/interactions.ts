@@ -1,12 +1,12 @@
 import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { type Message, type Task, TaskState } from "../../gen/a2a_pb.js";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
 import {
   type Interaction,
   InteractionKind,
   InteractionSchema,
 } from "../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { HitlTool } from "../../gen/agentos/kagent/v1/wire_pb.js";
 import type { Approval, CallEntry } from "./calls.js";
 import { type HitlPayload, hitlExtension, hitlPayload, isHitlResponse } from "./decode/hitl.js";

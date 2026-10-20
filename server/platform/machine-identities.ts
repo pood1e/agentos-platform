@@ -13,8 +13,8 @@ import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templat
 import { engineerServer, logicalPlatformServer } from "../../shared/platform-tools.js";
 import { roleDefinition, templateSpec } from "../console/role-template.js";
 import type { TemplateWriter } from "../console/template-writer.js";
+import { serverTargets } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { serverTargets } from "../operations/bindings.js";
 import { object } from "../read-model/decode/messages.js";
 
 /** Native gateway API keys are scoped to one workspace, role and configured tool subset. */

@@ -2,21 +2,23 @@ syntax = "proto3";
 
 package agentos.console.v1;
 
-import "agentos/console/v1/pack.proto";
 import "agentos/console/v1/access.proto";
 import "agentos/console/v1/conversation.proto";
 import "agentos/console/v1/engineer.proto";
-import "agentos/console/v1/tool.proto";
+import "agentos/console/v1/pack.proto";
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/task.proto";
-import "agentos/console/v1/state.proto";
+import "agentos/console/v1/tool.proto";
+import "agentos/execution/v1/state.proto";
+import "agentos/execution/v1/task.proto";
+import "agentos/governance/v1/governance.proto";
+import "agentos/kagent/v1/wire.proto";
 import "buf/validate/validate.proto";
-import "agentos/governance/v1/change.proto";
-import "kagent/api/v1alpha1/tools.proto";
-import "kagent/api/v1alpha1/models.proto";
 import "kagent/api/v1alpha1/agents.proto";
-import "kagent/api/v1alpha1/harnesses.proto";
 import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1alpha1/harnesses.proto";
+import "kagent/api/v1alpha1/models.proto";
+import "kagent/api/v1alpha1/tools.proto";
 
 // Workbench API. google.rpc.ErrorInfo.reason carries localization keys.
 service ConsoleService {
@@ -38,7 +40,7 @@ service ConsoleService {
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
   // Tool bindings and execution confirmation requirements.
   rpc ExplainTools(ExplainToolsRequest) returns (ExplainToolsResponse);
-  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+  rpc ListApprovals(ListApprovalsRequest) returns (ListApprovalsResponse);
 }
 
 message ListEngineersRequest {}
@@ -54,9 +56,14 @@ message ListTasksRequest {
   }];
   string page_token = 2 [(buf.validate.field).string.max_len = 2048];
   string query = 3 [(buf.validate.field).string.max_len = 200];
-  repeated ActivityState states = 4 [(buf.validate.field).repeated = {
+  repeated agentos.execution.v1.ActivityState states = 4 [(buf.validate.field).repeated = {
     unique: true
-    items: {enum: {defined_only: true, not_in: [0]}}
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
   }];
   string engineer = 5 [(buf.validate.field).string.max_len = 128];
 }
@@ -80,7 +87,7 @@ message GetTaskRunRequest {
 }
 
 message GetTaskRunResponse {
-  TaskRun run = 1;
+  agentos.execution.v1.TaskRun run = 1;
 }
 
 message CancelTaskRequest {
@@ -89,10 +96,7 @@ message CancelTaskRequest {
 message CancelTaskResponse {}
 
 message ListConversationsRequest {
-  ConversationKind kind = 1 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  .kagent.api.v1alpha1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   int32 page_size = 2 [(buf.validate.field).int32 = {
     gte: 0
     lte: 100
@@ -108,10 +112,7 @@ message ListConversationsResponse {
 }
 
 message WatchConversationRequest {
-  ConversationKind kind = 1 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  .kagent.api.v1alpha1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   string context_id = 2 [(buf.validate.field).string.max_len = 128];
 }
 
@@ -120,10 +121,7 @@ message WatchConversationResponse {
 }
 
 message SendMessageRequest {
-  ConversationKind kind = 1 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  .kagent.api.v1alpha1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   string context_id = 2 [(buf.validate.field).string.max_len = 128];
   string message_id = 3 [(buf.validate.field).string = {
     min_len: 1
@@ -147,6 +145,7 @@ message RespondInteractionRequest {
   oneof decision {
     option (buf.validate.oneof).required = true;
     AnswerDecision answer = 4;
+    agentos.kagent.v1.ToolApprovalResponse approval = 5;
   }
 }
 
@@ -157,24 +156,26 @@ message AnswerDecision {
 message RespondInteractionResponse {}
 
 message GetPackRequest {}
-message GetPackResponse { Pack pack = 1; }
+message GetPackResponse {
+  Pack pack = 1;
+}
 
 message GetConfigurationRequest {}
 
 message GetConfigurationResponse {
   repeated RoleDefinition roles = 1;
-  repeated kagent.api.v1alpha1.ToolServer tool_servers = 2;
+  repeated .kagent.api.v1alpha1.ToolServer tool_servers = 2;
   reserved 3;
-  repeated kagent.api.v1alpha1.ModelConfig model_configs = 4;
+  repeated .kagent.api.v1alpha1.ModelConfig model_configs = 4;
   repeated EngineerTools engineer_tools = 5;
-  repeated kagent.api.v1alpha1.Agent agents = 6;
-  repeated kagent.api.v1alpha1.Harness harnesses = 7;
-  kagent.api.v1alpha1.ResourceReference default_harness = 8;
+  repeated .kagent.api.v1alpha1.Agent agents = 6;
+  repeated .kagent.api.v1alpha1.Harness harnesses = 7;
+  .kagent.api.v1alpha1.ResourceReference default_harness = 8;
 }
 
 message CreateRoleRequest {
   RoleDefinition role = 1 [(buf.validate.field).required = true];
-  kagent.api.v1alpha1.ResourceReference harness = 2;
+  .kagent.api.v1alpha1.ResourceReference harness = 2;
 }
 
 message CreateRoleResponse {
@@ -205,8 +206,10 @@ message ExplainToolsResponse {
   repeated ToolRequirement requirements = 1;
 }
 
-message ListChangesRequest {
+message ListApprovalsRequest {
   string task_id = 1 [(buf.validate.field).string.min_len = 1];
   string request_id = 2 [(buf.validate.field).string.min_len = 1];
 }
-message ListChangesResponse { repeated agentos.governance.v1.Change changes = 1; }
+message ListApprovalsResponse {
+  repeated agentos.governance.v1.Approval approvals = 1;
+}

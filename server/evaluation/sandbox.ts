@@ -9,12 +9,12 @@ import {
 } from "@kubernetes/client-node";
 import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
 import { roleDefinition, templateSpec } from "../console/role-template.js";
+import { toolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { nativeInvocation } from "../kagent/invoke-session.js";
 import type { KnowledgeConfig } from "../knowledge/service.js";
 import { knowledgeService } from "../knowledge/service.js";
 import { meta, resource } from "../management/native.js";
-import { toolBindings } from "../operations/bindings.js";
 import { machineIdentities } from "../platform/machine-identities.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { sessionTools } from "../team-sessions/tools.js";
@@ -225,7 +225,7 @@ export function evaluationSandboxes(
           role.tools = role.tools.map((binding) => ({
             ...binding,
             tools: binding.tools.filter(
-              (name) => !["prepare_role", "prepare_change", "dispatch_session"].includes(name),
+              (name) => !["prepare_role", "dispatch_session"].includes(name),
             ),
           }));
           const tools = await identities.bind(role.name, role.tools);
@@ -241,15 +241,6 @@ export function evaluationSandboxes(
     if (!role.startsWith(prefix)) throw new Error("Role is outside this evaluation");
     const cacheKey = `${id}:${variant}`;
     if (!handlers.has(cacheKey)) {
-      const token = await core.readNamespacedSecret({
-        namespace: options.namespace,
-        name: `${prefix}invoke`,
-      });
-      const invoke = nativeInvocation(
-        new URL("/mcp/evaluation-collaboration", options.platformMcpUrl),
-        Buffer.from(token.data?.["api-key"] ?? "", "base64").toString(),
-        options.userId,
-      );
       handlers.set(
         cacheKey,
         sessionTools(
@@ -257,10 +248,6 @@ export function evaluationSandboxes(
           options.namespace,
           toolBindings(config, options.namespace),
           knowledgeService(native, knowledge),
-          invoke,
-          async () => {
-            throw new Error("Evaluation cannot prepare production changes");
-          },
         ),
       );
     }

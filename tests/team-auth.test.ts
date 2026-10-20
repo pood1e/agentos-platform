@@ -14,16 +14,9 @@ it("exposes only the authenticated role's tools and refuses unauthorized calls",
   const app = Fastify();
   await registerTeamSessions(
     app,
-    sessionTools(
-      clients,
-      "agentos",
-      testBindings(fake),
-      {
-        search: vi.fn(async () => create(MemoryServiceSearchResponseSchema, { memories: [] })),
-      },
-      vi.fn(async () => ({ content: [] })),
-      prepare,
-    ),
+    sessionTools(clients, "agentos", testBindings(fake), {
+      search: vi.fn(async () => create(MemoryServiceSearchResponseSchema, { memories: [] })),
+    }),
     "gateway-backend-token",
     async (role) => {
       if (role !== "reader") throw new Error("Unknown role");
@@ -71,10 +64,6 @@ it("protects all MCP methods with a token while keeping health probes available"
         clients,
         knowledgeConfig({ namespace: "agentos", userId: "agentos", url: "http://localhost" }),
       ),
-      vi.fn(async () => ({ content: [] })),
-      vi.fn(async () => {
-        throw new Error("Unexpected change preparation");
-      }),
     ),
     "test-token",
   );

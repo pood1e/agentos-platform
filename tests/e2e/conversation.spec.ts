@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { decideWorkOrder, resetKagent, startOperation, workOrders } from "./kagent.js";
+import { decideApproval, resetKagent, startOperation } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
@@ -22,12 +22,11 @@ test("shows a native pending approval in the same conversation and retains a rej
   page,
   request,
 }) => {
-  await workOrders(page);
   await startOperation(page);
   const approval = page.getByTestId("approval-detail");
   await expect(approval.getByTestId("approval-tool")).toHaveText("k8s_apply_manifest");
-  await expect(approval.getByRole("button", { name: "拒绝执行", exact: true })).toHaveCount(0);
-  await decideWorkOrder(page, request, false, "保持现状，先检查依赖");
+  await expect(approval.getByRole("button", { name: "拒绝", exact: true })).toBeVisible();
+  await decideApproval(page, request, false, "保持现状，先检查依赖");
   await expect(approval).toHaveCount(0);
   await page.getByTestId("chat-task").click();
   await page.getByTestId("approval-node").first().click();

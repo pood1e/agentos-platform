@@ -2,8 +2,8 @@ import { create, fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { type Part, PartSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { DelegationKind } from "../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { callEntries, toolCalls } from "../server/read-model/calls.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 

@@ -2,11 +2,14 @@ syntax = "proto3";
 
 package agentos.console.v1;
 
+import "kagent/api/v1alpha1/common.proto";
+
 message AccessProfile {
   string workspace = 1;
   string subject = 2;
   bool operate = 3;
   bool manage = 4;
+  kagent.api.v1alpha1.ResourceReference entry_agent = 5;
 }
 
 message GetAccessProfileRequest {}

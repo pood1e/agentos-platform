@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { type TaskRun, TaskRunSchema } from "../../../gen/agentos/console/v1/task_pb.js";
+import { type TaskRun, TaskRunSchema } from "../../../gen/agentos/execution/v1/task_pb.js";
 import { toolCalls } from "../calls.js";
 import { approvals } from "../interactions.js";
 import type { KagentSync } from "../sync.js";

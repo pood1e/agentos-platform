@@ -5,10 +5,9 @@ import { createValidateInterceptor } from "@connectrpc/validate";
 import { describe, expect, it } from "vitest";
 import { type Task, TaskState } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
-import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
@@ -25,7 +24,7 @@ async function workbench(tasks?: Task[]) {
     clients: env.clients,
     namespace: "agentos",
     access: testBindings(env.fake),
-    operations: { $typeName: "agentos.governance.v1.OperationsConfig", environments: [] },
+    operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
     replaceTemplate: async (template) => env.fake.replaceTemplate(template),
     pack: loadPack(examplePack),
@@ -104,7 +103,7 @@ describe("console service", () => {
   it("starts a conversation, deduplicates retries and streams the answer", async () => {
     const { client, fake, sync } = await workbench();
     const request = {
-      kind: ConversationKind.ASSISTANT,
+      agent: { namespace: "agentos", name: "assistant" },
       messageId: "6a2f0f8e-0000-4000-8000-000000000001",
       text: "巡检 agentos-lab",
     };
@@ -112,7 +111,7 @@ describe("console service", () => {
     expect(await client.sendMessage({ ...request, contextId: sent.contextId })).toEqual(sent);
     const controller = new AbortController();
     for await (const { conversation } of client.watchConversation(
-      { kind: ConversationKind.ASSISTANT, contextId: sent.contextId },
+      { agent: { namespace: "agentos", name: "assistant" }, contextId: sent.contextId },
       { signal: controller.signal },
     )) {
       if (conversation?.messages.some((message) => message.text === "已处理：巡检 agentos-lab"))
@@ -120,7 +119,7 @@ describe("console service", () => {
     }
     controller.abort();
     const { conversations } = await client.listConversations({
-      kind: ConversationKind.ASSISTANT,
+      agent: { namespace: "agentos", name: "assistant" },
       pageSize: 12,
     });
     expect(conversations[0]).toMatchObject({
@@ -151,7 +150,9 @@ describe("console service", () => {
         requireApproval: false,
       }),
     );
-    expect(requirements.some((item) => item.server === "remediation-tools")).toBe(false);
+    expect(requirements.find((item) => item.server === "remediation-tools")?.requireApproval).toBe(
+      true,
+    );
     const created = await client.createRole({
       role: {
         name: "service-health",
@@ -191,9 +192,7 @@ describe("console service", () => {
       displayName: "服务健康工程师",
       description: "Checks services",
       systemPrompt: "Inspect services read-only.",
-      tools: [
-        { server: "remediation-tools", tools: ["k8s_apply_manifest"], requireApproval: false },
-      ],
+      tools: [{ server: "remediation-tools", tools: ["unknown_tool"], requireApproval: false }],
     };
     expect(await rejection(client.createRole({ role }))).toEqual({
       code: Code.InvalidArgument,

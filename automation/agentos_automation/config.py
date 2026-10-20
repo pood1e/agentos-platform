@@ -34,6 +34,8 @@ def load_config():
     ):
         raise ValueError("Human feedback requires an audience, role claim and role")
     trigger, source = config.trigger, config.trigger.source
+    if not trigger.agent.name or trigger.agent.namespace not in ("", config.workspace):
+        raise ValueError("A case trigger must select an Agent in its workspace")
     if not NAMESPACE.fullmatch(trigger.event_namespace) or not 0 < len(trigger.brief) <= 2000:
         raise ValueError("Invalid case trigger")
     if not (source.type_prefix and source.key_field and source.state_field) or not (

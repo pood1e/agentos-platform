@@ -7,19 +7,28 @@ import type {
   SendMessageRequest,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
-import { AskUserResponseSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
+import {
+  AskUserResponseSchema,
+  ToolApprovalResponseSchema,
+} from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { shortTitle } from "../../shared/title.js";
+import { approvalEnvironment } from "../governance/client.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { agentKey, sessionInfo } from "../read-model/agents.js";
 import { hitlExtension, hitlReply } from "../read-model/decode/hitl.js";
 import { timelineKey } from "../read-model/decode/messages.js";
 import { ingest } from "../read-model/entry.js";
-import { awaiting, terminal } from "../read-model/state.js";
+import { awaiting } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
-import { conversation, conversationRole } from "../read-model/views/conversation.js";
+import { conversation } from "../read-model/views/conversation.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
-import { shortTitle } from "../shared/title.js";
 
-export function messageCommands(sync: KagentSync, clients: KagentClients) {
+export function messageCommands(
+  sync: KagentSync,
+  clients: KagentClients,
+  governance?: GovernanceConfig,
+) {
   const index = sync.index;
   const inflight = new Set<string>();
 
@@ -34,26 +43,19 @@ export function messageCommands(sync: KagentSync, clients: KagentClients) {
   }
 
   async function target(request: SendMessageRequest) {
-    const role = conversationRole(request.kind);
+    const ref = request.agent;
+    if (!ref?.name || ref.namespace !== sync.namespace) throw invalid("chat.invalidConversation");
+    const id = agentKey(ref);
     if (request.contextId) {
       const session = index.session(request.contextId);
-      if (!session || index.roleOf(session.agentId) !== role)
-        throw precondition("chat.invalidConversation");
-      const view = await conversation(sync, request.kind, request.contextId);
+      if (!session || session.agentId !== id) throw precondition("chat.invalidConversation");
+      const view = await conversation(sync, ref, request.contextId);
       if (view.pending.length) throw precondition("chat.pendingApproval");
       if (view.busy) throw conflict("chat.busy");
       return { agentId: session.agentId, contextId: session.id };
     }
-    const candidates = index
-      .agents()
-      .filter((agent) => agent.role === role && agent.ready)
-      .map((agent) => ({
-        agent,
-        load: index.agentEntries(agent.id).filter((entry) => !terminal(entry.state)).length,
-      }))
-      .sort((a, b) => a.load - b.load || a.agent.id.localeCompare(b.agent.id));
-    const agent = candidates[0]?.agent;
-    if (!agent) throw fail(Code.Unavailable, "chat.notReady");
+    const agent = index.agent(id);
+    if (!agent?.ready) throw fail(Code.Unavailable, "chat.notReady");
     const [namespace = "", name = ""] = agent.id.split("/");
     const { session } = await clients.sessions.createSession(
       { agent: { namespace, name }, requestId: request.messageId, name: shortTitle(request.text) },
@@ -103,6 +105,35 @@ export function messageCommands(sync: KagentSync, clients: KagentClients) {
       if (!pending) throw precondition("interaction.stale");
       const decision = request.decision;
       const target = { taskId: task.id, contextId: task.contextId };
+      if (pending.kind === InteractionKind.APPROVAL && decision.case === "approval") {
+        if (
+          pending.tools.some(
+            (tool) => approvalEnvironment(governance?.environments ?? [], tool.name)?.approvalUrl,
+          )
+        )
+          throw precondition("approval.externalDecision");
+        const decisions = decision.value.approvals;
+        const ids = new Set(decisions.map((item) => item.id));
+        if (
+          decisions.length !== pending.tools.length ||
+          ids.size !== decisions.length ||
+          pending.tools.some((tool) => !ids.has(tool.id))
+        )
+          throw invalid("interaction.invalidAnswer");
+        await sync.send(
+          entry.agentId,
+          hitlReply(
+            target,
+            randomUUID(),
+            {
+              type: "tool_approval_response",
+              value: create(ToolApprovalResponseSchema, { approvals: decisions }),
+            },
+            "The user responded to the tool confirmation",
+          ),
+        );
+        return {};
+      }
       if (pending.kind === InteractionKind.QUESTION && decision.case === "answer") {
         const answers = decision.value.answers;
         const valid =

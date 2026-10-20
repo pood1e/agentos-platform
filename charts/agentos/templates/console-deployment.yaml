@@ -61,8 +61,9 @@ spec:
               valueFrom:
                 secretKeyRef: {name: {{ include "agentos.name" . }}-evaluation-backend, key: api-key}
             {{- end }}
+            - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
             {{- if .Values.global.agentos.environments }}
-            - {name: AGENTOS_OPERATIONS_CONFIG, value: /etc/agentos-operations/connections.json}
+            - {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
             {{- end }}
             {{- if .Values.pack.image }}
             - {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
@@ -106,7 +107,7 @@ spec:
             {{- end }}
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             {{- if .Values.global.agentos.environments }}
-            - {name: operations, mountPath: /etc/agentos-operations, readOnly: true}
+            - {name: governance, mountPath: /etc/agentos-governance, readOnly: true}
             {{- end }}
             {{- if .Values.pack.image }}
             - {name: pack, mountPath: /etc/agentos-pack, readOnly: true}
@@ -123,6 +124,6 @@ spec:
           emptyDir: {sizeLimit: 64Mi}
       {{- end }}
       {{- if .Values.global.agentos.environments }}
-        - name: operations
-          secret: {secretName: agentos-operations}
+        - name: governance
+          secret: {secretName: agentos-governance}
       {{- end }}

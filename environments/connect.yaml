@@ -25,7 +25,7 @@
     - name: Configure platform environment connections
       kubernetes.core.k8s:
         kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-operations.yaml.j2') | from_yaml }}"
+        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-governance.yaml.j2') | from_yaml }}"
       when: inventory_hostname == groups['environments'][0]
       no_log: true
 

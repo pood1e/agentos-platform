@@ -50,7 +50,9 @@ export function toolEvent(part: Part): ToolEvent | undefined {
 }
 
 /** Native adapters use server__tool, mcp__server__tool or server.tool. */
-export const toolBaseName = (name: string) => name.split(/__|\./).at(-1) ?? name;
+export { toolBaseName } from "../../../shared/tool-name.js";
+
+import { toolBaseName } from "../../../shared/tool-name.js";
 
 export type Outcome =
   | { kind: "output"; value: JsonValue | undefined }
@@ -140,17 +142,6 @@ export function delegationRef(
 ): DelegationRef | undefined {
   const args = object(event.args);
   switch (toolBaseName(event.name)) {
-    case "delegate_coordinator": {
-      const result = invocation(output);
-      return {
-        kind: DelegationKind.INVOKE,
-        sessionId: result?.sessionId ?? "",
-        agentName: "coordinator",
-        messageId: text(args.messageId) || text(args.message_id),
-        taskId: result?.taskId ?? "",
-        invocation: result,
-      };
-    }
     case "invoke_session": {
       const result = invocation(output);
       return {
@@ -181,7 +172,17 @@ export function delegationRef(
         messageId: "",
         taskId: "",
       };
-    default:
-      return undefined;
+    default: {
+      const result = invocation(output);
+      if (!result?.sessionId && !result?.taskId) return undefined;
+      return {
+        kind: DelegationKind.INVOKE,
+        sessionId: result.sessionId,
+        agentName: "",
+        messageId: text(args.messageId) || text(args.message_id),
+        taskId: result.taskId,
+        invocation: result,
+      };
+    }
   }
 }

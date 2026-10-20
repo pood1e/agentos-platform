@@ -136,7 +136,7 @@ for name, source, overrides, presets, config in [
     assert {item['metadata']['name'] for item in templates} == presets
     assistant = next(item for item in templates if item['metadata']['name'] == 'assistant')
     platform_bindings = [binding['mcp'] for binding in assistant['spec']['tools'] if binding['mcp']['server']['name'] == 'team-sessions']
-    assert len(platform_bindings) == 1 and set(platform_bindings[0]['tools']) == {'delegate_coordinator', 'search_knowledge'}, 'Chat assistant has unrestricted delegation tools'
+    assert len(platform_bindings) == 1 and set(platform_bindings[0]['tools']) == {'list_agents', 'create_session', 'search_knowledge'}, 'Chat assistant must discover and select native Agents'
     assert all('agentos.dev/display-name' not in doc['metadata'].get('annotations', {}) for doc in templates)
     api = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-console'))
     assert api['spec']['strategy'] == {'type': 'Recreate'}

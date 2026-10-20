@@ -137,10 +137,12 @@ test("management navigation remains usable in English on a small dark viewport",
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/engineers/models");
-  await expect(page.getByRole("tab", { name: "Models", exact: true })).toHaveAttribute(
-    "data-state",
-    "active",
+  await page.getByRole("button", { name: "Main navigation", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Models", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
   );
+  await page.getByRole("link", { name: "Models", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Models/ })).toBeVisible();
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(
@@ -157,8 +159,8 @@ test("shows environment governance, approval portals and environment links", asy
           {
             name: "env-real",
             governance: "GOVERNANCE_APPROVAL",
-            approvalUrl: "http://tickets-real.example",
             links: [
+              { name: "审批入口", url: "https://tickets-real.example" },
               { name: "Identity", url: "https://identity-real.example/admin/" },
               { name: "Assets", url: "https://assets-real.example" },
             ],
@@ -183,7 +185,7 @@ test("shows environment governance, approval portals and environment links", asy
   await expect(environments).toContainText("无需审批");
   await expect(environments.getByRole("link", { name: "审批入口" })).toHaveAttribute(
     "href",
-    "http://tickets-real.example",
+    "https://tickets-real.example",
   );
   await expect(environments.getByRole("link", { name: "Identity", exact: true })).toHaveCount(2);
   await expect(

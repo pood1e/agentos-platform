@@ -2,9 +2,8 @@ import { create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { DelegationKind, InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { listConversations } from "../server/read-model/views/conversation.js";
@@ -203,26 +202,38 @@ describe("views", () => {
   });
 
   it("lists conversations by kind", () => {
-    const chats = listConversations(index, ConversationKind.ASSISTANT, {
-      query: "",
-      pageToken: "",
-      pageSize: 10,
-    });
-    expect(chats.conversations.map((item) => item.contextId)).toEqual([ids.chatContext]);
-    expect(chats.conversations[0]?.title).toBe("检查服务健康");
-    expect(
-      listConversations(index, ConversationKind.ROLE_BUILDER, {
+    const chats = listConversations(
+      index,
+      { namespace: "agentos", name: "assistant" },
+      {
         query: "",
         pageToken: "",
         pageSize: 10,
-      }).totalSize,
+      },
+    );
+    expect(chats.conversations.map((item) => item.contextId)).toEqual([ids.chatContext]);
+    expect(chats.conversations[0]?.title).toBe("检查服务健康");
+    expect(
+      listConversations(
+        index,
+        { namespace: "agentos", name: "role-builder" },
+        {
+          query: "",
+          pageToken: "",
+          pageSize: 10,
+        },
+      ).totalSize,
     ).toBe(1);
   });
 
   it("attaches delegated operations to the chat turn", async () => {
     const { conversation } = await import("../server/read-model/views/conversation.js");
     const sync = { index, fullTask: async () => undefined } as never;
-    const chat = await conversation(sync, ConversationKind.ASSISTANT, ids.chatContext);
+    const chat = await conversation(
+      sync,
+      { namespace: "agentos", name: "assistant" },
+      ids.chatContext,
+    );
     const [question, answer] = chat.messages;
     expect(question).toMatchObject({ role: Role.USER, taskId: ids.chat });
     expect(question?.tasks.map((task) => task.id)).toEqual([ids.chatRoot]);

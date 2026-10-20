@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, expect, it } from "vitest";
 import { TaskState } from "../gen/a2a_pb.js";
-import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import { DelegationKind } from "../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { listTasks, taskDetail } from "../server/read-model/views/task.js";
 import { fixtureIndex, fixtureIds as ids } from "./fixtures/kagent.js";
@@ -164,7 +163,7 @@ describe("operation ownership", () => {
     );
     const view = await conversation(
       { index, fullTask: async () => undefined } as never,
-      ConversationKind.ASSISTANT,
+      { namespace: "agentos", name: "assistant" },
       ids.chatContext,
     );
     const turn = view.messages.find((message) => message.id === "follow-up-chat-message");

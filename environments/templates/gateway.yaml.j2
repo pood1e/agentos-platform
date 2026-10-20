@@ -58,9 +58,6 @@ metadata:
   namespace: {{ gateway_namespace }}
   labels: {agentos.dev/gateway-keys: environment}
 data:
-{% if environment_governance == 'approval' %}
-  change-control: {{ {'keyHash': 'sha256:' + (gateway_credentials['change-control'] | hash('sha256')), 'metadata': {'engineer': 'change-coordinator', 'environment': environment_name}} | to_json | to_json }}
-{% endif %}
 {% for identity in engineer_identities %}
   {{ identity.name }}: {{ {'keyHash': 'sha256:' + (gateway_credentials[identity.name] | hash('sha256')), 'metadata': {'engineer': identity.name, 'services': identity.services | dict2items | selectattr('key', 'in', toolsets.keys() | list) | items2dict, 'environment': environment_name}} | to_json | to_json }}
 {% endfor %}
@@ -81,9 +78,6 @@ spec:
       policy:
         matchExpressions:
           - >-
-{% if environment_governance == 'approval' %}
-            (apiKey.engineer == 'change-coordinator' && request.path.startsWith('/agentos.governance.v1.ChangeControlService/')) ||
-{% endif %}
 {% for rule in gateway_rules %}
             ({{ rule }}) ||
 {% endfor %}

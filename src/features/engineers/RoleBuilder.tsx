@@ -3,12 +3,12 @@ import { LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ConversationKind } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import {
   type RoleDefinition,
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import { useAccess } from "../../lib/access.js";
 import { ChatComposer } from "../chat/ChatComposer.js";
 import { ConversationRuntime } from "../chat/ConversationRuntime.js";
 import { useChat } from "../chat/use-chat.js";
@@ -17,7 +17,12 @@ import { useChat } from "../chat/use-chat.js";
 export function RoleBuilder({ onDraft }: { onDraft: (draft: RoleDefinition) => void }) {
   const { t } = useTranslation();
   const [contextId, setContext] = useState("");
-  const chat = useChat(ConversationKind.ROLE_BUILDER, contextId, setContext);
+  const access = useAccess();
+  const chat = useChat(
+    { namespace: access.data?.workspace ?? "", name: "role-builder" },
+    contextId,
+    setContext,
+  );
   const applied = useRef<RoleDefinition>(undefined);
   const draft = chat.conversation?.roleDraft;
   useEffect(() => {

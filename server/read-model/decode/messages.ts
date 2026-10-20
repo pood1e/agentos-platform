@@ -9,11 +9,9 @@ export const parentTaskKey = "agentos.dev/parent-task";
 export const resumedTaskKey = "agentos.dev/resumed-task";
 export const intentKey = "agentos.dev/intent";
 
-export const text = (value: JsonValue | undefined) => (typeof value === "string" ? value : "");
+export { object, text } from "../../../shared/json.js";
 
-export function object(value: JsonValue | undefined): JsonObject {
-  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
-}
+import { text } from "../../../shared/json.js";
 
 export function partsText(parts: Part[]): string {
   return parts

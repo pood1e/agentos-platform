@@ -139,7 +139,12 @@ export class TaskIndex {
       const target = id && this.entries.get(id);
       return target && this.roleOf(target.agentId) === ref.agentName ? id : undefined;
     }
-    const candidates = this.contexts.get(ref.sessionId);
+    const owner = this.session(ref.sessionId)?.agentId;
+    const candidates = new Set(
+      [...(this.contexts.get(ref.sessionId) ?? [])].filter(
+        (id) => !owner || this.entry(id)?.agentId === owner,
+      ),
+    );
     if (!candidates?.size) return undefined;
     if (ref.taskId) return candidates.has(ref.taskId) ? ref.taskId : undefined;
     if (ref.messageId) {
@@ -194,7 +199,7 @@ export class TaskIndex {
     for (const ids of this.contexts.values()) {
       const rounds = [...ids]
         .flatMap((id) => this.entry(id) ?? [])
-        .filter((entry) => this.roleOf(entry.agentId) === "coordinator")
+        .filter((entry) => this.agent(entry.agentId)?.sessionTasks)
         .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.id.localeCompare(b.id));
       for (let position = 1; position < rounds.length; position++) {
         const entry = rounds[position];

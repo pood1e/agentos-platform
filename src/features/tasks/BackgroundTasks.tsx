@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
-import type { TaskRun } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import type { TaskRun } from "../../../gen/agentos/execution/v1/task_pb.js";
 import { active, awaiting } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 

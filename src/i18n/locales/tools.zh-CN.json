@@ -92,10 +92,6 @@
       "name": "移除资源标签",
       "description": "移除资源的指定标签。"
     },
-    "delegate_coordinator": {
-      "name": "委派协调者",
-      "description": "将任务目标交给协调者，由其安排团队成员协作。"
-    },
     "list_agents": {
       "name": "发现可用工程师",
       "description": "查询工程师的职责、能力与就绪状态。"

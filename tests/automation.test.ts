@@ -34,7 +34,11 @@ it("reuses one native context per source case and isolates identical case keys i
   const first = automationTools(clients, sync, "agentos", "first", invoke);
   const second = automationTools(clients, sync, "agentos", "second", invoke);
   const request = {
-    case: { key: "alerts/incident", version: "1" },
+    case: {
+      key: "alerts/incident",
+      version: "1",
+      agent: { namespace: "agentos", name: "inspection" },
+    },
     message: "Inspect this incident.",
   };
   expect((await run(first, request)).result.isError).not.toBe(true);
@@ -60,7 +64,10 @@ it("rejects caller-selected sessions, destinations and environments before nativ
   const create = vi.spyOn(clients.sessions, "createSession");
   const invoke = vi.fn(async () => ({ content: [] }));
   const handler = automationTools(clients, sync, "agentos", "owned", invoke);
-  const request = { case: { key: "incident", version: "1" }, message: "Inspect this incident." };
+  const request = {
+    case: { key: "incident", version: "1", agent: { namespace: "agentos", name: "inspection" } },
+    message: "Inspect this incident.",
+  };
   for (const extra of [
     { contextId: "foreign-session" },
     { environment: "foreign" },

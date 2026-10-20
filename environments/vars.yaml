@@ -12,11 +12,9 @@ gateway_namespace: mcp
 gateway_node_port: 31000
 gateway_rules: []
 environment_links: []
+approval_service_url: ""
+approval_service_authorization_file: ""
 registry_config_file: ""
-change_control_image: ""
-change_control_database_url_file: ""
-zammad_namespace: tickets
-zammad_url: http://zammad-nginx.tickets.svc.cluster.local:8080
 agentos_config: "{{ (lookup('ansible.builtin.file', agentos_values_file) | from_yaml).global.agentos }}"
 toolsets: >-
   {{ agentos_config.toolsets | dict2items

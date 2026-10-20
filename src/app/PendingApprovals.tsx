@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { ActivityState } from "../../gen/agentos/console/v1/state_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 
 export function PendingApprovals() {
   const { t } = useTranslation();

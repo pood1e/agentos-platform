@@ -15,7 +15,6 @@ import requestSchema from "../../gen/schema/agentos.automation.v1.CaseRequest.js
 };
 import type { KagentClients } from "../kagent/clients.js";
 import type { nativeInvocation } from "../kagent/invoke-session.js";
-import { agentInfo } from "../read-model/agents.js";
 import { cancelTree } from "../read-model/cancel.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { busy, outcomeState, taskTree } from "../read-model/tree.js";
@@ -31,20 +30,18 @@ export function automationTools(
   invoke: ReturnType<typeof nativeInvocation>,
 ) {
   const messageId = (ref: CaseReference) =>
-    messageIdentity(workspace, environment, ref.key, String(ref.version));
+    messageIdentity(workspace, environment, ref.agent?.name ?? "", ref.key, String(ref.version));
   async function session(ref: CaseReference) {
     const validation = validator.validate(CaseReferenceSchema, ref);
     if (validation.kind !== "valid") throw new Error("A versioned source case is required");
-    const { agents } = await clients.agents.listAgents(
-      { namespace: workspace },
-      { timeoutMs: 15_000 },
-    );
-    const coordinators = agents.filter((agent) => agentInfo(agent).role === "coordinator");
-    if (coordinators.length !== 1) throw new Error("Exactly one workspace coordinator is required");
+    if (ref.agent?.namespace !== workspace || !ref.agent.name)
+      throw new Error("Select an Agent in this workspace");
+    const { agent } = await clients.agents.getAgent({ ref: ref.agent }, { timeoutMs: 15_000 });
+    if (!agent) throw new Error("The selected Agent is unavailable");
     const { session } = await clients.sessions.createSession(
       {
-        agent: coordinators[0]?.ref,
-        requestId: messageIdentity("source-case", workspace, environment, ref.key),
+        agent: ref.agent,
+        requestId: messageIdentity("source-case", workspace, environment, ref.agent.name, ref.key),
         name: `Case ${messageIdentity(environment, ref.key).slice(0, 8)}`,
       },
       { timeoutMs: 60_000 },
@@ -79,7 +76,7 @@ export function automationTools(
       "run_case",
       {
         description:
-          "Run one versioned source case with the workspace coordinator. Retries reuse its native session and message. Environment is fixed by the source identity.",
+          "Run one versioned source case with the selected workspace Agent. Retries reuse its native session and message. Environment is fixed by the source identity.",
         inputSchema: inputSchema(requestSchema),
         annotations: { idempotentHint: true },
       },
@@ -100,7 +97,7 @@ export function automationTools(
     server.registerTool(
       "observe_case",
       {
-        description: "Read the native status and latest coordinator continuation of a source case.",
+        description: "Read the native status and latest Agent continuation of a source case.",
         inputSchema: inputSchema(referenceSchema),
         annotations: { readOnlyHint: true },
       },

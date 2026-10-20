@@ -13,10 +13,27 @@ revision = os.environ["CI_COMMIT_SHA"]
 root = Path("dist/contracts")
 epoch = int(subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], text=True))
 bundle = root / "deployment.tar.gz"
-with bundle.open("wb") as target, gzip.GzipFile(fileobj=target, mode="wb", filename="", mtime=epoch) as compressed:
-    content = subprocess.check_output(["git", "archive", "--format=tar", "HEAD", "deploy", "environments", "charts", "ci", "docs", "runtime/langfuse", "LICENSE"])
+with (
+    bundle.open("wb") as target,
+    gzip.GzipFile(fileobj=target, mode="wb", filename="", mtime=epoch) as compressed,
+):
+    content = subprocess.check_output(
+        [
+            "git",
+            "archive",
+            "--format=tar",
+            "HEAD",
+            "deploy",
+            "environments",
+            "charts",
+            "ci",
+            "docs",
+            "runtime/langfuse",
+            "LICENSE",
+        ]
+    )
     compressed.write(content)
-files = [bundle, *root.glob("*.whl")]
+files = [bundle, *root.glob("*.whl"), *root.glob("*.tgz")]
 manifest = {
     "revision": revision,
     "version": json.loads(Path("package.json").read_text())["version"],
@@ -25,13 +42,16 @@ manifest = {
 path = root / "manifest.json"
 path.write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
 files.append(path)
-url = f'{os.environ["CI_API_V4_URL"]}/projects/{os.environ["CI_PROJECT_ID"]}/packages/generic/agentos-platform/{revision}'
+url = f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}/packages/generic/agentos-platform/{revision}"
 with requests.Session() as session:
     session.headers["JOB-TOKEN"] = os.environ["CI_JOB_TOKEN"]
     for path in files:
         existing = session.get(f"{url}/{path.name}", timeout=60)
         if existing.status_code == 200:
-            if hashlib.sha256(existing.content).digest() != hashlib.sha256(path.read_bytes()).digest():
+            if (
+                hashlib.sha256(existing.content).digest()
+                != hashlib.sha256(path.read_bytes()).digest()
+            ):
                 raise RuntimeError("Published artifact differs from its source revision")
             continue
         if existing.status_code != 404:

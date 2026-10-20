@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package agentos.console.v1;
 
-import "agentos/console/v1/state.proto";
+import "agentos/execution/v1/state.proto";
 import "kagent/api/v1alpha1/common.proto";
 import "kagent/api/v1alpha1/tools.proto";
 
@@ -12,7 +12,7 @@ message Engineer {
   string name = 2;
   string role = 3;
   string description = 4;
-  ActivityState state = 5;
+  agentos.execution.v1.ActivityState state = 5;
   string unavailable_reason = 6;
   string unavailable_message = 7;
   int32 active_tasks = 8;

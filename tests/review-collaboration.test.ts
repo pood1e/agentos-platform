@@ -3,16 +3,15 @@ import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { ActivityState } from "../gen/agentos/console/v1/state_pb.js";
 import {
   DelegationKind,
   InteractionKind,
   InteractionSchema,
 } from "../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { createdAtKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { listTasks, taskDetail } from "../server/read-model/views/task.js";
-import { changeId } from "../server/shared/change-digest.js";
 import { collaborationFlow } from "../src/features/tasks/flow/collaboration-flow.js";
 import { collaborationLayout } from "../src/features/tasks/flow/collaboration-layout.js";
 import type { Link } from "../src/features/tasks/flow/links.js";
@@ -66,7 +65,7 @@ describe("native review projection", () => {
           role: Role.USER,
           metadata: {
             "agentos.dev/review-task": source.id,
-            "agentos.dev/change-id": changeId(source.id, approval.tools[0].id),
+            "agentos.dev/review-request": approval.requestId,
           },
         },
       ],
@@ -85,7 +84,7 @@ describe("native review projection", () => {
     expect(listTasks(index, { query: task.id, pageSize: 20, pageToken: "" }).totalSize).toBe(0);
     task.history[0].metadata = {
       ...task.history[0].metadata,
-      "agentos.dev/change-id": "unrelated",
+      "agentos.dev/review-request": "unrelated",
     };
     index.upsert(ingest(task, reviewer));
     expect(

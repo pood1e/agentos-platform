@@ -4,7 +4,6 @@ import { createConnectTransport } from "@connectrpc/connect-node";
 import Fastify from "fastify";
 import { expect, it, vi } from "vitest";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
-import { ConversationKind } from "../gen/agentos/console/v1/conversation_pb.js";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 import { registerConsole } from "../server/console/app.js";
 import { loadPack } from "../server/console/pack.js";
@@ -21,7 +20,7 @@ it("serves typed RPC errors and separates liveness from synchronized readiness",
       ...env,
       namespace: "agentos",
       access: testBindings(env.fake),
-      operations: { $typeName: "agentos.governance.v1.OperationsConfig", environments: [] },
+      operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
       pack: loadPack(),
@@ -43,7 +42,7 @@ it("serves typed RPC errors and separates liveness from synchronized readiness",
     expect((await client.getPack({})).pack?.title).toBe("");
     const error = await client
       .sendMessage({
-        kind: ConversationKind.ASSISTANT,
+        agent: { namespace: "agentos", name: "assistant" },
         messageId: "invalid",
         text: "x".repeat(8_001),
       })

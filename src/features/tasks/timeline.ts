@@ -1,5 +1,5 @@
-import type { ActivityState } from "../../../gen/agentos/console/v1/state_pb.js";
 import { InteractionKind, type TaskDetail } from "../../../gen/agentos/console/v1/task_pb.js";
+import type { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../../lib/format.js";
 import { active, awaiting } from "../status/activity.js";
 import type { DrawerTarget } from "./AgentDrawer.js";

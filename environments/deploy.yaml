@@ -33,9 +33,7 @@
         gateway_credentials: >-
           {{ gateway_credentials | default({}) | combine({item: lookup('ansible.builtin.password',
             environment_cache + '/secrets/gateway-' + item, length=64, chars=['ascii_letters', 'digits'])}) }}
-      loop: >-
-        {{ (engineer_identities | map(attribute='name') | list)
-          + (['change-control'] if environment_governance == 'approval' else []) }}
+      loop: "{{ engineer_identities | map(attribute='name') | list }}"
       no_log: true
 
     - name: Create gateway chart cache
@@ -104,14 +102,6 @@
       ansible.builtin.import_tasks: tasks/gateway.yaml
       tags: [gateway]
 
-    - name: Configure environment change control
-      ansible.builtin.import_tasks: tasks/change-control.yaml
-      when: environment_governance == 'approval'
-      tags: [change-control]
-
     - name: Connect environment gateway backends
       ansible.builtin.import_tasks: tasks/backends.yaml
       tags: [backends]
-  handlers:
-    - name: Load Zammad handlers
-      ansible.builtin.import_tasks: handlers/zammad.yaml
