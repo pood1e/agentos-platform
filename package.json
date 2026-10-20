@@ -7,7 +7,7 @@
     "node": ">=24.13.0"
   },
   "scripts": {
-    "generate": "buf generate && buf generate --template buf.errors.gen.yaml && node scripts/generate-management.mjs",
+    "generate": "ci/tools.sh jsonschema && buf generate && buf generate --template buf.errors.gen.yaml && node scripts/generate-management.mjs",
     "dev": "vite --host 127.0.0.1",
     "dev:kagent": "tsx tests/fake-kagent/server.ts",
     "server": "tsx watch server/platform/main.ts",
