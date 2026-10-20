@@ -173,3 +173,16 @@ it("rejects cycles, missing parents and subject changes in the authoritative cha
   await store.saveBinding(value, saved.version);
   await expect(registry.resolve(child)).rejects.toMatchObject({ code: Code.PermissionDenied });
 });
+
+it("retires shared console execution authority when OIDC is enabled", async () => {
+  const shared = create(ExecutionIdentitySchema, {
+    subject: "console",
+    write: true,
+    credential: { case: "service", value: true },
+  });
+  await executions(store).bind(session("open-console"), shared);
+  expect((await executions(store).resolve(session("open-console"))).write).toBe(true);
+  await expect(registry.resolve(session("open-console"))).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
+});

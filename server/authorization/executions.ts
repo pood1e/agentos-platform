@@ -89,7 +89,9 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
     const identity =
       saved.credential.case === "accessToken"
         ? await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
-        : saved.credential.case === "service" && saved.credential.value
+        : saved.credential.case === "service" &&
+            saved.credential.value &&
+            !(verify && saved.subject === "console")
           ? saved
           : undefined;
     if (!identity || identity.subject !== binding.subject) throw denied();

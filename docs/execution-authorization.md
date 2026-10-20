@@ -19,6 +19,7 @@ Substrate 宿主机为每个出站目标注入短期 Actor JWT。平台验证签
 管理 RPC 与 A2A 入口仅向控制面开放。运行时出站策略与 NetworkPolicy 同时限制直连原生控制器。
 
 Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根使用 Substrate 的原生 PodCertificate 与 ClusterTrustBundle。
+托管 Harness 的原生客户端与 MCP 编译配置发送 `x-substrate-actor-token` 占位头，宿主替换为签名凭证。自定义 Harness 使用相同的请求头和原生持久化协议。
 
 ## 环境与方案包边界
 

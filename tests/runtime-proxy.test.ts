@@ -109,7 +109,8 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
     expect(received[0].get("x-kagent-insecure-runtime-identity")).toBe(
       "workspace/session-own/current-uid",
     );
-    expect(received[0].get("x-user-id")).toBe("server-user");
+    expect(received[0].get("x-user-id")).toBeNull();
+    expect(received[0].get("authorization")).toBeNull();
     await expect(
       tasks.getTask({ sessionId: "foreign", taskId: "task" }, { headers }),
     ).rejects.toMatchObject({ code: Code.PermissionDenied });

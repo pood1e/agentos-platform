@@ -24,7 +24,7 @@ controller-verify:
         - ci/build-image.sh
   script: [ci/with-postgres.sh ci/verify-controller.sh]
   artifacts:
-    paths: [.cache/controller-image/, .cache/claude-image/]
+    paths: [.cache/controller-image/, .cache/claude-image/, .cache/standard-image/, .cache/codex-image/]
     expire_in: 1 day
 
 substrate-verify:
@@ -96,11 +96,10 @@ build-claude-harness:
 
 build-standard-harness:
   extends: .build-image
-  needs: []
-  rules: &toolbox-rules
-    - changes: [runtime/harness-toolbox/**/*, ci/runtime.gitlab-ci.yml, ci/build-image.sh]
+  needs: [controller-verify]
+  rules: *controller-rules
   variables:
-    AGENTOS_BUILD_CONTEXT: runtime/harness-toolbox
+    AGENTOS_BUILD_CONTEXT: .cache/standard-image
     AGENTOS_DOCKERFILE_DIR: runtime/harness-toolbox
     AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/golang-adk:1.0.0-alpha11@sha256:29409dfe1a030b50da3ff3f72599752cb5824a50f6aa136c16bf2b1678aa89b8
     AGENTOS_IMAGE_SUFFIX: /standard-harness
@@ -111,8 +110,8 @@ build-standard-harness:
 
 build-codex-harness:
   extends: build-standard-harness
-  rules: *toolbox-rules
   variables:
+    AGENTOS_BUILD_CONTEXT: .cache/codex-image
     AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/codex-harness:1.0.0-alpha11@sha256:bb01f2dcf7e07d39f5ce88e97953b7ff849f8cf4e6957640923630e9f8c1952e
     AGENTOS_IMAGE_SUFFIX: /codex-harness
     AGENTOS_BUILD_METADATA: .cache/codex-harness-build-metadata.json

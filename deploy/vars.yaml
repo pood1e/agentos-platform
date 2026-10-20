@@ -20,7 +20,7 @@ substrate_api_image: "{{ agentos_image_registry }}/substrate/ateapi@sha256:1dbc4
 substrate_microvm_image: "{{ agentos_image_registry }}/substrate/ateom-microvm@sha256:0ee91095c1a9debe0f3e9cf6d72ab61e3cb5c5b23260277f3d55ca091967de79"
 kubectl_ate_checksum: sha256:149d1dadc31dfe28a2d042bb66abd4f8e3faf6e784e4f15d7019f5a9b01548de
 kagent_version: 1.0.0-alpha11
-kagent_controller_image: "{{ agentos_image_registry }}/kagent-controller@sha256:f109a95058d081edd15d937c3260c5e76278abb08a891eb792fadb43d2d527bf"
+kagent_controller_image: "{{ agentos_image_registry }}/kagent-controller@sha256:9057a7fd276f62f0af52c342d7d23eabf9104e7446199f56864a314d3c59060c"
 kagent_cli_checksum: sha256:afc712066d0d460a64d5ae1656831a9ed866e06085a89a6f05a230ddafc2319c
 kubeconfig_path: "{{ playbook_dir }}/../.cache/kubeconfig.yaml"
 helm_binary: "{{ playbook_dir }}/../.cache/helm/linux-amd64/helm"

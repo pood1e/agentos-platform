@@ -167,7 +167,7 @@ await registerTeamSessions(
   app,
   sessionTools(activeClients, config.namespace, access, knowledgeService(activeClients, knowledge)),
   token,
-  async (role, headers, method) => {
+  async (role, headers, method, tool) => {
     if (role === "automation") {
       const environment = headers["x-agentos-environment"];
       if (
@@ -217,7 +217,7 @@ await registerTeamSessions(
         : identities.authorize(role, clients).then((scopes) => ({ scopes })));
     if (discoveryMethods.has(method)) return scope;
     const parent = await execution.actor(headers);
-    await execution.registry.resolve(parent);
+    await execution.authorizeTools(parent, [tool]);
     return {
       ...scope,
       handler: scopedCollaboration(
