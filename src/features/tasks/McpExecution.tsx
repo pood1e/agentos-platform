@@ -58,7 +58,7 @@ export function McpExecution({
   );
   return (
     <section
-      className="flex min-h-[28rem] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border sm:min-h-64"
+      className="flex min-h-[22rem] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border sm:min-h-64"
       data-testid="mcp-execution-graph"
       aria-label={t("graph.mcpCalls")}
     >

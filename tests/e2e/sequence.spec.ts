@@ -157,6 +157,11 @@ test("shows a single-agent tool graph with exact call details and a compact resu
   await expect(page.getByTestId("task-engineer")).toBeVisible();
   await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
   const result = page.getByTestId("task-result");
+  await expect(result.getByRole("button", { name: "任务结论" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await result.getByRole("button", { name: "任务结论" }).click();
   await expect(result).toContainText("核验结果：通过");
   expect((await page.getByTestId("mcp-execution-graph").boundingBox())?.height).toBeGreaterThan(
     250,
@@ -220,6 +225,6 @@ test("opens an agent's MCP service graph and uses the solution's service icon", 
   await expect(page.getByTestId("agent-drawer").getByTestId("drawer-call").first()).toBeVisible();
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(async () => (await service.boundingBox())?.width ?? 0).toBeGreaterThan(150);
+  await expect.poll(async () => (await service.boundingBox())?.width ?? 0).toBeGreaterThan(90);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

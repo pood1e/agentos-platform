@@ -29,8 +29,6 @@ import { type McpGraphNode, McpNode } from "./McpGraphNode.js";
 
 const nodeTypes = { execution: McpNode };
 const proOptions = { hideAttribution: true };
-const width = 236;
-const height = 106;
 
 interface Props {
   run: TaskRun;
@@ -46,6 +44,9 @@ function Canvas({ run, engineer, selected, onInspect }: Props) {
   const canvasWidth = useStore((state) => state.width);
   const canvasHeight = useStore((state) => state.height);
   const vertical = canvasWidth < 640;
+  const width = vertical ? 124 : 236;
+  const fitPadding = vertical ? 0.05 : 0.18;
+  const height = vertical ? 126 : 106;
   const groups = mcpCalls(run.calls, (name) => toolText(name).server);
   const structure: ElkNode = {
     id: "tools",
@@ -94,6 +95,7 @@ function Canvas({ run, engineer, selected, onInspect }: Props) {
             : t("graph.executingAgent"),
           state: group?.state ?? run.state,
           server: group?.server,
+          iconName: group?.calls[0]?.name,
           selected: !!group && selected === group.server,
           vertical,
         },
@@ -117,9 +119,9 @@ function Canvas({ run, engineer, selected, onInspect }: Props) {
   const layoutKey = positions.isPlaceholderData ? "" : positions.data ? key : "";
   useEffect(() => {
     if (!layoutKey || !canvasWidth || !canvasHeight) return;
-    const frame = requestAnimationFrame(() => void fitView({ padding: 0.18, maxZoom: 1.1 }));
+    const frame = requestAnimationFrame(() => void fitView({ padding: fitPadding, maxZoom: 1.1 }));
     return () => cancelAnimationFrame(frame);
-  }, [fitView, layoutKey, canvasWidth, canvasHeight]);
+  }, [fitView, layoutKey, canvasWidth, canvasHeight, fitPadding]);
   return (
     <ReactFlow<McpGraphNode>
       nodes={nodes}
@@ -156,7 +158,7 @@ function Canvas({ run, engineer, selected, onInspect }: Props) {
       <Controls
         showInteractive={false}
         position="bottom-right"
-        fitViewOptions={{ padding: 0.18, maxZoom: 1.1 }}
+        fitViewOptions={{ padding: fitPadding, maxZoom: 1.1 }}
       />
     </ReactFlow>
   );

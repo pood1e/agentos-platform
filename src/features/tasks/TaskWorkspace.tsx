@@ -11,7 +11,9 @@ export function TaskWorkspace() {
     <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
       <header className="shrink-0">
         <h1 className="text-xl font-semibold tracking-tight">{t("navigation.tasks")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("automation.workspaceHint")}</p>
+        <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
+          {t("automation.workspaceHint")}
+        </p>
       </header>
       <Tabs
         value={value}

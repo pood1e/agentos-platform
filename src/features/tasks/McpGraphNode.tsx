@@ -14,6 +14,7 @@ export type McpGraphNode = Node<
     title: string;
     subtitle: string;
     server?: string;
+    iconName?: string;
     state?: ActivityState;
     selected: boolean;
     vertical: boolean;
@@ -28,7 +29,10 @@ export const McpNode = memo(function McpNode({ data }: NodeProps<McpGraphNode>) 
       data-testid={`mcp-graph-${data.kind}`}
       data-mcp-server={data.server}
       className={cn(
-        "flex h-full items-center gap-3 rounded-xl border bg-card p-4 shadow-xs",
+        "flex h-full rounded-xl border bg-card shadow-xs",
+        data.vertical
+          ? "flex-col items-center justify-center gap-1 px-2 py-3 text-center"
+          : "items-center gap-3 p-4",
         data.selected && "ring-2 ring-primary/40",
       )}
     >
@@ -42,7 +46,7 @@ export const McpNode = memo(function McpNode({ data }: NodeProps<McpGraphNode>) 
       <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         {data.kind === "server" ? (
           <ToolIcon
-            name=""
+            name={data.iconName ?? ""}
             server={data.server}
             className="size-11 border-0 bg-transparent [&_img]:size-8"
           />
@@ -50,14 +54,19 @@ export const McpNode = memo(function McpNode({ data }: NodeProps<McpGraphNode>) 
           <Bot className="size-5" />
         )}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className={cn("min-w-0", data.vertical ? "w-full" : "flex-1")}>
         <strong className="block truncate text-sm font-semibold" title={data.title}>
           {data.title}
         </strong>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{data.subtitle}</p>
+        {!data.vertical && (
+          <p className="mt-1 truncate text-xs text-muted-foreground">{data.subtitle}</p>
+        )}
         {data.state !== undefined && (
           <p
-            className="mt-2 flex items-center gap-1 text-[11px]"
+            className={cn(
+              "mt-1 flex items-center gap-1 text-[11px]",
+              data.vertical && "justify-center",
+            )}
             style={{ color: appearance(data.state).color }}
           >
             <StatusIcon state={data.state} className="size-3" />
