@@ -34,7 +34,7 @@ export interface TaskEntry {
   messageIds: string[];
   userMessages: UserMessage[];
   answer: string;
-  response: string;
+  progress: string;
   calls: CallEntry[];
   interactions: Interaction[];
   managedApprovals?: string[];

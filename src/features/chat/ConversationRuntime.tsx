@@ -14,7 +14,10 @@ import type { Chat } from "./use-chat.js";
 const convertMessage = (message: ChatMessage): ThreadMessageLike => ({
   id: message.id,
   role: message.role === Role.USER ? "user" : "assistant",
-  content: [{ type: "text", text: message.text }],
+  content: [
+    ...(message.progress ? [{ type: "reasoning" as const, text: message.progress }] : []),
+    ...(message.text ? [{ type: "text" as const, text: message.text }] : []),
+  ],
 });
 
 export function ConversationRuntime({ chat, children }: { chat: Chat; children: ReactNode }) {

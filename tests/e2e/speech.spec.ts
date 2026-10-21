@@ -1,10 +1,24 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { expect, test } from "@playwright/test";
+import { ArtifactSchema, TaskState } from "../../gen/a2a_pb.js";
 import {
   SynthesizeSpeechRequestSchema,
   SynthesizeSpeechResponseSchema,
 } from "../../gen/agentos/console/v1/speech_pb.js";
-import { resetKagent } from "./kagent.js";
+import { partTypeKey } from "../../server/read-model/decode/messages.js";
+import { ids, observeTask, recordedTask, resetKagent } from "./kagent.js";
+
+function audioResponse() {
+  const data = toBinary(
+    SynthesizeSpeechResponseSchema,
+    create(SynthesizeSpeechResponseSchema, {
+      audio: { contentType: "audio/wav", data: new Uint8Array([1, 2, 3]) },
+    }),
+  );
+  const header = Buffer.alloc(5);
+  header.writeUInt32BE(data.length, 1);
+  return Buffer.concat([header, data, Buffer.from([2, 0, 0, 0, 2]), Buffer.from("{}")]);
+}
 
 test.beforeEach(async ({ page, request }) => {
   await resetKagent(request);
@@ -126,17 +140,9 @@ test("reads an assistant answer with the official playback controls and stops on
       route.request().postDataBuffer()?.subarray(5) ?? new Uint8Array(),
     );
     expect(request.text.length).toBeGreaterThan(0);
-    const data = toBinary(
-      SynthesizeSpeechResponseSchema,
-      create(SynthesizeSpeechResponseSchema, {
-        audio: { contentType: "audio/wav", data: new Uint8Array([1, 2, 3]) },
-      }),
-    );
-    const header = Buffer.alloc(5);
-    header.writeUInt32BE(data.length, 1);
     await route.fulfill({
       contentType: "application/connect+proto",
-      body: Buffer.concat([header, data, Buffer.from([2, 0, 0, 0, 2]), Buffer.from("{}")]),
+      body: audioResponse(),
     });
   });
   await page.goto("/chat");
@@ -157,6 +163,85 @@ test("reads an assistant answer with the official playback controls and stops on
   await expect(page.getByRole("button", { name: "停止播放", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "朗读", exact: true }).click();
   await expect(page.getByRole("button", { name: "停止录音", exact: true })).toHaveCount(0);
+});
+
+test("speaks only the completed answer and preserves visible progress across tools and reloads", async ({
+  page,
+  request,
+}) => {
+  await page.route("**/agentos.console.v1.ConsoleService/GetSpeechCapabilities", (route) =>
+    route.fulfill({ json: { synthesis: true } }),
+  );
+  const spoken: string[] = [];
+  await page.route("**/agentos.console.v1.ConsoleService/SynthesizeSpeech", async (route) => {
+    spoken.push(
+      fromBinary(
+        SynthesizeSpeechRequestSchema,
+        route.request().postDataBuffer()?.subarray(5) ?? new Uint8Array(),
+      ).text,
+    );
+    await route.fulfill({ contentType: "application/connect+proto", body: audioResponse() });
+  });
+  const task = await recordedTask(request, ids.chat);
+  task.artifacts = [
+    create(ArtifactSchema, {
+      artifactId: "progress",
+      parts: [{ content: { case: "text", value: "先调用 MCP 检查当前资源。" } }],
+    }),
+  ];
+  if (task.status) task.status.state = TaskState.WORKING;
+  await observeTask(request, task);
+  await page.goto(`/chat/${task.contextId}`);
+  const answer = page.getByTestId("chat-message").filter({ hasText: "先调用 MCP 检查当前资源。" });
+  await expect(answer).toBeVisible();
+  await expect(page.getByRole("button", { name: "朗读", exact: true })).toHaveCount(0);
+  for (const kind of ["function_call", "function_response"])
+    task.artifacts.push(
+      create(ArtifactSchema, {
+        artifactId: kind,
+        parts: [
+          {
+            metadata: { [partTypeKey]: kind },
+            content: { case: "text", value: "raw-tool-payload" },
+          },
+        ],
+      }),
+    );
+  task.artifacts.push(
+    create(ArtifactSchema, {
+      artifactId: "final",
+      parts: [
+        {
+          content: {
+            case: "text",
+            value:
+              '# 检查结果\n\n**所有资源健康。**\n\n```json\n{"tool":"k8s_get_resources","result":"raw-tool-payload"}\n```\n\n| Tool | Result |\n|---|---|\n| k8s_get_resources | raw-tool-payload |\n\n[查看报告](https://example.test/report)',
+          },
+        },
+      ],
+    }),
+  );
+  await observeTask(request, task);
+  await expect(answer).toContainText("所有资源健康。");
+  await expect(page.getByRole("button", { name: "朗读", exact: true })).toHaveCount(0);
+  if (task.status) task.status.state = TaskState.COMPLETED;
+  await observeTask(request, task);
+  await answer.getByRole("button", { name: "朗读", exact: true }).click();
+  await expect.poll(() => spoken).toEqual(["检查结果\n\n所有资源健康。\n\n查看报告"]);
+  await page.reload();
+  await expect(answer).toContainText("所有资源健康。");
+  await answer.getByRole("button", { name: "朗读", exact: true }).click();
+  await expect.poll(() => spoken).toEqual(Array(2).fill("检查结果\n\n所有资源健康。\n\n查看报告"));
+  await page.getByRole("button", { name: "停止播放", exact: true }).click();
+  task.artifacts = [
+    create(ArtifactSchema, {
+      artifactId: "code-only",
+      parts: [{ content: { case: "text", value: '```json\n{"tool":"k8s_get_resources"}\n```' } }],
+    }),
+  ];
+  await observeTask(request, task);
+  await expect(page.getByTestId("chat-message").last()).toContainText("k8s_get_resources");
+  await expect(page.getByRole("button", { name: "朗读", exact: true })).toHaveCount(0);
 });
 
 test("keeps text chat usable after the speech provider fails", async ({ page }) => {

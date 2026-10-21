@@ -20,5 +20,8 @@ export function taskOutput(task: Task) {
   );
   const failure = task.status?.state === TaskState.FAILED ? messageText(task.status.message) : "";
   if (failure && blocks.at(-1) !== failure) blocks.push(failure);
-  return { answer: failure || final || history, response: blocks.join("\n\n") || history };
+  const answer = failure || final || history;
+  const completed = task.status?.state === TaskState.COMPLETED;
+  if (completed && blocks.at(-1) === answer) blocks.pop();
+  return { answer, progress: blocks.join("\n\n") || (completed ? "" : history) };
 }

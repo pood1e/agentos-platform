@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSpeechControls } from "./context.js";
+import { speechText } from "./text.js";
 
 export function SpeechInput({ disabled }: { disabled: boolean }) {
   const { t, i18n } = useTranslation();
@@ -87,7 +88,12 @@ export function SpeechInput({ disabled }: { disabled: boolean }) {
 export function SpeechOutput() {
   const { t } = useTranslation();
   return (
-    <AuiIf condition={(state) => state.thread.capabilities.speech}>
+    <AuiIf
+      condition={(state) =>
+        state.thread.capabilities.speech &&
+        state.message.content.some((part) => part.type === "text" && !!speechText(part.text))
+      }
+    >
       <ActionBarPrimitive.Root className="mt-1 flex items-center gap-1">
         <AuiIf condition={(state) => state.message.speech == null}>
           <ActionBarPrimitive.Speak asChild>
