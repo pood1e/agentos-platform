@@ -29,16 +29,22 @@ export function useSpeech() {
         : languages.includes(preferred)
           ? preferred
           : "";
-  const adapters = useMemo(
-    () => ({
-      dictation:
-        transcription && RemoteDictationAdapter.isSupported()
-          ? new RemoteDictationAdapter(onError, undefined, { language, onPhase: setPhase })
-          : undefined,
-      speech: synthesis ? new RemoteSpeechAdapter(speechClient, onError) : undefined,
-    }),
-    [transcription, synthesis, onError, language],
-  );
+  const adapters = useMemo(() => {
+    const speech = synthesis
+      ? new RemoteSpeechAdapter(speechClient, onError, () => dictation?.dispose())
+      : undefined;
+    const dictation =
+      transcription && RemoteDictationAdapter.isSupported()
+        ? new RemoteDictationAdapter(onError, undefined, {
+            language,
+            onPhase: (next) => {
+              if (next === "starting") speech?.dispose();
+              setPhase(next);
+            },
+          })
+        : undefined;
+    return { dictation, speech };
+  }, [transcription, synthesis, onError, language]);
   useEffect(
     () => () => {
       adapters.dictation?.dispose();
