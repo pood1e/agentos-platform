@@ -146,6 +146,8 @@ export class FakeKagent {
   }
 
   private reply(task: Task, message: Message): Task {
+    if (terminal(task.status?.state))
+      throw new ConnectError("Task is not accepting messages", Code.FailedPrecondition);
     task.history.push(message);
     const request = hitlPayload(task.status?.message);
     const decision = hitlPayload(message);

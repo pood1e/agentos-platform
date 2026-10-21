@@ -1,4 +1,5 @@
 import { clone, create } from "@bufbuild/protobuf";
+import { Code } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import {
@@ -11,6 +12,30 @@ import { messageCommands } from "../server/console/messages.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { fixtureAgents } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
+
+it("keeps cancelled tasks terminal when a late reply reaches the runtime fixture", () => {
+  const env = environment();
+  const task = [...env.fake.tasks.values()][0];
+  env.fake.update(task, TaskState.CANCELED);
+  const before = task.history.length;
+  try {
+    expect(() =>
+      env.fake.accept(
+        create(MessageSchema, {
+          taskId: task.id,
+          contextId: task.contextId,
+          messageId: "late-reply",
+          role: Role.USER,
+          parts: [{ content: { case: "text", value: "Late response" } }],
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: Code.FailedPrecondition }));
+    expect(task.status?.state).toBe(TaskState.CANCELED);
+    expect(task.history).toHaveLength(before);
+  } finally {
+    env.sync.close();
+  }
+});
 
 it("runs a selected Agent without a coordinator, external approvals or a solution pack", async () => {
   const { fake, sync, clients } = environment([]);
