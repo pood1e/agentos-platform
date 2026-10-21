@@ -20,28 +20,54 @@ it("defaults to no speech capabilities", () => {
 it("loads independent provider settings without requiring OIDC", () => {
   expect(
     configuration({
-      transcription: { baseUrl: "http://speech.example.test/v1", model: "asr" },
+      transcription: { endpoint: { baseUrl: "http://speech.example.test/v1" }, model: "asr" },
     })(),
   ).toMatchObject({ transcription: { model: "asr" } });
   expect(
     configuration({
       synthesis: {
-        baseUrl: "https://speech.example.test/v1",
-        model: "tts",
-        apiKeyFile: "/run/credentials/tts",
+        endpoint: { baseUrl: "https://speech.example.test/v1", apiKeyFile: "/run/credentials/tts" },
+        voices: [{ languageCode: "cmn", model: "tts", voice: "default" }],
       },
-      voice: "multilingual",
     })(),
-  ).toMatchObject({ synthesis: { model: "tts" }, voice: "multilingual" });
+  ).toMatchObject({
+    synthesis: { voices: [{ languageCode: "zh", model: "tts", voice: "default" }] },
+  });
 });
 
 it.each([
   { transcription: {} },
-  { transcription: { baseUrl: "file:///tmp/speech", model: "asr" } },
-  { transcription: { baseUrl: "https://user:password@speech.example.test/v1", model: "asr" } },
-  { transcription: { baseUrl: "https://speech.example.test/v1?token=secret", model: "asr" } },
-  { synthesis: { baseUrl: "https://speech.example.test/v1", model: "tts" } },
-  { transcription: { baseUrl: "https://speech.example.test/v1", model: "asr", apiKey: "secret" } },
+  { transcription: { endpoint: { baseUrl: "file:///tmp/speech" }, model: "asr" } },
+  {
+    transcription: {
+      endpoint: { baseUrl: "https://user:password@speech.example.test/v1" },
+      model: "asr",
+    },
+  },
+  {
+    transcription: {
+      endpoint: { baseUrl: "https://speech.example.test/v1?token=secret" },
+      model: "asr",
+    },
+  },
+  { synthesis: { endpoint: { baseUrl: "https://speech.example.test/v1" }, voices: [] } },
+  {
+    transcription: {
+      endpoint: { baseUrl: "https://speech.example.test/v1", apiKey: "secret" },
+      model: "asr",
+    },
+  },
+  { transcription: { baseUrl: "https://speech.example.test/v1", model: "asr" } },
+  { voice: "removed" },
+  {
+    synthesis: {
+      endpoint: { baseUrl: "https://speech.example.test/v1" },
+      voices: [
+        { languageCode: "zh", model: "one", voice: "one" },
+        { languageCode: "cmn", model: "two", voice: "two" },
+      ],
+    },
+  },
 ])("rejects incomplete or unsupported provider configuration", (value) => {
   expect(configuration(value)).toThrow();
 });

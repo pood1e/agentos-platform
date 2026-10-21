@@ -13,7 +13,12 @@ parser.add_argument("--prefix", default="")
 arguments = parser.parse_args()
 helm = ".cache/bin/helm"
 base = [helm, "template", "speech-check", arguments.chart, "-f", arguments.values]
-endpoint = {"baseUrl": "https://speech.example.test/v1", "model": "multilingual"}
+endpoint = {"baseUrl": "https://speech.example.test/v1"}
+transcription = {"endpoint": endpoint, "model": "multilingual-asr"}
+synthesis = {"endpoint": endpoint, "voices": [
+    {"languageCode": language, "model": "tts-" + language, "voice": "default"}
+    for language in ["zh", "en", "ar"]
+]}
 
 for input_enabled, output_enabled, authenticated in [
     (False, False, False),
@@ -23,9 +28,8 @@ for input_enabled, output_enabled, authenticated in [
     (True, True, False),
 ]:
     configuration = {
-        "transcription": endpoint if input_enabled else {},
-        "synthesis": endpoint if output_enabled else {},
-        "voice": "multilingual" if output_enabled else "",
+        "transcription": transcription if input_enabled else {},
+        "synthesis": synthesis if output_enabled else {},
         "secretRef": "speech-credentials" if authenticated else "",
     }
     command = [*base, "--set-json", f"{arguments.prefix}speech={json.dumps(configuration)}"]
@@ -59,8 +63,11 @@ for input_enabled, output_enabled, authenticated in [
     assert bool(credentials) == authenticated
     for kind in ("transcription", "synthesis"):
         if kind in effective:
-            assert ("apiKeyFile" in effective[kind]) == authenticated
-            assert effective[kind]["model"] == endpoint["model"]
+            assert ("apiKeyFile" in effective[kind]["endpoint"]) == authenticated
+    if input_enabled:
+        assert effective["transcription"]["model"] == transcription["model"]
+    if output_enabled:
+        assert effective["synthesis"]["voices"] == synthesis["voices"]
     if authenticated:
         expected = {
             kind + "-api-key" for kind in ("transcription", "synthesis") if kind in effective
@@ -77,9 +84,11 @@ for input_enabled, output_enabled, authenticated in [
 
 for invalid in [
     {"transcription": {"model": "asr"}},
-    {"synthesis": endpoint, "voice": ""},
-    {"transcription": {**endpoint, "apiKey": "inline-key"}},
-    {"transcription": {**endpoint, "baseUrl": "file:///tmp/speech"}},
+    {"synthesis": {"endpoint": endpoint, "voices": []}},
+    {"transcription": {**transcription, "endpoint": {**endpoint, "apiKey": "inline-key"}}},
+    {"transcription": {**transcription, "endpoint": {"baseUrl": "file:///tmp/speech"}}},
+    {"synthesis": {**synthesis, "voices": [{"languageCode": "zh", "model": "tts"}]}},
+    {"voice": "removed"},
     {"unknown": True},
 ]:
     result = subprocess.run(

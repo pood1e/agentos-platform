@@ -7,26 +7,47 @@ import "google/api/httpbody.proto";
 
 // Server-side configuration for OpenAI-compatible audio endpoints.
 message SpeechConfiguration {
-  option (buf.validate.message).cel = {
-    id: "speech.voice"
-    message: "synthesis requires a voice"
-    expression: "!has(this.synthesis) || size(this.voice) > 0"
-  };
-  SpeechProvider transcription = 1;
-  SpeechProvider synthesis = 2;
-  string voice = 3 [(buf.validate.field).string.max_len = 128];
+  SpeechTranscription transcription = 1;
+  SpeechSynthesis synthesis = 2;
+  reserved 3;
+  reserved "voice";
 }
 
-message SpeechProvider {
+message SpeechEndpoint {
   string base_url = 1 [(buf.validate.field).string = {
     uri: true
     pattern: "^https?://"
   }];
+  string api_key_file = 2 [(buf.validate.field).string.max_len = 4096];
+}
+
+message SpeechTranscription {
+  SpeechEndpoint endpoint = 1 [(buf.validate.field).required = true];
   string model = 2 [(buf.validate.field).string = {
     min_len: 1
     max_len: 256
   }];
-  string api_key_file = 3 [(buf.validate.field).string.max_len = 4096];
+}
+
+message SpeechSynthesis {
+  SpeechEndpoint endpoint = 1 [(buf.validate.field).required = true];
+  // Voices are selected by text language; the first voice is the fallback.
+  repeated SpeechVoice voices = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 32
+  }];
+}
+
+message SpeechVoice {
+  string language_code = 1 [(buf.validate.field).string.pattern = "^[a-z]{2,3}$"];
+  string model = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+  string voice = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
 }
 
 message GetSpeechCapabilitiesRequest {}

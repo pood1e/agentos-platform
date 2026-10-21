@@ -48,7 +48,6 @@ console:
 speech:
   transcription: {}
   synthesis: {}
-  voice: ''
   secretRef: ''
 identity:
   mode: none

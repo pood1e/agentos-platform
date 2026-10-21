@@ -6,9 +6,10 @@ import type { ConsoleService } from "../../gen/agentos/console/v1/console_servic
 import {
   type SpeechConfiguration,
   SpeechConfigurationSchema,
-  type SpeechProvider,
+  type SpeechEndpoint,
 } from "../../gen/agentos/console/v1/speech_pb.js";
 import { fail } from "../shared/errors.js";
+import { selectVoice } from "./voices.js";
 
 const formats = new Map([
   ["audio/webm", "webm"],
@@ -19,7 +20,7 @@ const formats = new Map([
 ]);
 const maxSpeechBytes = 16 * 1024 * 1024;
 
-function providerClient(provider?: SpeechProvider) {
+function providerClient(provider?: SpeechEndpoint) {
   if (!provider) return undefined;
   return new OpenAI({
     baseURL: provider.baseUrl,
@@ -74,8 +75,8 @@ async function upstream<T>(
 export function speechService(
   configuration: SpeechConfiguration = create(SpeechConfigurationSchema),
 ) {
-  const transcription = providerClient(configuration.transcription);
-  const synthesis = providerClient(configuration.synthesis);
+  const transcription = providerClient(configuration.transcription?.endpoint);
+  const synthesis = providerClient(configuration.synthesis?.endpoint);
   return {
     getSpeechCapabilities: () => ({ transcription: !!transcription, synthesis: !!synthesis }),
     async transcribeAudio(request, context) {
@@ -95,20 +96,21 @@ export function speechService(
       });
     },
     async synthesizeSpeech(request, context) {
-      if (!synthesis || !configuration.synthesis)
-        throw fail(Code.FailedPrecondition, "speech.unavailable");
+      const voice = selectVoice(request.text, configuration.synthesis?.voices ?? []);
+      if (!synthesis || !voice) throw fail(Code.FailedPrecondition, "speech.unavailable");
       return upstream(context.signal, async (signal) => {
         const response = await synthesis.audio.speech.create(
           {
-            model: configuration.synthesis?.model ?? "",
-            voice: configuration.voice,
+            model: voice.model,
+            voice: voice.voice,
             input: request.text,
-            response_format: "wav",
+            response_format: "mp3",
           },
           { signal },
         );
-        const contentType =
-          response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "audio/wav";
+        let contentType =
+          response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "audio/mpeg";
+        if (contentType === "audio/mp3") contentType = "audio/mpeg";
         if (!contentType.startsWith("audio/")) {
           await response.body?.cancel();
           throw fail(Code.Unavailable, "speech.unavailable");
