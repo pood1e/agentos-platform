@@ -164,6 +164,10 @@ describe("native gateway connections", () => {
     expect(object(object(backend.spec).mcp).targets).toMatchObject([
       { static: { policies: { http: { requestTimeout: "10m" } } } },
     ]);
+    const policy = await env.store.get("mcpPolicies", "new-mcp-tool-access");
+    expect(object(policy.spec).targetRefs).toEqual([
+      { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "mcp-new-mcp" },
+    ]);
     const remote = await env.store.get("remoteMCPs", "new-mcp");
     expect(remote.spec).toMatchObject({
       url: `${env.dependencies.gateway.url}/mcp/new-mcp`,

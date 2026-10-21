@@ -69,7 +69,9 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
         kind: "AgentgatewayPolicy",
         metadata: { name: `${name}-tool-access` },
         spec: {
-          targetRefs: [{ group: "agentgateway.dev", kind: "AgentgatewayBackend", name }],
+          targetRefs: [
+            { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: `mcp-${name}` },
+          ],
           backend: {
             mcp: {
               authorization: {
