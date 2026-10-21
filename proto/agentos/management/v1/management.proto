@@ -3,7 +3,6 @@ syntax = "proto3";
 package agentos.management.v1;
 
 import "agentos/console/v1/role.proto";
-import "agentos/governance/v1/governance.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "kagent/api/v1alpha1/agent_templates.proto";
@@ -37,9 +36,6 @@ service ManagementService {
   rpc AddKnowledge(AddKnowledgeRequest) returns (AddKnowledgeResponse);
   rpc DeleteKnowledge(DeleteKnowledgeRequest) returns (DeleteKnowledgeResponse);
   rpc ClearKnowledge(ClearKnowledgeRequest) returns (ClearKnowledgeResponse);
-  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
   rpc ListHarnesses(kagent.api.v1alpha1.ListHarnessesRequest) returns (kagent.api.v1alpha1.ListHarnessesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -233,8 +229,3 @@ message ClearKnowledgeRequest {
   int32 expected_count = 2 [(buf.validate.field).int32.gte = 0];
 }
 message ClearKnowledgeResponse {}
-
-message ListEnvironmentsRequest {}
-message ListEnvironmentsResponse {
-  repeated agentos.governance.v1.Environment environments = 1;
-}

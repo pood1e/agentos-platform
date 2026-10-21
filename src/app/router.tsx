@@ -73,13 +73,6 @@ export const router = createBrowserRouter([
             },
           },
           {
-            path: "environments",
-            lazy: async () => ({
-              Component: (await import("../features/management/EnvironmentsPage.js"))
-                .EnvironmentsPage,
-            }),
-          },
-          {
             path: "harnesses",
             lazy: async () => ({
               Component: (await import("../features/management/HarnessesPage.js")).HarnessesPage,

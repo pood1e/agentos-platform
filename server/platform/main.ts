@@ -114,7 +114,6 @@ function services(
       store: resources,
       gateway,
       knowledge,
-      operations,
     }),
   };
 }

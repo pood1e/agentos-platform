@@ -2,7 +2,7 @@
 {% for target in groups['environments'] %}
 {% set settings = hostvars[target] %}
 {% set governance = (agentos_config.environments | selectattr('name', 'equalto', settings.environment_name) | first).governance %}
-{% set environment = {'name': settings.environment_name, 'governance': 'GOVERNANCE_' + governance | upper, 'links': settings.environment_links | default([])} %}
+{% set environment = {'name': settings.environment_name, 'governance': 'GOVERNANCE_' + governance | upper} %}
 {% set connection = {'environment': environment} %}
 {% if settings.approval_service_url | default('') %}
 {% set connection = connection | combine({'approvalUrl': settings.approval_service_url}) %}

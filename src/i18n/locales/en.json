@@ -281,36 +281,6 @@
   "request": {
     "invalid": "Check the request and try again."
   },
-  "operations": {
-    "environment": "Environment",
-    "governance": "Approval",
-    "human": "Human approval",
-    "none": "No approval",
-    "approvalPortal": "Approval portal",
-    "links": "Environment links",
-    "states": {
-      "PENDING": "Awaiting approval",
-      "APPROVED": "Approved",
-      "REJECTED": "Rejected",
-      "EXECUTING": "Executing",
-      "SUCCEEDED": "Completed",
-      "FAILED": "Failed",
-      "EXPIRED": "Expired",
-      "CANCELED": "Closed"
-    },
-    "plan": {
-      "impact": "Impact",
-      "validation": "Validation",
-      "rollback": "Rollback",
-      "simulation": "Simulation evidence and limitations",
-      "source": "View simulation task"
-    },
-    "blockers": {
-      "ASSESSMENT_REQUIRED": "Impact, validation, rollback or simulation evidence is missing. Execution remains paused.",
-      "PLAN_CHANGED": "The plan changed after approval. A new approval is required.",
-      "NORMAL_CHANGE_REQUIRED": "This execution flow requires a Normal Change."
-    }
-  },
   "harness": {
     "title": "Harnesses",
     "tab": "Runtime",
