@@ -6,7 +6,9 @@ import {
   type ExecutionIdentity,
   ExecutionIdentitySchema,
 } from "../../gen/agentos/execution/v1/identity_pb.js";
+import { allCapabilities, can } from "../../shared/permissions.js";
 import type { jwtIdentity } from "../authorization/oidc.js";
+import { requiredCapability } from "../authorization/permissions.js";
 
 export const accessProfile = createContextKey(create(AccessProfileSchema));
 export const requestIdentity = createContextKey(create(ExecutionIdentitySchema));
@@ -26,18 +28,21 @@ export function workspaceContext(
       : create(ExecutionIdentitySchema, {
           subject: "console",
           write: true,
+          capabilities: allCapabilities,
           credential: { case: "service", value: true },
         });
     principal = (await remember?.(principal)) ?? principal;
     if (request.method.idempotency !== MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS) {
       if (
-        !principal.write &&
         !(
           request.service.typeName === "agentos.console.v1.ConsoleService" &&
           executionMethods.has(request.method.name)
         )
-      )
-        throw new ConnectError("Read-only access", Code.PermissionDenied);
+      ) {
+        const capability = requiredCapability(request.method, request.message);
+        if (!capability || !can(principal, capability))
+          throw new ConnectError("Permission denied", Code.PermissionDenied);
+      }
       const source = request.header.get("origin");
       if (
         identity &&
@@ -52,8 +57,8 @@ export function workspaceContext(
       create(AccessProfileSchema, {
         workspace,
         subject: principal.subject,
-        operate: true,
-        manage: principal.write,
+        capabilities: principal.capabilities,
+        write: principal.write,
         entryAgent: { namespace: workspace, name: entryAgent },
       }),
     );

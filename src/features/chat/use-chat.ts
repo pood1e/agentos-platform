@@ -54,8 +54,7 @@ export function useChat(
   const ready = conversation?.ready ?? false;
   const busy = conversation?.busy ?? false;
   const pending = conversation?.pending ?? [];
-  const blocked =
-    access.data?.operate !== true || !conversation?.operate || send.isPending || busy || !ready;
+  const blocked = !access.data || !conversation?.operate || send.isPending || busy || !ready;
 
   async function submit(input: string): Promise<boolean> {
     const text = input.trim();

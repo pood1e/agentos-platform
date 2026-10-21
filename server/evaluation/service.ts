@@ -53,7 +53,7 @@ export function candidateDrafts({ store, freeze, validate }: EvaluationDependenc
 
 export function evaluationService(
   dependencies: EvaluationDependencies,
-): ServiceImpl<typeof EvaluationService> {
+): Required<ServiceImpl<typeof EvaluationService>> {
   const { store, jobs, freeze, prepare, publish } = dependencies;
   async function current(id: string) {
     const record = await store.get(id);

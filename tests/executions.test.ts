@@ -2,6 +2,7 @@ import { clone, create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { beforeEach, expect, it } from "vitest";
+import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import {
   ExecutionBindingSchema,
   ExecutionIdentitySchema,
@@ -10,6 +11,7 @@ import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import { jwtIdentity } from "../server/authorization/oidc.js";
 import type { ExecutionStore } from "../server/authorization/store.js";
+import { capabilityRole } from "../shared/permissions.js";
 import { memoryStore } from "./fixtures/execution-store.js";
 
 const issuer = "https://identity.test/realms/workspace";
@@ -21,8 +23,16 @@ const verify = jwtIdentity(
 const session = (id: string, name = "assistant") =>
   create(SessionSchema, { id, creator: "native-storage", agent: { namespace: "workspace", name } });
 const now = Math.floor(Date.now() / 1000);
-async function user(subject: string, write: boolean, issued = now, expires = now + 600) {
-  const token = await new SignJWT({ roles: write ? ["writer"] : [] })
+async function user(
+  subject: string,
+  write: boolean,
+  issued = now,
+  expires = now + 600,
+  capabilities: Capability[] = [],
+) {
+  const token = await new SignJWT({
+    roles: [...(write ? ["writer"] : []), ...capabilities.map(capabilityRole)],
+  })
     .setProtectedHeader({ alg: "RS256" })
     .setIssuer(issuer)
     .setAudience("platform")
@@ -33,6 +43,7 @@ async function user(subject: string, write: boolean, issued = now, expires = now
   return create(ExecutionIdentitySchema, {
     subject: `${issuer}#${subject}`,
     write,
+    capabilities,
     credential: { case: "accessToken", value: token },
   });
 }
@@ -165,4 +176,44 @@ it("retires shared console execution authority when OIDC is enabled", async () =
   await expect(registry.resolve(session("open-console"))).rejects.toMatchObject({
     code: Code.PermissionDenied,
   });
+});
+
+it("captures platform capability ceilings through delegation without lowering the user's new roots", async () => {
+  const reader = await user("alice", false),
+    manager = await user("alice", false, now + 1, now + 600, [Capability.KNOWLEDGE_MANAGE]);
+  const root = session("root"),
+    child = session("child", "knowledge");
+  await registry.bind(root, reader);
+  await registry.remember(manager);
+  await registry.bind(child, manager, root);
+  expect((await registry.resolve(child)).capabilities).toEqual([]);
+  await registry.bind(session("fresh"), manager);
+  expect((await registry.resolve(session("fresh"))).capabilities).toEqual([
+    Capability.KNOWLEDGE_MANAGE,
+  ]);
+  expect((await store.identity(manager.subject))?.value.capabilities).toEqual([
+    Capability.KNOWLEDGE_MANAGE,
+  ]);
+});
+
+it("persists capability revocation and intersects tokens issued in the same second", async () => {
+  const first = await user("alice", false, now - 1, now + 600, [Capability.KNOWLEDGE_MANAGE]),
+    removed = await user("alice", false, now, now + 600, [Capability.SKILLS_MANAGE]),
+    sameSecond = await user("alice", false, now, now + 600, [
+      Capability.KNOWLEDGE_MANAGE,
+      Capability.SKILLS_MANAGE,
+    ]);
+  await registry.bind(session("root"), first);
+  expect((await registry.resolve(session("root"))).capabilities).toEqual([
+    Capability.KNOWLEDGE_MANAGE,
+  ]);
+  await registry.remember(removed);
+  expect((await registry.resolve(session("root"))).capabilities).toEqual([]);
+  registry = executions(store, verify);
+  expect((await registry.remember(first)).capabilities).toEqual([]);
+  expect((await registry.remember(sameSecond)).capabilities).toEqual([Capability.SKILLS_MANAGE]);
+  await registry.bind(session("fresh"), sameSecond);
+  expect((await registry.resolve(session("fresh"))).capabilities).toEqual([
+    Capability.SKILLS_MANAGE,
+  ]);
 });

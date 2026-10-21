@@ -16,22 +16,23 @@ import { NavLink } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/access";
 import { evaluationClient } from "@/lib/console";
+import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
+import { can } from "../../shared/permissions.js";
+import { managementCapability } from "../lib/permissions.js";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
   { path: "/tasks", label: "navigation.tasks", icon: GitBranch },
-  { path: "/engineers", label: "navigation.agents", icon: Users, manage: true },
+  { path: "/engineers", label: "navigation.agents", icon: Users },
   {
     path: "/engineers/knowledge",
     label: "management.tabs.knowledge",
     icon: BrainCircuit,
-    manage: true,
   },
   {
     path: "/engineers/evaluation",
     label: "management.tabs.evaluation",
     icon: ClipboardCheck,
-    manage: true,
   },
 ];
 const settings = [
@@ -48,7 +49,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const evaluation = useQuery({
     queryKey: ["evaluation"],
     queryFn: ({ signal }) => evaluationClient.listCandidates({}, { signal }),
-    enabled: access.data?.manage === true,
+    enabled: can(access.data, Capability.EVALUATIONS_MANAGE),
     staleTime: 60_000,
     retry: false,
   });
@@ -66,6 +67,11 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
         </NavLink>
       </Button>
     ));
+  const permitted = (item: (typeof settings)[number]) => {
+    const capability = managementCapability(item.path);
+    return !capability || can(access.data, capability);
+  };
+  const visibleSettings = settings.filter(permitted);
   return (
     <nav
       aria-label={t("navigation.main")}
@@ -74,16 +80,15 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       {links(
         sections.filter(
           (item) =>
-            (!item.manage || access.data?.manage) &&
-            (item.path !== "/engineers/evaluation" || evaluation.isSuccess),
+            permitted(item) && (item.path !== "/engineers/evaluation" || evaluation.isSuccess),
         ),
       )}
-      {access.data?.manage && (
+      {!!visibleSettings.length && (
         <>
           <p className="mb-1 mt-6 px-3 text-xs font-medium text-muted-foreground">
             {t("navigation.settings")}
           </p>
-          {links(settings)}
+          {links(visibleSettings)}
         </>
       )}
     </nav>

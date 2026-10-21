@@ -21,7 +21,7 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
     );
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 space-y-2 p-3 sm:p-4">
-      {!access.data.manage && (
+      {!builder && !access.data.write && (
         <p className="text-xs text-muted-foreground">{t("access.readOnlyTools")}</p>
       )}
       {chat.error && (

@@ -5,6 +5,7 @@ import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
+import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { loadCatalog } from "../../shared/tool-catalog.js";
 import { scopedCollaboration } from "../authorization/context.js";
@@ -135,6 +136,7 @@ const evaluation = await platformEvaluation({
       create(ExecutionIdentitySchema, {
         subject: `service:evaluation:${session.agent?.namespace}`,
         write: false,
+        capabilities: [Capability.KNOWLEDGE_MANAGE],
         credential: { case: "service", value: true },
       }),
     ),
@@ -192,6 +194,7 @@ await registerTeamSessions(
             const principal = create(ExecutionIdentitySchema, {
               subject: `service:automation:${environment}`,
               write: true,
+              capabilities: [Capability.KNOWLEDGE_MANAGE],
               credential: { case: "service", value: true },
             });
             await execution.registry.bind(session, principal);

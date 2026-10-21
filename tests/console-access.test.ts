@@ -1,9 +1,11 @@
 import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { beforeAll, expect, it, vi } from "vitest";
+import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { jwtIdentity } from "../server/authorization/oidc.js";
 import { accessProfile, workspaceContext } from "../server/platform/access.js";
+import { allCapabilities, capabilityRole } from "../shared/permissions.js";
 
 const issuer = "https://identity.example.test/realms/site";
 const origin = "https://agentos.example.test";
@@ -27,8 +29,8 @@ it("supports open access without an OIDC provider", async () => {
   );
   expect((await open.getAccessProfile({})).profile).toMatchObject({
     subject: "console",
-    operate: true,
-    manage: true,
+    write: true,
+    capabilities: allCapabilities,
   });
   await open.sendMessage({});
 });
@@ -82,8 +84,8 @@ it("lets readers start executions while denying configuration writes and forged 
   expect((await client.getAccessProfile({}, { headers: value })).profile).toMatchObject({
     workspace: "workspace",
     subject: `${issuer}#user-42`,
-    operate: true,
-    manage: false,
+    write: false,
+    capabilities: [],
   });
   await client.sendMessage({}, { headers: value });
   await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
@@ -93,10 +95,20 @@ it("lets readers start executions while denying configuration writes and forged 
 
 it("allows the signed writer role and rejects cross-origin writes", async () => {
   const value = await headers(["writer"]);
-  expect((await client.getAccessProfile({}, { headers: value })).profile?.operate).toBe(true);
+  expect((await client.getAccessProfile({}, { headers: value })).profile?.write).toBe(true);
   await client.sendMessage({}, { headers: value });
+  await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
   value.set("origin", "https://other.example.test");
   await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
+});
+
+it("grants Agent administration independently of target-system write permissions", async () => {
+  const value = await headers([capabilityRole(Capability.AGENTS_MANAGE)]);
+  expect((await client.getAccessProfile({}, { headers: value })).profile).toMatchObject({
+    write: false,
+    capabilities: [Capability.AGENTS_MANAGE],
+  });
+  await client.updateRole({}, { headers: value });
 });
 
 it("requires an origin for cookie-authenticated mutations", async () => {

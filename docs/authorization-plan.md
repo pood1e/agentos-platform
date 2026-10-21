@@ -1,7 +1,8 @@
 # 身份、Agent 权限与 OBO 实施计划
 
-状态：实施中，当前为 P0 链路验证与授权基础。核对日期：2026-10-20。基线：AgentOS Platform 0.7.0、AIOps 1.3.0。
-已落地模型、SDK 判定、Actor 身份验证与 ExtMCP 适配，真实组件证据及原生边界见[链路验证](authorization-validation.md)。
+状态：持续扩展。当前实现包含可选 OIDC、七类平台资源角色、个人会话隔离、执行与委派上限、Actor 校验、网关逐调用授权、原生 Kubernetes OBO 与审批复验。平台资源角色由身份提供方映射，通用权限目录从 proto 生成。
+
+现有行为以[执行授权](execution-authorization.md)为准；以下 P0—P5 保留逐资源业务 ACL、OpenFGA 与生产治理的扩展范围。OpenFGA 的模型和 SDK 已验证，当前平台资源 RBAC 由已验证的应用角色执行，运行路径尚未接入业务关系元组服务。
 
 ## 目标与边界
 
@@ -17,12 +18,11 @@
 
 | 现状 | 主要入口 | 目标 |
 | --- | --- | --- |
-| 工作空间共享 `subject`，`operate/manage` 固定开放 | `server/platform/access.ts`、`proto/agentos/console/v1/access.proto` | 已验证主体及针对资源的能力 |
-| 原生调用使用固定 `X-User-Id` | `server/kagent/clients.ts`、`server/kagent/invoke-session.ts` | 由受信请求上下文映射的原生身份 |
-| 会话与任务读模型缺少用户隔离 | `server/console`、`server/read-model` | 查询、详情、订阅及操作统一授权 |
-| 协作 MCP 按服务密钥和角色校验 | `server/team-sessions`、`server/platform/guardrails.ts` | 工作负载身份绑定原生会话、任务和执行授权 |
-| 环境工具按 Agent 映射长期服务凭据 | `charts/agentos/templates/gateway-auth.yaml`、`environments/templates` | 逐调用检查及显式连接器认证模式 |
-| 审批独立于用户授权 | `server/governance`、方案包审批服务 | 精确操作审批与执行前权限复验 |
+| 用户与平台角色 | `server/platform/access.ts`、`server/authorization/permissions.ts`、`shared/permissions.ts` | 受信应用角色、逐资源管理权限与目标写权限分离 |
+| 会话与执行归属 | `server/authorization/executions.ts`、`server/console/history.ts` | 用户隔离、父子能力交集与撤销 |
+| 运行时持久化 | `server/authorization/native.ts` | Actor 认证、私人记忆和共享知识的不同授权边界 |
+| 网关与环境连接 | `server/authorization`、`environments/templates` | 逐调用检查、原生 OBO 与服务桥接 |
+| 测评发布 | `server/evaluation/access.ts` | 评审权限与候选涉及的资源权限共同校验 |
 
 原生 `Session.creator`、`ResourceReference`、A2A Task、会话分享与生命周期 API 继续作为执行模型。
 会话分享只提供相应的原生会话访问能力，下游执行还需独立授权。全局读模型可以保留内部索引，返回结果须先完成主体及资源过滤。
@@ -62,7 +62,7 @@
 | 发布与接入 | 固定版本的运行时、契约/SDK、Chart、迁移与通用接入工具 | 平台依赖升级、方案配置、环境初始化与业务回归 | 站点参数、证书/密钥、部署权限、资源配额及目标权限验收 |
 
 平台交付通用机制与可验证执行边界，AIOps 交付业务规则和适配，环境交付实际信任、账号、权限与基础设施。
-平台可以对接企业已有身份提供方；控制面身份服务与 OpenFGA 的部署、存储和运维属于平台基础设施，按平台发行与站点接入流程交付。
+平台对接企业已有身份提供方，身份服务由部署方或目标环境维护。站点接入后续业务关系授权时，另行交付 OpenFGA 服务、存储与运维配置。
 目标环境可复用受信身份提供方；跨身份提供方或 realm 的用户映射与令牌交换按连接器实际能力单独验收。
 环境管理人员确认真实账号、资源范围和信任配置；AIOps 提供的自动化脚本负责将已确认配置落实到目标系统。
 

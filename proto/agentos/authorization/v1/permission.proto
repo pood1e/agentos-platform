@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package agentos.authorization.v1;
+
+// Platform resource administration is independent of target-system execution.
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_AGENTS_MANAGE = 1;
+  CAPABILITY_SKILLS_MANAGE = 2;
+  CAPABILITY_MCP_MANAGE = 3;
+  CAPABILITY_KNOWLEDGE_MANAGE = 4;
+  CAPABILITY_MODELS_MANAGE = 5;
+  CAPABILITY_HARNESSES_MANAGE = 6;
+  CAPABILITY_EVALUATIONS_MANAGE = 7;
+}

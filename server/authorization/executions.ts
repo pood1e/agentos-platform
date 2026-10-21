@@ -7,6 +7,7 @@ import {
   type ExecutionIdentity,
 } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { intersectCapabilities } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { jwtIdentity } from "./oidc.js";
 import { conflict, type ExecutionStore } from "./store.js";
@@ -15,29 +16,31 @@ const denied = () => new ConnectError("Execution access denied", Code.Permission
 
 export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwtIdentity>) {
   const remembered = new LRUCache<string, ExecutionIdentity>({ max: 512, ttl: 60_000 });
-  const narrowed = (identity: ExecutionIdentity, write: boolean) => ({
+  const narrowed = (identity: ExecutionIdentity, ceiling: ExecutionIdentity) => ({
     ...identity,
-    write: identity.write && write,
+    write: identity.write && ceiling.write,
+    capabilities: intersectCapabilities(identity.capabilities, ceiling.capabilities),
   });
 
   async function remember(identity: ExecutionIdentity, force = false) {
     if (!identity.subject || !identity.credential.case) throw denied();
     const value = identity.credential;
     const cached = remembered.get(identity.subject);
-    if (!force && cached?.credential.value === value.value) return narrowed(identity, cached.write);
+    if (!force && cached?.credential.value === value.value) return narrowed(identity, cached);
     for (let retry = 0; retry < 4; retry++) {
       const previous = await store.identity(identity.subject);
       if (
         previous?.value.credential.case === value.case &&
         previous.value.credential.value === value.value &&
-        previous.value.write === identity.write
+        previous.value.write === identity.write &&
+        JSON.stringify(previous.value.capabilities) === JSON.stringify(identity.capabilities)
       )
         return identity;
       if (previous?.value.credential.case === "accessToken" && value.case === "accessToken") {
         const oldTime = decodeJwt(previous.value.credential.value).iat ?? 0;
         const newTime = decodeJwt(value.value).iat ?? 0;
-        if (oldTime > newTime || (oldTime === newTime && !previous.value.write && identity.write))
-          return narrowed(identity, previous.value.write);
+        if (oldTime > newTime) return narrowed(identity, previous.value);
+        if (oldTime === newTime) identity = narrowed(identity, previous.value);
       }
       try {
         await store.saveIdentity(identity, previous?.version);
@@ -61,7 +64,8 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
     )
       throw denied();
     let ancestor = binding,
-      write = binding.write;
+      write = binding.write,
+      capabilities = binding.capabilities;
     const seen = new Set<string>();
     for (;;) {
       if (
@@ -74,16 +78,17 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
         throw denied();
       seen.add(ancestor.sessionId);
       write &&= ancestor.write;
+      capabilities = intersectCapabilities(capabilities, ancestor.capabilities);
       if (ancestor.sessionId === binding.rootSessionId) break;
       const parent = (await store.binding(ancestor.parentSessionId))?.value;
       if (!parent) throw denied();
       ancestor = parent;
     }
-    return { binding, write };
+    return { binding, write, capabilities };
   }
 
   async function resolve(session: Session) {
-    const { binding, write } = await record(session);
+    const { binding, write, capabilities } = await record(session);
     const saved = (await store.identity(binding.subject))?.value;
     if (!saved) throw denied();
     const identity =
@@ -95,7 +100,12 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
           ? saved
           : undefined;
     if (!identity || identity.subject !== binding.subject) throw denied();
-    return { binding, identity, write: identity.write && saved.write && write };
+    return {
+      binding,
+      identity,
+      write: identity.write && saved.write && write,
+      capabilities: intersectCapabilities(identity.capabilities, saved.capabilities, capabilities),
+    };
   }
 
   async function own(session: Session, identity: ExecutionIdentity) {
@@ -116,6 +126,10 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
       rootSessionId: ancestor?.binding.rootSessionId ?? session.id,
       parentSessionId: parent?.id ?? "",
       write: identity.write && (ancestor?.write ?? true),
+      capabilities: intersectCapabilities(
+        identity.capabilities,
+        ancestor?.capabilities ?? identity.capabilities,
+      ),
     });
     try {
       await store.saveBinding(binding);

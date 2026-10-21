@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CandidateState } from "../../../gen/agentos/evaluation/v1/evaluation_pb.js";
+import { can, publicationCapabilities } from "../../../shared/permissions.js";
+import { useAccess } from "../../lib/access.js";
 import { evaluationClient } from "../../lib/console.js";
 import { ResourceSheet } from "../management/ResourceDialog.js";
 import { Failure } from "../management/ResourcePage.js";
@@ -22,6 +24,7 @@ export function CandidateReview({
 }) {
   const { t } = useTranslation(),
     name = useCandidateName();
+  const access = useAccess();
   const detail = useQuery({
     queryKey: ["evaluation", id],
     queryFn: ({ signal }) => evaluationClient.getCandidate({ id }, { signal }),
@@ -30,6 +33,11 @@ export function CandidateReview({
   });
   const candidate = detail.data?.candidate,
     baseline = detail.data?.snapshot?.baseline;
+  const canPublish =
+    !!detail.data?.snapshot &&
+    publicationCapabilities(detail.data.snapshot.proposals).every((capability) =>
+      can(access.data, capability),
+    );
   const command = useMutation({
     mutationFn: async (publish: boolean) => {
       const response = await (publish
@@ -74,7 +82,11 @@ export function CandidateReview({
                 {[CandidateState.PASSED, CandidateState.PUBLISHING].includes(candidate.state) && (
                   <Button
                     size="sm"
-                    disabled={command.isPending || candidate.state === CandidateState.PUBLISHING}
+                    disabled={
+                      !canPublish ||
+                      command.isPending ||
+                      candidate.state === CandidateState.PUBLISHING
+                    }
                     onClick={() => command.mutate(true)}
                   >
                     <Upload />
@@ -83,6 +95,11 @@ export function CandidateReview({
                 )}
               </div>
             </div>
+            {candidate.state === CandidateState.PASSED && !canPublish && (
+              <p className="text-sm text-muted-foreground">
+                {t("evaluation.resourcePermissionRequired")}
+              </p>
+            )}
             {!!candidate.failures.length && (
               <ul className="space-y-1 text-sm text-destructive">
                 {candidate.failures.map((failure) => (
