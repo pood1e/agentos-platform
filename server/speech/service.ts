@@ -7,6 +7,7 @@ import {
   type SpeechConfiguration,
   SpeechConfigurationSchema,
   type SpeechEndpoint,
+  SpeechSynthesis_Protocol,
 } from "../../gen/agentos/console/v1/speech_pb.js";
 import { fail } from "../shared/errors.js";
 import { selectVoice } from "./voices.js";
@@ -98,13 +99,17 @@ export function speechService(
     async *synthesizeSpeech(request, context) {
       const voice = selectVoice(request.text, configuration.synthesis?.voices ?? []);
       if (!synthesis || !voice) throw fail(Code.FailedPrecondition, "speech.unavailable");
+      const nemo = configuration.synthesis?.protocol === SpeechSynthesis_Protocol.NEMO;
       const response = await upstream(context.signal, (signal) =>
         synthesis.audio.speech.create(
           {
             model: voice.model,
             voice: voice.voice,
             input: request.text,
-            response_format: "mp3",
+            response_format: nemo ? "wav" : "mp3",
+            ...(nemo
+              ? { language: voice.languageCode === "ar" ? "ar-MSA" : voice.languageCode }
+              : {}),
           },
           { signal },
         ),
