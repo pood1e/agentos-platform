@@ -35,6 +35,7 @@ import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
 import { speechConfig } from "../speech/config.js";
 import { speechService } from "../speech/service.js";
+import { registerTranscription } from "../speech/transcription.js";
 import { taskTagStore } from "../tasks/store.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { startContinuations } from "../team-sessions/continuation.js";
@@ -80,7 +81,13 @@ const tags = await taskTagStore(
 const operations = governanceConfig();
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
-const speech = speechService(speechConfig());
+const speechConfiguration = speechConfig();
+const speech = speechService(speechConfiguration);
+await registerTranscription(app, speechConfiguration.transcription, async (headers) => {
+  const origin = process.env.AGENTOS_ORIGIN;
+  if (origin && headers.get("origin") !== origin) throw new Error("Invalid origin");
+  if (identity) await identity(headers);
+});
 const replaceTemplate = templateWriter(kubeConfig);
 const identities = machineIdentities(
   kubeConfig,

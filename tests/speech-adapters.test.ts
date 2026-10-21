@@ -2,10 +2,8 @@ import type { DictationAdapter } from "@assistant-ui/react";
 import { create } from "@bufbuild/protobuf";
 import type { CallOptions } from "@connectrpc/connect";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import {
-  SynthesizeSpeechResponseSchema,
-  TranscribeAudioResponseSchema,
-} from "../gen/agentos/console/v1/speech_pb.js";
+import { SynthesizeSpeechResponseSchema } from "../gen/agentos/console/v1/speech_pb.js";
+import type { TranscriptionConnection } from "../src/features/chat/speech/connection.js";
 import { RemoteDictationAdapter } from "../src/features/chat/speech/dictation.js";
 import { RemoteSpeechAdapter } from "../src/features/chat/speech/synthesis.js";
 import { until } from "./harness.js";
@@ -15,7 +13,6 @@ const players: Player[] = [];
 const track = { stop: vi.fn() };
 const stream = { getTracks: () => [track] } as unknown as MediaStream;
 const report = vi.fn<(key: string) => void>();
-
 class Recorder extends EventTarget {
   static isTypeSupported() {
     return true;
@@ -40,7 +37,6 @@ class Recorder extends EventTarget {
     });
   }
 }
-
 class Player extends EventTarget {
   play = vi.fn(async () => {});
   pause = vi.fn();
@@ -50,7 +46,6 @@ class Player extends EventTarget {
     players.push(this);
   }
 }
-
 function pending<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((complete) => {
@@ -58,7 +53,28 @@ function pending<T>() {
   });
   return { promise, resolve };
 }
-
+function connection() {
+  const target = new EventTarget();
+  const socket = {
+    on: vi.fn((type: string, callback: (event: unknown) => void) => {
+      target.addEventListener(type, (event) => callback((event as CustomEvent).detail));
+    }),
+    connect: vi.fn(() => queueMicrotask(() => target.dispatchEvent(new CustomEvent("open")))),
+    close: vi.fn(),
+    sendMedia: vi.fn(),
+    sendCloseStream: vi.fn(() =>
+      queueMicrotask(() =>
+        target.dispatchEvent(new CustomEvent("close", { detail: { code: 1000 } })),
+      ),
+    ),
+  };
+  return {
+    ...socket,
+    emit: (type: string, detail: unknown) =>
+      target.dispatchEvent(new CustomEvent(type, { detail })),
+    open: vi.fn(async (_signal: AbortSignal) => socket as unknown as TranscriptionConnection),
+  };
+}
 beforeEach(() => {
   vi.clearAllMocks();
   recorders.length = 0;
@@ -69,106 +85,105 @@ beforeEach(() => {
   vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:agentos-speech");
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
 });
-
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-
-it("commits one transcript, releases the microphone before transcription and never sends a chat message", async () => {
-  const result = pending<ReturnType<typeof create<typeof TranscribeAudioResponseSchema>>>();
-  const transcribeAudio = vi.fn(
-    async (_request: unknown, _options?: CallOptions) => result.promise,
-  );
-  const adapter = new RemoteDictationAdapter({ transcribeAudio }, report);
-  const session = adapter.listen();
+it("streams audio and revised text before stop, then drains the final recording without sending chat", async () => {
+  const socket = connection();
+  const session = new RemoteDictationAdapter(report, socket.open).listen();
   const speech = vi.fn<(value: DictationAdapter.Result) => void>();
   session.onSpeech(speech);
   await until(() => recorders.length === 1);
+  recorders[0]?.append();
+  expect(socket.sendMedia).toHaveBeenCalledOnce();
+  for (const [transcript, is_final] of [
+    ["检查", false],
+    ["检查交换机", false],
+    ["检查交换机", true],
+  ] as const)
+    socket.emit("message", {
+      type: "Results",
+      is_final,
+      channel: { alternatives: [{ transcript }] },
+    });
+  expect(speech).toHaveBeenNthCalledWith(1, { transcript: "检查", isFinal: false });
+  expect(speech).toHaveBeenLastCalledWith({ transcript: "检查交换机", isFinal: true });
+  expect(session.status).toEqual({ type: "running" });
   const stopping = session.stop();
   session.stop();
-  await until(() => transcribeAudio.mock.calls.length === 1);
-  expect(track.stop).toHaveBeenCalled();
-  expect(speech).not.toHaveBeenCalled();
-  result.resolve(create(TranscribeAudioResponseSchema, { text: "افحص المحول / 检查交换机" }));
   await stopping;
-  expect(speech).toHaveBeenCalledExactlyOnceWith({
-    transcript: "افحص المحول / 检查交换机",
-    isFinal: true,
-  });
+  expect(socket.sendMedia).toHaveBeenCalledTimes(2);
+  expect(socket.sendCloseStream).toHaveBeenCalledOnce();
+  expect(track.stop).toHaveBeenCalled();
+  expect(socket.close).toHaveBeenCalledOnce();
   expect(session.status).toEqual({ type: "ended", reason: "stopped" });
   expect(report).not.toHaveBeenCalled();
 });
-
-it("discards late microphone permission results after leaving the conversation", async () => {
+it("discards microphone permission and connection results after switching conversations", async () => {
   const permission = pending<MediaStream>();
   vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValue(permission.promise);
-  const transcribeAudio = vi.fn(async () => create(TranscribeAudioResponseSchema));
-  const adapter = new RemoteDictationAdapter({ transcribeAudio }, report);
+  const socket = connection();
+  const adapter = new RemoteDictationAdapter(report, socket.open);
   const session = adapter.listen();
   adapter.dispose();
   permission.resolve(stream);
   await until(() => track.stop.mock.calls.length > 0);
   expect(session.status).toEqual({ type: "ended", reason: "cancelled" });
-  expect(recorders).toHaveLength(0);
-  expect(transcribeAudio).not.toHaveBeenCalled();
+  expect(socket.open).not.toHaveBeenCalled();
 });
-
-it("aborts a pending transcription and ignores its late result", async () => {
-  const result = pending<ReturnType<typeof create<typeof TranscribeAudioResponseSchema>>>();
-  const transcribeAudio = vi.fn(
-    async (_request: unknown, _options?: CallOptions) => result.promise,
-  );
-  const adapter = new RemoteDictationAdapter({ transcribeAudio }, report);
+it("cancels the socket and ignores late transcripts", async () => {
+  const socket = connection();
+  const adapter = new RemoteDictationAdapter(report, socket.open);
   const session = adapter.listen();
   const speech = vi.fn();
   session.onSpeech(speech);
   await until(() => recorders.length === 1);
-  void session.stop();
-  await until(() => transcribeAudio.mock.calls.length > 0);
   adapter.dispose();
-  expect(transcribeAudio.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
-  result.resolve(create(TranscribeAudioResponseSchema, { text: "late transcript" }));
-  await Promise.resolve();
+  socket.emit("message", {
+    type: "Results",
+    is_final: true,
+    channel: { alternatives: [{ transcript: "late" }] },
+  });
+  expect(socket.open.mock.calls[0]?.[0].aborted).toBe(true);
   expect(speech).not.toHaveBeenCalled();
   expect(report).not.toHaveBeenCalled();
 });
-
-it("ends a denied microphone request with an actionable error", async () => {
+it("releases the microphone and reports a denied permission", async () => {
   vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValue(
     new DOMException("denied", "NotAllowedError"),
   );
-  const transcribeAudio = vi.fn(async () => create(TranscribeAudioResponseSchema));
-  const session = new RemoteDictationAdapter({ transcribeAudio }, report).listen();
+  const socket = connection();
+  const session = new RemoteDictationAdapter(report, socket.open).listen();
   await until(() => session.status.type === "ended");
   expect(report).toHaveBeenCalledExactlyOnceWith("speech.microphoneDenied");
-  expect(transcribeAudio).not.toHaveBeenCalled();
+  expect(socket.open).not.toHaveBeenCalled();
 });
-
-it("bounds recording size and releases the microphone when the limit is exceeded", async () => {
-  const transcribeAudio = vi.fn(async () => create(TranscribeAudioResponseSchema));
-  const session = new RemoteDictationAdapter({ transcribeAudio }, report).listen();
+it("bounds audio upload size and recording duration", async () => {
+  const socket = connection();
+  const session = new RemoteDictationAdapter(report, socket.open).listen();
   await until(() => recorders.length === 1);
   recorders[0]?.append(new Blob([new Uint8Array(1024 * 1024 + 1)]));
   expect(session.status.type).toBe("ended");
   expect(track.stop).toHaveBeenCalled();
   expect(report).toHaveBeenCalledExactlyOnceWith("speech.tooLarge");
-  expect(transcribeAudio).not.toHaveBeenCalled();
-});
-
-it("automatically stops a recording after one minute", async () => {
   vi.useFakeTimers();
-  const transcribeAudio = vi.fn(async () =>
-    create(TranscribeAudioResponseSchema, { text: "bounded" }),
-  );
-  const session = new RemoteDictationAdapter({ transcribeAudio }, report).listen();
-  await vi.advanceTimersByTimeAsync(60_000);
-  expect(transcribeAudio).toHaveBeenCalledOnce();
-  expect(session.status).toEqual({ type: "ended", reason: "stopped" });
+  const next = connection();
+  const second = new RemoteDictationAdapter(report, next.open).listen();
+  await vi.advanceTimersByTimeAsync(60000);
+  expect(second.status).toEqual({ type: "ended", reason: "stopped" });
+});
+it("reports an upstream failure and releases the microphone", async () => {
+  const socket = connection();
+  const session = new RemoteDictationAdapter(report, socket.open).listen();
+  await until(() => recorders.length === 1);
+  socket.emit("error", new Error("private provider message"));
+  socket.emit("close", { code: 1011 });
+  expect(session.status).toEqual({ type: "ended", reason: "error" });
+  expect(report).toHaveBeenCalledExactlyOnceWith("speech.transcriptionFailed");
   expect(track.stop).toHaveBeenCalled();
 });
-
 it("plays synthesized audio, replaces previous playback and releases audio URLs", async () => {
   const synthesizeSpeech = vi.fn(async () =>
     create(SynthesizeSpeechResponseSchema, {

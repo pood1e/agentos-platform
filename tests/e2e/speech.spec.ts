@@ -3,8 +3,6 @@ import { expect, test } from "@playwright/test";
 import {
   SynthesizeSpeechRequestSchema,
   SynthesizeSpeechResponseSchema,
-  TranscribeAudioRequestSchema,
-  TranscribeAudioResponseSchema,
 } from "../../gen/agentos/console/v1/speech_pb.js";
 import { resetKagent } from "./kagent.js";
 
@@ -19,6 +17,11 @@ test.beforeEach(async ({ page, request }) => {
       state = "inactive";
       start() {
         this.state = "recording";
+        queueMicrotask(() =>
+          this.dispatchEvent(
+            new BlobEvent("dataavailable", { data: new Blob(["streaming audio"]) }),
+          ),
+        );
       }
       stop() {
         this.state = "inactive";
@@ -71,29 +74,37 @@ test("dictates multilingual text into the existing composer and waits for the us
   await page.route("**/agentos.console.v1.ConsoleService/GetSpeechCapabilities", (route) =>
     route.fulfill({ json: { transcription: true } }),
   );
-  await page.route("**/agentos.console.v1.ConsoleService/TranscribeAudio", async (route) => {
-    const request = fromBinary(
-      TranscribeAudioRequestSchema,
-      route.request().postDataBuffer() ?? new Uint8Array(),
-    );
-    expect(request.audio?.contentType).toBe("audio/webm");
-    expect(request.audio?.data.length).toBeGreaterThan(0);
-    await route.fulfill({
-      contentType: "application/proto",
-      body: Buffer.from(
-        toBinary(
-          TranscribeAudioResponseSchema,
-          create(TranscribeAudioResponseSchema, {
-            text: "检查交换机 / Check the switch / افحص المحول",
+  await page.routeWebSocket("**/speech/v1/listen*", (socket) => {
+    socket.onMessage((message) => {
+      if (typeof message === "string") {
+        expect(JSON.parse(message).type).toBe("CloseStream");
+        socket.send(
+          JSON.stringify({
+            type: "Results",
+            is_final: true,
+            channel: {
+              alternatives: [{ transcript: "检查交换机 / Check the switch / افحص المحول" }],
+            },
           }),
-        ),
-      ),
+        );
+        socket.close({ code: 1000 });
+      } else {
+        socket.send(
+          JSON.stringify({
+            type: "Results",
+            is_final: false,
+            channel: { alternatives: [{ transcript: "检查交换机" }] },
+          }),
+        );
+      }
     });
   });
   await page.goto("/chat");
   await page.getByRole("button", { name: "语音输入", exact: true }).click();
   const input = page.getByRole("textbox", { name: "消息", exact: true });
   await expect(input).toBeDisabled();
+  await expect(input).toHaveValue("检查交换机");
+  await expect(page.getByTestId("chat-message")).toHaveCount(0);
   await page.getByRole("button", { name: "停止录音", exact: true }).click();
   await expect(input).toHaveValue("检查交换机 / Check the switch / افحص المحول");
   await expect(input).toBeEditable();
@@ -141,12 +152,11 @@ test("keeps text chat usable after the speech provider fails", async ({ page }) 
   await page.route("**/agentos.console.v1.ConsoleService/GetSpeechCapabilities", (route) =>
     route.fulfill({ json: { transcription: true } }),
   );
-  await page.route("**/agentos.console.v1.ConsoleService/TranscribeAudio", (route) =>
-    route.fulfill({ status: 503, json: { code: "unavailable", message: "request failed" } }),
-  );
+  await page.routeWebSocket("**/speech/v1/listen*", (socket) => {
+    socket.onMessage(() => socket.close({ code: 1011 }));
+  });
   await page.goto("/chat");
   await page.getByRole("button", { name: "语音输入", exact: true }).click();
-  await page.getByRole("button", { name: "停止录音", exact: true }).click();
   await expect(page.getByText("语音转写失败，请重试或输入文字。")).toBeVisible();
   const input = page.getByRole("textbox", { name: "消息", exact: true });
   await expect(input).toBeEditable();
