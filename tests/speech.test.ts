@@ -223,6 +223,8 @@ it.each([
   ["zh", "你好"],
   ["en", "Hello"],
   ["ar", "مرحبا"],
+  ["zh", "请检查 nginx Pod 的 CPU 和 memory。"],
+  ["ar", "نعم، Kubernetes Deployment nginx و Prometheus يعملان بشكل طبيعي."],
 ])(
   "selects the configured %s voice from the text independently of the UI language",
   async (language, text) => {

@@ -106,6 +106,7 @@ TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服�
 文件转写接口使用 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
 `POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: mp3`，返回音频）。
 合成 `protocol: PROTOCOL_NEMO` 接入 NeMo-Speech.cpp HTTP 服务，使用 WAV 和音色对应的语言参数。
+合成语言优先匹配非拉丁正文，再匹配完整文本；中文、阿拉伯语内嵌的英文术语沿用正文音色，未匹配时使用首个音色。
 模型和音色由站点提供，服务可以与文本模型同机部署；文件转写和语音合成使用 OpenAI SDK。
 `languageCodes` 声明转写服务支持的语言，聊天页显示语言选择，初始选择匹配界面语言，之后记住用户选择。
 选择自动识别时省略语言参数；代理仅转发配置内的语言代码。
