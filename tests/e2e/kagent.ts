@@ -1,4 +1,4 @@
-import { toJson } from "@bufbuild/protobuf";
+import { fromJson, toJson } from "@bufbuild/protobuf";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
 import { type APIRequestContext, expect, type Page } from "@playwright/test";
@@ -22,7 +22,13 @@ export const client = createClient(
     ],
   }),
 );
-export { fixtureIds as ids };
+export const ids = { ...fixtureIds };
+
+export async function recordedTask(request: APIRequestContext, id: string) {
+  const response = await request.get(`${control}/tasks/${id}`);
+  expect(response.ok()).toBe(true);
+  return fromJson(TaskSchema, await response.json());
+}
 
 export async function bindSessions(request: APIRequestContext, ids: string[]) {
   const query = new URLSearchParams(ids.map((id) => ["session", id]));
@@ -32,9 +38,11 @@ export async function bindSessions(request: APIRequestContext, ids: string[]) {
 
 /** Restores the recorded kagent state, including the pending approval. */
 export async function resetKagent(request: APIRequestContext) {
-  await request.post(`${control}/reset`);
+  const response = await request.post(`${control}/reset`);
+  expect(response.ok()).toBe(true);
+  Object.assign(ids, await response.json());
   await expect
-    .poll(async () => (await client.listTasks({ query: fixtureIds.approvalRoot })).tasks[0]?.state)
+    .poll(async () => (await client.listTasks({ query: ids.approvalRoot })).tasks[0]?.state)
     .toBe(ActivityState.AWAITING_APPROVAL);
 }
 

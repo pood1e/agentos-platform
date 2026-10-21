@@ -166,7 +166,8 @@ export class FakeKagent {
     );
     this.update(task, TaskState.WORKING);
     setTimeout(() => {
-      if (!terminal(task.status?.state)) this.update(task, TaskState.COMPLETED);
+      if (this.tasks.get(task.id) === task && !terminal(task.status?.state))
+        this.update(task, TaskState.COMPLETED);
     }, 200);
     return task;
   }
