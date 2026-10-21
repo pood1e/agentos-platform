@@ -11,9 +11,11 @@ export class RemoteSpeechAdapter implements SpeechSynthesisAdapter {
   constructor(
     private client: Client,
     private onError: (key: string) => void,
+    private beforeSpeak?: () => void,
   ) {}
 
   speak(text: string): SpeechSynthesisAdapter.Utterance {
+    this.beforeSpeak?.();
     this.current?.cancel();
     const controller = new AbortController();
     const subscribers = new Set<() => void>();

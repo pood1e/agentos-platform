@@ -118,7 +118,7 @@ test("reads an assistant answer with the official playback controls and stops on
   page,
 }) => {
   await page.route("**/agentos.console.v1.ConsoleService/GetSpeechCapabilities", (route) =>
-    route.fulfill({ json: { synthesis: true } }),
+    route.fulfill({ json: { transcription: true, synthesis: true } }),
   );
   await page.route("**/agentos.console.v1.ConsoleService/SynthesizeSpeech", async (route) => {
     const request = fromBinary(
@@ -147,6 +147,16 @@ test("reads an assistant answer with the official playback controls and stops on
   await page.getByRole("button", { name: "停止播放", exact: true }).click();
   await expect(page.getByRole("button", { name: "朗读", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "停止播放", exact: true })).toHaveCount(0);
+  await page.routeWebSocket("**/speech/v1/listen*", (socket) => {
+    socket.onMessage(() => {});
+  });
+  await page.getByRole("button", { name: "朗读", exact: true }).click();
+  await expect(page.getByRole("button", { name: "停止播放", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "语音输入", exact: true }).click();
+  await expect(page.getByRole("button", { name: "停止录音", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "停止播放", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "朗读", exact: true }).click();
+  await expect(page.getByRole("button", { name: "停止录音", exact: true })).toHaveCount(0);
 });
 
 test("keeps text chat usable after the speech provider fails", async ({ page }) => {
