@@ -358,6 +358,14 @@
     "unavailable": "The speech service is unavailable. Try again later.",
     "tooLarge": "The audio is too long. Try a shorter recording or response.",
     "invalidAudio": "The speech service could not process this audio.",
-    "invalidText": "Read-aloud text must contain between 1 and 8,000 characters."
+    "invalidText": "Read-aloud text must contain between 1 and 8,000 characters.",
+    "language": "Speech language",
+    "autoLanguage": "Automatic",
+    "starting": "Connecting microphone…",
+    "recording": "Listening…",
+    "processing": "Finishing transcription…",
+    "cancel": "Cancel",
+    "generating": "Generating speech…",
+    "transcriptionTimeout": "Transcription timed out. Review the preserved text before sending."
   }
 }

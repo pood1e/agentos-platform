@@ -352,6 +352,14 @@
     "unavailable": "语音服务暂不可用，请稍后重试。",
     "tooLarge": "音频过长，请缩短录音或朗读内容。",
     "invalidAudio": "语音服务无法处理这段音频。",
-    "invalidText": "朗读内容需为 1–8,000 个字符。"
+    "invalidText": "朗读内容需为 1–8,000 个字符。",
+    "language": "识别语言",
+    "autoLanguage": "自动识别",
+    "starting": "正在连接麦克风…",
+    "recording": "正在聆听…",
+    "processing": "正在处理尾部语音…",
+    "cancel": "取消",
+    "generating": "正在生成语音…",
+    "transcriptionTimeout": "语音处理超时，已保留当前文字，请检查后发送。"
   }
 }

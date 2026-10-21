@@ -31,7 +31,7 @@ export async function registerTranscription(
         if (clients.size >= 4) return reply.code(429).send();
       },
     },
-    (socket) => {
+    (socket, request) => {
       if (!configuration?.endpoint) return socket.close(1011);
       if (clients.size >= 4) return socket.close(1008, "Transcription capacity reached");
       clients.add(socket);
@@ -41,6 +41,9 @@ export async function registerTranscription(
       url.searchParams.set("model", configuration.model);
       url.searchParams.set("interim_results", "true");
       url.searchParams.set("endpointing", "300");
+      const language = new URL(request.url, "http://localhost").searchParams.get("language");
+      if (language && configuration.languageCodes.includes(language))
+        url.searchParams.set("language", language);
       const token = endpoint.apiKeyFile ? readFileSync(endpoint.apiKeyFile, "utf8").trim() : "";
       const upstream = new WebSocket(url, {
         headers: token ? { Authorization: `Token ${token}` } : {},

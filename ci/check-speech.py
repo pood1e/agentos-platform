@@ -14,7 +14,7 @@ arguments = parser.parse_args()
 helm = ".cache/bin/helm"
 base = [helm, "template", "speech-check", arguments.chart, "-f", arguments.values]
 endpoint = {"baseUrl": "https://speech.example.test/v1"}
-transcription = {"endpoint": endpoint, "model": "multilingual-asr"}
+transcription = {"endpoint": endpoint, "model": "multilingual-asr", "languageCodes": ["zh", "en", "ar"]}
 synthesis = {"endpoint": endpoint, "voices": [
     {"languageCode": language, "model": "tts-" + language, "voice": "default"}
     for language in ["zh", "en", "ar"]
@@ -83,6 +83,8 @@ for input_enabled, output_enabled, authenticated in [
         )
 
 for invalid in [
+    {"transcription": {**transcription, "languageCodes": ["zh", "zh"]}},
+    {"transcription": {**transcription, "languageCodes": ["zh-CN"]}},
     {"transcription": {"model": "asr"}},
     {"synthesis": {"endpoint": endpoint, "voices": []}},
     {"transcription": {**transcription, "endpoint": {**endpoint, "apiKey": "inline-key"}}},
