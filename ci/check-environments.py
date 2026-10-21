@@ -72,5 +72,4 @@ connections = json.loads(load('platform-governance.yaml')[0]['stringData']['conn
 assert [(item['environment']['name'], item['environment']['governance']) for item in connections] == [
     ('env-approval', 'GOVERNANCE_APPROVAL'), ('env-direct', 'GOVERNANCE_DIRECT')]
 assert all('approvalUrl' not in item and 'authorization' not in item for item in connections)
-assert connections[0]['environment']['links']
 print('Environment validation passed')

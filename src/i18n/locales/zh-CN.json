@@ -275,36 +275,6 @@
   "request": {
     "invalid": "请求内容无效，请检查后重试。"
   },
-  "operations": {
-    "environment": "环境",
-    "governance": "审批方式",
-    "human": "人工审批",
-    "none": "无需审批",
-    "approvalPortal": "审批入口",
-    "links": "环境入口",
-    "states": {
-      "PENDING": "等待审批",
-      "APPROVED": "已批准",
-      "REJECTED": "已拒绝",
-      "EXECUTING": "执行中",
-      "SUCCEEDED": "已完成",
-      "FAILED": "执行失败",
-      "EXPIRED": "已过期",
-      "CANCELED": "已关闭"
-    },
-    "plan": {
-      "impact": "影响分析",
-      "validation": "验证计划",
-      "rollback": "回退计划",
-      "simulation": "仿真验证与适用边界",
-      "source": "查看仿真任务"
-    },
-    "blockers": {
-      "ASSESSMENT_REQUIRED": "方案缺少影响、验证、回退或仿真证据，尚不能执行。",
-      "PLAN_CHANGED": "方案在批准后发生变化，需要重新审批。",
-      "NORMAL_CHANGE_REQUIRED": "当前执行流程只支持正常变更。"
-    }
-  },
   "harness": {
     "title": "Harness 管理",
     "tab": "运行时",

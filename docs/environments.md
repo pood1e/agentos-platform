@@ -3,6 +3,8 @@
 环境套件把一套托管环境接入平台：在环境集群部署环境网关、连接器的身份路由，在平台集群登记环境连接与每个身份的工具视图。
 目标系统、连接器 MCP 服务及其在目标系统中的账号由方案包或站点提供。
 
+环境接入属于部署配置。AgentOS 展示智能体、工具连接、执行与审批；目标系统的门户和资源管理由所属环境提供。
+
 ```mermaid
 flowchart LR
   Agent[Agent] --> PG[平台网关]
@@ -19,6 +21,9 @@ flowchart LR
 
 团队配置取自方案 Chart 的 `global.agentos`（见[扩展契约](extension.md#chart-入参)），环境的治理模式、工具分级与身份档案只维护一份。
 身份 `catalog` 为平台保留，用于发现各服务的工具，须对每个服务有只读访问。
+
+工具目录由 kagent 的原生 `RemoteMCPServer` 控制器发现与刷新；连接器地址、凭据引用、工具授权与审批策略来自方案配置。
+发现结果用于描述可用工具，执行权限由环境网关和目标系统校验。
 
 ## 方案提供的内容
 
@@ -59,7 +64,6 @@ environment_connectors:
 | `environment_kubeconfig` | 环境集群凭据，默认 `.cache/environments/<name>/kubeconfig.yaml` |
 | `approval_service_url` | 可选，外部审批 Connect 服务地址；省略时使用原生人工确认 |
 | `approval_service_authorization_file` | 可选，外部审批服务的 Authorization 内容文件，仅服务端使用 |
-| `environment_links` | 可选，环境页展示的门户链接 `{name, url}` |
 
 | 变量 | 说明 |
 | --- | --- |

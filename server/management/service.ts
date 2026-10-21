@@ -1,5 +1,4 @@
 import type { ServiceImpl } from "@connectrpc/connect";
-import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import mcpSchema from "../../gen/schema/agentgateway.mcp.json" with { type: "json" };
 import modelSchema from "../../gen/schema/agentgateway.model.json" with { type: "json" };
@@ -17,7 +16,6 @@ export interface ManagementDependencies {
   clients: KagentClients;
   gateway: GatewayConfig;
   knowledge: KnowledgeConfig;
-  operations: GovernanceConfig;
 }
 
 export function managementService({
@@ -25,7 +23,6 @@ export function managementService({
   clients,
   gateway,
   knowledge,
-  operations,
 }: ManagementDependencies): ServiceImpl<typeof ManagementService> {
   const connections = connectionCommands(store, clients, gateway);
   const skills = skillCommands(store, clients, gateway.namespace);
@@ -54,9 +51,6 @@ export function managementService({
     }),
     deleteKnowledge: (request) => memories.remove(request.id),
     clearKnowledge: (request) => memories.clear(request.expectedCount),
-    listEnvironments: () => ({
-      environments: operations.environments.flatMap((item) => item.environment ?? []),
-    }),
     listHarnesses: (request) => harnesses.list(request.namespace),
     saveHarness: (request) => harnesses.save(request),
     deleteHarness: (request) => harnesses.remove(request),

@@ -20,12 +20,14 @@ message Link {
 }
 
 message Environment {
+  reserved 3;
+  reserved "links";
+
   string name = 1 [(buf.validate.field).string.min_len = 1];
   Governance governance = 2 [(buf.validate.field).enum = {
     defined_only: true
     not_in: [0]
   }];
-  repeated Link links = 3 [(buf.validate.field).repeated.max_items = 16];
 }
 
 // Optional external decision service; omitted services use native human decisions.

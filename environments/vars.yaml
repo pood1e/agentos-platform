@@ -11,7 +11,6 @@ kubeconfig: "{{ environment_kubeconfig | default(environment_cache ~ '/kubeconfi
 gateway_namespace: mcp
 gateway_node_port: 31000
 gateway_rules: []
-environment_links: []
 approval_service_url: ""
 approval_service_authorization_file: ""
 registry_config_file: ""

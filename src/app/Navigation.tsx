@@ -7,7 +7,6 @@ import {
   Cpu,
   GitBranch,
   MessageCircle,
-  Network,
   Play,
   Users,
 } from "lucide-react";
@@ -40,7 +39,6 @@ const settings = [
   { path: "/engineers/mcp", label: "management.tabs.mcp", icon: Blocks },
   { path: "/engineers/harnesses", label: "management.tabs.harnesses", icon: Play },
   { path: "/engineers/skills", label: "management.tabs.skills", icon: BookOpen },
-  { path: "/engineers/environments", label: "management.tabs.environments", icon: Network },
 ];
 
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {

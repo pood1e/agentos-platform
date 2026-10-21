@@ -6,7 +6,6 @@ all:
           ansible_host: 192.0.2.21
           environment_name: env-approval
           approval_url: https://tickets.example.test
-          environment_links: [{name: Identity, url: "https://id.example.test/admin/"}]
         env-direct-01:
           ansible_host: 192.0.2.22
           environment_name: env-direct
