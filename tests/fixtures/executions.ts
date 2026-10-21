@@ -8,6 +8,7 @@ import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { executions } from "../../server/authorization/executions.js";
 import { jwtIdentity } from "../../server/authorization/oidc.js";
 import { executionStore } from "../../server/authorization/store.js";
+import { allCapabilities } from "../../shared/permissions.js";
 import { identityIssuer, testToken } from "./identity.js";
 
 export const executionKey = Buffer.alloc(32, 1).toString("base64");
@@ -35,6 +36,7 @@ export async function fixtureExecutions() {
   const principal = create(ExecutionIdentitySchema, {
     subject: `${identityIssuer}#browser-test`,
     write: true,
+    capabilities: allCapabilities,
     credential: { case: "accessToken", value: testToken },
   });
   return {

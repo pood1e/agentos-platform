@@ -10,6 +10,7 @@ import { type KagentClients, kagentClients, kagentTransport } from "../kagent/cl
 import type { KnowledgeConfig } from "../knowledge/service.js";
 import type { ResourceStore } from "../management/resources.js";
 import type { machineIdentities } from "../platform/machine-identities.js";
+import { authorizedEvaluation } from "./access.js";
 import { configurationArtifacts } from "./artifacts.js";
 import { evaluationCleanup } from "./cleanup.js";
 import { evaluationConfig } from "./config.js";
@@ -177,7 +178,7 @@ export async function platformEvaluation(options: PlatformEvaluation) {
       [configuration.namespace, isolated],
     ]),
     routes: {
-      evaluation: service,
+      evaluation: authorizedEvaluation(service, store),
       staging: configurationStaging({
         store: options.store,
         workspace,

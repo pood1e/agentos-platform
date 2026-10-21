@@ -3,6 +3,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { createRemoteJWKSet, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { discovery } from "openid-client";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
+import { roleCapabilities } from "../../shared/permissions.js";
 
 export interface OIDCIdentityConfig {
   issuer: string;
@@ -30,6 +31,7 @@ export function jwtIdentity(config: OIDCIdentityConfig, keys: JWTVerifyGetKey) {
       return create(ExecutionIdentitySchema, {
         subject: `${config.issuer}#${payload.sub}`,
         write: Array.isArray(payload.roles) && payload.roles.includes(config.writerRole),
+        capabilities: roleCapabilities(payload.roles),
         credential: { case: "accessToken", value: token },
       });
     } catch {

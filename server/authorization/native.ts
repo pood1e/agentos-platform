@@ -6,8 +6,10 @@ import {
   type HandlerContext,
 } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
+import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
 import { TaskStoreService } from "../../gen/kagent/api/v1alpha1/task_store_pb.js";
+import { can } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { KnowledgeConfig } from "../knowledge/service.js";
 import { agentKey } from "../read-model/agents.js";
@@ -50,7 +52,11 @@ export function registerRuntime(
     const nativeName = agentName.replaceAll("__NS__", "/").replaceAll("_", "-");
     if (!nativeName.startsWith(`${session.agent?.namespace}/`)) throw denied();
     if (write) {
-      if (!execution.write || nativeName !== agentKey(session.agent)) throw denied();
+      if (
+        nativeName !== agentKey(session.agent) ||
+        (agentName === sharedKnowledge?.agentName && !can(execution, Capability.KNOWLEDGE_MANAGE))
+      )
+        throw denied();
       const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
       if (!agent) throw denied();
       const spec = object(agent.resource?.value?.spec),
@@ -63,16 +69,17 @@ export function registerRuntime(
       const harnessSpec = object(harness?.resource?.value?.spec ?? spec.harness);
       if (!object(harnessSpec.kagent).memory) throw denied();
     }
+    const userId =
+      agentName === sharedKnowledge?.agentName
+        ? sharedKnowledge.userId
+        : execution.identity.subject;
     return {
-      userId:
-        agentName === sharedKnowledge?.agentName
-          ? sharedKnowledge.userId
-          : execution.identity.subject,
+      userId,
       options: {
         signal: context.signal,
         timeoutMs: 15_000,
         headers: {
-          "X-User-Id": session.creator,
+          "X-User-Id": userId,
           ...(config.token ? { authorization: `Bearer ${config.token}` } : {}),
         },
       },

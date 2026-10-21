@@ -1,5 +1,7 @@
+import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
+import { can } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
 import { agentKey } from "../read-model/agents.js";
 import { TaskIndex } from "../read-model/index.js";
@@ -36,7 +38,8 @@ export function chatTarget(
 ) {
   if (
     ref?.namespace !== namespace ||
-    (ref.name !== entry && !(ref.name === "role-builder" && identity.write))
+    (ref.name !== entry &&
+      !(ref.name === "role-builder" && can(identity, Capability.AGENTS_MANAGE)))
   )
     throw notFound("chat.invalidConversation");
 }

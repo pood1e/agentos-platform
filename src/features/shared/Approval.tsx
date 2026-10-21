@@ -42,8 +42,7 @@ export function Approval({
   const respond = useMutation(ConsoleService.method.respondInteraction);
   const pending = awaiting(interaction.state);
   const approval = interaction.kind === InteractionKind.APPROVAL;
-  const locked =
-    !operate || !access.data?.operate || !pending || respond.isPending || respond.isSuccess;
+  const locked = !operate || !access.data || !pending || respond.isPending || respond.isSuccess;
   const recorded = (index: number) => interaction.answers[index]?.values ?? [];
   const submit = (decision: Parameters<typeof respond.mutate>[0]["decision"]) =>
     respond.mutate({ taskId: interaction.taskId, requestId: interaction.requestId, decision });
@@ -149,7 +148,7 @@ export function Approval({
           <AlertDescription>{t(errorKey(respond.error, "approval.submitFailed"))}</AlertDescription>
         </Alert>
       )}
-      {pending && operate && access.data?.operate && (
+      {pending && operate && access.data && (
         <div className="flex flex-wrap gap-2">
           {approval && !interaction.external && (
             <>

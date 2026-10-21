@@ -12,6 +12,7 @@ import requests
 revision = os.environ["CI_COMMIT_SHA"]
 root = Path("dist/contracts")
 epoch = int(subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], text=True))
+os.utime("gen/authorization.json", (epoch, epoch))
 bundle = root / "deployment.tar.gz"
 with (
     bundle.open("wb") as target,
@@ -22,6 +23,7 @@ with (
             "git",
             "archive",
             "--format=tar",
+            "--add-file=gen/authorization.json",
             "HEAD",
             "deploy",
             "environments",

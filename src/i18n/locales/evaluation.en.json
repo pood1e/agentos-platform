@@ -4,6 +4,7 @@
   "review": "Review",
   "run": "Evaluate",
   "publish": "Publish",
+  "resourcePermissionRequired": "Publication requires management permission for every resource changed by this candidate.",
   "changes": "Changes",
   "results": "Results",
   "noReport": "No completed evaluation yet.",

@@ -4,6 +4,7 @@
   "review": "查看候选",
   "run": "开始测评",
   "publish": "发布",
+  "resourcePermissionRequired": "发布需要同时拥有本次变更涉及的资源管理权限。",
   "changes": "配置变化",
   "results": "测评结果",
   "noReport": "暂无完整测评结果。",

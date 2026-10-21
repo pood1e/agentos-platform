@@ -4,7 +4,9 @@ import { Code, ConnectError, createClient, createRouterTransport } from "@connec
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { expect, it } from "vitest";
 import { A2AService } from "../gen/a2a_pb.js";
+import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ResourceMetadataSchema } from "../gen/ateapi_pb.js";
+import { AgentSchema } from "../gen/kagent/api/v1alpha1/agents_pb.js";
 import { MemoryService } from "../gen/kagent/api/v1alpha1/memory_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { TaskStoreService } from "../gen/kagent/api/v1alpha1/task_store_pb.js";
@@ -39,7 +41,8 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
             received.push(c.requestHeader);
             return {};
           },
-          addSession: (_r, c) => {
+          addSession: (r, c) => {
+            memoryOwners.push(r.memory?.userId ?? "");
             received.push(c.requestHeader);
             return {};
           },
@@ -61,6 +64,7 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
   });
   let revoked = false,
     subject = "user:alice";
+  let capabilities: Capability[] = [];
   const runtime = {
     authenticatedActor: async (headers: Headers) => {
       if (headers.get("x-substrate-actor-token") !== "Bearer host-signed")
@@ -80,11 +84,16 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
       },
       resolve: async () => {
         if (revoked) throw new ConnectError("Revoked", Code.PermissionDenied);
-        return { write: false, identity: { subject } };
+        return { write: false, capabilities, identity: { subject } };
       },
     },
   } as unknown as ExecutionRuntime;
-  const { clients, sync } = environment([]);
+  const { fake, clients, sync } = environment([]);
+  const agent = create(AgentSchema, {
+    ref: session.agent,
+    resource: { kind: "Agent", value: { spec: { harnessRef: { name: "standard" } } } },
+  });
+  fake.agents.push(agent);
   const transport = createRouterTransport((router) =>
     registerRuntime(
       router,
@@ -159,12 +168,35 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
       { headers },
     );
     expect(memoryOwners).toEqual(["user:alice", "user:bob", "team-knowledge"]);
+    if (!agent.resource?.value) throw new Error("Fixture Agent missing");
+    agent.resource.value.spec = { harnessRef: { name: "memory" } };
+    await memory.addSession(
+      { memory: { agentName: "workspace__NS__assistant", userId: "user:alice" } },
+      { headers },
+    );
+    expect(memoryOwners.at(-1)).toBe("user:bob");
+    if (!session.agent) throw new Error("Fixture Session missing Agent");
+    session.agent.name = "knowledge";
+    agent.ref = session.agent;
+    await expect(
+      memory.addSession(
+        { memory: { agentName: "workspace__NS__knowledge", userId: "administrator" } },
+        { headers },
+      ),
+    ).rejects.toMatchObject({ code: Code.PermissionDenied });
+    capabilities = [Capability.KNOWLEDGE_MANAGE];
+    await memory.addSession(
+      { memory: { agentName: "workspace__NS__knowledge", userId: "user:alice" } },
+      { headers },
+    );
+    expect(memoryOwners.at(-1)).toBe("team-knowledge");
+    expect(received.at(-1)?.get("x-user-id")).toBe("team-knowledge");
     revoked = true;
     await expect(
       tasks.createTask({ sessionId: "own", task: { id: "next", contextId: "own" } }, { headers }),
     ).rejects.toMatchObject({ code: Code.PermissionDenied });
     await tasks.getTask({ sessionId: "own", taskId: "task" }, { headers });
-    expect(received).toHaveLength(5);
+    expect(received).toHaveLength(7);
   } finally {
     sync.close();
     for (const connection of connections) connection.destroy();

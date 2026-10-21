@@ -2,7 +2,21 @@
 
 ## 平台边界
 
-认证用户均可发起聊天和只读查询。写角色允许管理配置，并作为执行写操作的用户权限上限。会话创建时固定发起人、Agent、根会话、父会话和写权限上限；角色提升后的写任务使用新会话。
+认证用户均可发起聊天和只读查询。平台资源管理权限由受信令牌的应用角色分别授予；目标系统写角色仅决定运维执行的写权限上限。会话创建时固定发起人、Agent、根会话、父会话、写权限与平台能力上限；权限提升后的任务使用新会话。
+
+| 应用角色 | 管理范围 |
+| --- | --- |
+| `agentos-agents-manage` | 智能体配置、技能与工具绑定、运行配置、角色起草助手 |
+| `agentos-skills-manage` | 共享 Skill 目录 |
+| `agentos-mcp-manage` | MCP 连接及其凭据 |
+| `agentos-knowledge-manage` | 团队知识的新增、删除、清空与 Agent 写入 |
+| `agentos-models-manage` | 模型连接及其凭据 |
+| `agentos-harnesses-manage` | Harness 配置 |
+| `agentos-evaluations-manage` | 运行测评与发起发布 |
+
+角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。平台依据 proto 定义的 `Capability` 校验 RPC；浏览器使用相同能力控制入口与直接路由。测评发布同时校验测评权限和候选涉及的全部资源权限。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
+
+应用角色授予配置管理能力；目标系统仍执行自身授权。平台管理角色保留用户私聊归属边界。
 
 执行绑定与最新验证的用户凭证以 protobuf 保存于 PostgreSQL 的 `agentos_authorization` schema。记录采用 AES-256-GCM 加密，认证数据包含工作空间、记录类型和 ID；加密密钥位于独立、持久保留的 Kubernetes Secret。
 原生会话、A2A 消息与工具参数仅保存身份引用，不携带用户访问令牌。
@@ -15,7 +29,7 @@
 
 Substrate 宿主机为每个出站目标注入短期 Actor JWT。平台验证签名、issuer、audience、当前 Actor UID 与原生 Session，运行时无法通过参数指定其他用户或会话。
 
-运行时 API 仅注册上游 TaskStoreService、MemoryService。TaskStore 请求固定到签名 Actor 对应的会话，原生持久化接口继续校验 dispatch 和版本围栏；撤销后仍可记录清理及终态。Memory 写操作同时要求用户写权限、当前 Agent 和启用记忆的 Harness。
+运行时 API 仅注册上游 TaskStoreService、MemoryService。TaskStore 请求固定到签名 Actor 对应的会话，原生持久化接口继续校验 dispatch 和版本围栏；撤销后仍可记录清理及终态。私人 Memory 写操作限定当前用户、当前 Agent 和启用记忆的 Harness；团队共享记忆另须 `agentos-knowledge-manage`，不受运维写角色替代。
 管理 RPC 与 A2A 入口仅向控制面开放。运行时出站策略与 NetworkPolicy 同时限制直连原生控制器。
 
 Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根使用 Substrate 的原生 PodCertificate 与 ClusterTrustBundle。
@@ -36,7 +50,7 @@ Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根�
 
 OIDC 模式下，平台只接收已验证的访问令牌，浏览器访问由 OAuth2 Proxy 刷新认证。工具调用重新校验令牌有效期；凭证过期、身份服务不可用或执行绑定缺失时暂停操作，不使用服务身份补位。无人值守任务采用独立的显式服务身份。
 环境服务读取用户执行证据时逐次使用调用者的 Bearer Token；OAuth2 Proxy 与平台 RPC 分别校验令牌，代理的额外受众固定为平台 API audience。
-权限变更由身份提供方反映到新令牌；平台收到降级后的新凭证后，旧令牌重放无法恢复写权限。身份提供方的会话刷新和角色同步时效由站点负责。
+权限变更由身份提供方反映到新令牌；平台收到降级后的新凭证后，旧令牌重放无法恢复已撤销的写权限或平台能力。身份提供方的会话刷新和角色同步时效由站点负责。
 
 `identity.mode: none` 使用共享访客身份，保留 Agent 工具上限、Actor 身份验证与目标系统权限。此模式没有独立用户身份，访客共享聊天记录。
 
