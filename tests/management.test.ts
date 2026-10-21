@@ -127,6 +127,7 @@ describe("native gateway connections", () => {
       create: true,
     });
     const updated = await client.saveConnection({ connection: first });
+    expect(object(first?.resource?.value?.spec).policies).toBeUndefined();
     await expect(client.saveConnection({ connection: first })).rejects.toMatchObject({
       code: Code.Aborted,
     });
@@ -158,6 +159,7 @@ describe("native gateway connections", () => {
       create: true,
     });
     const backend = saved?.resource?.value ?? {};
+    expect(object(backend.spec).policies).toBeUndefined();
     expect(object(object(backend.spec).mcp).prefixMode).toBe("Never");
     expect(object(object(backend.spec).mcp).targets).toMatchObject([
       { static: { policies: { http: { requestTimeout: "10m" } } } },
