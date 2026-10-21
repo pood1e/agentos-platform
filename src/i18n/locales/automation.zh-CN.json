@@ -1,6 +1,4 @@
 {
-  "taskViews": "任务视图",
-  "executions": "执行记录",
   "title": "自动化任务",
   "schedules": "定时任务",
   "name": "任务名称",
@@ -55,7 +53,6 @@
     "FAILED": "失败",
     "TIMED_OUT": "已超时"
   },
-  "workspaceHint": "跟踪执行进展，管理自动化任务。",
   "waitingToEnable": "启用后开始调度",
   "moreActions": "更多操作"
 }

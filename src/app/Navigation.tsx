@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Play,
   Users,
+  Workflow,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
@@ -22,6 +23,7 @@ import { managementCapability } from "../lib/permissions.js";
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
   { path: "/tasks", label: "navigation.tasks", icon: GitBranch },
+  { path: "/automations", label: "automation.title", icon: Workflow },
   { path: "/engineers", label: "navigation.agents", icon: Users },
   {
     path: "/engineers/knowledge",

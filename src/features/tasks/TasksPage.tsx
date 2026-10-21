@@ -60,6 +60,7 @@ export function TasksPage() {
   );
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+      <h1 className="shrink-0 text-xl font-semibold tracking-tight">{t("navigation.tasks")}</h1>
       <TaskFilters
         state={state}
         engineer={engineer}

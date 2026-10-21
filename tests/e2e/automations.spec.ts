@@ -20,31 +20,45 @@ const api = createClient(
 );
 test.beforeEach(async ({ request }) => resetKagent(request));
 
-test("switches between execution history and shared automation definitions and restores the selected tab", async ({
+test("navigates independent task and automation pages and restores automation detail URLs", async ({
   page,
 }) => {
   await page.goto("/tasks");
-  const tabs = page.getByRole("tablist", { name: "任务视图" });
-  await tabs.getByRole("tab", { name: "自动化任务", exact: true }).click();
-  await expect(page).toHaveURL(/\/tasks\/automations$/);
+  const navigation = page.getByRole("navigation", { name: "主导航", exact: true });
+  const tasks = navigation.getByRole("link", { name: "任务", exact: true });
+  const automations = navigation.getByRole("link", { name: "自动化任务", exact: true });
+  await expect(page.getByRole("heading", { name: "任务", level: 1, exact: true })).toBeVisible();
+  await expect(tasks).toHaveAttribute("aria-current", "page");
+  await expect(automations).not.toHaveAttribute("aria-current");
+  await expect(page.getByRole("tab", { name: "自动化任务", exact: true })).toHaveCount(0);
+  await automations.click();
+  await expect(page).toHaveURL(/\/automations$/);
+  await expect(page.getByRole("heading", { name: "自动化任务", level: 1 })).toBeVisible();
+  await expect(automations).toHaveAttribute("aria-current", "page");
+  await expect(tasks).not.toHaveAttribute("aria-current");
   await expect(page.getByTestId("scheduled-run-row")).toHaveCount(2);
   await expect(page.getByTestId("scheduled-run-row").first()).toContainText("已暂停");
-  await page.reload();
-  await expect(tabs.getByRole("tab", { name: "自动化任务", exact: true })).toHaveAttribute(
-    "data-state",
-    "active",
-  );
+  await page.screenshot({ path: test.info().outputPath("automations-desktop.png") });
   await page.getByRole("button", { name: "例行检查", exact: true }).click();
+  await expect(page).toHaveURL(/\/automations\/[^/]+$/);
+  const detailUrl = page.url();
+  await page.reload();
+  await expect(page).toHaveURL(detailUrl);
   await expect(page.getByRole("dialog")).toContainText("尚无运行记录");
   await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await tabs.getByRole("tab", { name: "执行记录", exact: true }).click();
+  await expect(page).toHaveURL(/\/automations$/);
+  await expect(automations).toHaveAttribute("aria-current", "page");
+  await tasks.click();
   await expect(page.getByTestId("task-history")).toBeVisible();
+  await expect(tasks).toHaveAttribute("aria-current", "page");
+  await expect(automations).not.toHaveAttribute("aria-current");
+  await page.screenshot({ path: test.info().outputPath("tasks-desktop.png") });
 });
 
 test("creates, edits, enables and deletes a scheduled task through the native API", async ({
   page,
 }) => {
-  await page.goto("/tasks/automations");
+  await page.goto("/automations");
   await page.getByRole("button", { name: "新建定时任务", exact: true }).click();
   const editor = page.getByRole("dialog");
   await editor.getByLabel("任务名称", { exact: true }).fill("工作日巡检");
@@ -78,7 +92,7 @@ test("creates, edits, enables and deletes a scheduled task through the native AP
 test("runs a paused shared task and links its native execution to the existing task view", async ({
   page,
 }) => {
-  await page.goto("/tasks/automations");
+  await page.goto("/automations");
   const row = page.getByTestId("scheduled-run-row").filter({ hasText: "例行检查" });
   await row.getByRole("button", { name: "立即执行", exact: true }).click();
   const detail = page.getByRole("dialog");
@@ -98,9 +112,13 @@ test("lets another reader inspect shared task history and rejects direct schedul
   await api.triggerScheduledRun({ scheduledRunId: schedule.id, requestId: crypto.randomUUID() });
   const token = await identityToken([], "automation-reader");
   await context.setExtraHTTPHeaders({ authorization: `Bearer ${token}` });
-  await page.goto(`/tasks/automations/${schedule.id}`);
+  await page.goto(`/automations/${schedule.id}`);
   await expect(page.getByRole("dialog")).toContainText("手动触发");
   await page.getByRole("button", { name: "关闭", exact: true }).click();
+  await expect(page.getByRole("link", { name: "自动化任务", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await expect(page.getByTestId("scheduled-run-row")).toHaveCount(2);
   for (const label of ["新建定时任务", "立即执行", "编辑定时任务", "删除定时任务", "启用"])
     await expect(page.getByRole("button", { name: label, exact: true })).toHaveCount(0);
@@ -138,12 +156,29 @@ test("shows environment-owned event ingress accurately and keeps automation card
       },
     }),
   );
-  await page.goto("/tasks/automations");
+  await page.goto("/tasks");
+  await page.getByRole("button", { name: "主导航", exact: true }).click();
+  const menu = page.getByRole("dialog");
+  await menu.getByRole("link", { name: "自动化任务", exact: true }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(page).toHaveURL(/\/automations$/);
+  await expect(page.getByRole("heading", { name: "自动化任务", level: 1 })).toBeVisible();
   const event = page.getByTestId("event-trigger-row");
   await expect(event).toContainText("production");
   await expect(event).toContainText("平台入口未启用");
   await expect(event).toContainText("alert.lifecycle.*");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: test.info().outputPath("automations-mobile.png") });
+  await page.getByRole("button", { name: "主导航", exact: true }).click();
+  await expect(menu.getByRole("link", { name: "自动化任务", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await menu.getByRole("link", { name: "任务", exact: true }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "任务", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "主导航", exact: true }).click();
+  await menu.getByRole("link", { name: "自动化任务", exact: true }).click();
   await page.getByRole("button", { name: "新建定时任务", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
