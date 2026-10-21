@@ -139,6 +139,8 @@ spec:
             - --code-challenge-method=S256
             - --scope=openid profile email
             - --pass-access-token=true
+            - --skip-jwt-bearer-tokens=true
+            - --oidc-extra-audience={{ .Values.identity.audience }}
             - --skip-provider-button=true
             - --reverse-proxy=true
             - --cookie-name=__Host-agentos

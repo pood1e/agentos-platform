@@ -147,6 +147,9 @@ for name, source, overrides, presets, config in [
     assert env['AGENTOS_AUTH_MODE']['value'] == mode
     proxy = [item for item in api['spec']['template']['spec']['containers'] if item['name'] == 'identity']
     assert bool(proxy) == (mode == 'oidc')
+    if proxy:
+        assert '--skip-jwt-bearer-tokens=true' in proxy[0]['args']
+        assert f"--oidc-extra-audience={env['AGENTOS_OIDC_AUDIENCE']['value']}" in proxy[0]['args']
     if mode == 'none':
         assert 'AGENTOS_OIDC_ISSUER' not in env
     assert env['AGENTOS_GATEWAY_URL']['value'].startswith('http://agentos-gateway.')
