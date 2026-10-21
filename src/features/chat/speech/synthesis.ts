@@ -2,6 +2,7 @@ import type { SpeechSynthesisAdapter } from "@assistant-ui/react";
 import type { consoleClient } from "../../../lib/console.js";
 import { errorKey } from "../../../lib/errors.js";
 import { streamAudio } from "./audio-stream.js";
+import { speechText } from "./text.js";
 
 type Client = Pick<typeof consoleClient, "synthesizeSpeech">;
 
@@ -46,8 +47,10 @@ export class RemoteSpeechAdapter implements SpeechSynthesisAdapter {
     this.current = utterance;
     const generate = async () => {
       try {
+        const input = speechText(text);
+        if (!input) return finish("finished");
         const responses = this.client.synthesizeSpeech(
-          { text },
+          { text: input },
           { signal: controller.signal, timeoutMs: 65_000 },
         );
         await streamAudio(responses, controller.signal, (source) => {

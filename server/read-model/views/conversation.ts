@@ -1,6 +1,6 @@
 import { create, fromJson, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
-import { Role } from "../../../gen/a2a_pb.js";
+import { Role, TaskState } from "../../../gen/a2a_pb.js";
 import {
   type ChatMessage,
   ChatMessageSchema,
@@ -100,13 +100,15 @@ function messages(index: TaskIndex, entries: TaskEntry[]): ChatMessage[] {
           tasks: position === 0 ? operations(index, entry) : [],
         });
       });
-    return entry.response
+    const answer = entry.state === TaskState.COMPLETED ? entry.answer : "";
+    return answer || entry.progress
       ? [
           ...turns,
           create(ChatMessageSchema, {
             id: `answer:${entry.id}`,
             role: Role.AGENT,
-            text: entry.response,
+            text: answer,
+            progress: entry.progress,
             taskId: entry.id,
           }),
         ]

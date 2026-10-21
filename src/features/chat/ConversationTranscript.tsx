@@ -57,7 +57,9 @@ function ConversationMessage({
               : "min-w-0 leading-6"
           }
         >
-          <MessagePrimitive.Parts components={user ? undefined : { Text: AssistantText }} />
+          <MessagePrimitive.Parts
+            components={user ? undefined : { Text: AssistantText, Reasoning: AssistantText }}
+          />
         </div>
         {!user && <SpeechOutput />}
       </MessagePrimitive.Root>
