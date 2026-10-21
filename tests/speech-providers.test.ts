@@ -78,7 +78,12 @@ it.each([
   ["zh", "你好", "zh"],
   ["en", "Hello", "en"],
   ["ar", "مرحبا", "ar-MSA"],
-])("uses NeMo's %s language and supported WAV format", async (language, text, expected) => {
+  ["zh", "请检查 nginx Pod 的 CPU 和 memory。", "zh"],
+  ["zh", "Nginx Pod Running，CPU 80%，Memory 75%，建议检查。", "zh"],
+  ["zh", "RCA 完成：nginx deployment CrashLoopBackOff，建议检查 memory limit。", "zh"],
+  ["ar", "نعم، Kubernetes Deployment nginx و Prometheus يعملان بشكل طبيعي.", "ar-MSA"],
+  ["en", "Please inspect Kubernetes Deployment nginx and Prometheus metrics.", "en"],
+])("uses NeMo's %s language and supported WAV format", async (_language, text, expected) => {
   const provider = Fastify();
   provider.post("/v1/audio/speech", (request, reply) => {
     expect(request.body).toEqual({
@@ -97,7 +102,11 @@ it.each([
       synthesis: {
         endpoint: { baseUrl: `${url}/v1` },
         protocol: SpeechSynthesis_Protocol.NEMO,
-        voices: [{ languageCode: language, model: "magpie", voice: "Aria" }],
+        voices: ["zh", "en", "ar"].map((languageCode) => ({
+          languageCode,
+          model: "magpie",
+          voice: "Aria",
+        })),
       },
     }),
   );
