@@ -40,7 +40,7 @@ describe("streamed task content", () => {
       );
     };
     const before = await view();
-    expect(before?.text).toBe("先读取资源。");
+    expect(before).toMatchObject({ text: "", progress: "先读取资源。" });
     task.artifacts.push(
       create(ArtifactSchema, {
         artifactId: "call",
@@ -55,7 +55,7 @@ describe("streamed task content", () => {
         ],
       }),
     );
-    expect(await view()).toMatchObject({ id: before?.id, text: "先读取资源。" });
+    expect(await view()).toMatchObject({ id: before?.id, text: "", progress: "先读取资源。" });
     expect(index.entry(task.id)?.answer).toBe("");
     task.artifacts.push(
       create(ArtifactSchema, {
@@ -75,15 +75,24 @@ describe("streamed task content", () => {
         ],
       }),
     );
-    expect(await view()).toMatchObject({ id: before?.id, text: "先读取资源。" });
+    expect(await view()).toMatchObject({ id: before?.id, text: "", progress: "先读取资源。" });
     task.artifacts.push(
       create(ArtifactSchema, {
         artifactId: "answer",
         parts: [{ content: { case: "text", value: "资源健康。" } }],
       }),
     );
+    expect(await view()).toMatchObject({
+      id: before?.id,
+      text: "",
+      progress: "先读取资源。\n\n资源健康。",
+    });
     if (task.status) task.status.state = TaskState.COMPLETED;
-    expect(await view()).toMatchObject({ id: before?.id, text: "先读取资源。\n\n资源健康。" });
+    expect(await view()).toMatchObject({
+      id: before?.id,
+      text: "资源健康。",
+      progress: "先读取资源。",
+    });
     expect(index.entry(task.id)?.answer).toBe("资源健康。");
   });
   it("observes a text replacement with the same status, history length and part count", () => {
