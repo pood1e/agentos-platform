@@ -32,11 +32,16 @@ export function registerRuntime(
   const tasks = createClient(TaskStoreService, transport),
     memory = createClient(MemoryService, transport);
 
-  async function taskOptions(sessionId: string, context: HandlerContext, create = false) {
+  async function taskOptions(
+    sessionId: string,
+    context: HandlerContext,
+    mode: "read" | "create" | "update" = "read",
+    messageIds: string[] = [],
+  ) {
     const { session, actor } = await runtime.authenticatedActor(context.requestHeader);
     if (session.id !== sessionId) throw denied();
-    if (create) await runtime.registry.record(session);
-    else await runtime.registry.record(session, true);
+    // Signed Actors can read their own store before the initial task establishes admission.
+    if (mode !== "read") await runtime.registry.record(session, mode === "update", messageIds);
     return {
       signal: context.signal,
       timeoutMs: 15_000,
@@ -89,12 +94,20 @@ export function registerRuntime(
   router.service(TaskStoreService, {
     createTask: async (r, c) => {
       if (r.task?.contextId !== r.sessionId) throw denied();
-      return tasks.createTask(r, await taskOptions(r.sessionId, c, true));
+      return tasks.createTask(
+        r,
+        await taskOptions(
+          r.sessionId,
+          c,
+          "create",
+          r.task.history.map((message) => message.messageId),
+        ),
+      );
     },
     getTask: async (r, c) => tasks.getTask(r, await taskOptions(r.sessionId, c)),
     updateTask: async (r, c) => {
       if (r.task?.contextId !== r.sessionId) throw denied();
-      return tasks.updateTask(r, await taskOptions(r.sessionId, c));
+      return tasks.updateTask(r, await taskOptions(r.sessionId, c, "update"));
     },
     listTasks: async (r, c) => {
       if (!r.request || (r.request.contextId && r.request.contextId !== r.sessionId))
@@ -102,7 +115,7 @@ export function registerRuntime(
       r.request.contextId = r.sessionId;
       return tasks.listTasks(r, await taskOptions(r.sessionId, c));
     },
-    settleTask: async (r, c) => tasks.settleTask(r, await taskOptions(r.sessionId, c)),
+    settleTask: async (r, c) => tasks.settleTask(r, await taskOptions(r.sessionId, c, "update")),
   });
   router.service(MemoryService, {
     addSession: async (r, c) => {

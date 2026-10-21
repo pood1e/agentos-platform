@@ -4,6 +4,7 @@ import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
 import { createValidateInterceptor } from "@connectrpc/validate";
 import fastifyStatic from "@fastify/static";
 import type { FastifyInstance } from "fastify";
+import { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { EvaluationService } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
@@ -18,6 +19,7 @@ export interface ConsoleRoutes {
   packRoot?: string;
   context?: Interceptor;
   evaluation?: ServiceImpl<typeof EvaluationService>;
+  automation?: ServiceImpl<typeof AutomationService>;
   staging?: Interceptor;
 }
 
@@ -33,6 +35,7 @@ export async function registerConsole(app: FastifyInstance, routes: ConsoleRoute
       router.service(ConsoleService, routes.service, { writeMaxBytes: 17 * 1024 * 1024 });
       if (routes.management) router.service(ManagementService, routes.management);
       if (routes.evaluation) router.service(EvaluationService, routes.evaluation);
+      if (routes.automation) router.service(AutomationService, routes.automation);
     },
   });
   app.get("/healthz", async () => ({ status: "ok" }));

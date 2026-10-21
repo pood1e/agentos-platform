@@ -9,6 +9,7 @@ import {
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { Control } from "../../gen/ateapi_pb.js";
 import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { scheduledIdentity } from "../automation/identity.js";
 import { roleDefinition } from "../console/role-template.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
@@ -35,6 +36,7 @@ export async function executionRuntime(
   workspace: string,
   access: BindingView,
   verify?: ReturnType<typeof jwtIdentity>,
+  nativeCreator?: string,
 ) {
   const persistent = await executionStore(
     required("AGENTOS_EXECUTION_DATABASE_URL"),
@@ -44,7 +46,11 @@ export async function executionRuntime(
       ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
       : undefined,
   );
-  const registry = executions(persistent, verify);
+  const registry = executions(
+    persistent,
+    verify,
+    nativeCreator ? scheduledIdentity(clients, workspace, nativeCreator) : undefined,
+  );
   const workspaces = new Set<string>(
     JSON.parse(process.env.AGENTOS_EXECUTION_WORKSPACES ?? JSON.stringify([workspace])),
   );

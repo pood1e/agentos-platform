@@ -1,6 +1,8 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
+import enAutomation from "./locales/automation.en.json";
+import zhAutomation from "./locales/automation.zh-CN.json";
 import en from "./locales/en.json";
 import enEvaluation from "./locales/evaluation.en.json";
 import zhEvaluation from "./locales/evaluation.zh-CN.json";
@@ -16,11 +18,21 @@ void i18n
   .init({
     resources: {
       zh: {
-        translation: { ...zh, management: zhManagement, evaluation: zhEvaluation },
+        translation: {
+          ...zh,
+          management: zhManagement,
+          evaluation: zhEvaluation,
+          automation: zhAutomation,
+        },
         tools: zhTools,
       },
       en: {
-        translation: { ...en, management: enManagement, evaluation: enEvaluation },
+        translation: {
+          ...en,
+          management: enManagement,
+          evaluation: enEvaluation,
+          automation: enAutomation,
+        },
         tools: enTools,
       },
     },

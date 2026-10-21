@@ -1,0 +1,28 @@
+{
+  "scheduledRuns": [
+    {
+      "requestId": "inspection-v1",
+      "agent": { "name": "inspection" },
+      "config": {
+        "name": "例行检查",
+        "schedule": "0 * * * *",
+        "timeZone": "Asia/Shanghai",
+        "prompt": "检查工作负载健康，输出有证据的结论。",
+        "paused": true,
+        "executionTimeout": "900s"
+      }
+    },
+    {
+      "requestId": "report-v1",
+      "agent": { "name": "inspection" },
+      "config": {
+        "name": "每日健康报告",
+        "schedule": "0 9 * * *",
+        "timeZone": "Asia/Shanghai",
+        "prompt": "汇总最近一天的运行状况。",
+        "paused": true,
+        "executionTimeout": "900s"
+      }
+    }
+  ]
+}

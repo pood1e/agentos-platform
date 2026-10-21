@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { loadPack } from "../server/console/pack.js";
 import { toolServerLabel, toolText } from "../src/features/shared/tool-label.js";
 import i18n from "../src/i18n/index.js";
+import enAutomation from "../src/i18n/locales/automation.en.json";
+import zhAutomation from "../src/i18n/locales/automation.zh-CN.json";
 import en from "../src/i18n/locales/en.json";
 import enManagement from "../src/i18n/locales/management.en.json";
 import zhManagement from "../src/i18n/locales/management.zh-CN.json";
@@ -25,8 +27,18 @@ afterEach(async () => {
 
 describe("localized user interface", () => {
   it("keeps semantic keys and interpolation variables aligned across locale files", () => {
-    const english = flatten({ app: en, tools: enTools, management: enManagement }),
-      chinese = flatten({ app: zh, tools: zhTools, management: zhManagement });
+    const english = flatten({
+        app: en,
+        tools: enTools,
+        management: enManagement,
+        automation: enAutomation,
+      }),
+      chinese = flatten({
+        app: zh,
+        tools: zhTools,
+        management: zhManagement,
+        automation: zhAutomation,
+      });
     const normalize = (key: string) => key.replace(/_(one|other)$/, "");
     expect(new Set([...english.keys()].map(normalize))).toEqual(new Set(chinese.keys()));
     for (const [key, value] of english) {

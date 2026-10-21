@@ -6,6 +6,7 @@ import { AgentService } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
 import { HarnessService } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
 import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
 import { ModelService } from "../../gen/kagent/api/v1alpha1/models_pb.js";
+import { ScheduledRunService } from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
 import type { KagentConfig } from "../shared/config.js";
@@ -30,6 +31,7 @@ export function kagentClients(transport: Transport) {
     agents: createClient(AgentService, transport),
     harnesses: createClient(HarnessService, transport),
     sessions: createClient(SessionService, transport),
+    schedules: createClient(ScheduledRunService, transport),
     a2a: createClient(A2AService, transport),
     templates: createClient(AgentTemplateService, transport),
     tools: createClient(ToolService, transport),

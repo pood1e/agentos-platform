@@ -31,6 +31,7 @@ createHttpServer(async (request, response) => {
   else if (request.method === "POST" && url.pathname === "/reset") {
     const scenario = freshScenario();
     fake.load(scenario);
+    fake.schedules.reset();
     await execution.seed([...fake.sessions.values()], true);
     fake.agents.splice(0, fake.agents.length, ...fixtureAgents());
     fake.resources.reset();

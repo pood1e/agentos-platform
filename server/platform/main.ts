@@ -15,6 +15,8 @@ import { discoveryMethods } from "../authorization/mcp.js";
 import { registerRuntime } from "../authorization/native.js";
 import { oidcIdentity } from "../authorization/oidc.js";
 import { executionRuntime } from "../authorization/runtime.js";
+import { automationPresets } from "../automation/presets.js";
+import { automationService } from "../automation/service.js";
 import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { roleCommands } from "../console/roles.js";
@@ -70,7 +72,13 @@ const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log)
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const access = toolBindings(kubeConfig, config.namespace);
-const execution = await executionRuntime(clients, config.namespace, access, identity);
+const execution = await executionRuntime(
+  clients,
+  config.namespace,
+  access,
+  identity,
+  config.userId,
+);
 const tags = await taskTagStore(
   process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
   config.namespace,
@@ -79,6 +87,7 @@ const tags = await taskTagStore(
     : undefined,
 );
 const operations = governanceConfig();
+const automation = automationPresets(config.namespace, packRoot);
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
 const speechConfiguration = speechConfig();
@@ -182,6 +191,13 @@ await registerConsole(app, {
   ),
   ...services(activeClients),
   ...evaluation.routes,
+  automation: automationService(
+    clients,
+    config.namespace,
+    automation,
+    operations.environments.flatMap((entry) => entry.environment?.name ?? []),
+    process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
+  ),
   ready: sync.healthy,
   staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
   packRoot,
@@ -308,7 +324,8 @@ const align = (): void =>
   void identities
     .align(clients, replaceTemplate)
     .then(() => alignRoles())
-    .then((updated) => {
+    .then(async (updated) => {
+      await automation.seed(clients);
       if (updated.length) app.log.info({ updated }, "engineer bindings aligned with access policy");
     })
     .catch((error: unknown) => {

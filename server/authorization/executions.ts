@@ -8,13 +8,17 @@ import {
 } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { intersectCapabilities } from "../../shared/permissions.js";
-import type { KagentClients } from "../kagent/clients.js";
+import { type KagentClients, pool } from "../kagent/clients.js";
 import type { jwtIdentity } from "./oidc.js";
 import { conflict, type ExecutionStore } from "./store.js";
 
 const denied = () => new ConnectError("Execution access denied", Code.PermissionDenied);
 
-export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwtIdentity>) {
+export function executions(
+  store: ExecutionStore,
+  verify?: ReturnType<typeof jwtIdentity>,
+  adopt?: (session: Session, messageIds: string[]) => Promise<ExecutionIdentity | undefined>,
+) {
   const remembered = new LRUCache<string, ExecutionIdentity>({ max: 512, ttl: 60_000 });
   const narrowed = (identity: ExecutionIdentity, ceiling: ExecutionIdentity) => ({
     ...identity,
@@ -53,8 +57,15 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
     throw denied();
   }
 
-  async function record(session: Session, allowRevoked = false) {
-    const stored = await store.binding(session.id);
+  async function record(session: Session, allowRevoked = false, messageIds: string[] = []) {
+    let stored = await store.binding(session.id);
+    if (!stored && adopt) {
+      const identity = await adopt(session, messageIds);
+      if (identity) {
+        await bind(session, identity);
+        stored = await store.binding(session.id);
+      }
+    }
     const binding = stored?.value;
     if (
       !binding ||
@@ -166,11 +177,21 @@ export function executions(store: ExecutionStore, verify?: ReturnType<typeof jwt
     await store.saveBinding(binding, stored.version);
   }
 
-  const history = async (subject: string, contexts: string[]) =>
-    (await store.bindings(contexts)).filter(
-      (binding) =>
-        subject && (binding.subject === subject || binding.subject.startsWith("service:")),
+  const history = async (subject: string, contexts: string[], origins: Session[] = []) => {
+    if (!subject) return [];
+    let bindings = await store.bindings(contexts);
+    const known = new Set(bindings.map((binding) => binding.sessionId));
+    const missing = origins.filter((session) => !known.has(session.id));
+    if (missing.length) {
+      await pool(missing, 4, async (session) => {
+        await record(session, true).catch(() => {});
+      });
+      bindings = await store.bindings(contexts);
+    }
+    return bindings.filter(
+      (binding) => binding.subject === subject || binding.subject.startsWith("service:"),
     );
+  };
 
   return { remember, record, resolve, own, bind, delegate, revoke, history };
 }
