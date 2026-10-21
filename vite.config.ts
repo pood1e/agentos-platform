@@ -29,6 +29,7 @@ export default defineConfig({
       "/agentos.console.v1.ConsoleService": "http://127.0.0.1:8080",
       "/agentos.management.v1.ManagementService": "http://127.0.0.1:8080",
       "/pack/": "http://127.0.0.1:8080",
+      "/speech/": { target: "http://127.0.0.1:8080", ws: true },
     },
   },
   test: { include: ["tests/**/*.test.ts"] },

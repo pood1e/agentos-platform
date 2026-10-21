@@ -21,7 +21,7 @@ export function useSpeech() {
     () => ({
       dictation:
         transcription && RemoteDictationAdapter.isSupported()
-          ? new RemoteDictationAdapter(speechClient, onError)
+          ? new RemoteDictationAdapter(onError)
           : undefined,
       speech: synthesis ? new RemoteSpeechAdapter(speechClient, onError) : undefined,
     }),

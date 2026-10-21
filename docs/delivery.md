@@ -100,9 +100,11 @@ TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服�
 ## 语音
 
 `speech` 默认关闭；转写与合成分别配置，聊天页按能力显示麦克风和助手回答的朗读控件。
-ASR 服务提供 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
+聊天录音通过 Deepgram Live 兼容的 `WS /v1/listen` 持续发送音频和接收中间、最终转写结果。
+平台使用官方 Deepgram SDK 与 WebSocket 组件，认证与同源校验位于平台代理，模型凭据留在服务端。
+文件转写接口使用 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
 `POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: mp3`，返回音频）。
-模型和音色由站点提供，服务可以与文本模型同机部署；平台使用现有 OpenAI SDK 调用兼容接口。
+模型和音色由站点提供，服务可以与文本模型同机部署；文件转写和语音合成使用 OpenAI SDK。
 
 ```yaml
 speech:
@@ -128,7 +130,8 @@ speech:
 凭据由各自的 `endpoint.apiKeyFile` 提供。
 
 录音使用浏览器 MediaRecorder，需 HTTPS 或 localhost 与麦克风授权；每次最多 60 秒、1 MiB。
-转写进入输入框后由用户发送，朗读最多 8,000 字符、返回音频最多 16 MiB；模型请求期限为 60 秒。
+中间转写在录音期间持续更新输入框，停止录音后提交尾部音频，最终文本由用户发送。
+朗读最多 8,000 字符、返回音频最多 16 MiB；模型请求期限为 60 秒。每个控制台实例最多四路并发录音。
 切换对话会取消录音和播放。音频仅在请求期间保留于内存，平台不保存录音、音频文件或生成公共音频地址。
 开放访问和 OIDC 均支持；只读用户可使用语音，目标系统的写权限继续由执行授权决定。
 
