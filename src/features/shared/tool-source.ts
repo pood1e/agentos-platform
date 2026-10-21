@@ -1,10 +1,10 @@
-import type { ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
 
 /** Gateway-qualified names identify the service shared by its credential profiles. */
 export function toolSource(servers: ToolServer[], name: string) {
   const parts = name.split("__");
   const base = parts.at(-1) ?? name;
-  const matches = (tool: { name: string }) => tool.name === name || tool.name === base;
+  const matches = (tool: DiscoveredTool) => tool.name === name || tool.name === base;
   const candidates = servers.filter((server) => server.discoveredTools.some(matches));
   const qualified = candidates.filter((server) => {
     const service = server.ref.split("/").at(-1) ?? server.ref;
