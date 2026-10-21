@@ -78,7 +78,15 @@ test("paginates and searches system-owned executions while excluding personal ta
   await expect(history.getByRole("row")).toHaveCount(2);
   await expect(history).toContainText("system-history-proof");
   await history.getByRole("link", { name: "查看执行", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/system-tasks\\?task=${tasks[0].id}$`));
   await expect(page.getByTestId("chat-task-panel")).toBeVisible();
+  await expect(page.getByTestId("chat-workspace")).toHaveCount(0);
+  await page.getByRole("button", { name: "收起任务详情", exact: true }).click();
+  await expect(page).toHaveURL(/\/system-tasks$/);
+  await expect(history.getByRole("textbox", { name: "搜索任务", exact: true })).toHaveValue(
+    "system-history-proof",
+  );
+  await expect(history.getByRole("row")).toHaveCount(2);
 });
 
 test("shows the system-task entry without a standalone task page and restores detail URLs", async ({
@@ -139,7 +147,7 @@ test("creates, edits, enables and deletes a scheduled task through the native AP
   await expect(updated).toHaveCount(0);
 });
 
-test("runs a paused shared task and links its native execution to the existing task view", async ({
+test("keeps a scheduled execution in the system-task workspace across reload and mobile navigation", async ({
   page,
 }) => {
   await page.goto("/system-tasks");
@@ -149,9 +157,30 @@ test("runs a paused shared task and links its native execution to the existing t
   await expect(detail).toContainText("手动触发");
   await expect(detail).toContainText("系统只读身份");
   await detail.getByRole("link", { name: "查看执行", exact: true }).click();
-  await expect(page).toHaveURL(/\/chat\?task=[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/system-tasks\?task=[0-9a-f-]+$/);
+  await expect(detail).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "系统任务", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: "系统任务", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByTestId("chat-workspace")).toHaveCount(0);
   await expect(page.getByTestId("task-title")).toBeVisible();
   await expect(page.getByTestId("chat-task-panel")).toContainText("检查工作负载健康");
+  const url = page.url();
+  await page.reload();
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId("task-title")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("system-task-execution-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("chat-task-panel")).toBeVisible();
+  await expect(page.getByRole("region", { name: "定时任务", exact: true })).not.toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: test.info().outputPath("system-task-execution-mobile.png") });
+  await page.getByRole("button", { name: "收起任务详情", exact: true }).click();
+  await expect(page).toHaveURL(/\/system-tasks$/);
+  await expect(row).toBeVisible();
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
 });
 
 test("lets another platform administrator inspect shared task history and rejects direct scheduling mutations", async ({
@@ -182,6 +211,8 @@ test("lets another platform administrator inspect shared task history and reject
   expect(denied.status()).toBe(403);
   await page.getByRole("button", { name: schedule.config?.name, exact: true }).click();
   await page.getByRole("dialog").getByRole("link", { name: "查看执行", exact: true }).click();
+  await expect(page).toHaveURL(/\/system-tasks\?task=[0-9a-f-]+$/);
+  await expect(page.getByTestId("chat-workspace")).toHaveCount(0);
   await expect(page.getByTestId("task-title")).toBeVisible();
 });
 

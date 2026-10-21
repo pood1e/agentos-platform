@@ -17,8 +17,8 @@ import { PageControl } from "../shared/PageControl.js";
 import { usePaging } from "../shared/paging.js";
 import { Status } from "../status/Status.js";
 import { TagBadges } from "../tasks/TagBadges.js";
-import { taskLocation } from "../tasks/task-location.js";
 import { scheduledTime } from "./format.js";
+import { systemTaskLocation } from "./location.js";
 
 export function SystemExecutions() {
   const { t } = useTranslation();
@@ -73,7 +73,7 @@ export function SystemExecutions() {
               <TableCell>
                 <Link
                   className="whitespace-nowrap text-primary hover:underline"
-                  to={taskLocation(task)}
+                  to={systemTaskLocation(task.id)}
                 >
                   {t("automation.viewExecution")}
                 </Link>
