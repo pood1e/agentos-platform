@@ -52,7 +52,7 @@ export function AutomationsPage() {
         manualIds.set(schedule.id, requestId);
         await automationClient.triggerScheduledRun({ scheduledRunId: schedule.id, requestId });
         manualIds.delete(schedule.id);
-        void navigate(`/tasks/automations/${schedule.id}`);
+        void navigate(`/automations/${schedule.id}`);
       } else if (schedule.config)
         await automationClient.updateScheduledRun({
           scheduledRunId: schedule.id,
@@ -66,6 +66,7 @@ export function AutomationsPage() {
   const page = paging.controls(next);
   return (
     <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-px pb-2">
+      <h1 className="text-xl font-semibold tracking-tight">{t("automation.title")}</h1>
       <section className="space-y-4" aria-label={t("automation.schedules")}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -109,7 +110,7 @@ export function AutomationsPage() {
               schedule={schedule}
               manage={manage}
               pending={action.isPending}
-              onOpen={() => void navigate(`/tasks/automations/${schedule.id}`)}
+              onOpen={() => void navigate(`/automations/${schedule.id}`)}
               onRun={() => action.mutate({ schedule, run: true })}
               onToggle={() => action.mutate({ schedule, run: false })}
               onEdit={() => setEditing({ schedule })}
@@ -161,7 +162,7 @@ export function AutomationsPage() {
         <ScheduleDetail
           key={scheduleId}
           id={scheduleId}
-          onClose={() => void navigate("/tasks/automations")}
+          onClose={() => void navigate("/automations")}
         />
       )}
       {deleting && (

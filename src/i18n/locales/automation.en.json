@@ -1,6 +1,4 @@
 {
-  "taskViews": "Task views",
-  "executions": "Executions",
   "title": "Automations",
   "schedules": "Scheduled tasks",
   "name": "Task name",
@@ -55,7 +53,6 @@
     "FAILED": "Failed",
     "TIMED_OUT": "Timed out"
   },
-  "workspaceHint": "Track executions and manage automations.",
   "waitingToEnable": "Starts when enabled",
   "moreActions": "More actions"
 }

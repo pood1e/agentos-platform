@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { ConnectionKind } from "../../gen/agentos/management/v1/management_pb.js";
 import { lastConversation } from "../features/chat/conversation-storage.js";
 import { AdvancedLayout } from "../features/management/AdvancedLayout.js";
-import { TaskWorkspace } from "../features/tasks/TaskWorkspace.js";
 import { useAccess } from "../lib/access.js";
 import { Layout, PendingLayout } from "./Layout.js";
 
@@ -25,23 +24,16 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import("../features/chat/ChatPage.js")).ChatPage }),
       },
       {
-        path: "tasks",
-        Component: TaskWorkspace,
-        children: [
-          {
-            path: "automations/:scheduleId?",
-            lazy: async () => ({
-              Component: (await import("../features/automations/AutomationsPage.js"))
-                .AutomationsPage,
-            }),
-          },
-          {
-            path: ":taskId?",
-            lazy: async () => ({
-              Component: (await import("../features/tasks/TasksPage.js")).TasksPage,
-            }),
-          },
-        ],
+        path: "tasks/:taskId?",
+        lazy: async () => ({
+          Component: (await import("../features/tasks/TasksPage.js")).TasksPage,
+        }),
+      },
+      {
+        path: "automations/:scheduleId?",
+        lazy: async () => ({
+          Component: (await import("../features/automations/AutomationsPage.js")).AutomationsPage,
+        }),
       },
       {
         path: "engineers",
