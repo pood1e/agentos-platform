@@ -14,8 +14,9 @@ arguments = parser.parse_args()
 helm = ".cache/bin/helm"
 base = [helm, "template", "speech-check", arguments.chart, "-f", arguments.values]
 endpoint = {"baseUrl": "https://speech.example.test/v1"}
-transcription = {"endpoint": endpoint, "model": "multilingual-asr", "languageCodes": ["zh", "en", "ar"]}
-synthesis = {"endpoint": endpoint, "voices": [
+transcription = {"endpoint": endpoint, "model": "multilingual-asr", "languageCodes": ["zh", "en", "ar"],
+                 "protocol": "PROTOCOL_WHISPERLIVEKIT"}
+synthesis = {"endpoint": endpoint, "protocol": "PROTOCOL_NEMO", "voices": [
     {"languageCode": language, "model": "tts-" + language, "voice": "default"}
     for language in ["zh", "en", "ar"]
 ]}
@@ -66,8 +67,10 @@ for input_enabled, output_enabled, authenticated in [
             assert ("apiKeyFile" in effective[kind]["endpoint"]) == authenticated
     if input_enabled:
         assert effective["transcription"]["model"] == transcription["model"]
+        assert effective["transcription"]["protocol"] == transcription["protocol"]
     if output_enabled:
         assert effective["synthesis"]["voices"] == synthesis["voices"]
+        assert effective["synthesis"]["protocol"] == synthesis["protocol"]
     if authenticated:
         expected = {
             kind + "-api-key" for kind in ("transcription", "synthesis") if kind in effective
@@ -83,6 +86,8 @@ for input_enabled, output_enabled, authenticated in [
         )
 
 for invalid in [
+    {"transcription": {**transcription, "protocol": "unknown"}},
+    {"synthesis": {**synthesis, "protocol": "unknown"}},
     {"transcription": {**transcription, "languageCodes": ["zh", "zh"]}},
     {"transcription": {**transcription, "languageCodes": ["zh-CN"]}},
     {"transcription": {"model": "asr"}},

@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import websocket from "@fastify/websocket";
 import type { FastifyInstance } from "fastify";
 import WebSocket from "ws";
-import type { SpeechTranscription } from "../../gen/agentos/console/v1/speech_pb.js";
+import {
+  type SpeechTranscription,
+  SpeechTranscription_Protocol,
+} from "../../gen/agentos/console/v1/speech_pb.js";
+import { whisperLiveKitResult } from "./whisperlivekit.js";
 
 export async function registerTranscription(
   app: FastifyInstance,
@@ -36,24 +40,31 @@ export async function registerTranscription(
       if (clients.size >= 4) return socket.close(1008, "Transcription capacity reached");
       clients.add(socket);
       const endpoint = configuration.endpoint;
-      const url = new URL("listen", `${endpoint.baseUrl.replace(/\/$/, "")}/`);
+      const native = configuration.protocol === SpeechTranscription_Protocol.WHISPERLIVEKIT;
+      const url = new URL(native ? "../asr" : "listen", `${endpoint.baseUrl.replace(/\/$/, "")}/`);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-      url.searchParams.set("model", configuration.model);
-      url.searchParams.set("interim_results", "true");
-      url.searchParams.set("endpointing", "300");
+      if (!native) {
+        url.searchParams.set("model", configuration.model);
+        url.searchParams.set("interim_results", "true");
+        url.searchParams.set("endpointing", "300");
+      }
       const language = new URL(request.url, "http://localhost").searchParams.get("language");
       if (language && configuration.languageCodes.includes(language))
         url.searchParams.set("language", language);
       const token = endpoint.apiKeyFile ? readFileSync(endpoint.apiKeyFile, "utf8").trim() : "";
       const upstream = new WebSocket(url, {
-        headers: token ? { Authorization: `Token ${token}` } : {},
+        headers: token ? { Authorization: `${native ? "Bearer" : "Token"} ${token}` } : {},
         handshakeTimeout: 10_000,
         maxPayload: 1024 * 1024,
       });
       let size = 0;
       const pending: { data: WebSocket.RawData; binary: boolean }[] = [];
       const timer = setTimeout(() => socket.close(1008, "Session limit reached"), 125_000);
-      const send = (data: WebSocket.RawData, binary: boolean) => upstream.send(data, { binary });
+      const send = (data: WebSocket.RawData, binary: boolean) => {
+        if (native && !binary) {
+          if (JSON.parse(data.toString()).type === "CloseStream") upstream.send(Buffer.alloc(0));
+        } else upstream.send(data, { binary });
+      };
       socket.on("message", (data, binary) => {
         size += Array.isArray(data)
           ? data.reduce((total, item) => total + item.length, 0)
@@ -81,7 +92,15 @@ export async function registerTranscription(
         pending.length = 0;
       });
       upstream.on("message", (data, binary) => {
-        if (socket.readyState === WebSocket.OPEN) socket.send(data, { binary });
+        if (socket.readyState !== WebSocket.OPEN) return;
+        if (!native) return socket.send(data, { binary });
+        try {
+          const result = whisperLiveKitResult(data.toString());
+          if (result === "done") socket.close(1000);
+          else if (result) socket.send(result);
+        } catch {
+          socket.close(1011, "Transcription unavailable");
+        }
       });
       upstream.on("error", () => socket.close(1011, "Transcription unavailable"));
       upstream.on("close", (code) => socket.close(code === 1000 ? 1000 : 1011));

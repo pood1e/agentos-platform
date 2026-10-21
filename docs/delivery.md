@@ -101,9 +101,11 @@ TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服�
 
 `speech` 默认关闭；转写与合成分别配置，聊天页按能力显示麦克风和助手回答的朗读控件。
 聊天录音通过 Deepgram Live 兼容的 `WS /v1/listen` 持续发送音频和接收中间、最终转写结果。
+转写 `protocol: PROTOCOL_WHISPERLIVEKIT` 接入原生 `/asr`，平台将完整草稿映射为浏览器流式结果，保留模型的分词和空格。
 平台使用官方 Deepgram SDK 与 WebSocket 组件，认证与同源校验位于平台代理，模型凭据留在服务端。
 文件转写接口使用 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
 `POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: mp3`，返回音频）。
+合成 `protocol: PROTOCOL_NEMO` 接入 NeMo-Speech.cpp HTTP 服务，使用 WAV 和音色对应的语言参数。
 模型和音色由站点提供，服务可以与文本模型同机部署；文件转写和语音合成使用 OpenAI SDK。
 `languageCodes` 声明转写服务支持的语言，聊天页显示语言选择，初始选择匹配界面语言，之后记住用户选择。
 选择自动识别时省略语言参数；代理仅转发配置内的语言代码。

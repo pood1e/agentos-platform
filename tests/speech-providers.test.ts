@@ -1,0 +1,118 @@
+import { once } from "node:events";
+import { create } from "@bufbuild/protobuf";
+import { createHandlerContext } from "@connectrpc/connect";
+import websocket from "@fastify/websocket";
+import Fastify from "fastify";
+import { expect, it, onTestFinished } from "vitest";
+import WebSocket from "ws";
+import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
+import {
+  SpeechConfigurationSchema,
+  SpeechSynthesis_Protocol,
+  SpeechTranscription_Protocol,
+  SpeechTranscriptionSchema,
+  SynthesizeSpeechRequestSchema,
+} from "../gen/agentos/console/v1/speech_pb.js";
+import { speechService } from "../server/speech/service.js";
+import { registerTranscription } from "../server/speech/transcription.js";
+
+it("preserves native cumulative drafts and drains WhisperLiveKit through empty binary input", async () => {
+  const provider = Fastify();
+  await provider.register(websocket);
+  let ended = false;
+  provider.get("/asr", { websocket: true }, (socket, request) => {
+    expect(request.query).toEqual({ language: "ar" });
+    socket.send(JSON.stringify({ type: "config" }));
+    socket.on("message", (data, binary) => {
+      expect(binary).toBe(true);
+      if (Buffer.isBuffer(data) && data.length === 0) {
+        ended = true;
+        socket.send(JSON.stringify({ type: "ready_to_stop" }));
+      } else {
+        for (const buffer of ["تشكلت", "تشكلت في المحيط الأطلسي / styles"])
+          socket.send(
+            JSON.stringify({
+              lines: [{ text: buffer, speaker: 1 }],
+              buffer_transcription: "",
+              buffer_diarization: "",
+            }),
+          );
+      }
+    });
+  });
+  const providerUrl = await provider.listen({ host: "127.0.0.1", port: 0 });
+  const app = Fastify();
+  await registerTranscription(
+    app,
+    create(SpeechTranscriptionSchema, {
+      endpoint: { baseUrl: `${providerUrl}/v1` },
+      model: "large-v3",
+      languageCodes: ["ar"],
+      protocol: SpeechTranscription_Protocol.WHISPERLIVEKIT,
+    }),
+    async () => {},
+  );
+  const url = await app.listen({ host: "127.0.0.1", port: 0 });
+  const socket = new WebSocket(`${url.replace("http:", "ws:")}/speech/v1/listen?language=ar`);
+  onTestFinished(async () => {
+    socket.terminate();
+    await app.close();
+    await provider.close();
+  });
+  const drafts: string[] = [];
+  socket.on("message", (data) => {
+    const result = JSON.parse(data.toString());
+    expect(result.is_final).toBe(false);
+    drafts.push(result.channel.alternatives[0].transcript);
+    if (drafts.length === 2) socket.send(JSON.stringify({ type: "CloseStream" }));
+  });
+  await once(socket, "open");
+  const closed = once(socket, "close");
+  socket.send(Buffer.from("webm"));
+  expect((await closed)[0]).toBe(1000);
+  expect(ended).toBe(true);
+  expect(drafts).toEqual(["تشكلت", "تشكلت في المحيط الأطلسي / styles"]);
+});
+
+it.each([
+  ["zh", "你好", "zh"],
+  ["en", "Hello", "en"],
+  ["ar", "مرحبا", "ar-MSA"],
+])("uses NeMo's %s language and supported WAV format", async (language, text, expected) => {
+  const provider = Fastify();
+  provider.post("/v1/audio/speech", (request, reply) => {
+    expect(request.body).toEqual({
+      model: "magpie",
+      voice: "Aria",
+      input: text,
+      response_format: "wav",
+      language: expected,
+    });
+    return reply.type("audio/wav").send(Buffer.from("RIFF-audio"));
+  });
+  const url = await provider.listen({ host: "127.0.0.1", port: 0 });
+  onTestFinished(() => provider.close());
+  const service = speechService(
+    create(SpeechConfigurationSchema, {
+      synthesis: {
+        endpoint: { baseUrl: `${url}/v1` },
+        protocol: SpeechSynthesis_Protocol.NEMO,
+        voices: [{ languageCode: language, model: "magpie", voice: "Aria" }],
+      },
+    }),
+  );
+  const context = createHandlerContext({
+    service: ConsoleService,
+    method: ConsoleService.method.synthesizeSpeech,
+    protocolName: "connect",
+    requestMethod: "POST",
+    url: url,
+  });
+  const chunks = [];
+  for await (const chunk of service.synthesizeSpeech(
+    create(SynthesizeSpeechRequestSchema, { text }),
+    context,
+  ))
+    chunks.push(chunk.audio?.data ?? new Uint8Array());
+  expect(Buffer.concat(chunks).toString()).toBe("RIFF-audio");
+});
