@@ -21,7 +21,7 @@ rules:
     resources: [modelconfigs, remotemcpservers]
     verbs: [create, update]
   - apiGroups: [agentgateway.dev]
-    resources: [agentgatewaymodels, agentgatewaybackends]
+    resources: [agentgatewaymodels, agentgatewaybackends, agentgatewaypolicies]
     verbs: [get, list, create, update, delete]
   - apiGroups: [gateway.networking.k8s.io]
     resources: [httproutes]
