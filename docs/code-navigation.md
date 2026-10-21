@@ -7,11 +7,12 @@
 | `proto/agentos/management/v1` | 管理 RPC：连接、模型、Harness、Skill、知识 |
 | `proto/agentos/governance/v1` | 环境、可选外部审批协议 |
 | `proto/agentos/evaluation/v1` | 测评：候选、基线、执行与回报，内置评分器读取的 `Expectation` |
-| `proto/agentos/automation/v1` | 案例自动化：案例 MCP 入参、worker 配置、方案包的 `CaseTrigger` 与案例事实 |
+| `proto/agentos/automation/v1` | 自动化 RPC、方案预置、案例 MCP 入参、worker 配置与案例事实；定时任务复用 kagent 官方协议 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/console` | 控制台服务：Connect RPC、静态资源、方案包加载、角色模板读写 |
 | `server/read-model` | kagent 任务与事件的读模型：会话、调用、交互、协作画布 |
 | `server/authorization` | 执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
+| `server/automation` | 原生定时任务的工作空间授权、方案预置与只读执行身份绑定 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/knowledge` | 团队知识检索 |
@@ -23,6 +24,7 @@
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
 | `src/features/shared` | 头像、工具图标、原生确认与外部审批等公共展示 |
 | `src/features/tasks` | 按状态与成员筛选的任务列表、协作图、vis-timeline 时间线与执行抽屉 |
+| `src/features/automations` | 任务配置 Tab：定时任务管理、运行历史和环境事件入口 |
 | `shared/evaluation.ts` | 测评逐例规则判定与候选、已发布配置的规则汇总 |
 | `src/lib` | RPC 客户端、方案包展示（`pack.ts`）与通用工具 |
 | `src/i18n` | 平台通用文案 |

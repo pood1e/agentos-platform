@@ -1,5 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
+import { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { EvaluationService } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
@@ -24,3 +25,4 @@ export const speechClient = createClient(
 
 export const managementClient = createClient(ManagementService, transport);
 export const evaluationClient = createClient(EvaluationService, transport);
+export const automationClient = createClient(AutomationService, transport);

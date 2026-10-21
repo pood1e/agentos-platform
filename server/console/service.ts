@@ -143,8 +143,10 @@ export function consoleService({
       index.invalidate(result.task.id);
       return result;
     },
-    watchTask(request, context) {
-      return watch(
+    async *watchTask(request, context) {
+      const known = index.entry(request.taskId);
+      if (!known || !index.session(known.contextId)) await sync.refresh();
+      yield* watch(
         sync,
         WatchTaskResponseSchema,
         context.signal,

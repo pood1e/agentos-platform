@@ -10,6 +10,7 @@ import { AgentSchema, AgentService } from "../../gen/kagent/api/v1alpha1/agents_
 import { HarnessService } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
 import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
 import { ModelConfigSchema, ModelService } from "../../gen/kagent/api/v1alpha1/models_pb.js";
+import { ScheduledRunService } from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
@@ -198,5 +199,6 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
   });
   router.service(MemoryService, fake.memory.service());
   router.service(ToolService, { listToolServers: () => ({ toolServers: fake.toolServers }) });
+  router.service(ScheduledRunService, fake.schedules.service());
   return router;
 };

@@ -1,5 +1,6 @@
 import { type DescMethod, isMessage } from "@bufbuild/protobuf";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
+import { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { EvaluationService } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import {
@@ -11,6 +12,10 @@ import {
 
 const key = (method: DescMethod) => `${method.parent.typeName}/${method.name}`;
 const requirements = new Map<string, Capability>([
+  [key(AutomationService.method.createScheduledRun), Capability.TASKS_MANAGE],
+  [key(AutomationService.method.updateScheduledRun), Capability.TASKS_MANAGE],
+  [key(AutomationService.method.deleteScheduledRun), Capability.TASKS_MANAGE],
+  [key(AutomationService.method.triggerScheduledRun), Capability.TASKS_MANAGE],
   [key(ConsoleService.method.createRole), Capability.AGENTS_MANAGE],
   [key(ConsoleService.method.updateRole), Capability.AGENTS_MANAGE],
   [key(ManagementService.method.setEngineerRuntime), Capability.AGENTS_MANAGE],

@@ -74,6 +74,7 @@ spec:
                 secretKeyRef: {name: {{ include "agentos.name" . }}-evaluation-backend, key: api-key}
             {{- end }}
             - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
+            - {name: AGENTOS_EVENT_AUTOMATION_ENABLED, value: {{ .Values.automation.enabled | quote }}}
             {{- if or .Values.speech.transcription .Values.speech.synthesis }}
             - {name: AGENTOS_SPEECH_CONFIG, value: /etc/agentos-speech/configuration.json}
             {{- end }}

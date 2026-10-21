@@ -6,12 +6,14 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 export function PageControl({
   page,
   pages,
+  hasNext,
   onPage,
   label,
   disabled = false,
 }: {
   page: number;
-  pages: number;
+  pages?: number;
+  hasNext?: boolean;
   onPage: (page: number) => void;
   label: string;
   disabled?: boolean;
@@ -33,7 +35,7 @@ export function PageControl({
         </PaginationItem>
         <PaginationItem>
           <span aria-live="polite" className="px-1 text-xs text-muted-foreground tabular-nums">
-            {page + 1} / {Math.max(pages, 1)}
+            {pages === undefined ? page + 1 : `${page + 1} / ${Math.max(pages, 1)}`}
           </span>
         </PaginationItem>
         <PaginationItem>
@@ -41,7 +43,7 @@ export function PageControl({
             variant="ghost"
             size="icon-sm"
             aria-label={t("pagination.next")}
-            disabled={disabled || page + 1 >= pages}
+            disabled={disabled || !(hasNext ?? (pages !== undefined && page + 1 < pages))}
             onClick={() => onPage(page + 1)}
           >
             <ChevronRight />
