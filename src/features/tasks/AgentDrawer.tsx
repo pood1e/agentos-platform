@@ -27,6 +27,7 @@ import { millis, time } from "../../lib/format.js";
 import { Approval } from "../shared/Approval.js";
 import { engineerDescription, engineerName } from "../shared/engineers.js";
 import { Markdown } from "../shared/Markdown.js";
+import { useToolText } from "../shared/use-tool-text.js";
 import { active, awaiting, labelKey } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { CallList } from "./Calls.js";
@@ -43,6 +44,7 @@ export interface DrawerTarget {
   taskId?: string;
   interactionId?: string;
   callKey?: string;
+  mcpServer?: string;
 }
 
 export function AgentDrawer({
@@ -59,6 +61,7 @@ export function AgentDrawer({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
+  const toolText = useToolText();
   const [selection, setSelection] = useState<{ target: DrawerTarget; value: string }>();
   const chosen = selection?.target === target ? selection.value : "";
   const connection = bundleConnections(flow.connections).find(
@@ -276,7 +279,13 @@ export function AgentDrawer({
                     <h3 className="mb-1 text-sm font-semibold">{t("tool.calls")}</h3>
                     <CallList
                       key={`${taskId}:${selectedCall}`}
-                      calls={result.calls}
+                      calls={
+                        inspected.mcpServer
+                          ? result.calls.filter(
+                              (call) => toolText(call.name).server === inspected.mcpServer,
+                            )
+                          : result.calls
+                      }
                       selected={selectedCall}
                     />
                   </section>

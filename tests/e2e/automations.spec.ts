@@ -57,7 +57,8 @@ test("creates, edits, enables and deletes a scheduled task through the native AP
   await expect(editor).toHaveCount(0);
   const row = page.getByTestId("scheduled-run-row").filter({ hasText: "工作日巡检" });
   await expect(row).toContainText("已暂停");
-  await row.getByRole("button", { name: "编辑定时任务", exact: true }).click();
+  await row.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "编辑定时任务", exact: true }).click();
   await editor.getByLabel("任务名称", { exact: true }).fill("工作日例行巡检");
   await editor.getByRole("button", { name: "保存", exact: true }).click();
   const updated = page.getByTestId("scheduled-run-row").filter({ hasText: "工作日例行巡检" });
@@ -68,7 +69,8 @@ test("creates, edits, enables and deletes a scheduled task through the native AP
   await expect(updated).toContainText("0 8 * * 1-5");
   await updated.getByRole("button", { name: "暂停", exact: true }).click();
   await expect(updated).toContainText("已暂停");
-  await updated.getByRole("button", { name: "删除定时任务", exact: true }).click();
+  await updated.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "删除定时任务", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "确认", exact: true }).click();
   await expect(updated).toHaveCount(0);
 });
@@ -115,7 +117,7 @@ test("lets another reader inspect shared task history and rejects direct schedul
   await expect(page.getByTestId("task-title")).toBeVisible();
 });
 
-test("shows environment-owned event ingress accurately and contains the automation table on mobile", async ({
+test("shows environment-owned event ingress accurately and keeps automation cards usable on mobile", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });

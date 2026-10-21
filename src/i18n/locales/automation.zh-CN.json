@@ -54,5 +54,8 @@
     "SUCCEEDED": "已完成",
     "FAILED": "失败",
     "TIMED_OUT": "已超时"
-  }
+  },
+  "workspaceHint": "跟踪执行进展，管理自动化任务。",
+  "waitingToEnable": "启用后开始调度",
+  "moreActions": "更多操作"
 }

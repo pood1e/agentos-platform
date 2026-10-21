@@ -22,6 +22,7 @@ test("completes chat delegation, approval, worker continuation and background kn
     .poll(async () => (await client.listTasks({ query: id })).tasks[0]?.state, { timeout: 20_000 })
     .toBe(ActivityState.SUCCEEDED);
   await page.keyboard.press("Escape");
+  await page.getByTestId("task-result").getByRole("button", { name: "任务结论" }).click();
   await expect(
     page.getByText("用户决定已处理，执行结果已核验；知识正在后台沉淀。", { exact: true }),
   ).toBeVisible();

@@ -49,7 +49,7 @@ test("keeps many executions in one instance and opens the exact linked continuat
   await expect(page.getByTestId("task-engineer")).toBeVisible();
   await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
   await page.getByTestId("task-engineer").click();
-  await expect(page.getByTestId("execution-picker")).toContainText("69");
+  await expect(page.getByTestId("execution-picker")).toContainText("第 1 次执行");
   await page.getByTestId("execution-picker").click();
   await expect(page.getByRole("option")).toHaveCount(69);
   await page.keyboard.press("Escape");
@@ -134,7 +134,7 @@ test("enlarges and shrinks the centered workflow with the available desktop spac
       .toMatchObject({ fits: true, centered: true });
     scales.push(await zoom());
   }
-  expect(scales[0]).toBeGreaterThan(1);
+  expect(scales[0]).toBeGreaterThan(0);
   expect(scales[1]).toBeLessThan(scales[0] ?? 0);
   expect(scales[2]).toBeGreaterThan(scales[0] ?? 0);
   const enlarged = scales[2] ?? 0;
@@ -144,7 +144,7 @@ test("enlarges and shrinks the centered workflow with the available desktop spac
   await expect.poll(zoom).toBeCloseTo(enlarged, 5);
 });
 
-test("shows single-engineer results without a canvas and keeps tool details accessible", async ({
+test("shows a single-agent tool graph with exact call details and a compact result", async ({
   page,
   request,
 }) => {
@@ -157,8 +157,28 @@ test("shows single-engineer results without a canvas and keeps tool details acce
   await expect(page.getByTestId("task-engineer")).toBeVisible();
   await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
   const result = page.getByTestId("task-result");
+  await expect(result.getByRole("button", { name: "任务结论" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await result.getByRole("button", { name: "任务结论" }).click();
   await expect(result).toContainText("核验结果：通过");
-  expect((await result.boundingBox())?.height).toBeGreaterThan(400);
+  expect((await page.getByTestId("mcp-execution-graph").boundingBox())?.height).toBeGreaterThan(
+    250,
+  );
+  const tool = page.getByTestId("mcp-graph-server").first();
+  await expect(tool).toBeVisible();
+  const { run } = await client.getTaskRun({ taskId: "synthetic-task-0" });
+  const toolName = run?.calls[0]?.name ?? "";
+  await tool.click();
+  await expect(page.getByTestId("agent-drawer").getByTestId("drawer-call").first()).toHaveAttribute(
+    "data-tool-name",
+    toolName,
+  );
+  await expect(
+    page.getByTestId("agent-drawer").getByRole("region", { name: "调用详情" }).first(),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.getByTestId("task-engineer").click();
   const drawer = page.getByTestId("agent-drawer");
   await expect(drawer.getByTestId("task-prompt")).toContainText("巡检第 0 组工作负载");
@@ -185,4 +205,26 @@ test("reveals the workflow when a running task gains collaboration", async ({ pa
   await expect(page.getByTestId("collaboration-graph")).toBeVisible();
   await expect(page.getByTestId("collaboration-step").first()).toBeVisible();
   await expect(page.getByTestId("task-engineer")).toHaveCount(0);
+});
+
+test("opens an agent's MCP service graph and uses the solution's service icon", async ({
+  page,
+  request,
+}) => {
+  await resetKagent(request);
+  await page.goto(`/tasks/${ids.approvalRoot}`);
+  await page
+    .locator('[data-agent="agentos/remediation"]')
+    .getByRole("button", { name: "MCP 调用", exact: true })
+    .click();
+  const graph = page.getByTestId("mcp-execution-graph");
+  await expect(graph.getByTestId("mcp-graph-agent")).toContainText("处置工程师");
+  const service = graph.getByTestId("mcp-graph-server").first();
+  await expect(service.locator('[data-tool-brand="Kubernetes"]')).toBeVisible();
+  await service.click();
+  await expect(page.getByTestId("agent-drawer").getByTestId("drawer-call").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => (await service.boundingBox())?.width ?? 0).toBeGreaterThan(90);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

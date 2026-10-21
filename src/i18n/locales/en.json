@@ -133,7 +133,7 @@
     "tagsFailed": "Could not save tags. Try again."
   },
   "graph": {
-    "title": "Collaboration",
+    "title": "Agent collaboration",
     "fit": "Fit to view",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
@@ -149,7 +149,14 @@
     "ticket": "Ticket #{{id}}",
     "rounds": "{{count}} rounds",
     "join": "Join",
-    "reuseResult": "Reuse result"
+    "reuseResult": "Reuse result",
+    "callCount": "{{count}} calls",
+    "executingAgent": "Executing agent",
+    "selectExecution": "Select agent execution",
+    "executionDetails": "Execution details",
+    "mcpCalls": "MCP calls",
+    "mcpTopology": "Agent and MCP services",
+    "noMcpCalls": "No MCP service calls observed."
   },
   "drawer": {
     "title": "Execution details",
