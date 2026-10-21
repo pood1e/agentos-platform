@@ -30,7 +30,7 @@ export async function registerConsole(app: FastifyInstance, routes: ConsoleRoute
       ...(routes.staging ? [routes.staging] : []),
     ],
     routes: (router) => {
-      router.service(ConsoleService, routes.service);
+      router.service(ConsoleService, routes.service, { writeMaxBytes: 17 * 1024 * 1024 });
       if (routes.management) router.service(ManagementService, routes.management);
       if (routes.evaluation) router.service(EvaluationService, routes.evaluation);
     },

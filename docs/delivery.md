@@ -97,6 +97,35 @@ ANSIBLE_CONFIG=deploy/ansible.cfg .cache/deploy-venv/bin/ansible-playbook deploy
 TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服务端 dry-run 校验 microVM 资源；在节点上执行
 `python3 deploy/verify-runtime.py <namespace>` 创建一次 microVM 沙箱，核验执行、挂起恢复后的文件与 KVM 进程。
 
+## 语音
+
+`speech` 默认关闭；转写与合成分别配置，聊天页按能力显示麦克风和助手回答的朗读控件。
+ASR 服务提供 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
+`POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: wav`，返回音频）。
+模型和音色由站点提供，服务可以与文本模型同机部署；平台使用现有 OpenAI SDK 调用兼容接口。
+
+```yaml
+speech:
+  transcription:
+    baseUrl: https://speech.example.test/v1
+    model: multilingual-asr
+  synthesis:
+    baseUrl: https://speech.example.test/v1
+    model: multilingual-tts
+  voice: multilingual
+  secretRef: speech-credentials
+```
+
+方案 Chart 的配置位于 `app_values.agentos.speech`。仅启用一项时，另一项保留 `{}`；启用合成时必须指定音色。
+`secretRef` 可省略；配置时引用已有 Kubernetes Secret，启用转写需要 `transcription-api-key`，启用合成需要
+`synthesis-api-key`，凭据以只读文件挂载。开发环境通过 `AGENTOS_SPEECH_CONFIG` 指定 proto JSON 文件，
+`transcription`、`synthesis` 使用 `SpeechProvider`，凭据由各自的 `apiKeyFile` 提供。
+
+录音使用浏览器 MediaRecorder，需 HTTPS 或 localhost 与麦克风授权；每次最多 60 秒、1 MiB。
+转写进入输入框后由用户发送，朗读最多 8,000 字符、返回音频最多 16 MiB；模型请求期限为 60 秒。
+切换对话会取消录音和播放。音频仅在请求期间保留于内存，平台不保存录音、音频文件或生成公共音频地址。
+开放访问和 OIDC 均支持；只读用户可使用语音，目标系统的写权限继续由执行授权决定。
+
 ## Langfuse
 
 `--tags observability` 管理独立的 Langfuse 与 OpenTelemetry Collector。站点传入 `langfuse_enabled: true`、

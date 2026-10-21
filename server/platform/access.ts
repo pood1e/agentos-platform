@@ -18,6 +18,8 @@ const selfServiceMethods = new Set([
   "RespondInteraction",
   "CancelTask",
   "UpdateTaskTags",
+  "TranscribeAudio",
+  "SynthesizeSpeech",
 ]);
 
 export function workspaceContext(

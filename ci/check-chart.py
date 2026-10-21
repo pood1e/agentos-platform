@@ -42,6 +42,7 @@ def render(path):
 subprocess.run([helm, 'dependency', 'build', solution, '--skip-refresh'], check=True)
 subprocess.run([helm, 'lint', chart, '-f', values, '--strict'], check=True)
 subprocess.run([helm, 'lint', solution, '--strict'], check=True)
+subprocess.run([sys.executable, 'ci/check-speech.py', chart, values], check=True)
 kagent = run(helm, 'template', 'schemas', 'oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds', '--version', versions['kagent_version'])
 url = 'https://raw.githubusercontent.com/traefik/traefik/v3.7.13/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml'
 with urllib.request.urlopen(url, timeout=60) as response:

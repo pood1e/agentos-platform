@@ -1,0 +1,20 @@
+{{- if or .Values.speech.transcription .Values.speech.synthesis }}
+{{- $configuration := dict "voice" .Values.speech.voice }}
+{{- range $kind := list "transcription" "synthesis" }}
+  {{- with index $.Values.speech $kind }}
+    {{- $provider := deepCopy . }}
+    {{- if $.Values.speech.secretRef }}
+      {{- $_ := set $provider "apiKeyFile" (printf "/etc/agentos-speech/credentials/%s-api-key" $kind) }}
+    {{- end }}
+    {{- $_ := set $configuration $kind $provider }}
+  {{- end }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agentos.name" . }}-speech
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+data:
+  configuration.json: {{ $configuration | toJson | quote }}
+{{- end }}
