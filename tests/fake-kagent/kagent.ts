@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { clone, create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code, Code, ConnectError, ConnectError } from "@connectrpc/connect";
 import {
   ArtifactSchema,
   type Message,
@@ -146,6 +146,8 @@ export class FakeKagent {
   }
 
   private reply(task: Task, message: Message): Task {
+    if (terminal(task.status?.state))
+      throw new ConnectError("Task is not accepting messages", Code.FailedPrecondition);
     task.history.push(message);
     const request = hitlPayload(task.status?.message);
     const decision = hitlPayload(message);
