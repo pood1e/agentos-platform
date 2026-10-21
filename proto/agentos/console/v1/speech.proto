@@ -27,6 +27,11 @@ message SpeechTranscription {
     min_len: 1
     max_len: 256
   }];
+  repeated string language_codes = 3 [(buf.validate.field).repeated = {
+    max_items: 32
+    unique: true
+    items: {string: {pattern: "^[a-z]{2,3}$"}}
+  }];
 }
 
 message SpeechSynthesis {
@@ -55,6 +60,7 @@ message GetSpeechCapabilitiesRequest {}
 message GetSpeechCapabilitiesResponse {
   bool transcription = 1;
   bool synthesis = 2;
+  repeated string transcription_languages = 3;
 }
 
 message TranscribeAudioRequest {

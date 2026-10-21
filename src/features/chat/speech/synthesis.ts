@@ -1,6 +1,7 @@
 import type { SpeechSynthesisAdapter } from "@assistant-ui/react";
 import type { consoleClient } from "../../../lib/console.js";
 import { errorKey } from "../../../lib/errors.js";
+import { streamAudio } from "./audio-stream.js";
 
 type Client = Pick<typeof consoleClient, "synthesizeSpeech">;
 
@@ -35,28 +36,32 @@ export class RemoteSpeechAdapter implements SpeechSynthesisAdapter {
         return () => subscribers.delete(callback);
       },
     };
+    const failed = () => {
+      if (controller.signal.aborted) return;
+      this.onError("speech.playbackFailed");
+      finish("error");
+    };
     this.current = utterance;
     const generate = async () => {
       try {
-        const { audio: result } = await this.client.synthesizeSpeech(
+        const responses = this.client.synthesizeSpeech(
           { text },
           { signal: controller.signal, timeoutMs: 65_000 },
         );
-        if (controller.signal.aborted) return;
-        if (!result?.data.length) throw new Error("Empty speech response");
-        url = URL.createObjectURL(
-          new Blob([new Uint8Array(result.data).buffer], { type: result.contentType }),
-        );
-        audio = new Audio(url);
-        audio.addEventListener("ended", () => finish("finished"));
-        audio.addEventListener("error", () => {
-          this.onError("speech.playbackFailed");
-          finish("error");
+        await streamAudio(responses, controller.signal, (source) => {
+          url = source;
+          audio = new Audio(source);
+          audio.addEventListener("ended", () => finish("finished"));
+          audio.addEventListener("error", failed);
+          void audio
+            .play()
+            .then(() => {
+              if (controller.signal.aborted) return;
+              utterance.status = { type: "running" };
+              for (const listener of subscribers) listener();
+            })
+            .catch(failed);
         });
-        await audio.play();
-        if (controller.signal.aborted) return;
-        utterance.status = { type: "running" };
-        for (const listener of subscribers) listener();
       } catch (error) {
         if (controller.signal.aborted) return;
         this.onError(errorKey(error, "speech.playbackFailed"));

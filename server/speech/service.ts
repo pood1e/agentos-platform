@@ -30,10 +30,9 @@ function providerClient(provider?: SpeechEndpoint) {
   });
 }
 
-async function audioData(response: Response) {
+async function* audioChunks(response: Response, signal: AbortSignal) {
   const reader = response.body?.getReader();
   if (!reader) throw fail(Code.Unavailable, "speech.unavailable");
-  const chunks: Uint8Array[] = [];
   let size = 0;
   try {
     while (true) {
@@ -41,19 +40,16 @@ async function audioData(response: Response) {
       if (done) break;
       size += value.byteLength;
       if (size > maxSpeechBytes) throw fail(Code.ResourceExhausted, "speech.tooLarge");
-      chunks.push(value);
+      yield value;
     }
+    if (!size) throw fail(Code.Unavailable, "speech.unavailable");
+  } catch (error) {
+    if (signal.aborted) throw new ConnectError("Speech request canceled", Code.Canceled);
+    if (error instanceof ConnectError) throw error;
+    throw fail(Code.Unavailable, "speech.unavailable");
   } finally {
     await reader.cancel();
   }
-  if (!size) throw fail(Code.Unavailable, "speech.unavailable");
-  const data = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    data.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return data;
 }
 
 async function upstream<T>(
@@ -78,7 +74,11 @@ export function speechService(
   const transcription = providerClient(configuration.transcription?.endpoint);
   const synthesis = providerClient(configuration.synthesis?.endpoint);
   return {
-    getSpeechCapabilities: () => ({ transcription: !!transcription, synthesis: !!synthesis }),
+    getSpeechCapabilities: () => ({
+      transcription: !!transcription,
+      synthesis: !!synthesis,
+      transcriptionLanguages: configuration.transcription?.languageCodes ?? [],
+    }),
     async transcribeAudio(request, context) {
       if (!transcription || !configuration.transcription)
         throw fail(Code.FailedPrecondition, "speech.unavailable");
@@ -95,11 +95,11 @@ export function speechService(
         return { text: result.text };
       });
     },
-    async synthesizeSpeech(request, context) {
+    async *synthesizeSpeech(request, context) {
       const voice = selectVoice(request.text, configuration.synthesis?.voices ?? []);
       if (!synthesis || !voice) throw fail(Code.FailedPrecondition, "speech.unavailable");
-      return upstream(context.signal, async (signal) => {
-        const response = await synthesis.audio.speech.create(
+      const response = await upstream(context.signal, (signal) =>
+        synthesis.audio.speech.create(
           {
             model: voice.model,
             voice: voice.voice,
@@ -107,16 +107,17 @@ export function speechService(
             response_format: "mp3",
           },
           { signal },
-        );
-        let contentType =
-          response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "audio/mpeg";
-        if (contentType === "audio/mp3") contentType = "audio/mpeg";
-        if (!contentType.startsWith("audio/")) {
-          await response.body?.cancel();
-          throw fail(Code.Unavailable, "speech.unavailable");
-        }
-        return { audio: { contentType, data: await audioData(response) } };
-      });
+        ),
+      );
+      let contentType =
+        response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "audio/mpeg";
+      if (contentType === "audio/mp3") contentType = "audio/mpeg";
+      if (!contentType.startsWith("audio/")) {
+        await response.body?.cancel();
+        throw fail(Code.Unavailable, "speech.unavailable");
+      }
+      for await (const data of audioChunks(response, context.signal))
+        yield { audio: { contentType, data } };
     },
   } satisfies Pick<
     ServiceImpl<typeof ConsoleService>,

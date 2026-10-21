@@ -105,6 +105,10 @@ TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服�
 文件转写接口使用 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
 `POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: mp3`，返回音频）。
 模型和音色由站点提供，服务可以与文本模型同机部署；文件转写和语音合成使用 OpenAI SDK。
+`languageCodes` 声明转写服务支持的语言，聊天页显示语言选择，初始选择匹配界面语言，之后记住用户选择。
+选择自动识别时省略语言参数；代理仅转发配置内的语言代码。
+语音合成 RPC 使用服务器流返回音频；支持对应 MediaSource 格式的浏览器收到首段即可播放，其他格式由浏览器完整解码后播放。
+录音期间文本作为完整草稿更新；停止后显示尾部处理状态，可取消，等待上限为 15 秒，已识别文字保留。
 
 ```yaml
 speech:
@@ -112,6 +116,7 @@ speech:
     endpoint:
       baseUrl: https://speech.example.test/v1
     model: multilingual-asr
+    languageCodes: [zh, en, ar]
   synthesis:
     endpoint:
       baseUrl: https://speech.example.test/v1

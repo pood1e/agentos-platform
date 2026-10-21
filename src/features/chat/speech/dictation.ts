@@ -5,6 +5,15 @@ const maxAudioBytes = 1024 * 1024;
 const maxRecordingMs = 60_000;
 const mimeTypes = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
 type Result = DictationAdapter.Result;
+export type DictationPhase = "idle" | "starting" | "recording" | "processing";
+type Options = { language?: string; onPhase?: (phase: DictationPhase) => void };
+
+function joinText(prefix: string, suffix: string) {
+  if (!prefix || !suffix) return prefix || suffix;
+  const separator =
+    /\p{Script=Han}$/u.test(prefix) || /^[\p{P}\p{Script=Han}]/u.test(suffix) ? "" : " ";
+  return prefix + separator + suffix;
+}
 
 class Recording implements DictationAdapter.Session {
   status: DictationAdapter.Status = { type: "starting" };
@@ -28,7 +37,9 @@ class Recording implements DictationAdapter.Session {
   constructor(
     private onError: (key: string) => void,
     private connect: typeof openTranscription,
+    private options: Options,
   ) {
+    this.options.onPhase?.("starting");
     void this.start();
   }
 
@@ -44,17 +55,20 @@ class Recording implements DictationAdapter.Session {
     this.controller.abort();
     this.connection?.close();
     this.complete();
+    this.options.onPhase?.("idle");
     for (const listener of this.ended) listener({ transcript });
   }
 
   private async start() {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
       if (this.controller.signal.aborted) {
         this.releaseMicrophone();
         return;
       }
-      this.connection = await this.connect(this.controller.signal);
+      this.connection = await this.connect(this.controller.signal, this.options.language);
       if (this.controller.signal.aborted) {
         this.connection.close();
         return;
@@ -66,18 +80,19 @@ class Recording implements DictationAdapter.Session {
         const text = event.channel.alternatives[0]?.transcript ?? "";
         const isFinal = event.is_final === true;
         if (isFinal) {
-          this.transcript = [this.transcript, text].filter(Boolean).join(" ");
+          this.transcript = joinText(this.transcript, text);
           this.interim = "";
         } else this.interim = text;
-        for (const listener of this.speech) listener({ transcript: text, isFinal });
+        for (const listener of this.speech)
+          listener({ transcript: joinText(this.transcript, this.interim), isFinal: false });
       });
       this.connection.on("error", () => this.failed());
       this.connection.on("close", (event) => {
         if (this.controller.signal.aborted) return;
         if (!this.stopping || event.code !== 1000) return this.failed();
-        if (this.interim)
-          for (const listener of this.speech) listener({ transcript: this.interim, isFinal: true });
-        this.finish("stopped", [this.transcript, this.interim].filter(Boolean).join(" "));
+        const transcript = joinText(this.transcript, this.interim);
+        for (const listener of this.speech) listener({ transcript, isFinal: true });
+        this.finish("stopped", transcript);
       });
       this.connection.on("open", () => this.record());
       this.connection.connect();
@@ -117,12 +132,13 @@ class Recording implements DictationAdapter.Session {
         this.releaseMicrophone();
         if (!this.controller.signal.aborted) {
           this.connection?.sendCloseStream({ type: "CloseStream" });
-          this.timer = setTimeout(() => this.failed(), 60_000);
+          this.timer = setTimeout(() => this.failed("speech.transcriptionTimeout"), 15_000);
         }
       });
       this.recorder.addEventListener("error", () => this.failed());
       this.recorder.start(250);
       this.status = { type: "running" };
+      this.options.onPhase?.("recording");
       this.timer = setTimeout(() => void this.stop(), maxRecordingMs);
       for (const listener of this.started) listener();
     } catch {
@@ -133,6 +149,7 @@ class Recording implements DictationAdapter.Session {
   stop = () => {
     if (this.status.type === "ended" || this.stopping) return this.completion;
     this.stopping = true;
+    this.options.onPhase?.("processing");
     clearTimeout(this.timer);
     if (this.recorder?.state === "recording") this.recorder.stop();
     else this.cancel();
@@ -166,6 +183,7 @@ export class RemoteDictationAdapter implements DictationAdapter {
   constructor(
     private onError: (key: string) => void,
     private connect = openTranscription,
+    private options: Options = {},
   ) {}
 
   static isSupported() {
@@ -176,7 +194,7 @@ export class RemoteDictationAdapter implements DictationAdapter {
 
   listen() {
     this.recording?.cancel();
-    this.recording = new Recording(this.onError, this.connect);
+    this.recording = new Recording(this.onError, this.connect, this.options);
     return this.recording;
   }
 

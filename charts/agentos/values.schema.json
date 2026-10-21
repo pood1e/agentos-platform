@@ -870,6 +870,15 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256
+        },
+        "languageCodes": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}$"
+          }
         }
       },
       "oneOf": [

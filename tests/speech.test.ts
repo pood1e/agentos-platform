@@ -33,6 +33,7 @@ const calls: { transcription?: FormData; synthesis?: OpenAI.Audio.SpeechCreatePa
 let providerURL = "";
 let canceled = false;
 let waiting = false;
+let synthesisCanceled = false;
 
 beforeAll(async () => {
   provider.addContentTypeParser(
@@ -61,6 +62,15 @@ beforeAll(async () => {
   });
   provider.post<{ Body: OpenAI.Audio.SpeechCreateParams }>("/v1/audio/speech", (request, reply) => {
     calls.synthesis = request.body;
+    if (request.body.model === "streaming") {
+      reply.hijack();
+      reply.raw.writeHead(200, { "content-type": "audio/mpeg" });
+      reply.raw.write(Buffer.from("ID3-first-audio"));
+      reply.raw.on("close", () => {
+        synthesisCanceled = true;
+      });
+      return;
+    }
     if (request.body.model === "unavailable")
       return reply.code(503).send({ error: { message: "private upstream credential" } });
     if (request.body.model === "oversized")
@@ -130,9 +140,24 @@ it.each([
       $typeName: "agentos.console.v1.GetSpeechCapabilitiesResponse",
       transcription: input,
       synthesis: output,
+      transcriptionLanguages: [],
     });
   },
 );
+
+async function synthesize(
+  client: Awaited<ReturnType<typeof workbench>>,
+  request: { text: string },
+  options?: Parameters<typeof client.synthesizeSpeech>[1],
+) {
+  const data: Uint8Array[] = [];
+  let contentType: string | undefined;
+  for await (const chunk of client.synthesizeSpeech(request, options)) {
+    contentType = chunk.audio?.contentType;
+    if (chunk.audio) data.push(chunk.audio.data);
+  }
+  return { audio: { contentType, data: Buffer.concat(data) } };
+}
 
 it("keeps unconfigured speech unavailable while open access remains supported", async () => {
   const client = await workbench("", "", false);
@@ -143,7 +168,7 @@ it("keeps unconfigured speech unavailable while open access remains supported", 
   await expect(client.transcribeAudio({ audio })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
   });
-  await expect(client.synthesizeSpeech({ text: "你好" })).rejects.toMatchObject({
+  await expect(synthesize(client, { text: "你好" })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
   });
 });
@@ -162,7 +187,7 @@ it("allows a reader to transcribe and synthesize multilingual text without gaini
   if (!(file instanceof File)) throw new Error("Expected an uploaded audio file");
   expect(file.name).toBe("recording.webm");
   expect(new Uint8Array(await file.arrayBuffer())).toEqual(audio.data);
-  const response = await client.synthesizeSpeech({ text: result.text }, { headers });
+  const response = await synthesize(client, { text: result.text }, { headers });
   expect(response.audio?.contentType).toBe("audio/wav");
   expect(new TextDecoder().decode(response.audio?.data)).toBe("RIFF-test-audio");
   expect(calls.synthesis).toEqual({
@@ -183,11 +208,11 @@ it("requires authentication and same-origin access for speech requests", async (
   await expect(client.transcribeAudio({ audio }, { headers: foreign })).rejects.toMatchObject({
     code: Code.PermissionDenied,
   });
+  await expect(synthesize(client, { text: "test" }, { headers: foreign })).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
   await expect(
-    client.synthesizeSpeech({ text: "test" }, { headers: foreign }),
-  ).rejects.toMatchObject({ code: Code.PermissionDenied });
-  await expect(
-    client.synthesizeSpeech({ text: "test" }, { headers: { "x-forwarded-access-token": token } }),
+    synthesize(client, { text: "test" }, { headers: { "x-forwarded-access-token": token } }),
   ).rejects.toMatchObject({ code: Code.PermissionDenied });
 });
 
@@ -207,7 +232,7 @@ it.each([
       voice: `voice-${code}`,
     }));
     const client = await workbench("", "tts", true, voices);
-    await client.synthesizeSpeech({ text }, { headers });
+    await synthesize(client, { text }, { headers });
     expect(calls.synthesis).toMatchObject({ model: `tts-${language}`, voice: `voice-${language}` });
   },
 );
@@ -216,14 +241,12 @@ it("supports configured speech without an OIDC provider", async () => {
   const client = await workbench("asr", "tts", false);
   const result = await client.transcribeAudio({ audio });
   expect(result.text).toContain("افحص المحول");
-  expect((await client.synthesizeSpeech({ text: result.text })).audio?.data.length).toBeGreaterThan(
-    0,
-  );
+  expect((await synthesize(client, { text: result.text })).audio?.data.length).toBeGreaterThan(0);
 });
 
 it("normalizes an upstream MP3 MIME alias for browser playback and audio uploads", async () => {
   const client = await workbench("", "mp3");
-  expect((await client.synthesizeSpeech({ text: "Hello" }, { headers })).audio?.contentType).toBe(
+  expect((await synthesize(client, { text: "Hello" }, { headers })).audio?.contentType).toBe(
     "audio/mpeg",
   );
 });
@@ -239,7 +262,7 @@ it("rejects empty, oversized and unsupported input before calling the provider",
       code: Code.InvalidArgument,
     });
   for (const text of ["", "x".repeat(8001)])
-    await expect(client.synthesizeSpeech({ text }, { headers })).rejects.toMatchObject({
+    await expect(synthesize(client, { text }, { headers })).rejects.toMatchObject({
       code: Code.InvalidArgument,
     });
 });
@@ -248,7 +271,7 @@ it("redacts upstream failures and returns a localized error", async () => {
   const client = await workbench("unavailable", "unavailable");
   for (const request of [
     client.transcribeAudio({ audio }, { headers }),
-    client.synthesizeSpeech({ text: "test" }, { headers }),
+    synthesize(client, { text: "test" }, { headers }),
   ]) {
     const error = await request.catch((reason: unknown) => reason);
     expect(error).toMatchObject({ code: Code.Unavailable });
@@ -264,7 +287,7 @@ it.each([
   ["wrong-format", Code.Unavailable],
 ])("rejects %s synthesis responses", async (model, code) => {
   const client = await workbench("", String(model));
-  await expect(client.synthesizeSpeech({ text: "test" }, { headers })).rejects.toMatchObject({
+  await expect(synthesize(client, { text: "test" }, { headers })).rejects.toMatchObject({
     code,
   });
 });
@@ -279,4 +302,17 @@ it("cancels the upstream transcription when the browser cancels its request", as
   controller.abort();
   expect(await result).toMatchObject({ code: Code.Canceled });
   await until(() => canceled);
+});
+
+it("returns synthesized audio before the provider finishes and propagates playback cancellation", async () => {
+  const client = await workbench("", "streaming");
+  const controller = new AbortController();
+  const responses = client
+    .synthesizeSpeech({ text: "Hello" }, { headers, signal: controller.signal })
+    [Symbol.asyncIterator]();
+  const first = await responses.next();
+  expect(new TextDecoder().decode(first.value?.audio?.data)).toBe("ID3-first-audio");
+  expect(synthesisCanceled).toBe(false);
+  controller.abort();
+  await until(() => synthesisCanceled);
 });

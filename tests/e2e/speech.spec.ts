@@ -123,19 +123,20 @@ test("reads an assistant answer with the official playback controls and stops on
   await page.route("**/agentos.console.v1.ConsoleService/SynthesizeSpeech", async (route) => {
     const request = fromBinary(
       SynthesizeSpeechRequestSchema,
-      route.request().postDataBuffer() ?? new Uint8Array(),
+      route.request().postDataBuffer()?.subarray(5) ?? new Uint8Array(),
     );
     expect(request.text.length).toBeGreaterThan(0);
+    const data = toBinary(
+      SynthesizeSpeechResponseSchema,
+      create(SynthesizeSpeechResponseSchema, {
+        audio: { contentType: "audio/wav", data: new Uint8Array([1, 2, 3]) },
+      }),
+    );
+    const header = Buffer.alloc(5);
+    header.writeUInt32BE(data.length, 1);
     await route.fulfill({
-      contentType: "application/proto",
-      body: Buffer.from(
-        toBinary(
-          SynthesizeSpeechResponseSchema,
-          create(SynthesizeSpeechResponseSchema, {
-            audio: { contentType: "audio/wav", data: new Uint8Array([1, 2, 3]) },
-          }),
-        ),
-      ),
+      contentType: "application/connect+proto",
+      body: Buffer.concat([header, data, Buffer.from([2, 0, 0, 0, 2]), Buffer.from("{}")]),
     });
   });
   await page.goto("/chat");
@@ -163,4 +164,40 @@ test("keeps text chat usable after the speech provider fails", async ({ page }) 
   await input.fill("继续文字聊天");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByTestId("chat-message")).toHaveCount(2);
+});
+
+test("selects a speech language and cancels final processing while preserving the editable draft", async ({
+  page,
+}) => {
+  await page.route("**/agentos.console.v1.ConsoleService/GetSpeechCapabilities", (route) =>
+    route.fulfill({ json: { transcription: true, transcriptionLanguages: ["zh", "en", "ar"] } }),
+  );
+  await page.routeWebSocket("**/speech/v1/listen*", (socket) => {
+    expect(new URL(socket.url()).searchParams.get("language")).toBe("ar");
+    socket.onMessage((message) => {
+      if (typeof message !== "string")
+        socket.send(
+          JSON.stringify({
+            type: "Results",
+            is_final: false,
+            channel: { alternatives: [{ transcript: "مرحبا" }] },
+          }),
+        );
+    });
+  });
+  await page.goto("/chat");
+  await page.getByRole("combobox", { name: "识别语言" }).click();
+  await page.getByRole("option", { name: "阿拉伯语", exact: true }).click();
+  await page.getByRole("button", { name: "语音输入", exact: true }).click();
+  const input = page.getByRole("textbox", { name: "消息", exact: true });
+  await expect(input).toHaveValue("مرحبا");
+  await expect(page.getByRole("status").filter({ hasText: "正在聆听" })).toBeVisible();
+  await page.getByRole("button", { name: "停止录音", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "正在处理尾部语音" })).toBeVisible();
+  await page.getByRole("button", { name: "取消", exact: true }).click();
+  await expect(input).toBeEditable();
+  await expect(input).toHaveValue("مرحبا");
+  await expect(page.getByTestId("chat-message")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "识别语言" })).toContainText("阿拉伯语");
 });

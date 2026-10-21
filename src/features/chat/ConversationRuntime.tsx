@@ -7,6 +7,7 @@ import {
 import type { ReactNode } from "react";
 import { Role } from "../../../gen/a2a_pb.js";
 import type { ChatMessage } from "../../../gen/agentos/console/v1/conversation_pb.js";
+import { SpeechContext } from "./speech/context.js";
 import { useSpeech } from "./speech/use-speech.js";
 import type { Chat } from "./use-chat.js";
 
@@ -17,7 +18,7 @@ const convertMessage = (message: ChatMessage): ThreadMessageLike => ({
 });
 
 export function ConversationRuntime({ chat, children }: { chat: Chat; children: ReactNode }) {
-  const adapters = useSpeech();
+  const { adapters, controls } = useSpeech();
   const runtime = useExternalStoreRuntime({
     adapters,
     messages: chat.messages,
@@ -32,5 +33,9 @@ export function ConversationRuntime({ chat, children }: { chat: Chat; children: 
       if (!(await chat.submit(text))) throw new MessageNotSentError();
     },
   });
-  return <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>;
+  return (
+    <SpeechContext value={controls}>
+      <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>
+    </SpeechContext>
+  );
 }

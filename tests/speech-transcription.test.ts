@@ -41,6 +41,7 @@ async function workbench(configured = true) {
       ? create(SpeechTranscriptionSchema, {
           endpoint: { baseUrl: `${providerURL}/v1`, apiKeyFile: key },
           model: "configured-model",
+          languageCodes: ["zh", "en", "ar"],
         })
       : undefined,
     async (request) => {
@@ -104,4 +105,17 @@ it("closes unsupported controls and bounds the audio accepted per connection", a
   const limit = once(oversized, "close");
   for (let index = 0; index < 9; index++) oversized.send(Buffer.alloc(128 * 1024));
   expect((await limit)[0]).toBe(1009);
+});
+
+it("forwards only a configured speech language while keeping the model server controlled", async () => {
+  const env = await workbench();
+  const socket = new WebSocket(`${env.url}?model=untrusted&language=ar`, { headers });
+  await once(socket, "open");
+  const response = once(socket, "message");
+  socket.send(Buffer.from("audio"));
+  await response;
+  expect(env.requests[0]?.query).toMatchObject({ model: "configured-model", language: "ar" });
+  const closed = once(socket, "close");
+  socket.close();
+  await closed;
 });
