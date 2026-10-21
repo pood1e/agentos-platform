@@ -60,7 +60,10 @@ export function ChatPage() {
         onSelect={(id) => navigate(`/chat/${id}`)}
         disabled={chat.sending}
       />
-      <ConversationRuntime key={`${name}:${contextId}`} chat={chat}>
+      <ConversationRuntime
+        key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
+        chat={chat}
+      >
         <ThreadPrimitive.Root data-testid="conversation" className="flex min-h-0 min-w-0 flex-col">
           <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
             <div className="flex min-w-0 items-center gap-3">

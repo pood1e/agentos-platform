@@ -45,6 +45,11 @@ console:
     limits:
       cpu: '1'
       memory: 768Mi
+speech:
+  transcription: {}
+  synthesis: {}
+  voice: ''
+  secretRef: ''
 identity:
   mode: none
   issuer: ''

@@ -345,5 +345,19 @@
       "codex": "Codex",
       "claude": "Claude Code"
     }
+  },
+  "speech": {
+    "requestRejected": "The speech service could not process this request.",
+    "record": "Voice input",
+    "stopRecording": "Stop recording",
+    "play": "Read aloud",
+    "stopPlayback": "Stop playback",
+    "microphoneDenied": "Microphone access was denied. Allow access and try again.",
+    "transcriptionFailed": "Voice transcription failed. Try again or type your message.",
+    "playbackFailed": "Audio playback failed. Try again.",
+    "unavailable": "The speech service is unavailable. Try again later.",
+    "tooLarge": "The audio is too long. Try a shorter recording or response.",
+    "invalidAudio": "The speech service could not process this audio.",
+    "invalidText": "Read-aloud text must contain between 1 and 8,000 characters."
   }
 }

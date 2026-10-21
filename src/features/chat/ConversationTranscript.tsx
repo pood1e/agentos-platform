@@ -14,6 +14,7 @@ import type { TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
 import { Approval } from "../shared/Approval.js";
 import { Avatar } from "../shared/Avatar.js";
 import { appearance, StatusIcon } from "../status/Status.js";
+import { SpeechOutput } from "./speech/SpeechControls.js";
 import type { Chat } from "./use-chat.js";
 
 const plugins = [remarkGfm];
@@ -43,6 +44,7 @@ function ConversationMessage({ message, tasks }: { message: ThreadMessage; tasks
       >
         <div
           data-testid="chat-message-content"
+          dir="auto"
           className={
             user
               ? "col-start-2 min-w-0 rounded-2xl bg-muted px-4 py-2 text-sm leading-6 wrap-anywhere"
@@ -51,6 +53,7 @@ function ConversationMessage({ message, tasks }: { message: ThreadMessage; tasks
         >
           <MessagePrimitive.Parts components={user ? undefined : { Text: AssistantText }} />
         </div>
+        {!user && <SpeechOutput />}
       </MessagePrimitive.Root>
       {tasks.map((task) => (
         <Button

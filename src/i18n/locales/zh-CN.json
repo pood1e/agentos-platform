@@ -339,5 +339,19 @@
       "codex": "Codex",
       "claude": "Claude Code"
     }
+  },
+  "speech": {
+    "requestRejected": "语音服务无法处理该请求。",
+    "record": "语音输入",
+    "stopRecording": "停止录音",
+    "play": "朗读",
+    "stopPlayback": "停止播放",
+    "microphoneDenied": "麦克风权限被拒绝，请允许访问后重试。",
+    "transcriptionFailed": "语音转写失败，请重试或输入文字。",
+    "playbackFailed": "语音播放失败，请重试。",
+    "unavailable": "语音服务暂不可用，请稍后重试。",
+    "tooLarge": "音频过长，请缩短录音或朗读内容。",
+    "invalidAudio": "语音服务无法处理这段音频。",
+    "invalidText": "朗读内容需为 1–8,000 个字符。"
   }
 }

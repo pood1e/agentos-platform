@@ -488,6 +488,23 @@
       "minLength": 1,
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
     },
+    "speech": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transcription", "synthesis", "voice", "secretRef"],
+      "properties": {
+        "transcription": { "$ref": "#/$defs/speechProvider" },
+        "synthesis": { "$ref": "#/$defs/speechProvider" },
+        "voice": { "type": "string", "maxLength": 128 },
+        "secretRef": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "synthesis": { "minProperties": 1 } } },
+          "then": { "properties": { "voice": { "minLength": 1 } } }
+        }
+      ]
+    },
     "identity": {
       "type": "object",
       "additionalProperties": false,
@@ -593,6 +610,7 @@
     "imagePullSecrets",
     "kagent",
     "console",
+    "speech",
     "ingress",
     "modelConfig",
     "harnesses",
@@ -604,6 +622,15 @@
   ],
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$defs": {
+    "speechProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "model": { "type": "string", "minLength": 1, "maxLength": 256 }
+      },
+      "oneOf": [{ "maxProperties": 0 }, { "required": ["baseUrl", "model"] }]
+    },
     "harnessSpec": {
       "description": "HarnessSpec defines a reusable runtime and its infrastructure policy.",
       "properties": {

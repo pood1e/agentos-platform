@@ -33,6 +33,8 @@ import { managementService } from "../management/service.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
+import { speechConfig } from "../speech/config.js";
+import { speechService } from "../speech/service.js";
 import { taskTagStore } from "../tasks/store.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { startContinuations } from "../team-sessions/continuation.js";
@@ -78,6 +80,7 @@ const tags = await taskTagStore(
 const operations = governanceConfig();
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
+const speech = speechService(speechConfig());
 const replaceTemplate = templateWriter(kubeConfig);
 const identities = machineIdentities(
   kubeConfig,
@@ -114,6 +117,7 @@ function services(
       replaceTemplate: replace,
       pack,
       tags,
+      speech,
       platformTools: bind,
       executions: execution.registry,
       entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",

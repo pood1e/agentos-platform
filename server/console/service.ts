@@ -21,6 +21,7 @@ import { engineers } from "../read-model/views/engineers.js";
 import { taskRun } from "../read-model/views/run.js";
 import { listTasks, taskDetail } from "../read-model/views/task.js";
 import { invalid, notFound, unavailable } from "../shared/errors.js";
+import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
 import { approvalReferences } from "./approval-references.js";
 import { chatTarget, executionHistory } from "./history.js";
@@ -40,6 +41,7 @@ export interface ConsoleDependencies {
   replaceTemplate: TemplateWriter;
   pack: Pack;
   tags: TaskTagStore;
+  speech?: ReturnType<typeof speechService>;
   platformTools?: Parameters<typeof roleCommands>[5];
   executions?: Executions;
   entryAgent?: string;
@@ -64,6 +66,7 @@ export function consoleService({
   replaceTemplate,
   pack,
   tags,
+  speech = speechService(),
   platformTools,
   executions,
   entryAgent = "assistant",
@@ -121,6 +124,7 @@ export function consoleService({
     if (!sync.healthy()) throw unavailable();
   };
   return {
+    ...speech,
     getAccessProfile: (_request, context) => ({ profile: context.values.get(accessProfile) }),
     async listEngineers(_request, context) {
       ready();

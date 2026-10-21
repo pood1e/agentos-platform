@@ -17,6 +17,10 @@ export const transport = createConnectTransport({
   ],
 });
 export const consoleClient = createClient(ConsoleService, transport);
+export const speechClient = createClient(
+  ConsoleService,
+  createConnectTransport({ baseUrl: window.location.origin, useBinaryFormat: true }),
+);
 
 export const managementClient = createClient(ManagementService, transport);
 export const evaluationClient = createClient(EvaluationService, transport);

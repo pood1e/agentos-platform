@@ -10,6 +10,8 @@ const invalidKeys: Record<string, string> = {
   UpdateRole: "configuration.invalidRole",
   ListTasks: "pagination.invalidPage",
   ListConversations: "pagination.invalidPage",
+  TranscribeAudio: "speech.invalidAudio",
+  SynthesizeSpeech: "speech.invalidText",
 };
 
 /**

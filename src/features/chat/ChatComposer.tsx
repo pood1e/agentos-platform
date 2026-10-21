@@ -1,15 +1,17 @@
-import { ComposerPrimitive } from "@assistant-ui/react";
+import { ComposerPrimitive, useAuiState } from "@assistant-ui/react";
 import { ArrowUp, LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "../../lib/access.js";
 import { StopTask } from "../tasks/StopTask.js";
+import { SpeechInput } from "./speech/SpeechControls.js";
 import type { Chat } from "./use-chat.js";
 
 export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: boolean }) {
   const { t } = useTranslation();
   const access = useAccess();
+  const dictating = useAuiState((state) => state.composer.dictation != null);
   if (!access.data) return null;
   if (chat.conversation && !chat.conversation.operate)
     return (
@@ -42,26 +44,31 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
           enterKeyHint="send"
           cancelOnEscape={false}
           addAttachmentOnPaste={false}
+          dir="auto"
         />
-        {chat.busy && chat.conversation?.messages.at(-1)?.taskId ? (
-          <div className="self-end">
-            <StopTask
-              taskId={chat.conversation.messages.at(-1)?.taskId ?? ""}
-              operate={chat.conversation.operate}
-            />
-          </div>
-        ) : (
-          <ComposerPrimitive.Send asChild>
-            <Button
-              size="icon-sm"
-              aria-label={t(builder ? "configuration.generate" : "chat.send")}
-              title={t(builder ? "configuration.generate" : "chat.send")}
-              className="self-end rounded-full"
-            >
-              {chat.sending ? <LoaderCircle className="motion-safe:animate-spin" /> : <ArrowUp />}
-            </Button>
-          </ComposerPrimitive.Send>
-        )}
+        <div className="flex items-center justify-end gap-2">
+          <SpeechInput disabled={chat.blocked || chat.sending || chat.busy} />
+          {chat.busy && chat.conversation?.messages.at(-1)?.taskId ? (
+            <div className="self-end">
+              <StopTask
+                taskId={chat.conversation.messages.at(-1)?.taskId ?? ""}
+                operate={chat.conversation.operate}
+              />
+            </div>
+          ) : (
+            <ComposerPrimitive.Send asChild>
+              <Button
+                size="icon-sm"
+                aria-label={t(builder ? "configuration.generate" : "chat.send")}
+                title={t(builder ? "configuration.generate" : "chat.send")}
+                className="self-end rounded-full"
+                disabled={dictating}
+              >
+                {chat.sending ? <LoaderCircle className="motion-safe:animate-spin" /> : <ArrowUp />}
+              </Button>
+            </ComposerPrimitive.Send>
+          )}
+        </div>
       </ComposerPrimitive.Root>
     </div>
   );

@@ -7,6 +7,7 @@ import "agentos/console/v1/conversation.proto";
 import "agentos/console/v1/engineer.proto";
 import "agentos/console/v1/pack.proto";
 import "agentos/console/v1/role.proto";
+import "agentos/console/v1/speech.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/console/v1/tool.proto";
 import "agentos/execution/v1/state.proto";
@@ -25,6 +26,11 @@ service ConsoleService {
   rpc GetAccessProfile(GetAccessProfileRequest) returns (GetAccessProfileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc GetSpeechCapabilities(GetSpeechCapabilitiesRequest) returns (GetSpeechCapabilitiesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc TranscribeAudio(TranscribeAudioRequest) returns (TranscribeAudioResponse);
+  rpc SynthesizeSpeech(SynthesizeSpeechRequest) returns (SynthesizeSpeechResponse);
   rpc ListEngineers(ListEngineersRequest) returns (ListEngineersResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
