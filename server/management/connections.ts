@@ -207,7 +207,8 @@ export function connectionCommands(
         ...object(policies.auth),
         secretRef: { name: credentialName },
       };
-    spec.policies = policies;
+    if (Object.keys(policies).length) spec.policies = policies;
+    else delete spec.policies;
     credentialReferences(
       spec,
       current?.spec,
