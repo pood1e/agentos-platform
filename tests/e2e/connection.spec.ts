@@ -3,7 +3,7 @@ import { ids, resetKagent } from "./kagent.js";
 
 test("retains graph observations and zoom while queries reconnect", async ({ page, request }) => {
   await resetKagent(request);
-  await page.goto(`/tasks/${ids.dispatchRoot}`);
+  await page.goto(`/chat?task=${ids.dispatchRoot}`);
   await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
   await page.locator(".react-flow__controls-zoomout").click();
   const viewport = page.locator(".react-flow__viewport");

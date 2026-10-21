@@ -3,7 +3,7 @@ import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js"
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
 import { SessionSchema } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
-import { can } from "../../shared/permissions.js";
+import { can, isAdministrator } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
 import { scheduledExecutionId } from "../automation/identity.js";
 import { agentKey } from "../read-model/agents.js";
@@ -12,8 +12,8 @@ import { notFound } from "../shared/errors.js";
 
 /** Read access survives cancellation and credential expiry; it never grants execution authority. */
 export function executionHistory(index: TaskIndex, executions?: Executions) {
-  return async (identity: ExecutionIdentity) => {
-    if (!executions) return index;
+  return async (identity: ExecutionIdentity, systemOnly = false) => {
+    if (!executions) return systemOnly ? new TaskIndex() : index;
     const scheduled = new Map(
       index
         .all()
@@ -39,6 +39,11 @@ export function executionHistory(index: TaskIndex, executions?: Executions) {
     );
     const contexts = new Set(
       bindings
+        .filter(
+          (binding) =>
+            (!systemOnly && binding.subject === identity.subject) ||
+            (binding.subject.startsWith("service:") && isAdministrator(identity)),
+        )
         .filter((binding) => index.session(binding.sessionId)?.agentId === agentKey(binding.agent))
         .map((binding) => binding.sessionId),
     );

@@ -69,7 +69,7 @@ test("shares a work-order node and opens each original approval", async ({ page,
       json: { approvals: [toJson(ApprovalSchema, change), toJson(ApprovalSchema, change)] },
     }),
   );
-  await page.goto("/tasks/root");
+  await page.goto("/chat?task=root");
   const ticket = page.locator('[data-record="change"]');
   await expect(ticket).toHaveCount(1);
   await expect(ticket).toContainText("Review #19");
@@ -122,7 +122,7 @@ test("merges an already displayed pair of approvals as their shared ticket is di
   let current = clone(TaskDetailSchema, identified);
   for (const interaction of current.interactions) interaction.approvals = [];
   await observeDetail(page, () => current);
-  await page.goto("/tasks/root");
+  await page.goto("/chat?task=root");
   await expect(page.getByTestId("approval-node")).toHaveCount(2);
   current = identified;
   await expect(page.locator('[data-record="change"]')).toHaveCount(1);
@@ -157,7 +157,7 @@ test("fits every node of a long workflow on initial load", async ({ page, reques
     create(EngineerSchema, { id: role, role }),
   );
   await observeDetail(page, () => detail);
-  await page.goto("/tasks/root");
+  await page.goto("/chat?task=root");
   await expect(page.locator(".react-flow__node")).toHaveCount(15);
   await expect
     .poll(() =>

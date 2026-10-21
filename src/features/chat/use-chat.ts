@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { useMutation } from "@connectrpc/connect-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Role } from "../../../gen/a2a_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ChatMessageSchema } from "../../../gen/agentos/console/v1/conversation_pb.js";
@@ -35,6 +35,9 @@ export function useChat(
   onStarted: (contextId: string) => void,
 ) {
   const access = useAccess();
+  const scope = `${agent.namespace}/${agent.name}:${contextId}`;
+  const current = useRef(scope);
+  current.current = scope;
   const { value: conversation, error: watchError } = useWatch(
     agent.namespace && agent.name ? `${agent.namespace}/${agent.name}:${contextId}` : undefined,
     (signal) => follow(agent, contextId, signal),
@@ -67,6 +70,7 @@ export function useChat(
     setOutgoing({ id, text, contextId });
     try {
       const response = await send.mutateAsync({ agent, contextId, messageId: id, text });
+      if (current.current !== scope) return true;
       // Stays visible until the conversation stream includes it.
       setOutgoing({ id, text, contextId: response.contextId });
       if (response.contextId !== contextId) onStarted(response.contextId);

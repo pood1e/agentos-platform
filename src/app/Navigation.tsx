@@ -5,7 +5,6 @@ import {
   BrainCircuit,
   ClipboardCheck,
   Cpu,
-  GitBranch,
   MessageCircle,
   Play,
   Users,
@@ -17,13 +16,12 @@ import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/access";
 import { evaluationClient } from "@/lib/console";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import { can } from "../../shared/permissions.js";
+import { can, isAdministrator } from "../../shared/permissions.js";
 import { managementCapability } from "../lib/permissions.js";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
-  { path: "/tasks", label: "navigation.tasks", icon: GitBranch },
-  { path: "/automations", label: "automation.title", icon: Workflow },
+  { path: "/system-tasks", label: "automation.title", icon: Workflow },
   { path: "/engineers", label: "navigation.agents", icon: Users },
   {
     path: "/engineers/knowledge",
@@ -68,6 +66,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       </Button>
     ));
   const permitted = (item: (typeof settings)[number]) => {
+    if (item.path === "/system-tasks") return isAdministrator(access.data);
     const capability = managementCapability(item.path);
     return !capability || can(access.data, capability);
   };

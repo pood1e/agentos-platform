@@ -23,8 +23,8 @@
 | `src/app`、`src/components` | 前端路由、布局与 shadcn/ui 组件 |
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
 | `src/features/shared` | 头像、工具图标、原生确认与外部审批等公共展示 |
-| `src/features/tasks` | 任务筛选、Agent 协作图、按 MCP 服务聚合的调用图、vis-timeline 时间线与执行抽屉 |
-| `src/features/automations` | 自动化任务独立页面：定时任务管理、运行历史和环境事件入口 |
+| `src/features/tasks` | 聊天内任务面板、Agent 协作图、按 MCP 服务聚合的调用图、vis-timeline 时间线与执行抽屉 |
+| `src/features/system-tasks` | 管理员共享的系统任务页面：定时任务管理、运行历史和环境事件入口 |
 | `shared/evaluation.ts` | 测评逐例规则判定与候选、已发布配置的规则汇总 |
 | `src/lib` | RPC 客户端、方案包展示（`pack.ts`）与通用工具 |
 | `src/i18n` | 平台通用文案 |

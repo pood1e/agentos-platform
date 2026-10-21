@@ -3,18 +3,17 @@ import { toBinary } from "@bufbuild/protobuf";
 import { Role, type Task, TaskSchema, TaskState } from "../../gen/a2a_pb.js";
 import type { Interaction } from "../../gen/agentos/console/v1/task_pb.js";
 import { type CallEntry, callEntries } from "./calls.js";
-import { hitlPayload, isHitlResponse } from "./decode/hitl.js";
+import { isHitlResponse } from "./decode/hitl.js";
 import {
   createdMillis,
   messageText,
   metadataText,
   parentTaskKey,
-  partTypeKey,
   resumedTaskKey,
   statusMillis,
-  text,
   timeline,
 } from "./decode/messages.js";
+import { taskOutput } from "./decode/output.js";
 import { approvals, type Decision, interactions, latestDecision } from "./interactions.js";
 
 export interface UserMessage {
@@ -35,6 +34,7 @@ export interface TaskEntry {
   messageIds: string[];
   userMessages: UserMessage[];
   answer: string;
+  response: string;
   calls: CallEntry[];
   interactions: Interaction[];
   managedApprovals?: string[];
@@ -43,17 +43,6 @@ export interface TaskEntry {
   parentTaskId: string;
   resumedTaskId: string;
   decision?: Decision;
-}
-
-/** Final text after the last tool activity, as kagent streams it into artifacts. */
-function output(task: Task): string {
-  let result = "";
-  for (const part of task.artifacts.flatMap((artifact) => artifact.parts)) {
-    const kind = text(part.metadata?.[partTypeKey]);
-    if (kind === "function_call" || kind === "function_response") result = "";
-    else if (part.content.case === "text") result += part.content.value;
-  }
-  return result.trim();
 }
 
 export function taskVersion(task: Task): string {
@@ -85,12 +74,7 @@ export function ingest(task: Task, agentId: string): TaskEntry {
         const value = messageText(message);
         return value ? [{ id: message.messageId, text: value }] : [];
       }),
-    answer:
-      (task.status?.state === TaskState.FAILED ? messageText(task.status.message) : "") ||
-      output(task) ||
-      messageText(
-        task.history.findLast((message) => message.role === Role.AGENT && !hitlPayload(message)),
-      ),
+    ...taskOutput(task),
     calls,
     interactions: interactions(task, agentId, calls),
     managedApprovals: task.history.flatMap((message) => {

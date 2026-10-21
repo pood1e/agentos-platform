@@ -45,7 +45,7 @@ test("keeps many executions in one instance and opens the exact linked continuat
   await expect
     .poll(async () => (await client.listTasks({ query: "long-round-0" })).tasks[0]?.id)
     .toBe("long-round-0");
-  await page.goto("/tasks/long-round-0");
+  await page.goto("/chat?task=long-round-0");
   await expect(page.getByTestId("task-engineer")).toBeVisible();
   await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
   await page.getByTestId("task-engineer").click();
@@ -54,7 +54,7 @@ test("keeps many executions in one instance and opens the exact linked continuat
   await expect(page.getByRole("option")).toHaveCount(69);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  await page.goto("/tasks/long-round-12");
+  await page.goto("/chat?task=long-round-12");
   await expect(page.getByTestId("agent-drawer")).toBeVisible();
   await expect(page.getByTestId("execution-picker")).toContainText("13");
   await page.keyboard.press("Escape");
@@ -66,7 +66,7 @@ test("shows execution and approval from top to bottom with Bezier connections", 
   request,
 }) => {
   await resetKagent(request);
-  await page.goto(`/tasks/${ids.approvalRoot}`);
+  await page.goto(`/chat?task=${ids.approvalRoot}`);
   await expect(page.getByTestId("approval-node").first()).toBeVisible();
   const rows = await page.locator(".react-flow__node [data-row]").evaluateAll((nodes) =>
     nodes.map((node) => ({
@@ -93,7 +93,7 @@ test("enlarges and shrinks the centered workflow with the available desktop spac
   request,
 }) => {
   await resetKagent(request);
-  await page.goto(`/tasks/${ids.dispatchRoot}`);
+  await page.goto(`/chat?task=${ids.dispatchRoot}`);
   await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
   const zoom = () =>
     page
@@ -153,7 +153,7 @@ test("shows a single-agent tool graph with exact call details and a compact resu
   await expect
     .poll(async () => (await client.listTasks({ query: "synthetic-task-0" })).tasks[0]?.id)
     .toBe("synthetic-task-0");
-  await page.goto("/tasks/synthetic-task-0");
+  await page.goto("/chat?task=synthetic-task-0");
   await expect(page.getByTestId("task-engineer")).toBeVisible();
   await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
   const result = page.getByTestId("task-result");
@@ -198,7 +198,7 @@ test("reveals the workflow when a running task gains collaboration", async ({ pa
   starting.artifacts = [];
   starting.status = create(TaskStatusSchema, { state: TaskState.WORKING });
   await observeTask(request, starting);
-  await page.goto(`/tasks/${ids.dispatchRoot}`);
+  await page.goto(`/chat?task=${ids.dispatchRoot}`);
   await expect(page.getByTestId("task-engineer")).toBeVisible();
   await expect(page.getByTestId("collaboration-graph")).toHaveCount(0);
   await observeTask(request, completed);
@@ -212,7 +212,7 @@ test("opens an agent's MCP service graph and uses the solution's service icon", 
   request,
 }) => {
   await resetKagent(request);
-  await page.goto(`/tasks/${ids.approvalRoot}`);
+  await page.goto(`/chat?task=${ids.approvalRoot}`);
   await page
     .locator('[data-agent="agentos/remediation"]')
     .getByRole("button", { name: "MCP 调用", exact: true })

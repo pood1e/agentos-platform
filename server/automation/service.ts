@@ -2,7 +2,7 @@ import { Code, ConnectError, type HandlerContext, type ServiceImpl } from "@conn
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
 import type { ScheduledRun } from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
-import { can } from "../../shared/permissions.js";
+import { can, isAdministrator } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
 import type { automationPresets } from "./presets.js";
@@ -19,17 +19,23 @@ export function automationService(
   const native = clients.schedules;
   const options = (context: HandlerContext) => ({ signal: context.signal, timeoutMs: 15_000 });
   const scoped = (schedule?: ScheduledRun) => schedule?.agent?.namespace === workspace;
+  const read = (context: HandlerContext) => {
+    if (!isAdministrator(context.values.get(requestIdentity)))
+      throw new ConnectError("Permission denied", Code.PermissionDenied);
+  };
   const manage = (context: HandlerContext) => {
     if (!can(context.values.get(requestIdentity), Capability.TASKS_MANAGE))
       throw new ConnectError("Permission denied", Code.PermissionDenied);
   };
   const get = async (id: string, context: HandlerContext) => {
+    read(context);
     const response = await native.getScheduledRun({ scheduledRunId: id }, options(context));
     if (!scoped(response.scheduledRun)) throw missing();
     return response;
   };
   return {
     async listScheduledRuns(request, context) {
+      read(context);
       const seen = new Set<string>();
       let token = request.page?.pageToken ?? "";
       for (;;) {
@@ -66,6 +72,7 @@ export function automationService(
       return native.triggerScheduledRun(request, options(context));
     },
     async getScheduledRunExecution(request, context) {
+      read(context);
       const response = await native.getScheduledRunExecution(request, options(context));
       if (!response.execution) throw missing();
       await get(response.execution.scheduledRunId, context);
@@ -75,14 +82,13 @@ export function automationService(
       await get(request.scheduledRunId, context);
       return native.listScheduledRunExecutions(request, options(context));
     },
-    listEventTriggers: () => ({
-      eventTriggers: environments.flatMap((environment) =>
-        presets.eventTriggers.map((trigger) => ({
-          trigger,
-          environment,
-          ingressEnabled,
-        })),
-      ),
-    }),
+    listEventTriggers: (_request, context) => {
+      read(context);
+      return {
+        eventTriggers: environments.flatMap((environment) =>
+          presets.eventTriggers.map((trigger) => ({ trigger, environment, ingressEnabled })),
+        ),
+      };
+    },
   };
 }

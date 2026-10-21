@@ -24,15 +24,9 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import("../features/chat/ChatPage.js")).ChatPage }),
       },
       {
-        path: "tasks/:taskId?",
+        path: "system-tasks/:scheduleId?",
         lazy: async () => ({
-          Component: (await import("../features/tasks/TasksPage.js")).TasksPage,
-        }),
-      },
-      {
-        path: "automations/:scheduleId?",
-        lazy: async () => ({
-          Component: (await import("../features/automations/AutomationsPage.js")).AutomationsPage,
+          Component: (await import("../features/system-tasks/SystemTasksPage.js")).SystemTasksPage,
         }),
       },
       {

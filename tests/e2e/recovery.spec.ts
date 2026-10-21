@@ -43,7 +43,7 @@ test("shows failed execution details and retries without closing the drawer", as
         })
       : route.continue(),
   );
-  await page.goto(`/tasks/${ids.dispatchRoot}`);
+  await page.goto(`/chat?task=${ids.dispatchRoot}`);
   await page.locator(".react-flow__node-agent").first().click();
   const drawer = page.getByTestId("agent-drawer");
   await expect(drawer.getByRole("alert")).toContainText("暂时无法加载执行详情");

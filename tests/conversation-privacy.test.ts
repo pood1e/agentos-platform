@@ -108,6 +108,9 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
       const list = await client.listConversations({ agent, pageSize: 1 });
       expect(list.totalSize).toBe(1);
       const operations = await client.listTasks({});
+      await expect(client.listTasks({ systemOnly: true })).rejects.toMatchObject({
+        code: Code.PermissionDenied,
+      });
       expect(operations.totalSize).toBe(1);
       expect(operations.tasks[0]?.id).toBe(`task-${owner.subject}-operation`);
       expect((await client.listTasks({ query: foreign.subject })).totalSize).toBe(0);

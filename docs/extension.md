@@ -19,7 +19,7 @@
 | 测评 | `evaluation.baseline`（proto `EvaluationBaseline`）、Langfuse 数据集与入口点 `agentos.evaluation.scorers` | 测评作业镜像、数据集冻结工具与内置评分器 | 样本、基线、Judge 提示与领域评分器 |
 | 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、调用指定 Agent、超时取消与事实发布 | 源事件映射、Agent 简报与事件命名空间 |
 
-## 自动化任务
+## 系统任务
 
 方案镜像可在 `/pack/automation.json` 提供 `agentos.automation.v1.AutomationPresets`：
 
@@ -27,7 +27,7 @@
 - `eventTriggers`：既有 `CaseTrigger` 列表，来源环境的 worker 读取同一份定义。`locales.<language>.translation.automation.eventNames.<eventNamespace>` 提供显示名称。
 
 平台在启动时通过原生幂等创建接口登记定时任务，后续重启保留用户编辑、启停与删除状态。同一预置 ID 对应固定的初始输入。
-所有认证用户可读取当前工作空间的共享定义和历史；`agentos-tasks-manage` 可维护定时任务与手动触发。定时执行使用只读服务身份，委派沿用该权限上限。
+具有任一平台资源管理能力的管理员可读取当前工作空间的共享定义和历史；`agentos-tasks-manage` 可维护定时任务与手动触发。定时执行使用只读服务身份，委派沿用该权限上限。
 事件入口由 Chart 的 `automation.enabled` 控制；入口状态表示平台配置，worker 运行状态由来源环境维护。
 
 ## 任务标签

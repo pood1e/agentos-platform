@@ -1,5 +1,5 @@
 {
-  "title": "自动化任务",
+  "title": "系统任务",
   "schedules": "定时任务",
   "name": "任务名称",
   "agent": "执行智能体",
@@ -38,7 +38,7 @@
   "unnamed": "未命名任务",
   "invalidConfig": "请检查 Cron 表达式、时区和任务内容。",
   "conflict": "任务配置已更新，请刷新后重新编辑。",
-  "notFound": "自动化任务不存在或已不可见。",
+  "notFound": "系统任务不存在或已不可见。",
   "eventTriggers": "事件触发任务",
   "environment": "来源环境",
   "eventIngress": "事件接入",
@@ -54,5 +54,6 @@
     "TIMED_OUT": "已超时"
   },
   "waitingToEnable": "启用后开始调度",
-  "moreActions": "更多操作"
+  "moreActions": "更多操作",
+  "updated": "最近更新"
 }

@@ -51,6 +51,7 @@ export function taskSummary(index: TaskIndex, tree: TaskTree): TaskSummary {
     prompt,
     state: treeState(tree),
     updatedAt: stamp(tree.updatedAt),
+    conversationContextId: initiator(index, tree.root)?.contextId ?? "",
     ...emptyTags(),
   });
 }
@@ -58,7 +59,8 @@ export function taskSummary(index: TaskIndex, tree: TaskTree): TaskSummary {
 /** Operations ordered by their latest activity, so moving work rises to the top. */
 export function listTasks(
   index: TaskIndex,
-  request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer" | "tags">>,
+  request: PageRequest &
+    Partial<Pick<ListTasksRequest, "states" | "engineer" | "tags" | "systemOnly">>,
   metadata: ReadonlyMap<string, TaskTags> = new Map(),
 ) {
   const needle = request.query.trim().toLowerCase();
@@ -85,7 +87,7 @@ export function listTasks(
   const page = pageOf(
     matches,
     request,
-    `tasks:${JSON.stringify([states, engineer, tags])}`,
+    `tasks:${JSON.stringify([states, engineer, tags, request.systemOnly === true])}`,
     (tree) => ({
       id: tree.root.id,
       time: tree.updatedAt ?? 0,

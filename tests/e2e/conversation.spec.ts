@@ -1,21 +1,170 @@
+import { create, fromJson } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { expect, test } from "@playwright/test";
-import { decideApproval, resetKagent, startOperation } from "./kagent.js";
+import { ArtifactSchema, TaskState } from "../../gen/a2a_pb.js";
+import { partTypeKey } from "../../server/read-model/decode/messages.js";
+import {
+  decideApproval,
+  ids,
+  observeTask,
+  recordedTask,
+  resetKagent,
+  startOperation,
+} from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
 test("ordinary chat keeps its history and has no operational task", async ({ page }) => {
   await page.goto("/chat");
   const input = page.getByRole("textbox", { name: "消息", exact: true });
+  await expect(page.getByRole("button", { name: "发送", exact: true })).toBeDisabled();
   await input.fill("你好，说明一下如何协作");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page).toHaveURL(/\/chat\/[^/]+$/);
   await expect(page.getByTestId("chat-message")).toHaveCount(2);
   await expect(page.getByTestId("chat-task")).toHaveCount(0);
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
   const url = page.url();
   await page.reload();
   await expect(page.getByTestId("chat-message")).toHaveCount(2);
   await page.goto("/");
   await expect(page).toHaveURL(url);
+});
+
+test("does not replace the current chat when a previous send finishes after navigating back", async ({
+  page,
+}) => {
+  await page.goto("/chat");
+  await page.getByRole("textbox", { name: "消息", exact: true }).fill("保留当前会话");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect(page).toHaveURL(/\/chat\/[^/?]+$/);
+  await expect(page.getByTestId("chat-message").last()).toContainText("已处理：保留当前会话");
+  const original = page.url();
+  await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await expect(page).toHaveURL(/\/chat$/);
+  await expect(page.getByTestId("chat-message")).toHaveCount(0);
+  let release = () => {};
+  let accepted = () => {};
+  const ready = new Promise<void>((resolve) => {
+    accepted = resolve;
+  });
+  const hold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/agentos.console.v1.ConsoleService/SendMessage", async (route) => {
+    const response = await route.fetch();
+    accepted();
+    await hold;
+    await route.fulfill({ response });
+  });
+  await page.getByRole("textbox", { name: "消息", exact: true }).fill("延迟返回的另一个会话");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await ready;
+  try {
+    await page.goBack();
+    await expect(page).toHaveURL(original);
+    await expect(page.getByTestId("chat-message").last()).toContainText("已处理：保留当前会话");
+  } finally {
+    release();
+  }
+  await page.getByRole("textbox", { name: "消息", exact: true }).fill("仍在原会话编辑");
+  await expect(page.getByRole("button", { name: "发送", exact: true })).toBeEnabled();
+  await expect(page).toHaveURL(original);
+  await expect(page.getByTestId("chat-message")).toHaveCount(2);
+  await expect(page.getByTestId("conversation")).not.toContainText("延迟返回的另一个会话");
+});
+
+test("automatically opens delegated work beside the chat, preserves dismissal and reopens its details in place", async ({
+  page,
+}) => {
+  await startOperation(page);
+  const conversation = page.url();
+  const panel = page.getByTestId("chat-task-panel");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByTestId("approval-node")).toBeVisible();
+  const chat = await page.getByTestId("conversation").boundingBox();
+  const task = await panel.boundingBox();
+  expect(task?.x).toBeGreaterThan((chat?.x ?? 0) + (chat?.width ?? 0));
+  await page.screenshot({ path: test.info().outputPath("chat-delegation.png") });
+  await panel.getByRole("button", { name: "收起任务详情", exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  await page.getByTestId("chat-task").click();
+  await expect(page).toHaveURL(
+    new RegExp(`${conversation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\?task=`),
+  );
+  await expect(panel).toBeVisible();
+  await page.reload();
+  await expect(panel.getByTestId("approval-node")).toBeVisible();
+  await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await expect(page).toHaveURL(/\/chat$/);
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByTestId("chat-message")).toHaveCount(0);
+});
+
+test("keeps streamed text visible while tools run, after completion and after reloading the chat", async ({
+  page,
+  request,
+}) => {
+  const task = await recordedTask(request, ids.chat);
+  task.artifacts = [
+    create(ArtifactSchema, {
+      artifactId: "progress",
+      parts: [{ content: { case: "text", value: "先读取当前资源。" } }],
+    }),
+  ];
+  if (task.status) task.status.state = TaskState.WORKING;
+  await observeTask(request, task);
+  await page.goto(`/chat/${task.contextId}`);
+  const answer = page.getByTestId("chat-message").filter({ hasText: "先读取当前资源。" });
+  await expect(answer).toHaveCount(1);
+  const messageId = await answer.getAttribute("data-message-id");
+  const guard = await page.getByTestId("chat-viewport").evaluateHandle((viewport) => {
+    const state = { missing: false, observer: undefined as MutationObserver | undefined };
+    state.observer = new MutationObserver(() => {
+      if (!viewport.textContent?.includes("先读取当前资源。")) state.missing = true;
+    });
+    state.observer.observe(viewport, { childList: true, characterData: true, subtree: true });
+    return state;
+  });
+  for (const kind of ["function_call", "function_response"]) {
+    task.artifacts.push(
+      create(ArtifactSchema, {
+        artifactId: kind,
+        parts: [
+          {
+            metadata: { [partTypeKey]: kind },
+            content: {
+              case: "data",
+              value: fromJson(ValueSchema, {
+                id: "read",
+                name: "k8s_get_resources",
+                args: {},
+                response: { output: [] },
+              }),
+            },
+          },
+        ],
+      }),
+    );
+    await observeTask(request, task);
+    await expect(answer).toBeVisible();
+    await expect(answer).toHaveAttribute("data-message-id", messageId ?? "");
+  }
+  task.artifacts.push(
+    create(ArtifactSchema, {
+      artifactId: "final",
+      parts: [{ content: { case: "text", value: "所有资源健康。" } }],
+    }),
+  );
+  if (task.status) task.status.state = TaskState.COMPLETED;
+  await observeTask(request, task);
+  await expect(answer).toContainText("所有资源健康。");
+  expect(await guard.evaluate((state) => state.missing)).toBe(false);
+  await guard.evaluate((state) => state.observer?.disconnect());
+  await page.reload();
+  await expect(answer).toContainText("先读取当前资源。");
+  await expect(answer).toContainText("所有资源健康。");
+  await expect(answer).toHaveAttribute("data-message-id", messageId ?? "");
 });
 
 test("shows a native pending approval in the same conversation and retains a rejection reason", async ({

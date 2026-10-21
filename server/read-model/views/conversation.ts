@@ -100,13 +100,13 @@ function messages(index: TaskIndex, entries: TaskEntry[]): ChatMessage[] {
           tasks: position === 0 ? operations(index, entry) : [],
         });
       });
-    return entry.answer
+    return entry.response
       ? [
           ...turns,
           create(ChatMessageSchema, {
             id: `answer:${entry.id}`,
             role: Role.AGENT,
-            text: entry.answer,
+            text: entry.response,
             taskId: entry.id,
           }),
         ]

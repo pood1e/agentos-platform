@@ -7,7 +7,6 @@ import {
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { ArrowDown, ArrowUpRight, LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import type { TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
@@ -27,9 +26,16 @@ const AssistantText = () => (
   />
 );
 
-function ConversationMessage({ message, tasks }: { message: ThreadMessage; tasks: TaskSummary[] }) {
+function ConversationMessage({
+  message,
+  tasks,
+  onTask,
+}: {
+  message: ThreadMessage;
+  tasks: TaskSummary[];
+  onTask: (id: string) => void;
+}) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const user = message.role === "user";
   return (
     <>
@@ -62,7 +68,7 @@ function ConversationMessage({ message, tasks }: { message: ThreadMessage; tasks
           variant="outline"
           className="flex h-auto w-full min-w-0 justify-start gap-2 py-2.5"
           aria-label={t("chat.viewTask", { title: task.title })}
-          onClick={() => navigate(`/tasks/${task.id}`)}
+          onClick={() => onTask(task.id)}
         >
           <span style={{ color: appearance(task.state).color }}>
             <StatusIcon state={task.state} className="size-4 shrink-0" />
@@ -75,7 +81,13 @@ function ConversationMessage({ message, tasks }: { message: ThreadMessage; tasks
   );
 }
 
-export function ConversationTranscript({ chat }: { chat: Chat }) {
+export function ConversationTranscript({
+  chat,
+  onTask,
+}: {
+  chat: Chat;
+  onTask?: (id: string) => void;
+}) {
   const { t } = useTranslation();
   const tasks = new Map(chat.messages.map((message) => [message.id, message.tasks]));
   const empty = useAuiState((state) => state.thread.messages.length === 0);
@@ -99,7 +111,11 @@ export function ConversationTranscript({ chat }: { chat: Chat }) {
           )}
           <ThreadPrimitive.Messages>
             {({ message }) => (
-              <ConversationMessage message={message} tasks={tasks.get(message.id) ?? []} />
+              <ConversationMessage
+                message={message}
+                tasks={onTask ? (tasks.get(message.id) ?? []) : []}
+                onTask={onTask ?? (() => {})}
+              />
             )}
           </ThreadPrimitive.Messages>
           {chat.pending.map((interaction) => (

@@ -84,7 +84,7 @@ export function TaskView({
   }, []);
   const state = summary?.state ?? ActivityState.UNSPECIFIED;
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto rounded-xl border bg-card p-4 sm:p-5">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto rounded-xl border bg-card p-4 sm:p-5">
       <div className="flex shrink-0 flex-col gap-2 px-1 pt-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <h2
           data-testid="task-title"
