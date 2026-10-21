@@ -62,7 +62,12 @@ class Recording implements DictationAdapter.Session {
   private async start() {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
       });
       if (this.controller.signal.aborted) {
         this.releaseMicrophone();
