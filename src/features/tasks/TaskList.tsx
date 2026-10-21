@@ -4,6 +4,7 @@ import type { TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
 import { HistoryList, type HistoryPage } from "../shared/HistoryList.js";
 import { labelKey } from "../status/activity.js";
 import { appearance, StatusIcon } from "../status/Status.js";
+import { TagBadges } from "./TagBadges.js";
 
 export function TaskList({
   tasks,
@@ -33,6 +34,7 @@ export function TaskList({
         id: task.id,
         title: task.title,
         detail: `${task.prompt} ${task.id}`,
+        metadata: task.tags.length ? <TagBadges tags={task.tags} compact /> : undefined,
         status: (
           <Tooltip>
             <TooltipTrigger asChild>

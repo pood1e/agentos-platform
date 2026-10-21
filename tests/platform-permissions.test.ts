@@ -25,6 +25,7 @@ it("enforces each resource permission independently at every public mutation", a
         updateRole: () => ({}),
         sendMessage: () => ({}),
         cancelTask: () => ({}),
+        updateTaskTags: () => ({}),
         respondInteraction: () => ({}),
       });
       router.service(ManagementService, {
@@ -88,6 +89,7 @@ it("enforces each resource permission independently at every public mutation", a
     }
     await agents.sendMessage({});
     await agents.cancelTask({});
+    await agents.updateTaskTags({});
     await agents.respondInteraction({});
     await expect(resources.saveConnection({})).rejects.toMatchObject({
       code: Code.PermissionDenied,

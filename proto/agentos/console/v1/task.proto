@@ -17,6 +17,9 @@ message TaskSummary {
   string prompt = 3;
   agentos.execution.v1.ActivityState state = 4;
   google.protobuf.Timestamp updated_at = 5;
+  repeated string tags = 6;
+  // Opaque concurrency token for tag edits; independent of runtime execution versions.
+  string tags_version = 7;
 }
 
 // Operation tree rooted at one task. Runs omit prompt, output and calls.
@@ -32,6 +35,7 @@ message TaskDetail {
   // Native session identities and names used by this operation.
   repeated kagent.api.v1alpha1.Session sessions = 9;
   bool operate = 10;
+  bool edit_tags = 11;
 }
 
 enum DelegationKind {

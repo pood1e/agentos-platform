@@ -23,6 +23,7 @@ export interface HistoryEntry {
   title: string;
   detail: string;
   status?: ReactNode;
+  metadata?: ReactNode;
 }
 
 export interface HistoryPage {
@@ -119,12 +120,17 @@ export function HistoryList({
               variant="ghost"
               disabled={disabled}
               className={cn(
-                "h-10 w-full min-w-0 justify-between gap-2 rounded-none border-t border-l-2 border-l-transparent px-3 text-left",
+                "h-auto min-h-10 w-full min-w-0 justify-between gap-2 rounded-none border-t border-l-2 border-l-transparent px-3 py-2 text-left",
                 entry.id === selectedId && "border-l-primary bg-muted/70",
               )}
               onClick={() => onSelect(entry.id)}
             >
-              <strong className="min-w-0 flex-1 truncate text-xs font-medium">{entry.title}</strong>
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-xs font-medium">{entry.title}</strong>
+                {entry.metadata && (
+                  <span className="mt-1 flex min-w-0 flex-wrap gap-1">{entry.metadata}</span>
+                )}
+              </span>
               {entry.status}
             </Button>
           ))}

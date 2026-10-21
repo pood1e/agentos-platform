@@ -13,10 +13,13 @@
 | `agentos-models-manage` | 模型连接及其凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
 | `agentos-evaluations-manage` | 运行测评与发起发布 |
+| `agentos-tasks-manage` | 共享自动化任务的标签 |
 
 角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。平台依据 proto 定义的 `Capability` 校验 RPC；浏览器使用相同能力控制入口与直接路由。测评发布同时校验测评权限和候选涉及的全部资源权限。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
 
 应用角色授予配置管理能力；目标系统仍执行自身授权。平台管理角色保留用户私聊归属边界。
+
+个人任务的标签由发起人维护，包括已结束或已撤销执行权的任务；共享服务任务的标签需要任务管理角色。标签作为操作根任务的元数据保存在同一 PostgreSQL 的 `agentos_console.task_tags` 表中，以工作空间隔离并采用乐观锁更新。标签只用于分类和筛选，执行状态、审批结果与目标系统写权限独立校验。
 
 执行绑定与最新验证的用户凭证以 protobuf 保存于 PostgreSQL 的 `agentos_authorization` schema。记录采用 AES-256-GCM 加密，认证数据包含工作空间、记录类型和 ID；加密密钥位于独立、持久保留的 Kubernetes Secret。
 原生会话、A2A 消息与工具参数仅保存身份引用，不携带用户访问令牌。

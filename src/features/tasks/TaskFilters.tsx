@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import { usePack } from "../../lib/pack.js";
 import { engineerName } from "../shared/engineers.js";
 import { labelKey } from "../status/activity.js";
 
@@ -27,16 +28,22 @@ const states = [
 export function TaskFilters({
   state,
   engineer,
+  tag,
+  availableTags,
   onChange,
 }: {
   state?: ActivityState;
   engineer: string;
-  onChange: (field: "state" | "engineer", value: string) => void;
+  tag: string;
+  availableTags: string[];
+  onChange: (field: "state" | "engineer" | "tag", value: string) => void;
 }) {
   const { t } = useTranslation();
+  const pack = usePack();
+  const tags = [...new Set([...pack.taskTags, ...availableTags, ...(tag ? [tag] : [])])].sort();
   const members = useQuery(ConsoleService.method.listEngineers, {}, { refetchInterval: 10_000 });
   return (
-    <div className="flex gap-2 lg:flex-col" data-testid="task-filters">
+    <div className="flex flex-wrap gap-2 lg:flex-col" data-testid="task-filters">
       <Select
         value={state === undefined ? "all" : ActivityState[state]}
         onValueChange={(value) => onChange("state", value)}
@@ -68,6 +75,25 @@ export function TaskFilters({
           {members.data?.engineers.map((member) => (
             <SelectItem key={member.id} value={member.id}>
               {engineerName(member)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={tag ? `tag:${tag}` : "all"}
+        onValueChange={(value) => onChange("tag", value === "all" ? "" : value.slice(4))}
+      >
+        <SelectTrigger
+          aria-label={t("task.filterTag")}
+          className="h-8 min-w-0 flex-1 text-xs lg:flex-auto"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t("task.allTags")}</SelectItem>
+          {tags.map((value) => (
+            <SelectItem key={value} value={`tag:${value}`}>
+              {t(`task.tagNames.${value}`, { defaultValue: value, nsSeparator: false })}
             </SelectItem>
           ))}
         </SelectContent>

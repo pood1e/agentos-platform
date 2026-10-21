@@ -28,7 +28,8 @@ for (const capability of allCapabilities) {
         route.fulfill({ json: { candidates: [] } }),
       );
     await page.goto(pages.get(capability) ?? "/chat");
-    await expect(page.getByTestId("advanced")).toBeVisible();
+    if (pages.has(capability)) await expect(page.getByTestId("advanced")).toBeVisible();
+    else await expect(page.getByTestId("advanced")).toHaveCount(0);
     for (const [required, path] of pages) {
       const link = page.locator(`nav a[href="${path}"]`);
       if (required === capability) await expect(link).toBeVisible();

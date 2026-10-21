@@ -96,6 +96,12 @@ export class TaskIndex {
     return () => this.listeners.delete(listener);
   }
 
+  /** Refreshes projections after platform-owned task metadata changes. */
+  invalidate(id: string): void {
+    this.touch(id);
+    this.flush();
+  }
+
   /** Notifies listeners once per batch of updates. */
   flush(): void {
     if (!this.changed.size) return;

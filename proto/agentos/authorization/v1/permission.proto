@@ -12,4 +12,6 @@ enum Capability {
   CAPABILITY_MODELS_MANAGE = 5;
   CAPABILITY_HARNESSES_MANAGE = 6;
   CAPABILITY_EVALUATIONS_MANAGE = 7;
+  // Maintain metadata on shared service-owned tasks. Personal tasks remain private.
+  CAPABILITY_TASKS_MANAGE = 8;
 }

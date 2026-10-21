@@ -28,6 +28,7 @@ async function workbench(tasks?: Task[]) {
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
     replaceTemplate: async (template) => env.fake.replaceTemplate(template),
     pack: loadPack(examplePack),
+    tags: env.tags,
   });
   const transport = createRouterTransport((router) => router.service(ConsoleService, service), {
     router: { interceptors: [createValidateInterceptor()] },
