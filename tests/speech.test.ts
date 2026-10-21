@@ -67,6 +67,7 @@ beforeAll(async () => {
       return reply.type("audio/wav").send(Buffer.alloc(16 * 1024 * 1024 + 1));
     if (request.body.model === "empty") return reply.type("audio/wav").send(Buffer.alloc(0));
     if (request.body.model === "wrong-format") return { unexpected: "not audio" };
+    if (request.body.model === "mp3") return reply.type("audio/mp3").send(Buffer.from("ID3-audio"));
     return reply.type("audio/wav").send(Buffer.from("RIFF-test-audio"));
   });
   providerURL = `${await provider.listen({ host: "127.0.0.1", port: 0 })}/v1`;
@@ -74,7 +75,12 @@ beforeAll(async () => {
 
 afterAll(() => provider.close());
 
-async function workbench(input = "", output = "", authenticated = true) {
+async function workbench(
+  input = "",
+  output = "",
+  authenticated = true,
+  voices = [{ languageCode: "en", model: output, voice: "multilingual" }],
+) {
   const env = environment();
   const app = Fastify();
   await registerConsole(app, {
@@ -89,9 +95,8 @@ async function workbench(input = "", output = "", authenticated = true) {
       pack: loadPack(),
       speech: speechService(
         create(SpeechConfigurationSchema, {
-          transcription: input ? { baseUrl: providerURL, model: input } : undefined,
-          synthesis: output ? { baseUrl: providerURL, model: output } : undefined,
-          voice: output ? "multilingual" : "",
+          transcription: input ? { endpoint: { baseUrl: providerURL }, model: input } : undefined,
+          synthesis: output ? { endpoint: { baseUrl: providerURL }, voices } : undefined,
         }),
       ),
     }),
@@ -164,7 +169,7 @@ it("allows a reader to transcribe and synthesize multilingual text without gaini
     model: "tts",
     input: result.text,
     voice: "multilingual",
-    response_format: "wav",
+    response_format: "mp3",
   });
   expect((await client.getAccessProfile({}, { headers })).profile?.write).toBe(false);
 });
@@ -186,12 +191,40 @@ it("requires authentication and same-origin access for speech requests", async (
   ).rejects.toMatchObject({ code: Code.PermissionDenied });
 });
 
+it.each([
+  ["zh", "请检查交换机的状态。"],
+  ["en", "Please check the status of the network switch."],
+  ["ar", "يرجى التحقق من حالة محول الشبكة."],
+  ["zh", "你好"],
+  ["en", "Hello"],
+  ["ar", "مرحبا"],
+])(
+  "selects the configured %s voice from the text independently of the UI language",
+  async (language, text) => {
+    const voices = ["zh", "en", "ar"].map((code) => ({
+      languageCode: code,
+      model: `tts-${code}`,
+      voice: `voice-${code}`,
+    }));
+    const client = await workbench("", "tts", true, voices);
+    await client.synthesizeSpeech({ text }, { headers });
+    expect(calls.synthesis).toMatchObject({ model: `tts-${language}`, voice: `voice-${language}` });
+  },
+);
+
 it("supports configured speech without an OIDC provider", async () => {
   const client = await workbench("asr", "tts", false);
   const result = await client.transcribeAudio({ audio });
   expect(result.text).toContain("افحص المحول");
   expect((await client.synthesizeSpeech({ text: result.text })).audio?.data.length).toBeGreaterThan(
     0,
+  );
+});
+
+it("normalizes an upstream MP3 MIME alias for browser playback and audio uploads", async () => {
+  const client = await workbench("", "mp3");
+  expect((await client.synthesizeSpeech({ text: "Hello" }, { headers })).audio?.contentType).toBe(
+    "audio/mpeg",
   );
 });
 

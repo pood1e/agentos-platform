@@ -1,10 +1,10 @@
 {{- if or .Values.speech.transcription .Values.speech.synthesis }}
-{{- $configuration := dict "voice" .Values.speech.voice }}
+{{- $configuration := dict }}
 {{- range $kind := list "transcription" "synthesis" }}
   {{- with index $.Values.speech $kind }}
     {{- $provider := deepCopy . }}
     {{- if $.Values.speech.secretRef }}
-      {{- $_ := set $provider "apiKeyFile" (printf "/etc/agentos-speech/credentials/%s-api-key" $kind) }}
+      {{- $_ := set $provider.endpoint "apiKeyFile" (printf "/etc/agentos-speech/credentials/%s-api-key" $kind) }}
     {{- end }}
     {{- $_ := set $configuration $kind $provider }}
   {{- end }}

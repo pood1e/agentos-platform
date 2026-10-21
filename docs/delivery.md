@@ -101,25 +101,31 @@ TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服�
 
 `speech` 默认关闭；转写与合成分别配置，聊天页按能力显示麦克风和助手回答的朗读控件。
 ASR 服务提供 `POST /v1/audio/transcriptions`（multipart 文件上传、JSON 文本响应），TTS 服务提供
-`POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: wav`，返回音频）。
+`POST /v1/audio/speech`（`model`、`voice`、`input`、`response_format: mp3`，返回音频）。
 模型和音色由站点提供，服务可以与文本模型同机部署；平台使用现有 OpenAI SDK 调用兼容接口。
 
 ```yaml
 speech:
   transcription:
-    baseUrl: https://speech.example.test/v1
+    endpoint:
+      baseUrl: https://speech.example.test/v1
     model: multilingual-asr
   synthesis:
-    baseUrl: https://speech.example.test/v1
-    model: multilingual-tts
-  voice: multilingual
+    endpoint:
+      baseUrl: https://speech.example.test/v1
+    voices:
+      - {languageCode: zh, model: tts-zh, voice: default}
+      - {languageCode: en, model: tts-en, voice: default}
+      - {languageCode: ar, model: tts-ar, voice: default}
   secretRef: speech-credentials
 ```
 
-方案 Chart 的配置位于 `app_values.agentos.speech`。仅启用一项时，另一项保留 `{}`；启用合成时必须指定音色。
+方案 Chart 的配置位于 `app_values.agentos.speech`。仅启用一项时，另一项保留 `{}`。
+合成配置至少包含一个音色，每种语言配置一个模型和音色；平台按文本语言选择，首项作为无法识别时的默认值。
+语言代码使用 ISO 639，重复语言被拒绝；语音语言独立于界面语言。
 `secretRef` 可省略；配置时引用已有 Kubernetes Secret，启用转写需要 `transcription-api-key`，启用合成需要
 `synthesis-api-key`，凭据以只读文件挂载。开发环境通过 `AGENTOS_SPEECH_CONFIG` 指定 proto JSON 文件，
-`transcription`、`synthesis` 使用 `SpeechProvider`，凭据由各自的 `apiKeyFile` 提供。
+凭据由各自的 `endpoint.apiKeyFile` 提供。
 
 录音使用浏览器 MediaRecorder，需 HTTPS 或 localhost 与麦克风授权；每次最多 60 秒、1 MiB。
 转写进入输入框后由用户发送，朗读最多 8,000 字符、返回音频最多 16 MiB；模型请求期限为 60 秒。
