@@ -89,5 +89,6 @@ Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与�
 案例自动化按方案包的 `CaseTrigger` 映射源事件并选择原生 Agent：同一案例复用原生会话与确定性 messageId，超时取消并升级，事实类型的命名空间由方案包决定。
 任务页分别展示执行记录和自动化配置。定时任务通过 kagent `ScheduledRunService` 持久化、调度和记录运行历史；平台负责工作空间隔离、`tasks.manage` 授权和共享记录展示。
 每次定时运行通过原生执行记录核对会话、创建者和 Agent 后绑定独立只读服务主体；首次任务落盘前使用消息 ID 查找原生执行记录，ID 本身不授予权限。
+聊天与协作创建请求的幂等键分别按发起人和父会话派生，重试保持稳定，并与系统任务的创建空间隔离。
 方案预置只在首次接入时创建，用户编辑和删除状态由 kagent 保留。事件入口的启用状态来自平台配置，来源环境负责投递与 worker 运行。
 评分器与触发器契约见[扩展契约](extension.md#测评)。环境侧部署接线由[目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。

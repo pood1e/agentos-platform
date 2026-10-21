@@ -3,11 +3,13 @@ import { clone, create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
 import { afterEach, expect, it } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
+import { SendMessageRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import { scheduledIdentity } from "../server/automation/identity.js";
 import { executionHistory } from "../server/console/history.js";
+import { messageCommands } from "../server/console/messages.js";
 import { memoryStore } from "./fixtures/execution-store.js";
 import { environment } from "./harness.js";
 
@@ -104,6 +106,31 @@ it("keeps personal bindings immutable even when a message claims a scheduled ori
     (await registry.record(session, false, [`scheduled-run/${execution.id}`])).binding.subject,
   ).toBe(owner.subject);
   expect(await registry.history("user:bob", [session.id])).toEqual([]);
+});
+
+it("keeps chat creation retries from claiming a reserved scheduled session", async () => {
+  const { fake, clients, sync, registry, session, execution } = await setup();
+  fake.tasks.delete(execution.taskId);
+  await sync.refresh();
+  const identity = create(ExecutionIdentitySchema, {
+    subject: "user:alice",
+    write: true,
+    credential: { case: "service", value: true },
+  });
+  const messageId = `scheduled-run/${execution.id}`;
+  const response = await messageCommands(sync, clients, undefined, registry).send(
+    create(SendMessageRequestSchema, {
+      agent: session.agent,
+      messageId,
+      text: "Read current health",
+    }),
+    identity,
+  );
+  expect(response.contextId).not.toBe(session.id);
+  expect((await registry.record(session, false, [messageId])).binding.subject).toContain(
+    "service:schedule:",
+  );
+  expect((await registry.resolve(session)).write).toBe(false);
 });
 
 it("makes native scheduled executions visible to readers while preserving personal history isolation", async () => {

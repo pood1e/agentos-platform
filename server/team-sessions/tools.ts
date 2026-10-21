@@ -16,7 +16,6 @@ import {
   ListAgentsResponseSchema,
 } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import {
   CreateSessionRequestSchema,
   CreateSessionResponseSchema,
@@ -47,6 +46,7 @@ import type { KagentClients } from "../kagent/clients.js";
 import type { knowledgeService } from "../knowledge/service.js";
 import { agentInfo, agentKey, systemRoles } from "../read-model/agents.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
+import { messageIdentity } from "../shared/idempotency.js";
 import { inputSchema, result, validator } from "./schema.js";
 
 /** Workspace collaboration, role drafting and shared knowledge retrieval. */
@@ -55,10 +55,6 @@ export function sessionTools(
   namespace: string,
   access: BindingView,
   knowledge: Pick<ReturnType<typeof knowledgeService>, "search">,
-  execution?: {
-    created: (session: Session) => Promise<void>;
-    invoke: (session: Session) => Promise<void>;
-  },
 ) {
   const inWorkspace = async () =>
     (await clients.tools.listToolServers({}, { timeoutMs: 10_000 })).toolServers.filter((server) =>
@@ -131,8 +127,14 @@ export function sessionTools(
           const request = fromJson(CreateSessionRequestSchema, args);
           if (!(await isEngineer(request.agent)))
             throw new Error("Create sessions only with engineers returned by list_agents");
+          const scope = collaborationExecution.getStore();
+          request.requestId = messageIdentity(
+            "collaboration",
+            namespace,
+            scope?.parentSessionId ?? "",
+            request.requestId,
+          );
           const response = await clients.sessions.createSession(request, { timeoutMs: 60_000 });
-          const scope = execution ?? collaborationExecution.getStore();
           if (scope) {
             if (!response.session) throw new Error("Native session is missing");
             await scope.created(response.session);
@@ -169,7 +171,7 @@ export function sessionTools(
           );
           if (!session?.agent || !(await isEngineer(session.agent)))
             throw new Error("Dispatch only to sessions of engineers returned by list_agents");
-          await (execution ?? collaborationExecution.getStore())?.invoke(session);
+          await collaborationExecution.getStore()?.invoke(session);
           message.extensions = [...new Set([...message.extensions, hitlExtension])];
           const response = await clients.a2a.sendMessage(
             {

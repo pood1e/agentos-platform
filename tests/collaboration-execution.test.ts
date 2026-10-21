@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
@@ -12,6 +11,13 @@ import { environment, testBindings } from "./harness.js";
 
 it("keeps two concurrent callers separate through the same MCP handler and tool factory", async () => {
   const { fake, clients, sync } = environment([]);
+  const requestId = "scheduled-run/11111111-1111-4111-8111-111111111111";
+  const reserved = fake.createSession(
+    { namespace: "agentos", name: "inspection" },
+    requestId,
+    "System task",
+  );
+  const existing = fake.sessions.size;
   const bound: { subject: string; parent: string; name: string }[] = [];
   const registry = {
     resolve: async (parent: { id: string }) => {
@@ -64,7 +70,7 @@ it("keeps two concurrent callers separate through the same MCP handler and tool 
                 arguments: {
                   agent: { namespace: "agentos", name: "inspection" },
                   name: subject,
-                  requestId: randomUUID(),
+                  requestId,
                 },
               },
             }),
@@ -78,6 +84,8 @@ it("keeps two concurrent callers separate through the same MCP handler and tool 
       { subject: "alice", parent: "alice", name: "alice" },
       { subject: "bob", parent: "bob", name: "bob" },
     ]);
+    expect(fake.sessions.size).toBe(existing + 2);
+    expect(fake.sessions.get(reserved.id)?.name).toBe("System task");
   } finally {
     sync.close();
     await shared.close();

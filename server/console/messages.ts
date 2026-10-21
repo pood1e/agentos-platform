@@ -25,6 +25,7 @@ import { awaiting } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation } from "../read-model/views/conversation.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
+import { messageIdentity } from "../shared/idempotency.js";
 
 export function messageCommands(
   sync: KagentSync,
@@ -69,8 +70,19 @@ export function messageCommands(
     const agent = index.agent(id);
     if (!agent?.ready) throw fail(Code.Unavailable, "chat.notReady");
     const [namespace = "", name = ""] = agent.id.split("/");
+    if (executions && !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
     const { session } = await clients.sessions.createSession(
-      { agent: { namespace, name }, requestId: request.messageId, name: shortTitle(request.text) },
+      {
+        agent: { namespace, name },
+        requestId: messageIdentity(
+          "chat",
+          namespace,
+          name,
+          identity?.subject ?? "console",
+          request.messageId,
+        ),
+        name: shortTitle(request.text),
+      },
       { timeoutMs: 30_000 },
     );
     if (!session) throw unavailable();
