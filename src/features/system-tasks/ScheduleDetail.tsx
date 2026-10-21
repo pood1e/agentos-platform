@@ -17,6 +17,7 @@ import { Failure } from "../management/ResourcePage.js";
 import { PageControl } from "../shared/PageControl.js";
 import { usePaging } from "../shared/paging.js";
 import { scheduledTime } from "./format.js";
+import { systemTaskLocation } from "./location.js";
 
 export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const { t } = useTranslation();
@@ -101,7 +102,7 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
                   {execution.taskId ? (
                     <Link
                       className="text-primary underline-offset-4 hover:underline"
-                      to={`/chat?${new URLSearchParams({ task: execution.taskId })}`}
+                      to={systemTaskLocation(execution.taskId)}
                     >
                       {t("automation.viewExecution")}
                     </Link>

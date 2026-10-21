@@ -87,7 +87,7 @@ Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与�
 控制台按规则展示双方均值与差值，判定仍要求每个用例、每轮评分满足门槛与退化上限；单例错误与双方追踪链接随报告展示，追踪地址由 Langfuse 官方 SDK 生成。
 
 案例自动化按方案包的 `CaseTrigger` 映射源事件并选择原生 Agent：同一案例复用原生会话与确定性 messageId，超时取消并升级，事实类型的命名空间由方案包决定。
-聊天使用 assistant-ui，A2A 委派关联的任务在聊天右侧展示协作、MCP 服务调用和时间线；`/chat/:contextId?task=<taskId>` 可定位聊天及执行详情。聊天投影保留工具调用前后的文本，任务结论独立取最终响应。系统任务位于 `/system-tasks/:scheduleId?`，所有具有平台管理能力的管理员共享定义和执行历史，普通用户不可读取。定时任务复用 kagent `ScheduledRunService` 持久化、调度和记录运行历史；配置维护和手动触发要求 `tasks.manage`。
+聊天使用 assistant-ui，A2A 委派关联的任务在聊天右侧展示协作、MCP 服务调用和时间线；`/chat/:contextId?task=<taskId>` 可定位聊天及执行详情。聊天投影保留工具调用前后的文本，任务结论独立取最终响应。系统任务位于 `/system-tasks/:scheduleId?`，所有具有平台管理能力的管理员共享定义和执行历史，普通用户不可读取；执行详情通过 `/system-tasks?task=<taskId>` 在系统任务页内展开，复用聊天的执行详情组件。定时任务复用 kagent `ScheduledRunService` 持久化、调度和记录运行历史；配置维护和手动触发要求 `tasks.manage`。
 每次定时运行通过原生执行记录核对会话、创建者和 Agent 后绑定独立只读服务主体；首次任务落盘前使用消息 ID 查找原生执行记录，ID 本身不授予权限。
 聊天与协作创建请求的幂等键分别按发起人和父会话派生，重试保持稳定，并与系统任务的创建空间隔离。
 方案预置只在首次接入时创建，用户编辑和删除状态由 kagent 保留。事件入口的启用状态来自平台配置，来源环境负责投递与 worker 运行。
