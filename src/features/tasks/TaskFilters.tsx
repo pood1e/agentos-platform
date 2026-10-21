@@ -43,14 +43,14 @@ export function TaskFilters({
   const tags = [...new Set([...pack.taskTags, ...availableTags, ...(tag ? [tag] : [])])].sort();
   const members = useQuery(ConsoleService.method.listEngineers, {}, { refetchInterval: 10_000 });
   return (
-    <div className="flex flex-wrap gap-2 lg:flex-col" data-testid="task-filters">
+    <div className="flex shrink-0 flex-wrap items-center gap-2" data-testid="task-filters">
       <Select
         value={state === undefined ? "all" : ActivityState[state]}
         onValueChange={(value) => onChange("state", value)}
       >
         <SelectTrigger
           aria-label={t("task.filterState")}
-          className="h-8 min-w-0 flex-1 text-xs lg:flex-auto"
+          className="h-8 min-w-0 flex-1 bg-card text-xs sm:w-40 sm:flex-none"
         >
           <SelectValue />
         </SelectTrigger>
@@ -66,7 +66,7 @@ export function TaskFilters({
       <Select value={engineer || "all"} onValueChange={(value) => onChange("engineer", value)}>
         <SelectTrigger
           aria-label={t("task.filterEngineer")}
-          className="h-8 min-w-0 flex-1 text-xs lg:flex-auto"
+          className="h-8 min-w-0 flex-1 bg-card text-xs sm:w-40 sm:flex-none"
         >
           <SelectValue />
         </SelectTrigger>
@@ -85,7 +85,7 @@ export function TaskFilters({
       >
         <SelectTrigger
           aria-label={t("task.filterTag")}
-          className="h-8 min-w-0 flex-1 text-xs lg:flex-auto"
+          className="h-8 min-w-0 flex-1 bg-card text-xs sm:w-40 sm:flex-none"
         >
           <SelectValue />
         </SelectTrigger>

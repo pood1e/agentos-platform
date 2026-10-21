@@ -68,7 +68,12 @@ export function HistoryList({
   );
   return (
     <>
-      <div className="flex min-w-0 items-center gap-2 lg:hidden">
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-2",
+          kind === "task" ? "xl:hidden" : "lg:hidden",
+        )}
+      >
         <Select value={selectedId} onValueChange={onSelect} disabled={disabled || !entries.length}>
           <SelectTrigger aria-label={title} className="min-w-0 flex-1 bg-card">
             <SelectValue placeholder={placeholder}>
@@ -92,7 +97,10 @@ export function HistoryList({
       </div>
       <Card
         data-testid={`${kind}-history`}
-        className="hidden min-h-0 flex-1 gap-0 overflow-hidden py-0 shadow-none lg:flex"
+        className={cn(
+          "hidden min-h-0 flex-1 gap-0 overflow-hidden py-0 shadow-none",
+          kind === "task" ? "xl:flex" : "lg:flex",
+        )}
       >
         <CardHeader className="flex shrink-0 flex-row items-center justify-between px-4 py-4">
           <CardTitle className="text-sm">{title}</CardTitle>
@@ -121,12 +129,23 @@ export function HistoryList({
               disabled={disabled}
               className={cn(
                 "h-auto min-h-10 w-full min-w-0 justify-between gap-2 rounded-none border-t border-l-2 border-l-transparent px-3 py-2 text-left",
-                entry.id === selectedId && "border-l-primary bg-muted/70",
+                kind === "task" && "mx-2 my-1 w-[calc(100%-1rem)] rounded-lg border-0 px-3 py-3",
+                entry.id === selectedId &&
+                  (kind === "task" ? "bg-muted" : "border-l-primary bg-muted/70"),
               )}
               onClick={() => onSelect(entry.id)}
             >
               <span className="min-w-0 flex-1">
-                <strong className="block truncate text-xs font-medium">{entry.title}</strong>
+                <strong
+                  className={cn(
+                    "block font-medium",
+                    kind === "task"
+                      ? "line-clamp-2 whitespace-normal text-sm leading-5"
+                      : "truncate text-xs",
+                  )}
+                >
+                  {entry.title}
+                </strong>
                 {entry.metadata && (
                   <span className="mt-1 flex min-w-0 flex-wrap gap-1">{entry.metadata}</span>
                 )}

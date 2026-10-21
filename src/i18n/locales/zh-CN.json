@@ -128,7 +128,7 @@
     "tagsFailed": "保存标签失败，请重试。"
   },
   "graph": {
-    "title": "协作图",
+    "title": "Agent 协作",
     "fit": "适应画布",
     "zoomIn": "放大",
     "zoomOut": "缩小",
@@ -144,7 +144,14 @@
     "ticket": "工单 #{{id}}",
     "rounds": "{{count}} 轮",
     "join": "汇合",
-    "reuseResult": "复用结果"
+    "reuseResult": "复用结果",
+    "callCount": "{{count}} 次调用",
+    "executingAgent": "执行智能体",
+    "selectExecution": "选择智能体执行",
+    "executionDetails": "执行详情",
+    "mcpCalls": "MCP 调用",
+    "mcpTopology": "Agent 与 MCP 服务",
+    "noMcpCalls": "尚未观测到 MCP 服务调用。"
   },
   "drawer": {
     "title": "执行详情",

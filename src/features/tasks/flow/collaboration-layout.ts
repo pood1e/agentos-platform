@@ -1,19 +1,12 @@
 import { getNodesBounds } from "@xyflow/react";
 import type { ElkNode, ElkPort } from "elkjs/lib/elk-api.js";
-import elkWorkerUrl from "elkjs/lib/elk-worker.min.js?url";
 import type { CollaborationFlow } from "./collaboration-flow.js";
 import { bundleConnections } from "./connection-bundles.js";
+import { elk } from "./elk.js";
 import { instanceRoutes } from "./routes.js";
 
-export const activityWidth = 152;
-export const activityHeight = 112;
-const elk = import.meta.env.SSR
-  ? import("elkjs/lib/elk.bundled.js").then(
-      ({ default: ELK }) => new ELK({ algorithms: ["layered"] }),
-    )
-  : import("elkjs/lib/elk-api.js").then(
-      ({ default: ELK }) => new ELK({ algorithms: ["layered"], workerUrl: elkWorkerUrl }),
-    );
+export const activityWidth = 208;
+export const activityHeight = 104;
 
 export function layoutGraph(flow: CollaborationFlow): ElkNode {
   const connections = bundleConnections(flow.connections);

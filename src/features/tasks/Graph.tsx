@@ -45,6 +45,7 @@ export interface GraphProps {
   selected: string;
   selectedConnection: string;
   onSelect: (activity: FlowActivity) => void;
+  onExplore?: (activity: FlowActivity) => void;
   onConnection: (connection: ConnectionBundle) => void;
 }
 
@@ -105,6 +106,10 @@ function Canvas(props: GraphProps) {
       layout.activities.flatMap((activity): AgentNode[] => {
         const agent = participants.find((item) => item.id === activity.agentId);
         if (!agent) return [];
+        const peers = layout.activities
+          .filter((item) => item.kind === "engineer" && item.agentId === activity.agentId)
+          .map((item) => item.id)
+          .sort();
         return [
           {
             id: activity.id,
@@ -121,8 +126,10 @@ function Canvas(props: GraphProps) {
                 : names.get(activity.id),
             data: {
               agent,
+              agentName: `${engineerName(agent)}${peers.length > 1 ? ` · ${peers.indexOf(activity.id) + 1}` : ""}`,
               name: names.get(activity.id) ?? engineerName(agent),
               activity,
+              onExplore: props.onExplore ? () => props.onExplore?.(activity) : undefined,
               selected: selectedConnection
                 ? layout.connections.some(
                     (connection) =>
@@ -134,7 +141,7 @@ function Canvas(props: GraphProps) {
           },
         ];
       }),
-    [participants, selected, selectedConnection, layout, names, t],
+    [participants, selected, selectedConnection, layout, names, t, props.onExplore],
   );
   const edges: CollaborationEdge[] = useMemo(() => {
     const name = (activity?: FlowActivity) =>
