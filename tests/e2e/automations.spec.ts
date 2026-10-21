@@ -3,7 +3,7 @@ import { createConnectTransport } from "@connectrpc/connect-node";
 import { expect, test } from "@playwright/test";
 import { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
 import { identityToken, testToken } from "../fixtures/identity.js";
-import { resetKagent } from "./kagent.js";
+import { client, resetKagent } from "./kagent.js";
 
 const api = createClient(
   AutomationService,
@@ -20,45 +20,95 @@ const api = createClient(
 );
 test.beforeEach(async ({ request }) => resetKagent(request));
 
-test("navigates independent task and automation pages and restores automation detail URLs", async ({
+test("hides system tasks from ordinary users and rejects direct definitions and shared execution access", async ({
+  page,
+  context,
+}) => {
+  const schedule = (await api.listScheduledRuns({})).scheduledRuns[0];
+  const { execution } = await api.triggerScheduledRun({
+    scheduledRunId: schedule.id,
+    requestId: crypto.randomUUID(),
+  });
+  const token = await identityToken(["writer"], "ordinary-writer");
+  await context.setExtraHTTPHeaders({ authorization: `Bearer ${token}` });
+  await page.goto("/system-tasks");
+  await expect(page).toHaveURL(/\/chat$/);
+  await expect(page.getByRole("link", { name: "系统任务", exact: true })).toHaveCount(0);
+  const definitions = await context.request.post(
+    "/agentos.automation.v1.AutomationService/ListScheduledRuns",
+    { data: {} },
+  );
+  expect(definitions.status()).toBe(403);
+  const runs = await context.request.post("/agentos.console.v1.ConsoleService/ListTasks", {
+    data: { systemOnly: true },
+  });
+  expect(runs.status()).toBe(403);
+  await page.goto(`/chat?task=${execution?.taskId}`);
+  await expect(page.getByTestId("chat-task-panel").getByRole("alert")).toContainText(
+    "任务不存在或已不可见",
+  );
+  await expect(page.getByTestId("task-title")).toHaveCount(0);
+});
+
+test("paginates and searches system-owned executions while excluding personal tasks", async ({
   page,
 }) => {
-  await page.goto("/tasks");
+  const schedule = (await api.listScheduledRuns({})).scheduledRuns[0];
+  await Promise.all(
+    Array.from({ length: 18 }, () =>
+      api.triggerScheduledRun({ scheduledRunId: schedule.id, requestId: crypto.randomUUID() }),
+    ),
+  );
+  await expect.poll(async () => (await client.listTasks({ systemOnly: true })).totalSize).toBe(18);
+  const { tasks } = await client.listTasks({ systemOnly: true });
+  await client.updateTaskTags({
+    taskId: tasks[0].id,
+    tags: ["system-history-proof"],
+    tagsVersion: tasks[0].tagsVersion,
+  });
+  await page.goto("/system-tasks");
+  const history = page.getByRole("region", { name: "运行历史", exact: true });
+  await expect(history.getByRole("row")).toHaveCount(13);
+  await expect(history).not.toContainText("验证独立测试环境审批和实际处置");
+  await history.getByRole("button", { name: "下一页", exact: true }).click();
+  await expect(history.getByRole("row")).toHaveCount(7);
+  await history
+    .getByRole("textbox", { name: "搜索任务", exact: true })
+    .fill("system-history-proof");
+  await expect(history.getByRole("row")).toHaveCount(2);
+  await expect(history).toContainText("system-history-proof");
+  await history.getByRole("link", { name: "查看执行", exact: true }).click();
+  await expect(page.getByTestId("chat-task-panel")).toBeVisible();
+});
+
+test("shows the system-task entry without a standalone task page and restores detail URLs", async ({
+  page,
+}) => {
+  await page.goto("/chat");
   const navigation = page.getByRole("navigation", { name: "主导航", exact: true });
-  const tasks = navigation.getByRole("link", { name: "任务", exact: true });
-  const automations = navigation.getByRole("link", { name: "自动化任务", exact: true });
-  await expect(page.getByRole("heading", { name: "任务", level: 1, exact: true })).toBeVisible();
-  await expect(tasks).toHaveAttribute("aria-current", "page");
-  await expect(automations).not.toHaveAttribute("aria-current");
-  await expect(page.getByRole("tab", { name: "自动化任务", exact: true })).toHaveCount(0);
-  await automations.click();
-  await expect(page).toHaveURL(/\/automations$/);
-  await expect(page.getByRole("heading", { name: "自动化任务", level: 1 })).toBeVisible();
-  await expect(automations).toHaveAttribute("aria-current", "page");
-  await expect(tasks).not.toHaveAttribute("aria-current");
+  await expect(navigation.getByRole("link", { name: "任务", exact: true })).toHaveCount(0);
+  const system = navigation.getByRole("link", { name: "系统任务", exact: true });
+  await system.click();
+  await expect(page).toHaveURL(/\/system-tasks$/);
+  await expect(page.getByRole("heading", { name: "系统任务", level: 1 })).toBeVisible();
+  await expect(system).toHaveAttribute("aria-current", "page");
   await expect(page.getByTestId("scheduled-run-row")).toHaveCount(2);
-  await expect(page.getByTestId("scheduled-run-row").first()).toContainText("已暂停");
-  await page.screenshot({ path: test.info().outputPath("automations-desktop.png") });
   await page.getByRole("button", { name: "例行检查", exact: true }).click();
-  await expect(page).toHaveURL(/\/automations\/[^/]+$/);
-  const detailUrl = page.url();
+  await expect(page).toHaveURL(/\/system-tasks\/[^/]+$/);
+  const url = page.url();
   await page.reload();
-  await expect(page).toHaveURL(detailUrl);
+  await expect(page).toHaveURL(url);
   await expect(page.getByRole("dialog")).toContainText("尚无运行记录");
   await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await expect(page).toHaveURL(/\/automations$/);
-  await expect(automations).toHaveAttribute("aria-current", "page");
-  await tasks.click();
-  await expect(page.getByTestId("task-history")).toBeVisible();
-  await expect(tasks).toHaveAttribute("aria-current", "page");
-  await expect(automations).not.toHaveAttribute("aria-current");
-  await page.screenshot({ path: test.info().outputPath("tasks-desktop.png") });
+  await expect(page).toHaveURL(/\/system-tasks$/);
+  await navigation.getByRole("link", { name: "聊天", exact: true }).click();
+  await expect(page.getByTestId("conversation")).toBeVisible();
 });
 
 test("creates, edits, enables and deletes a scheduled task through the native API", async ({
   page,
 }) => {
-  await page.goto("/automations");
+  await page.goto("/system-tasks");
   await page.getByRole("button", { name: "新建定时任务", exact: true }).click();
   const editor = page.getByRole("dialog");
   await editor.getByLabel("任务名称", { exact: true }).fill("工作日巡检");
@@ -92,30 +142,30 @@ test("creates, edits, enables and deletes a scheduled task through the native AP
 test("runs a paused shared task and links its native execution to the existing task view", async ({
   page,
 }) => {
-  await page.goto("/automations");
+  await page.goto("/system-tasks");
   const row = page.getByTestId("scheduled-run-row").filter({ hasText: "例行检查" });
   await row.getByRole("button", { name: "立即执行", exact: true }).click();
   const detail = page.getByRole("dialog");
   await expect(detail).toContainText("手动触发");
   await expect(detail).toContainText("系统只读身份");
   await detail.getByRole("link", { name: "查看执行", exact: true }).click();
-  await expect(page).toHaveURL(/\/tasks\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/chat\?task=[0-9a-f-]+$/);
   await expect(page.getByTestId("task-title")).toBeVisible();
-  await expect(page.getByTestId("task-history")).toContainText("检查工作负载健康");
+  await expect(page.getByTestId("chat-task-panel")).toContainText("检查工作负载健康");
 });
 
-test("lets another reader inspect shared task history and rejects direct scheduling mutations", async ({
+test("lets another platform administrator inspect shared task history and rejects direct scheduling mutations", async ({
   page,
   context,
 }) => {
   const schedule = (await api.listScheduledRuns({})).scheduledRuns[0];
   await api.triggerScheduledRun({ scheduledRunId: schedule.id, requestId: crypto.randomUUID() });
-  const token = await identityToken([], "automation-reader");
+  const token = await identityToken(["agentos-agents-manage"], "system-task-reader");
   await context.setExtraHTTPHeaders({ authorization: `Bearer ${token}` });
-  await page.goto(`/automations/${schedule.id}`);
+  await page.goto(`/system-tasks/${schedule.id}`);
   await expect(page.getByRole("dialog")).toContainText("手动触发");
   await page.getByRole("button", { name: "关闭", exact: true }).click();
-  await expect(page.getByRole("link", { name: "自动化任务", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "系统任务", exact: true })).toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -156,13 +206,13 @@ test("shows environment-owned event ingress accurately and keeps automation card
       },
     }),
   );
-  await page.goto("/tasks");
+  await page.goto("/chat");
   await page.getByRole("button", { name: "主导航", exact: true }).click();
   const menu = page.getByRole("dialog");
-  await menu.getByRole("link", { name: "自动化任务", exact: true }).click();
+  await menu.getByRole("link", { name: "系统任务", exact: true }).click();
   await expect(menu).toHaveCount(0);
-  await expect(page).toHaveURL(/\/automations$/);
-  await expect(page.getByRole("heading", { name: "自动化任务", level: 1 })).toBeVisible();
+  await expect(page).toHaveURL(/\/system-tasks$/);
+  await expect(page.getByRole("heading", { name: "系统任务", level: 1 })).toBeVisible();
   const event = page.getByTestId("event-trigger-row");
   await expect(event).toContainText("production");
   await expect(event).toContainText("平台入口未启用");
@@ -170,15 +220,15 @@ test("shows environment-owned event ingress accurately and keeps automation card
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: test.info().outputPath("automations-mobile.png") });
   await page.getByRole("button", { name: "主导航", exact: true }).click();
-  await expect(menu.getByRole("link", { name: "自动化任务", exact: true })).toHaveAttribute(
+  await expect(menu.getByRole("link", { name: "系统任务", exact: true })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await menu.getByRole("link", { name: "任务", exact: true }).click();
+  await menu.getByRole("link", { name: "聊天", exact: true }).click();
   await expect(menu).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: "任务", exact: true })).toBeVisible();
+  await expect(page.getByTestId("conversation")).toBeVisible();
   await page.getByRole("button", { name: "主导航", exact: true }).click();
-  await menu.getByRole("link", { name: "自动化任务", exact: true }).click();
+  await menu.getByRole("link", { name: "系统任务", exact: true }).click();
   await page.getByRole("button", { name: "新建定时任务", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

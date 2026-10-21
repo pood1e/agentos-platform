@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import type { ServiceImpl } from "@connectrpc/connect";
+import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import {
   type ConsoleService,
   WatchConversationResponseSchema,
@@ -8,6 +8,7 @@ import {
 import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
+import { isAdministrator } from "../../shared/permissions.js";
 import { type Executions, relatedExecutions } from "../authorization/executions.js";
 import type { BindingView } from "../governance/bindings.js";
 import { approvals } from "../governance/views.js";
@@ -132,7 +133,10 @@ export function consoleService({
     },
     async listTasks(request, context) {
       ready();
-      const visible = await history(context.values.get(requestIdentity));
+      const identity = context.values.get(requestIdentity);
+      if (request.systemOnly && !isAdministrator(identity))
+        throw new ConnectError("Permission denied", Code.PermissionDenied);
+      const visible = await history(identity, request.systemOnly);
       const metadata = await tags.read(visible.relations().roots.map((root) => root.id));
       return listTasks(visible, request, metadata);
     },

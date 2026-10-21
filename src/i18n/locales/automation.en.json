@@ -1,5 +1,5 @@
 {
-  "title": "Automations",
+  "title": "System tasks",
   "schedules": "Scheduled tasks",
   "name": "Task name",
   "agent": "Agent",
@@ -38,7 +38,7 @@
   "unnamed": "Unnamed task",
   "invalidConfig": "Check the cron expression, time zone and instructions.",
   "conflict": "The configuration has changed. Refresh before editing again.",
-  "notFound": "This automation is missing or no longer accessible.",
+  "notFound": "This system task is missing or no longer accessible.",
   "eventTriggers": "Event-triggered tasks",
   "environment": "Source environment",
   "eventIngress": "Event ingress",
@@ -54,5 +54,6 @@
     "TIMED_OUT": "Timed out"
   },
   "waitingToEnable": "Starts when enabled",
-  "moreActions": "More actions"
+  "moreActions": "More actions",
+  "updated": "Updated"
 }

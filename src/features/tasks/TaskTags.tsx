@@ -51,7 +51,9 @@ export function TaskTags({
     },
     onError: (error) => toast.error(t(errorKey(error, "task.tagsFailed"))),
   });
-  const choices = [...new Set([...pack.taskTags, ...available, ...draft.tags])].sort();
+  const choices = [
+    ...new Set([...pack.taskTags, ...available, ...task.tags, ...draft.tags]),
+  ].sort();
   const add = () => {
     const tag = custom.trim().normalize("NFC");
     if (!tag || draft.tags.length >= 32) return;

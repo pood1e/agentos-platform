@@ -3,7 +3,7 @@ import { ids, resetKagent, taskState } from "./kagent.js";
 
 test("keeps avatar instances through an observed work state change", async ({ page, request }) => {
   await resetKagent(request);
-  await page.goto(`/tasks/${ids.dispatchRoot}`);
+  await page.goto(`/chat?task=${ids.dispatchRoot}`);
   const avatar = page.locator('.react-flow [data-agent="agentos/coordinator"] .avatar').last();
   await expect(avatar).toBeVisible();
   await avatar.evaluate((node) => node.setAttribute("data-instance", "retained"));

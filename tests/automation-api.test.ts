@@ -11,6 +11,7 @@ import { ScheduledRunSchema } from "../gen/kagent/api/v1alpha1/scheduled_runs_pb
 import { automationPresets } from "../server/automation/presets.js";
 import { automationService } from "../server/automation/service.js";
 import { workspaceContext } from "../server/platform/access.js";
+import { allCapabilities } from "../shared/permissions.js";
 import { environment } from "./harness.js";
 
 const close: (() => void)[] = [];
@@ -54,11 +55,22 @@ function setup() {
   return { ...env, principal, client };
 }
 
-it("allows authenticated readers to inspect shared definitions and execution history while gating every mutation", async () => {
+it("allows every platform administrator to inspect shared system tasks and gates every mutation", async () => {
   const { client, principal } = setup();
   const schedule = (await client.listScheduledRuns({})).scheduledRuns[0];
   if (!schedule?.config) throw new Error("Missing preset");
-  principal.capabilities = [];
+  for (const capability of allCapabilities) {
+    principal.capabilities = [capability];
+    expect((await client.listScheduledRuns({})).scheduledRuns).toHaveLength(2);
+    expect((await client.getScheduledRun({ scheduledRunId: schedule.id })).scheduledRun?.id).toBe(
+      schedule.id,
+    );
+    expect(
+      (await client.listScheduledRunExecutions({ scheduledRunId: schedule.id })).executions,
+    ).toEqual([]);
+    expect((await client.listEventTriggers({})).eventTriggers).toHaveLength(1);
+  }
+  principal.capabilities = [Capability.AGENTS_MANAGE];
   principal.write = true;
   expect((await client.getScheduledRun({ scheduledRunId: schedule.id })).scheduledRun?.id).toBe(
     schedule.id,
@@ -96,6 +108,25 @@ it("allows authenticated readers to inspect shared definitions and execution his
     config: { ...schedule.config, paused: false },
   });
   expect(scheduledRun?.config?.paused).toBe(false);
+});
+
+it("denies ordinary users all system-task definitions, events and execution history even with target write access", async () => {
+  const { client, principal } = setup();
+  const schedule = (await client.listScheduledRuns({})).scheduledRuns[0];
+  const { execution } = await client.triggerScheduledRun({
+    scheduledRunId: schedule.id,
+    requestId: randomUUID(),
+  });
+  principal.capabilities = [];
+  principal.write = true;
+  for (const read of [
+    () => client.listScheduledRuns({}),
+    () => client.getScheduledRun({ scheduledRunId: schedule.id }),
+    () => client.listScheduledRunExecutions({ scheduledRunId: schedule.id }),
+    () => client.getScheduledRunExecution({ executionId: execution?.id }),
+    () => client.listEventTriggers({}),
+  ])
+    await expect(read()).rejects.toMatchObject({ code: Code.PermissionDenied });
 });
 
 it("keeps scheduling mutations, stale edits, idempotent triggers and retained history in the native service", async () => {

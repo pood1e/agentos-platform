@@ -3,10 +3,10 @@ import { client, ids, resetKagent } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
-test("edits preset and custom task tags, persists on reload and filters the task list", async ({
+test("edits preset and custom task tags, persists in the chat task panel and remains searchable", async ({
   page,
 }) => {
-  await page.goto(`/tasks/${ids.approvalRoot}`);
+  await page.goto(`/chat?task=${ids.approvalRoot}`);
   await page.getByRole("button", { name: "编辑标签", exact: true }).click();
   const editor = page.getByRole("dialog");
   await editor.getByRole("checkbox", { name: "分析", exact: true }).check();
@@ -19,17 +19,12 @@ test("edits preset and custom task tags, persists on reload and filters the task
   await expect.poll(async () => (await client.listTasks({ tags: ["analysis"] })).totalSize).toBe(1);
   await page.reload();
   await expect(page.getByTestId("task-tags")).toContainText("network");
-  await page.getByRole("combobox", { name: "筛选任务标签", exact: true }).click();
-  await page.getByRole("option", { name: "分析", exact: true }).click();
-  await expect(page).toHaveURL(/tag=analysis/);
-  await expect(page.getByTestId("task-history").getByTestId("history-entry")).toHaveCount(1);
-  await expect(page.getByTestId("task-history")).toContainText("network");
   await page.getByRole("button", { name: "编辑标签", exact: true }).click();
   await editor.getByRole("checkbox", { name: "分析", exact: true }).uncheck();
   await editor.getByRole("checkbox", { name: "network", exact: true }).uncheck();
   await editor.getByRole("button", { name: "保存", exact: true }).click();
   await expect.poll(async () => (await client.listTasks({ tags: ["analysis"] })).totalSize).toBe(0);
-  await expect(page.getByTestId("task-history").getByTestId("history-entry")).toHaveCount(0);
+  await expect(page.getByTestId("task-tags")).not.toContainText("network");
 });
 
 test("keeps long custom tags and the official tag editor inside a mobile viewport", async ({
@@ -42,7 +37,7 @@ test("keeps long custom tags and the official tag editor inside a mobile viewpor
     tags: ["标签".repeat(20)],
     tagsVersion: tasks[0].tagsVersion,
   });
-  await page.goto(`/tasks/${ids.approvalRoot}`);
+  await page.goto(`/chat?task=${ids.approvalRoot}`);
   await expect(page.getByTestId("task-tags")).toContainText("标签".repeat(20));
   await page.getByRole("button", { name: "编辑标签", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();

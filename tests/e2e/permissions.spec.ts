@@ -28,6 +28,7 @@ for (const capability of allCapabilities) {
         route.fulfill({ json: { candidates: [] } }),
       );
     await page.goto(pages.get(capability) ?? "/chat");
+    await expect(page.getByRole("link", { name: "系统任务", exact: true })).toBeVisible();
     if (pages.has(capability)) await expect(page.getByTestId("advanced")).toBeVisible();
     else await expect(page.getByTestId("advanced")).toHaveCount(0);
     for (const [required, path] of pages) {

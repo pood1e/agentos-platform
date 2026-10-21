@@ -125,7 +125,8 @@
     "tagsInvalid": "标签格式无效，每个标签最多 40 个字符，最多 32 个标签。",
     "tagsConflict": "标签已被其他人修改，请关闭后重新编辑。",
     "tagsDenied": "没有权限修改此任务的标签。",
-    "tagsFailed": "保存标签失败，请重试。"
+    "tagsFailed": "保存标签失败，请重试。",
+    "noPending": "暂无待审批任务"
   },
   "graph": {
     "title": "Agent 协作",
@@ -192,7 +193,10 @@
     "viewTask": "查看任务：{{title}}",
     "scrollLatest": "回到最新消息",
     "agent": "对话 Agent",
-    "executionDenied": "当前身份无权继续此任务，请新建对话。"
+    "executionDenied": "当前身份无权继续此任务，请新建对话。",
+    "taskDetails": "任务详情",
+    "relatedTasks": "相关任务",
+    "closeTask": "收起任务详情"
   },
   "pagination": {
     "previous": "上一页",

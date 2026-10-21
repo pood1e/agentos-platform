@@ -107,6 +107,8 @@ message ListTasksRequest {
       }
     }
   }];
+  // Only service-owned executions; requires platform administration access.
+  bool system_only = 7;
 }
 
 message ListTasksResponse {

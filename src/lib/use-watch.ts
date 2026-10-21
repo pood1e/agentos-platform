@@ -22,13 +22,10 @@ export function useWatch<T>(
   key: string | undefined,
   open: (signal: AbortSignal) => AsyncIterable<T>,
 ) {
-  const [value, setValue] = useState<T>();
-  const [error, setError] = useState("");
+  const [state, setState] = useState<{ key: string; value?: T; error: string }>();
   const latest = useRef(open);
   latest.current = open;
   useEffect(() => {
-    setValue(undefined);
-    setError("");
     if (!key) return;
     const controller = new AbortController();
     const signal = controller.signal;
@@ -36,16 +33,21 @@ export function useWatch<T>(
       for (let delay = 500; !signal.aborted; delay = Math.min(delay * 2, 10_000)) {
         try {
           for await (const message of latest.current(signal)) {
-            setValue(message);
-            setError("");
+            if (signal.aborted) return;
+            setState({ key, value: message, error: "" });
             connection.succeeded();
             delay = 500;
           }
         } catch (reason) {
           if (signal.aborted) return;
           const message = errorKey(reason, "connection.reconnecting");
-          setError(message);
-          if (!unreachable(reason)) return;
+          const retry = unreachable(reason);
+          setState((previous) => ({
+            key,
+            value: retry && previous?.key === key ? previous.value : undefined,
+            error: message,
+          }));
+          if (!retry) return;
           connection.failed(message);
         }
         await wait(delay, signal);
@@ -53,5 +55,8 @@ export function useWatch<T>(
     })();
     return () => controller.abort();
   }, [key]);
-  return { value, error };
+  return {
+    value: state?.key === key ? state?.value : undefined,
+    error: state?.key === key ? (state?.error ?? "") : "",
+  };
 }

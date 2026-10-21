@@ -10,6 +10,7 @@ import { executions } from "../server/authorization/executions.js";
 import { scheduledIdentity } from "../server/automation/identity.js";
 import { executionHistory } from "../server/console/history.js";
 import { messageCommands } from "../server/console/messages.js";
+import { allCapabilities } from "../shared/permissions.js";
 import { memoryStore } from "./fixtures/execution-store.js";
 import { environment } from "./harness.js";
 
@@ -133,7 +134,7 @@ it("keeps chat creation retries from claiming a reserved scheduled session", asy
   expect((await registry.resolve(session)).write).toBe(false);
 });
 
-it("makes native scheduled executions visible to readers while preserving personal history isolation", async () => {
+it("shares native system executions with every administrator while preserving personal history isolation", async () => {
   const { fake, sync, index, registry, session } = await setup();
   const privateSession = fake.createSession(
     { namespace: "agentos", name: "inspection" },
@@ -166,7 +167,19 @@ it("makes native scheduled executions visible to readers while preserving person
     credential: { case: "service", value: true },
   });
   const view = await executionHistory(index, registry)(reader);
-  expect(view.all().map((entry) => entry.contextId)).toContain(session.id);
+  expect(view.all().map((entry) => entry.contextId)).not.toContain(session.id);
   expect(view.all().map((entry) => entry.id)).not.toContain("personal-task");
+  for (const capability of allCapabilities) {
+    reader.capabilities = [capability];
+    const shared = await executionHistory(index, registry)(reader);
+    expect(shared.all().map((entry) => entry.contextId)).toContain(session.id);
+    expect(shared.all().map((entry) => entry.id)).not.toContain("personal-task");
+  }
+  alice.capabilities = allCapabilities;
+  const own = await executionHistory(index, registry)(alice);
+  expect(own.all().map((entry) => entry.id)).toContain("personal-task");
+  const system = await executionHistory(index, registry)(alice, true);
+  expect(system.all().map((entry) => entry.contextId)).toContain(session.id);
+  expect(system.all().map((entry) => entry.id)).not.toContain("personal-task");
   expect((await registry.resolve(session)).write).toBe(false);
 });

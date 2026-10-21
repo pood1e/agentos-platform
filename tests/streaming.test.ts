@@ -1,13 +1,91 @@
-import { create } from "@bufbuild/protobuf";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { create, fromJson } from "@bufbuild/protobuf";
+import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
+import { ArtifactSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
+import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { TaskIndex } from "../server/read-model/index.js";
+import { conversation } from "../server/read-model/views/conversation.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
+import { fixtureIds, fixtureIndex } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
 
 describe("streamed task content", () => {
+  it("retains visible assistant progress during tool calls and after the final reply without changing its message ID", async () => {
+    const index = fixtureIndex();
+    const task = create(TaskSchema, {
+      id: "streaming-chat",
+      contextId: fixtureIds.chatContext,
+      status: { state: TaskState.WORKING },
+      history: [
+        {
+          messageId: "question",
+          role: Role.USER,
+          parts: [{ content: { case: "text", value: "Check health" } }],
+        },
+      ],
+      artifacts: [
+        { artifactId: "progress", parts: [{ content: { case: "text", value: "先读取资源。" } }] },
+      ],
+    });
+    const view = async () => {
+      index.upsert(ingest(task, "agentos/assistant"));
+      const result = await conversation(
+        { index } as never,
+        { namespace: "agentos", name: "assistant" },
+        task.contextId,
+      );
+      return result.messages.find(
+        (message) => message.taskId === task.id && message.role === Role.AGENT,
+      );
+    };
+    const before = await view();
+    expect(before?.text).toBe("先读取资源。");
+    task.artifacts.push(
+      create(ArtifactSchema, {
+        artifactId: "call",
+        parts: [
+          {
+            metadata: { [partTypeKey]: "function_call" },
+            content: {
+              case: "data",
+              value: fromJson(ValueSchema, { id: "query", name: "k8s_get_resources", args: {} }),
+            },
+          },
+        ],
+      }),
+    );
+    expect(await view()).toMatchObject({ id: before?.id, text: "先读取资源。" });
+    expect(index.entry(task.id)?.answer).toBe("");
+    task.artifacts.push(
+      create(ArtifactSchema, {
+        artifactId: "result",
+        parts: [
+          {
+            metadata: { [partTypeKey]: "function_response" },
+            content: {
+              case: "data",
+              value: fromJson(ValueSchema, {
+                id: "query",
+                name: "k8s_get_resources",
+                response: { output: [] },
+              }),
+            },
+          },
+        ],
+      }),
+    );
+    expect(await view()).toMatchObject({ id: before?.id, text: "先读取资源。" });
+    task.artifacts.push(
+      create(ArtifactSchema, {
+        artifactId: "answer",
+        parts: [{ content: { case: "text", value: "资源健康。" } }],
+      }),
+    );
+    if (task.status) task.status.state = TaskState.COMPLETED;
+    expect(await view()).toMatchObject({ id: before?.id, text: "先读取资源。\n\n资源健康。" });
+    expect(index.entry(task.id)?.answer).toBe("资源健康。");
+  });
   it("observes a text replacement with the same status, history length and part count", () => {
     const task = create(TaskSchema, {
       id: "stream",

@@ -17,7 +17,11 @@ function EvidenceText({ text }: { text: string }) {
   for (const match of text.matchAll(tasks)) {
     parts.push(text.slice(offset, match.index));
     parts.push(
-      <Link key={match.index} to={`/tasks/${match[1]}`} title={match[1]}>
+      <Link
+        key={match.index}
+        to={`/chat?${new URLSearchParams({ task: match[1] })}`}
+        title={match[1]}
+      >
         {t("management.viewEvidenceTask")}
       </Link>,
     );

@@ -130,7 +130,8 @@
     "tagsInvalid": "Use up to 32 tags with 40 characters each.",
     "tagsConflict": "Tags changed. Close the editor and reopen it to try again.",
     "tagsDenied": "You cannot edit tags on this task.",
-    "tagsFailed": "Could not save tags. Try again."
+    "tagsFailed": "Could not save tags. Try again.",
+    "noPending": "No tasks awaiting approval"
   },
   "graph": {
     "title": "Agent collaboration",
@@ -197,7 +198,10 @@
     "viewTask": "View task: {{title}}",
     "scrollLatest": "Scroll to latest message",
     "agent": "Conversation agent",
-    "executionDenied": "This identity cannot continue the task. Start a new conversation."
+    "executionDenied": "This identity cannot continue the task. Start a new conversation.",
+    "taskDetails": "Task details",
+    "relatedTasks": "Related tasks",
+    "closeTask": "Close task details"
   },
   "pagination": {
     "previous": "Previous page",

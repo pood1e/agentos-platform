@@ -10,7 +10,7 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "kagent/api/v1alpha1/sessions.proto";
 
-// Root operation started by a person or delegated from a conversation.
+// Root operation, including conversation delegations and system executions.
 message TaskSummary {
   string id = 1;
   string title = 2;
@@ -20,6 +20,8 @@ message TaskSummary {
   repeated string tags = 6;
   // Opaque concurrency token for tag edits; independent of runtime execution versions.
   string tags_version = 7;
+  // Conversation that delegated this operation, when one exists.
+  string conversation_context_id = 8;
 }
 
 // Operation tree rooted at one task. Runs omit prompt, output and calls.

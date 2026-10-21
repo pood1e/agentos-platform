@@ -56,13 +56,12 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
               />
             </div>
           ) : (
-            <ComposerPrimitive.Send asChild>
+            <ComposerPrimitive.Send asChild disabled={dictating}>
               <Button
                 size="icon-sm"
                 aria-label={t(builder ? "configuration.generate" : "chat.send")}
                 title={t(builder ? "configuration.generate" : "chat.send")}
                 className="self-end rounded-full"
-                disabled={dictating}
               >
                 {chat.sending ? <LoaderCircle className="motion-safe:animate-spin" /> : <ArrowUp />}
               </Button>

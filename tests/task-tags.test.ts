@@ -137,6 +137,8 @@ it("requires the dedicated capability for shared task tags and reflects permissi
   const { client, detail, alice } = env;
   const id = "task-service:automation:example";
   try {
+    await expect(detail(id)).rejects.toMatchObject({ code: Code.NotFound });
+    alice.capabilities = [Capability.AGENTS_MANAGE];
     expect(await detail(id)).toMatchObject({ editTags: false });
     await expect(
       client.updateTaskTags({ taskId: id, tags: ["analysis"], tagsVersion: "0" }),
@@ -154,10 +156,10 @@ it("requires the dedicated capability for shared task tags and reflects permissi
     expect((await client.listTasks({ tags: ["analysis", "维护"] })).totalSize).toBe(1);
     expect((await client.listTasks({ tags: ["analysis", "absent"] })).totalSize).toBe(0);
     alice.capabilities = [];
-    expect(await detail(id)).toMatchObject({ editTags: false });
+    await expect(detail(id)).rejects.toMatchObject({ code: Code.NotFound });
     await expect(
       client.updateTaskTags({ taskId: id, tags: [], tagsVersion: "1" }),
-    ).rejects.toMatchObject({ code: Code.PermissionDenied });
+    ).rejects.toMatchObject({ code: Code.NotFound });
   } finally {
     env.sync.close();
   }

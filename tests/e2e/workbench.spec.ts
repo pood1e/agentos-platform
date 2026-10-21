@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
-import { client, decideApproval, resetKagent, startOperation } from "./kagent.js";
+import { client, decideApproval, ids, resetKagent, startOperation } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
@@ -10,8 +10,8 @@ test("completes chat delegation, approval, worker continuation and background kn
 }) => {
   await startOperation(page);
   await page.getByTestId("chat-task").click();
-  await expect(page).toHaveURL(/\/tasks\/[^/]+$/);
-  const id = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+  await expect(page).toHaveURL(/\/chat\/[^/?]+\?task=/);
+  const id = new URL(page.url()).searchParams.get("task") ?? "";
   await expect(page.getByTestId("approval-node")).toBeVisible();
   await page.getByRole("button", { name: "等待审批", exact: true }).click();
   const drawer = page.getByTestId("agent-drawer");
@@ -44,7 +44,7 @@ test("completes chat delegation, approval, worker continuation and background kn
 
 test("keeps mobile task details within the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/tasks");
+  await page.goto(`/chat?task=${ids.approvalRoot}`);
   await expect(page.locator(".react-flow")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.locator(".react-flow__node-agent").first().click();

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock3, Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { Navigate, useNavigate, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { ScheduledRun } from "../../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
-import { can } from "../../../shared/permissions.js";
+import { can, isAdministrator } from "../../../shared/permissions.js";
 import { useAccess } from "../../lib/access.js";
 import { automationClient } from "../../lib/console.js";
 import { ConfirmDelete, ResourceSheet } from "../management/ResourceDialog.js";
@@ -21,20 +21,23 @@ import { EventTriggers } from "./EventTriggers.js";
 import { ScheduleCard } from "./ScheduleCard.js";
 import { ScheduleDetail } from "./ScheduleDetail.js";
 import { ScheduleEditor } from "./ScheduleEditor.js";
+import { SystemExecutions } from "./SystemExecutions.js";
 
-export function AutomationsPage() {
+export function SystemTasksPage() {
   const { t } = useTranslation();
   const { scheduleId } = useParams();
   const navigate = useNavigate();
   const access = useAccess();
   const manage = can(access.data, Capability.TASKS_MANAGE);
+  const allowed = isAdministrator(access.data);
   const query = useQueryClient();
   const paging = usePaging();
   const [editing, setEditing] = useState<{ schedule?: ScheduledRun }>();
   const [deleting, setDeleting] = useState<ScheduledRun>();
   const [manualIds] = useState(() => new Map<string, string>());
   const list = useQuery({
-    queryKey: ["automations", "list", paging.pageToken],
+    enabled: allowed,
+    queryKey: ["system-tasks", "list", paging.pageToken],
     queryFn: ({ signal }) =>
       automationClient.listScheduledRuns(
         {
@@ -44,7 +47,7 @@ export function AutomationsPage() {
       ),
     refetchInterval: 5_000,
   });
-  const refresh = () => query.invalidateQueries({ queryKey: ["automations"] });
+  const refresh = () => query.invalidateQueries({ queryKey: ["system-tasks"] });
   const action = useMutation({
     mutationFn: async ({ schedule, run }: { schedule: ScheduledRun; run: boolean }) => {
       if (run) {
@@ -52,7 +55,7 @@ export function AutomationsPage() {
         manualIds.set(schedule.id, requestId);
         await automationClient.triggerScheduledRun({ scheduledRunId: schedule.id, requestId });
         manualIds.delete(schedule.id);
-        void navigate(`/automations/${schedule.id}`);
+        void navigate(`/system-tasks/${schedule.id}`);
       } else if (schedule.config)
         await automationClient.updateScheduledRun({
           scheduledRunId: schedule.id,
@@ -64,6 +67,8 @@ export function AutomationsPage() {
   });
   const next = list.data?.page?.nextPageToken;
   const page = paging.controls(next);
+  if (!access.data) return null;
+  if (!allowed) return <Navigate to="/chat" replace />;
   return (
     <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-px pb-2">
       <h1 className="text-xl font-semibold tracking-tight">{t("automation.title")}</h1>
@@ -110,7 +115,7 @@ export function AutomationsPage() {
               schedule={schedule}
               manage={manage}
               pending={action.isPending}
-              onOpen={() => void navigate(`/automations/${schedule.id}`)}
+              onOpen={() => void navigate(`/system-tasks/${schedule.id}`)}
               onRun={() => action.mutate({ schedule, run: true })}
               onToggle={() => action.mutate({ schedule, run: false })}
               onEdit={() => setEditing({ schedule })}
@@ -141,6 +146,7 @@ export function AutomationsPage() {
         )}
       </section>
       <EventTriggers />
+      <SystemExecutions />
       {editing && (
         <ResourceSheet
           open
@@ -162,7 +168,7 @@ export function AutomationsPage() {
         <ScheduleDetail
           key={scheduleId}
           id={scheduleId}
-          onClose={() => void navigate("/automations")}
+          onClose={() => void navigate("/system-tasks")}
         />
       )}
       {deleting && (

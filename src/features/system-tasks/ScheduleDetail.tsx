@@ -22,12 +22,12 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
   const { t } = useTranslation();
   const paging = usePaging(id);
   const detail = useQuery({
-    queryKey: ["automations", "detail", id],
+    queryKey: ["system-tasks", "detail", id],
     queryFn: ({ signal }) => automationClient.getScheduledRun({ scheduledRunId: id }, { signal }),
     refetchInterval: 5_000,
   });
   const history = useQuery({
-    queryKey: ["automations", "history", id, paging.pageToken],
+    queryKey: ["system-tasks", "history", id, paging.pageToken],
     queryFn: ({ signal }) =>
       automationClient.listScheduledRunExecutions(
         {
@@ -101,7 +101,7 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
                   {execution.taskId ? (
                     <Link
                       className="text-primary underline-offset-4 hover:underline"
-                      to={`/tasks/${execution.taskId}`}
+                      to={`/chat?${new URLSearchParams({ task: execution.taskId })}`}
                     >
                       {t("automation.viewExecution")}
                     </Link>
