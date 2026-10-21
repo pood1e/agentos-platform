@@ -6,12 +6,12 @@ import { expect, test } from "@playwright/test";
 import { TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { createdAtKey } from "../../server/read-model/decode/messages.js";
-import { fixtureTasks } from "../fixtures/kagent.js";
 import {
   bindSessions,
   client,
   ids,
   observeTask,
+  recordedTask,
   resetKagent,
   seedOperations,
   taskState,
@@ -22,8 +22,7 @@ test("keeps many executions in one instance and opens the exact linked continuat
   request,
 }) => {
   await resetKagent(request);
-  const source = fixtureTasks().find((task) => task.id === ids.dispatchRoot);
-  if (!source) throw new Error("dispatch fixture missing");
+  const source = await recordedTask(request, ids.dispatchRoot);
   const sessions = createClient(
     SessionService,
     createGrpcTransport({ baseUrl: "http://127.0.0.1:8093" }),
@@ -174,8 +173,7 @@ test("shows single-engineer results without a canvas and keeps tool details acce
 
 test("reveals the workflow when a running task gains collaboration", async ({ page, request }) => {
   await resetKagent(request);
-  const completed = fixtureTasks().find((task) => task.id === ids.dispatchRoot);
-  if (!completed) throw new Error("dispatch fixture missing");
+  const completed = await recordedTask(request, ids.dispatchRoot);
   const starting = clone(TaskSchema, completed);
   starting.artifacts = [];
   starting.status = create(TaskStatusSchema, { state: TaskState.WORKING });

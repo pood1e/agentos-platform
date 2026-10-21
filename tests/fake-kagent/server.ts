@@ -1,22 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:http2";
-import { create, fromJson, fromJsonString } from "@bufbuild/protobuf";
+import { create, fromJson, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
 import { ToolApprovalResponseSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
 import { hitlPayload, hitlReply } from "../../server/read-model/decode/hitl.js";
 import { fixtureExecutions } from "../fixtures/executions.js";
-import { fixtureAgents, fixtureSessions } from "../fixtures/kagent.js";
+import { fixtureAgents } from "../fixtures/kagent.js";
 import { templates } from "./catalog.js";
 import { FakeKagent } from "./kagent.js";
 import { kubernetesRequest } from "./kubernetes.js";
 import { kagentRoutes } from "./routes.js";
-import { pendingApprovalTasks, syntheticOperations } from "./scenario.js";
+import { freshScenario, syntheticOperations } from "./scenario.js";
 
 /** kagent gRPC endpoint backed by recorded tasks, for local development and browser tests. */
-const initial = () => ({ sessions: fixtureSessions(), tasks: pendingApprovalTasks() });
-const fake = new FakeKagent({ agents: fixtureAgents(), ...initial() });
+const fake = new FakeKagent({ agents: fixtureAgents(), ...freshScenario() });
 const execution = await fixtureExecutions();
 fake.executionCreated = execution.created;
 await execution.seed([...fake.sessions.values()], true);
@@ -30,13 +29,19 @@ createHttpServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost");
   if (request.method === "GET" && url.pathname === "/healthz") response.statusCode = 200;
   else if (request.method === "POST" && url.pathname === "/reset") {
-    fake.load(initial());
+    const scenario = freshScenario();
+    fake.load(scenario);
     await execution.seed([...fake.sessions.values()], true);
     fake.agents.splice(0, fake.agents.length, ...fixtureAgents());
     fake.resources.reset();
     fake.memory.reset();
     fake.templates.clear();
     for (const template of templates()) fake.templates.set(template.ref?.name ?? "", template);
+    response.setHeader("Content-Type", "application/json");
+    response.write(JSON.stringify(scenario.ids));
+  } else if (request.method === "GET" && url.pathname.startsWith("/tasks/")) {
+    response.setHeader("Content-Type", "application/json");
+    response.write(toJsonString(TaskSchema, fake.task(url.pathname.slice("/tasks/".length))));
   } else if (request.method === "POST" && url.pathname === "/bind") {
     const sessions = url.searchParams.getAll("session").map((id) => {
       const session = fake.sessions.get(id);
