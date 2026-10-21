@@ -18,6 +18,10 @@
 | 测评 | `evaluation.baseline`（proto `EvaluationBaseline`）、Langfuse 数据集与入口点 `agentos.evaluation.scorers` | 测评作业镜像、数据集冻结工具与内置评分器 | 样本、基线、Judge 提示与领域评分器 |
 | 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、调用指定 Agent、超时取消与事实发布 | 源事件映射、Agent 简报与事件命名空间 |
 
+## 任务标签
+
+`pack.json` 的 `taskTags` 提供可选标签建议，例如 `["rca", "auto-remediation"]`；标签仍可由用户自定义。`locales.<language>.translation.task.tagNames` 提供显示名称，缺失时显示原始值。每个任务最多 32 个标签，每个标签最多 40 个字符。预置建议由方案包维护，标签编辑、可见范围与筛选由平台负责。
+
 ## 角色标识
 
 角色键写在 `Agent` 的 `agentos.dev/role` 标签上，用于文案、头像与身份档案。平台保留以下角色键，其余由方案包定义：

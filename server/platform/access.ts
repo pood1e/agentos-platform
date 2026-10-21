@@ -13,7 +13,12 @@ import { requiredCapability } from "../authorization/permissions.js";
 export const accessProfile = createContextKey(create(AccessProfileSchema));
 export const requestIdentity = createContextKey(create(ExecutionIdentitySchema));
 
-const executionMethods = new Set(["SendMessage", "RespondInteraction", "CancelTask"]);
+const selfServiceMethods = new Set([
+  "SendMessage",
+  "RespondInteraction",
+  "CancelTask",
+  "UpdateTaskTags",
+]);
 
 export function workspaceContext(
   workspace: string,
@@ -36,7 +41,7 @@ export function workspaceContext(
       if (
         !(
           request.service.typeName === "agentos.console.v1.ConsoleService" &&
-          executionMethods.has(request.method.name)
+          selfServiceMethods.has(request.method.name)
         )
       ) {
         const capability = requiredCapability(request.method, request.message);

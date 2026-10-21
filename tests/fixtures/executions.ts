@@ -8,6 +8,7 @@ import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { executions } from "../../server/authorization/executions.js";
 import { jwtIdentity } from "../../server/authorization/oidc.js";
 import { executionStore } from "../../server/authorization/store.js";
+import { taskTagStore } from "../../server/tasks/store.js";
 import { allCapabilities } from "../../shared/permissions.js";
 import { identityIssuer, testToken } from "./identity.js";
 
@@ -18,6 +19,7 @@ export async function fixtureExecutions() {
   if (!uri) throw new Error("Browser tests require ci/with-postgres.sh");
   const store = await executionStore(uri, Buffer.from(executionKey, "base64"), "agentos");
   const sql = postgres(uri, { max: 1 });
+  await (await taskTagStore(uri, "agentos")).close();
   const key = createPublicKey(readFileSync("tests/fixtures/identity/tls.key")).export({
     format: "jwk",
   });
@@ -43,7 +45,10 @@ export async function fixtureExecutions() {
     created: async (session: Session, parent: Session) =>
       registry.bind(session, (await registry.resolve(parent)).identity, parent),
     seed: async (sessions: Session[], reset = false) => {
-      if (reset) await sql`delete from agentos_authorization.objects where workspace='agentos'`;
+      if (reset) {
+        await sql`delete from agentos_authorization.objects where workspace='agentos'`;
+        await sql`delete from agentos_console.task_tags where workspace='agentos'`;
+      }
       for (const session of sessions)
         await registry.bind(session, principal, session === sessions[0] ? undefined : sessions[0]);
     },

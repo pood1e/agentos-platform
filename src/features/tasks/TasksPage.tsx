@@ -26,6 +26,7 @@ import { StopTask } from "./StopTask.js";
 import { TaskConclusion } from "./TaskConclusion.js";
 import { TaskFilters } from "./TaskFilters.js";
 import { TaskList } from "./TaskList.js";
+import { TaskTags } from "./TaskTags.js";
 import { Timeline } from "./Timeline.js";
 
 async function* follow(taskId: string, signal: AbortSignal) {
@@ -40,10 +41,12 @@ function TaskView({
   detail,
   focusTaskId,
   openApproval,
+  availableTags,
 }: {
   detail: TaskDetail;
   focusTaskId: string;
   openApproval: boolean;
+  availableTags: string[];
 }) {
   const { t } = useTranslation();
   const focus =
@@ -132,6 +135,7 @@ function TaskView({
             summary && <StopTask taskId={summary.id} operate={detail.operate} />}
         </div>
       </div>
+      {summary && <TaskTags task={summary} editable={detail.editTags} available={availableTags} />}
       <Tabs value={view} onValueChange={setView}>
         <TabsList aria-label={t("task.view")}>
           <TabsTrigger value="graph">{t("graph.title")}</TabsTrigger>
@@ -196,7 +200,8 @@ export function TasksPage() {
       ? stateValue
       : undefined;
   const engineer = search.get("engineer") ?? "";
-  const paging = usePaging(`${state ?? ""}:${engineer}`, {
+  const tag = search.get("tag") ?? "";
+  const paging = usePaging(JSON.stringify([state, engineer, tag]), {
     value: search.get("query") ?? "",
     onChange: (value) => {
       const next = new URLSearchParams(search);
@@ -213,6 +218,7 @@ export function TasksPage() {
       query: paging.query,
       states: state === undefined ? [] : [state],
       engineer,
+      tags: tag ? [tag] : [],
     },
     { refetchInterval: 3_000, placeholderData: keepPreviousData },
   );
@@ -230,9 +236,11 @@ export function TasksPage() {
         <TaskFilters
           state={state}
           engineer={engineer}
+          tag={tag}
+          availableTags={list.data?.availableTags ?? []}
           onChange={(field, value) => {
             const next = new URLSearchParams(search);
-            if (value === "all") next.delete(field);
+            if (!value || (field !== "tag" && value === "all")) next.delete(field);
             else next.set(field, value);
             if (field === "state" && value !== "AWAITING_APPROVAL") next.delete("approval");
             navigate(`/tasks${next.size ? `?${next}` : ""}`);
@@ -253,6 +261,7 @@ export function TasksPage() {
           detail={detail}
           focusTaskId={selected}
           openApproval={search.get("approval") === "1"}
+          availableTags={list.data?.availableTags ?? []}
         />
       ) : (
         <p className="flex items-center justify-center text-sm text-muted-foreground">

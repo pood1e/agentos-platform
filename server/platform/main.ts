@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http2";
 import { resolve } from "node:path";
 import { create } from "@bufbuild/protobuf";
@@ -32,6 +33,7 @@ import { managementService } from "../management/service.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
+import { taskTagStore } from "../tasks/store.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { startContinuations } from "../team-sessions/continuation.js";
 import { sessionTools } from "../team-sessions/tools.js";
@@ -66,6 +68,13 @@ const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const access = toolBindings(kubeConfig, config.namespace);
 const execution = await executionRuntime(clients, config.namespace, access, identity);
+const tags = await taskTagStore(
+  process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
+  config.namespace,
+  process.env.AGENTOS_EXECUTION_DATABASE_CA
+    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
+    : undefined,
+);
 const operations = governanceConfig();
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
@@ -104,6 +113,7 @@ function services(
       roleDefaults: roleDefaults(),
       replaceTemplate: replace,
       pack,
+      tags,
       platformTools: bind,
       executions: execution.registry,
       entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
@@ -279,6 +289,7 @@ app.addHook("onClose", async () => {
   await new Promise<void>((resolve) => processor.close(() => resolve()));
   await new Promise<void>((resolve) => runtimeProcessor.close(() => resolve()));
   await execution.close();
+  await tags.close();
 });
 sync.start();
 // Engineer bindings follow the access policy, including after upgrades.

@@ -13,6 +13,7 @@ import {
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { SessionSchema } from "../../../gen/kagent/api/v1alpha1/sessions_pb.js";
 import { shortTitle } from "../../../shared/title.js";
+import { emptyTags, normalizeTags, type TaskTags } from "../../tasks/tags.js";
 import { systemRoles } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";
@@ -50,36 +51,53 @@ export function taskSummary(index: TaskIndex, tree: TaskTree): TaskSummary {
     prompt,
     state: treeState(tree),
     updatedAt: stamp(tree.updatedAt),
+    ...emptyTags(),
   });
 }
 
 /** Operations ordered by their latest activity, so moving work rises to the top. */
 export function listTasks(
   index: TaskIndex,
-  request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer">>,
+  request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer" | "tags">>,
+  metadata: ReadonlyMap<string, TaskTags> = new Map(),
 ) {
   const needle = request.query.trim().toLowerCase();
   const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
   const engineer = request.engineer ?? "";
-  const matches = index
-    .relations()
-    .roots.filter((root) => {
+  const tags = normalizeTags(request.tags ?? []);
+  const roots = index.relations().roots;
+  const availableTags = [
+    ...new Set(roots.flatMap((root) => metadata.get(root.id)?.tags ?? [])),
+  ].sort();
+  const matches = roots
+    .filter((root) => {
       if (!needle) return true;
       const prompt = initiator(index, root)?.prompt || root.prompt;
-      return `${prompt} ${root.id}`.toLowerCase().includes(needle);
+      return `${prompt} ${root.id} ${(metadata.get(root.id)?.tags ?? []).join(" ")}`
+        .toLowerCase()
+        .includes(needle);
     })
+    .filter((root) => tags.every((tag) => metadata.get(root.id)?.tags.includes(tag)))
     .flatMap((root) => taskTree(index, root.id) ?? [])
     .filter((tree) => !states.length || states.includes(treeState(tree)))
     .filter((tree) => !engineer || tree.entries.some((entry) => entry.agentId === engineer))
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0) || a.root.id.localeCompare(b.root.id));
-  const page = pageOf(matches, request, `tasks:${JSON.stringify([states, engineer])}`, (tree) => ({
-    id: tree.root.id,
-    time: tree.updatedAt ?? 0,
-  }));
+  const page = pageOf(
+    matches,
+    request,
+    `tasks:${JSON.stringify([states, engineer, tags])}`,
+    (tree) => ({
+      id: tree.root.id,
+      time: tree.updatedAt ?? 0,
+    }),
+  );
   return {
-    tasks: page.items.map((tree) => taskSummary(index, tree)),
+    tasks: page.items.map((tree) =>
+      Object.assign(taskSummary(index, tree), metadata.get(tree.root.id)),
+    ),
     totalSize: page.totalSize,
     nextPageToken: page.nextPageToken,
+    availableTags,
   };
 }
 

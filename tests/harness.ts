@@ -10,6 +10,7 @@ import { parseCatalog } from "../shared/tool-catalog.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
 import { fixtureAgents, fixtureSessions, fixtureTasks } from "./fixtures/kagent.js";
+import { memoryTaskTags } from "./fixtures/task-tags.js";
 
 const noop = () => {};
 export const silent = {
@@ -28,7 +29,7 @@ export function environment(tasks: Task[] = fixtureTasks()) {
   const fake = new FakeKagent({ agents: fixtureAgents(), sessions: fixtureSessions(), tasks });
   const clients = kagentClients(createRouterTransport(kagentRoutes(fake)));
   const sync = new KagentSync(clients, "agentos", new TaskIndex(), silent);
-  return { fake, clients, sync, index: sync.index };
+  return { fake, clients, sync, index: sync.index, tags: memoryTaskTags() };
 }
 
 export async function until(check: () => boolean | Promise<boolean>, timeout = 3_000) {

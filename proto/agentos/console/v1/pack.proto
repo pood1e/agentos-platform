@@ -12,6 +12,18 @@ message Pack {
   repeated ToolBrand tools = 3 [(buf.validate.field).repeated.max_items = 64];
   // i18next resources by language code, merged over the platform resources by namespace.
   map<string, google.protobuf.Struct> locales = 4 [(buf.validate.field).map.max_pairs = 8];
+  // Suggested task tags. Display names use task.tagNames in the pack's translation namespace.
+  repeated string task_tags = 5 [(buf.validate.field).repeated = {
+    max_items: 32
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 40
+        pattern: "^\\S(.*\\S)?$"
+      }
+    }
+  }];
 }
 
 message RolePresentation {

@@ -1,0 +1,54 @@
+import { Code } from "@connectrpc/connect";
+import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
+import type { UpdateTaskTagsRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
+import type { TaskDetail } from "../../gen/agentos/console/v1/task_pb.js";
+import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
+import { can } from "../../shared/permissions.js";
+import type { Executions } from "../authorization/executions.js";
+import type { KagentClients } from "../kagent/clients.js";
+import type { TaskEntry } from "../read-model/entry.js";
+import type { TaskIndex } from "../read-model/index.js";
+import { taskTree } from "../read-model/tree.js";
+import { taskSummary } from "../read-model/views/task.js";
+import { fail, notFound } from "../shared/errors.js";
+import { emptyTags, type TaskTagStore } from "../tasks/tags.js";
+
+export function taskTagCommands(
+  clients: KagentClients,
+  store: TaskTagStore,
+  executions?: Executions,
+) {
+  async function editable(root: TaskEntry, identity: ExecutionIdentity) {
+    if (!executions) return true;
+    try {
+      const { session } = await clients.sessions.getSession(
+        { sessionId: root.contextId },
+        { timeoutMs: 5_000 },
+      );
+      if (!session) return false;
+      const { binding } = await executions.record(session, true);
+      return binding.subject.startsWith("service:")
+        ? can(identity, Capability.TASKS_MANAGE)
+        : binding.subject === identity.subject;
+    } catch {
+      return false;
+    }
+  }
+  return {
+    async detail(task: TaskDetail, view: TaskIndex, identity: ExecutionIdentity) {
+      const root = view.entry(task.summary?.id ?? "");
+      if (!root || !task.summary) throw notFound("task.notFound");
+      Object.assign(task.summary, (await store.read([root.id])).get(root.id) ?? emptyTags());
+      task.editTags = await editable(root, identity);
+    },
+    async update(request: UpdateTaskTagsRequest, view: TaskIndex, identity: ExecutionIdentity) {
+      const root = view.operationRoot(request.taskId);
+      const tree = root && taskTree(view, root.id);
+      if (!tree) throw notFound("task.notFound");
+      if (!(await editable(tree.root, identity)))
+        throw fail(Code.PermissionDenied, "task.tagsDenied");
+      const tags = await store.save(tree.root.id, request.tags, request.tagsVersion);
+      return { task: Object.assign(taskSummary(view, tree), tags) };
+    },
+  };
+}

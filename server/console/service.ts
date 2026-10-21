@@ -21,10 +21,12 @@ import { engineers } from "../read-model/views/engineers.js";
 import { taskRun } from "../read-model/views/run.js";
 import { listTasks, taskDetail } from "../read-model/views/task.js";
 import { invalid, notFound, unavailable } from "../shared/errors.js";
+import type { TaskTagStore } from "../tasks/tags.js";
 import { approvalReferences } from "./approval-references.js";
 import { chatTarget, executionHistory } from "./history.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
+import { taskTagCommands } from "./task-tags.js";
 import type { TemplateWriter } from "./template-writer.js";
 import { watch } from "./watch.js";
 
@@ -37,6 +39,7 @@ export interface ConsoleDependencies {
   roleDefaults: RoleDefaults;
   replaceTemplate: TemplateWriter;
   pack: Pack;
+  tags: TaskTagStore;
   platformTools?: Parameters<typeof roleCommands>[5];
   executions?: Executions;
   entryAgent?: string;
@@ -60,6 +63,7 @@ export function consoleService({
   roleDefaults,
   replaceTemplate,
   pack,
+  tags,
   platformTools,
   executions,
   entryAgent = "assistant",
@@ -67,6 +71,7 @@ export function consoleService({
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const index = sync.index;
   const history = executionHistory(index, executions);
+  const taskTags = taskTagCommands(clients, tags, executions);
   const messages = messageCommands(sync, clients, operations, executions, authorizeTools);
   const roles = roleCommands(
     clients,
@@ -123,7 +128,16 @@ export function consoleService({
     },
     async listTasks(request, context) {
       ready();
-      return listTasks(await history(context.values.get(requestIdentity)), request);
+      const visible = await history(context.values.get(requestIdentity));
+      const metadata = await tags.read(visible.relations().roots.map((root) => root.id));
+      return listTasks(visible, request, metadata);
+    },
+    async updateTaskTags(request, context) {
+      ready();
+      const identity = context.values.get(requestIdentity);
+      const result = await taskTags.update(request, await history(identity), identity);
+      index.invalidate(result.task.id);
+      return result;
     },
     watchTask(request, context) {
       return watch(
@@ -134,6 +148,7 @@ export function consoleService({
           const view = await history(context.values.get(requestIdentity));
           const task = taskDetail(view, request.taskId);
           if (!task) throw notFound("task.notFound");
+          await taskTags.detail(task, view, context.values.get(requestIdentity));
           const entry = index.entry(request.taskId);
           task.operate =
             !!entry &&
