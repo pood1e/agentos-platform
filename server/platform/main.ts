@@ -291,7 +291,7 @@ const stopOperations = approvalCoordinator(sync, operations, app.log, async (con
   if (!session) throw new Error("Execution session is unavailable");
   await execution.authorizeTools(session, tools);
 });
-const processor = grpcServer({
+const processor = grpcServer(app, {
   routes: (router) => {
     const collaboration = collaborationGuardrails(evaluation.workspaces, execution);
     router.service(ExtMcp, {
@@ -306,14 +306,13 @@ const processor = grpcServer({
     });
   },
 });
-const runtimeProcessor = grpcServer({
+const runtimeProcessor = grpcServer(app, {
   routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
 });
 app.addHook("onClose", async () => {
   stopContinuations();
   stopOperations();
   sync.close();
-  await Promise.all([processor.close(), runtimeProcessor.close()]);
   await execution.close();
   await tags.close();
 });
