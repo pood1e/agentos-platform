@@ -12,6 +12,7 @@ export function speechSchema(source: JsonObject, t: TFunction): RJSFSchema {
       return;
     }
     delete value.$schema;
+    delete value.patternProperties;
     if (Array.isArray(value.anyOf)) {
       const variants = value.anyOf.map(object).find((item) => Array.isArray(item.enum));
       if (Array.isArray(variants?.enum)) {

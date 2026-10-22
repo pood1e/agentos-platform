@@ -38,6 +38,10 @@ export function SpeechEditor({
   const [enabled, setEnabled] = useState(!!provider);
   const [credential, setCredential] = useState("");
   const [clearCredential, setClearCredential] = useState(false);
+  const credentialConfigured =
+    kind === "transcription"
+      ? settings.transcriptionCredentialConfigured
+      : settings.synthesisCredentialConfigured;
   const [data, setData] = useState<JsonObject>((): JsonObject => {
     const { transcription, synthesis } = settings.configuration ?? {};
     if (kind === "transcription" && transcription)
@@ -104,14 +108,16 @@ export function SpeechEditor({
           onChange={(event) => setCredential(event.target.value)}
           placeholder={t("management.credentialKeep")}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setClearCredential((value) => !value)}
-        >
-          {t(clearCredential ? "management.cancel" : "management.speech.clearCredential")}
-        </Button>
+        {credentialConfigured && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setClearCredential((value) => !value)}
+          >
+            {t(clearCredential ? "management.cancel" : "management.speech.clearCredential")}
+          </Button>
+        )}
       </div>
       <Failure error={save.error} />
       <SaveButton pending={save.isPending} />
@@ -130,6 +136,13 @@ export function SpeechEditor({
       {enabled && source ? (
         <Form
           schema={speechSchema(source, t)}
+          uiSchema={{
+            "ui:order":
+              kind === "transcription"
+                ? ["endpoint", "model", "protocol", "languageCodes", "*"]
+                : ["endpoint", "protocol", "voices", "*"],
+            languageCodes: { items: { "ui:title": t("management.speech.fields.languageCode") } },
+          }}
           validator={validator}
           translateString={translateSchema(t)}
           formData={data}
