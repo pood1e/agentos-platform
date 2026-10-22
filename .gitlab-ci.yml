@@ -79,6 +79,7 @@ release:
     - build-image
     - build-evaluator
     - build-automation
+    - build-voice
     - job: build-controller
       optional: true
     - job: build-claude-harness

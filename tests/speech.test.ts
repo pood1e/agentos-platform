@@ -1,6 +1,6 @@
 import { createPublicKey } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { create } from "@bufbuild/protobuf";
+import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
 import Fastify from "fastify";
@@ -9,12 +9,14 @@ import type OpenAI from "openai";
 import { afterAll, beforeAll, expect, it, onTestFinished } from "vitest";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { SpeechConfigurationSchema } from "../gen/agentos/console/v1/speech_pb.js";
+import { StartSessionRequestSchema } from "../gen/agentos/voice/v1/worker_pb.js";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 import { jwtIdentity } from "../server/authorization/oidc.js";
 import { registerConsole } from "../server/console/app.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
+import { voiceCalls } from "../server/speech/calls.js";
 import { speechService } from "../server/speech/service.js";
 import { identityIssuer, identityToken } from "./fixtures/identity.js";
 import { environment, testBindings, until } from "./harness.js";
@@ -34,8 +36,26 @@ let providerURL = "";
 let canceled = false;
 let waiting = false;
 let synthesisCanceled = false;
+const rooms = new Map<string, string>();
+let voiceReady = true;
+let voiceRequest: ReturnType<typeof fromJson<typeof StartSessionRequestSchema>> | undefined;
 
 beforeAll(async () => {
+  provider.get("/readyz", (_request, reply) => (voiceReady ? {} : reply.code(503).send()));
+  provider.post<{ Body: JsonValue }>("/calls/start", (request, reply) => {
+    expect(request.headers.authorization).toBe("Bearer internal-voice");
+    voiceRequest = fromJson(StartSessionRequestSchema, request.body);
+    const previous = rooms.get(voiceRequest.callId);
+    if (previous && previous !== voiceRequest.owner) return reply.code(403).send();
+    rooms.set(voiceRequest.callId, voiceRequest.owner);
+    return { callId: voiceRequest.callId, url: "wss://voice.example.test", token: "room-scoped" };
+  });
+  provider.post<{ Body: { callId: string; owner: string } }>("/calls/end", (request, reply) => {
+    expect(request.headers.authorization).toBe("Bearer internal-voice");
+    if (rooms.get(request.body.callId) !== request.body.owner) return reply.code(403).send();
+    rooms.delete(request.body.callId);
+    return {};
+  });
   provider.addContentTypeParser(
     "multipart/form-data",
     { parseAs: "buffer" },
@@ -90,9 +110,19 @@ async function workbench(
   output = "",
   authenticated = true,
   voices = [{ languageCode: "en", model: output, voice: "multilingual" }],
+  worker = "",
 ) {
   const env = environment();
   const app = Fastify();
+  const source = async () => ({
+    resourceVersion: "1",
+    configuration: create(SpeechConfigurationSchema, {
+      transcription: input ? { endpoint: { baseUrl: providerURL }, model: input } : undefined,
+      synthesis: output ? { endpoint: { baseUrl: providerURL }, voices } : undefined,
+    }),
+    transcriptionCredential: "private-asr",
+    synthesisCredential: "private-tts",
+  });
   await registerConsole(app, {
     context: workspaceContext("agentos", "assistant", authenticated ? identity : undefined, origin),
     service: consoleService({
@@ -103,13 +133,7 @@ async function workbench(
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
       pack: loadPack(),
-      speech: speechService(async () => ({
-        resourceVersion: "1",
-        configuration: create(SpeechConfigurationSchema, {
-          transcription: input ? { endpoint: { baseUrl: providerURL }, model: input } : undefined,
-          synthesis: output ? { endpoint: { baseUrl: providerURL }, voices } : undefined,
-        }),
-      })),
+      speech: speechService(source, voiceCalls(source, worker, "internal-voice")),
     }),
     ready: () => true,
   });
@@ -127,6 +151,41 @@ async function workbench(
 const headers = { authorization: `Bearer ${token}`, origin };
 const audio = { contentType: "audio/webm;codecs=opus", data: new Uint8Array([1, 2, 3]) };
 
+it("keeps voice calls owned by the signed-in reader and provider credentials on the server", async () => {
+  const client = await workbench("asr", "tts", true, undefined, providerURL.replace(/\/v1$/, ""));
+  expect((await client.getSpeechCapabilities({}, { headers })).voiceCalls).toBe(true);
+  const callId = crypto.randomUUID();
+  const result = await client.startVoiceCall({ callId }, { headers });
+  expect(result.connection).toMatchObject({ callId, token: "room-scoped" });
+  expect(JSON.stringify(result)).not.toMatch(/private-|internal-voice|accessToken/);
+  expect(voiceRequest).toMatchObject({
+    transcriptionCredential: "private-asr",
+    synthesisCredential: "private-tts",
+  });
+  expect(voiceRequest?.owner).toMatch(/^[a-f0-9]{64}$/);
+  const other = { authorization: `Bearer ${await identityToken([], "another-reader")}`, origin };
+  await expect(client.startVoiceCall({ callId }, { headers: other })).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
+  await expect(client.endVoiceCall({ callId }, { headers: other })).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
+  await expect(
+    client.startVoiceCall(
+      { callId: crypto.randomUUID() },
+      { headers: { ...headers, origin: "https://foreign.test" } },
+    ),
+  ).rejects.toMatchObject({ code: Code.PermissionDenied });
+  await client.endVoiceCall({ callId }, { headers });
+  expect((await client.getAccessProfile({}, { headers })).profile?.write).toBe(false);
+  voiceReady = false;
+  try {
+    expect((await client.getSpeechCapabilities({}, { headers })).voiceCalls).toBe(false);
+  } finally {
+    voiceReady = true;
+  }
+});
+
 it.each([
   [false, false],
   [true, false],
@@ -142,6 +201,7 @@ it.each([
       transcription: input,
       synthesis: output,
       transcriptionLanguages: [],
+      voiceCalls: false,
     });
   },
 );

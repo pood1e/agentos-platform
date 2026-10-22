@@ -63,14 +63,15 @@ export function useChat(
   const pending = conversation?.pending ?? [];
   const blocked = !access.data || !conversation?.operate || send.isPending || busy || !ready;
 
-  async function submit(input: string): Promise<boolean> {
+  async function submit(input: string, messageId?: string): Promise<boolean> {
     const text = input.trim();
     if (blocked || !text) return false;
     // A retry of the same failed text keeps its message ID so kagent can deduplicate it.
     const id =
-      send.isError && outgoing?.contextId === contextId && outgoing.text === text
+      messageId ??
+      (send.isError && outgoing?.contextId === contextId && outgoing.text === text
         ? outgoing.id
-        : crypto.randomUUID();
+        : crypto.randomUUID());
     setOutgoing({ id, text, contextId });
     try {
       const response = await send.mutateAsync({ agent, contextId, messageId: id, text });
@@ -86,6 +87,7 @@ export function useChat(
 
   return {
     conversation,
+    outgoing,
     messages,
     ready,
     busy,

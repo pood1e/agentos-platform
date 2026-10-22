@@ -49,6 +49,16 @@ speech:
   transcription: {}
   synthesis: {}
   secretRef: ''
+voice:
+  enabled: false
+  image: ''
+  livekitURL: ws://agentos-livekit:80
+  publicURL: ''
+  secretRef: agentos-voice
+  capacity: 4
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: '2', memory: 2Gi}
 identity:
   mode: none
   issuer: ''

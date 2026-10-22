@@ -37,7 +37,7 @@ class PackageChartTest(unittest.TestCase):
         helm.chmod(0o700)
         self.digest = 'sha256:' + 'a' * 64
         self.metadata('build', self.digest)
-        self.workers = {name: f'sha256:{index}' + 'c' * 63 for index, name in enumerate(['evaluator', 'automation'])}
+        self.workers = {name: f'sha256:{index}' + 'c' * 63 for index, name in enumerate(['evaluator', 'automation', 'voice'])}
         for name, digest in self.workers.items():
             self.metadata(name + '-build', digest)
         versions = yaml.safe_load((ROOT / 'deploy/vars.yaml').read_text())

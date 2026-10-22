@@ -1,0 +1,108 @@
+{{- if .Values.voice.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "agentos.name" . }}-voice
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: voice
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: voice
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: voice
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: voice
+          image: {{ required "voice.image is required" .Values.voice.image | quote }}
+          ports: [{name: http, containerPort: 8080}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          env:
+            - {name: LIVEKIT_URL, value: {{ .Values.voice.livekitURL | quote }}}
+            - name: LIVEKIT_PUBLIC_URL
+              value: {{ default (printf "wss://%s/livekit" .Values.ingress.host) .Values.voice.publicURL | quote }}
+            - {name: VOICE_CAPACITY, value: {{ .Values.voice.capacity | quote }}}
+            - name: LIVEKIT_API_KEY
+              valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-key}}
+            - name: LIVEKIT_API_SECRET
+              valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-secret}}
+            - name: AGENTOS_VOICE_TOKEN
+              valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-token}}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - >-
+                  import os,urllib.request;
+                  urllib.request.urlopen(urllib.request.Request(
+                  'http://127.0.0.1:8080/readyz',
+                  headers={'Authorization':'Bearer '+os.environ['AGENTOS_VOICE_TOKEN']}),timeout=3).read()
+            periodSeconds: 10
+            timeoutSeconds: 4
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          resources: {{ toYaml .Values.voice.resources | nindent 12 }}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 128Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agentos.name" . }}-voice
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  ports: [{name: http, port: 8080, targetPort: http}]
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: voice
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "agentos.name" . }}-voice
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: voice
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: console
+      ports: [{port: 8080, protocol: TCP}]
+{{- end }}

@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import { ThemeProvider } from "next-themes";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import { defineConfig } from "vitest/config";
 import { themeOptions } from "./src/app/theme.js";
 
@@ -11,6 +12,20 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: "node_modules/@ricky0123/vad-web/dist/{vad.worklet.bundle.min.js,silero_vad_v6.onnx}",
+          dest: "speech-vad",
+          rename: { stripBase: true },
+        },
+        {
+          src: "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.{wasm,mjs}",
+          dest: "speech-vad",
+          rename: { stripBase: true },
+        },
+      ],
+    }),
     {
       name: "theme-bootstrap",
       transformIndexHtml: {

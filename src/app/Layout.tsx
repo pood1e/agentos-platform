@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import {
   addStaticKeyToTransport,
   TransportProvider,
@@ -20,7 +21,11 @@ export function Layout({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
   const outage = useOutage();
   const pack = usePack();
-  const access = useAccess();
+  const access = useAccess({ poll: true });
+  useEffect(() => {
+    if (access.error instanceof ConnectError && access.error.code === Code.Unauthenticated)
+      window.location.reload();
+  }, [access.error]);
   const transport = useTransport();
   const scope = JSON.stringify([access.data?.workspace, access.data?.subject]);
   const scopedTransport = useMemo(

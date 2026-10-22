@@ -40,3 +40,31 @@ build-automation:
   artifacts:
     paths: [.cache/automation-build-metadata.json]
     expire_in: 7 days
+
+voice-verify:
+  extends: .shell
+  stage: package
+  tags: [$AGENTOS_NATIVE_RUNNER]
+  needs: [python-verify, build-contracts]
+  before_script:
+    - unset AGENTOS_CI_ENVIRONMENT
+    - . ci/shell-env.sh
+    - . ci/python-env.sh ci/voice-tools-requirements.txt
+    - . ci/voice-env.sh
+  script:
+    - .cache/venv/bin/uv pip install --python .cache/voice-venv/bin/python --no-deps dist/contracts/agentos_contracts-*.whl
+    - .cache/voice-venv/bin/ruff check voice
+    - .cache/voice-venv/bin/ruff format --check voice
+    - .cache/voice-venv/bin/pytest -o 'pythonpath=voice' voice/tests
+
+build-voice:
+  extends: .build-python-image
+  needs: [voice-verify, build-contracts]
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/voice-image
+    AGENTOS_DOCKERFILE_DIR: voice
+    AGENTOS_IMAGE_SUFFIX: /voice
+    AGENTOS_BUILD_METADATA: .cache/voice-build-metadata.json
+  artifacts:
+    paths: [.cache/voice-build-metadata.json]
+    expire_in: 7 days

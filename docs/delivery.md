@@ -25,6 +25,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | --- | --- |
 | `AGENTOS_SHELL_RUNNER` | Shell runner 标签：Node.js 24、PostgreSQL 18 与 pgvector、Playwright Chromium、Python 3 |
 | `AGENTOS_COMPILER_RUNNER` | Go 测试与编译的 runner 标签 |
+| `AGENTOS_NATIVE_RUNNER` | 语音依赖验证的 runner 标签，CPU 支持官方原生库的指令集 |
 | `AGENTOS_BUILDKIT_RUNNER` | rootless BuildKit 的 runner 标签 |
 | `AGENTOS_BUILDKIT_IMAGE` | rootless BuildKit 镜像，按摘要固定 |
 | `AGENTOS_CI_ENVIRONMENT` | 可选，Shell 作业开始时加载的环境脚本，如工具链 `PATH` |

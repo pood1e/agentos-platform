@@ -601,6 +601,72 @@
           "pattern": "^https://"
         }
       }
+    },
+    "voice": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^$|^\\S+@sha256:[a-f0-9]{64}$"
+        },
+        "livekitURL": {
+          "type": "string",
+          "pattern": "^wss?://[^\\s]+$"
+        },
+        "publicURL": {
+          "type": "string",
+          "pattern": "^$|^wss://[^\\s]+$"
+        },
+        "secretRef": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": ["string", "number"]
+            }
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "image",
+        "livekitURL",
+        "publicURL",
+        "secretRef",
+        "capacity",
+        "resources"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "image": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "required": [
@@ -617,7 +683,8 @@
     "embedding",
     "gateway",
     "systemAgents",
-    "pack"
+    "pack",
+    "voice"
   ],
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$defs": {

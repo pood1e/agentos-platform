@@ -1,5 +1,6 @@
 import type { DictationAdapter } from "@assistant-ui/react";
 import { openTranscription, type TranscriptionConnection } from "./connection.js";
+import { detectSpeechEnd } from "./endpointing.js";
 
 const maxAudioBytes = 1024 * 1024;
 const maxRecordingMs = 60_000;
@@ -29,6 +30,7 @@ class Recording implements DictationAdapter.Session {
   private stream?: MediaStream;
   private timer?: ReturnType<typeof setTimeout>;
   private connection?: TranscriptionConnection;
+  private detector?: Awaited<ReturnType<typeof detectSpeechEnd>>;
   private size = 0;
   private stopping = false;
   private transcript = "";
@@ -45,6 +47,8 @@ class Recording implements DictationAdapter.Session {
 
   private releaseMicrophone() {
     clearTimeout(this.timer);
+    this.detector?.stop();
+    this.detector = undefined;
     for (const track of this.stream?.getTracks() ?? []) track.stop();
   }
 
@@ -73,6 +77,9 @@ class Recording implements DictationAdapter.Session {
         this.releaseMicrophone();
         return;
       }
+      this.detector = await detectSpeechEnd(this.stream, this.controller.signal, () => {
+        if (this.recorder?.state === "recording") void this.stop();
+      });
       this.connection = await this.connect(this.controller.signal, this.options.language);
       if (this.controller.signal.aborted) {
         this.connection.close();
@@ -142,6 +149,7 @@ class Recording implements DictationAdapter.Session {
       });
       this.recorder.addEventListener("error", () => this.failed());
       this.recorder.start(250);
+      void this.detector?.start().catch(() => this.failed());
       this.status = { type: "running" };
       this.options.onPhase?.("recording");
       this.timer = setTimeout(() => void this.stop(), maxRecordingMs);

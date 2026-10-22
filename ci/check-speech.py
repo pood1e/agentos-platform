@@ -83,4 +83,21 @@ for invalid in [
     )
     assert result.returncode != 0, f"Invalid speech values accepted: {invalid}"
 
-print("Speech configuration validation passed")
+for enabled in [False, True]:
+    voice = {"enabled": enabled, "image": "registry.example.com/voice@sha256:" + "1" * 64}
+    resources = [item for item in yaml.safe_load_all(subprocess.check_output(
+        [*base, "--set-json", f"{arguments.prefix}voice={json.dumps(voice)}"], text=True)) if item]
+    workers = [item for item in resources if item['kind'] == 'Deployment' and item['metadata']['name'].endswith('-voice')]
+    assert len(workers) == int(enabled)
+    console = next(item for item in resources if item['kind'] == 'Deployment' and item['metadata']['name'].endswith('-console'))
+    environment = {entry['name']: entry for entry in console['spec']['template']['spec']['containers'][0]['env']}
+    assert ('AGENTOS_VOICE_URL' in environment) == enabled
+    assert ('AGENTOS_VOICE_TOKEN' in environment) == enabled
+    if enabled:
+        pod = workers[0]['spec']['template']['spec']
+        assert not pod['automountServiceAccountToken']
+        assert pod['containers'][0]['securityContext']['readOnlyRootFilesystem']
+        assert pod['containers'][0]['readinessProbe']['exec']['command']
+        assert any(item['kind'] == 'NetworkPolicy' and item['metadata']['name'].endswith('-voice') for item in resources)
+
+print("Speech and voice configuration validation passed")

@@ -20,6 +20,8 @@ const selfServiceMethods = new Set([
   "UpdateTaskTags",
   "TranscribeAudio",
   "SynthesizeSpeech",
+  "StartVoiceCall",
+  "EndVoiceCall",
 ]);
 
 export function workspaceContext(

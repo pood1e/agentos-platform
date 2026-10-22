@@ -8,6 +8,7 @@ import {
   SpeechSynthesis_Protocol,
 } from "../../gen/agentos/console/v1/speech_pb.js";
 import { fail } from "../shared/errors.js";
+import { voiceCalls } from "./calls.js";
 import type { SpeechSource } from "./store.js";
 import { selectVoice } from "./voices.js";
 
@@ -73,6 +74,7 @@ export function speechService(
     configuration: create(SpeechConfigurationSchema),
     resourceVersion: "",
   }),
+  calls = voiceCalls(source),
 ) {
   return {
     getSpeechCapabilities: async () => {
@@ -81,8 +83,15 @@ export function speechService(
         transcription: !!configuration.transcription?.endpoint,
         synthesis: !!configuration.synthesis?.endpoint,
         transcriptionLanguages: configuration.transcription?.languageCodes ?? [],
+        voiceCalls:
+          !!configuration.transcription?.endpoint &&
+          !!configuration.synthesis?.endpoint &&
+          (await calls.available()),
       };
     },
+    startVoiceCall: (request, context) =>
+      calls.start(request.callId, request.languageCode, context),
+    endVoiceCall: (request, context) => calls.end(request.callId, context),
     async transcribeAudio(request, context) {
       const { configuration, transcriptionCredential } = await source();
       const transcription = providerClient(
@@ -116,16 +125,20 @@ export function speechService(
             model: voice.model,
             voice: voice.voice,
             input: request.text,
-            response_format: nemo ? "wav" : "mp3",
+            response_format: nemo ? "pcm" : "mp3",
             ...(nemo
-              ? { language: voice.languageCode === "ar" ? "ar-MSA" : voice.languageCode }
+              ? {
+                  language: voice.languageCode === "ar" ? "ar-MSA" : voice.languageCode,
+                  sample_rate: 22050,
+                }
               : {}),
           },
           { signal },
         ),
       );
-      let contentType =
-        response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "audio/mpeg";
+      let contentType = response.headers.get("content-type")?.trim().toLowerCase() ?? "audio/mpeg";
+      if (nemo && contentType.split(";")[0] === "audio/pcm")
+        contentType = "audio/pcm;rate=22050;channels=1";
       if (contentType === "audio/mp3") contentType = "audio/mpeg";
       if (!contentType.startsWith("audio/")) {
         await response.body?.cancel();
@@ -136,6 +149,10 @@ export function speechService(
     },
   } satisfies Pick<
     ServiceImpl<typeof ConsoleService>,
-    "getSpeechCapabilities" | "transcribeAudio" | "synthesizeSpeech"
+    | "getSpeechCapabilities"
+    | "transcribeAudio"
+    | "synthesizeSpeech"
+    | "startVoiceCall"
+    | "endVoiceCall"
   >;
 }

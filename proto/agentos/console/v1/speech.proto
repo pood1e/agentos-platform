@@ -73,7 +73,30 @@ message GetSpeechCapabilitiesResponse {
   bool transcription = 1;
   bool synthesis = 2;
   repeated string transcription_languages = 3;
+  bool voice_calls = 4;
 }
+
+message StartVoiceCallRequest {
+  string call_id = 1 [(buf.validate.field).string.uuid = true];
+  string language_code = 2 [(buf.validate.field).string.pattern = "^([a-z]{2,3})?$"];
+}
+
+message VoiceCallConnection {
+  string call_id = 1;
+  string url = 2;
+  string token = 3;
+  repeated string synthesis_languages = 4;
+}
+
+message StartVoiceCallResponse {
+  VoiceCallConnection connection = 1;
+}
+
+message EndVoiceCallRequest {
+  string call_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message EndVoiceCallResponse {}
 
 message TranscribeAudioRequest {
   google.api.HttpBody audio = 1 [

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package agentos.voice.v1;
+
+import "agentos/console/v1/speech.proto";
+
+// Internal requests carry provider credentials across the platform's private service boundary.
+message StartSessionRequest {
+  string call_id = 1;
+  string owner = 2;
+  string language_code = 3;
+  agentos.console.v1.SpeechConfiguration speech = 4;
+  string transcription_credential = 5;
+  string synthesis_credential = 6;
+}
+
+message EndSessionRequest {
+  string call_id = 1;
+  string owner = 2;
+}
+
+message VoiceTurn {
+  string id = 1;
+  string text = 2;
+}
+
+message VoiceEvent {
+  oneof event {
+    string input_started = 1;
+    VoiceTurn user_turn = 2;
+    string transcript = 3;
+  }
+}
+
+// Final assistant prose; tools and progress stay in the existing chat stream.
+message VoiceReply {
+  string turn_id = 1;
+  string text = 2;
+  string language_code = 3;
+}

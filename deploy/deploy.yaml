@@ -8,7 +8,7 @@
 
 - name: Prepare Helm
   ansible.builtin.import_playbook: helm.yaml
-  tags: [runtime, app, ingress]
+  tags: [runtime, app, ingress, voice]
 
 - name: Install platform runtime
   ansible.builtin.import_playbook: runtime.yaml
@@ -21,6 +21,10 @@
 - name: Configure domain and TLS
   ansible.builtin.import_playbook: ingress.yaml
   tags: [ingress]
+
+- name: Connect real-time voice transport
+  ansible.builtin.import_playbook: voice.yaml
+  tags: [voice, app]
 
 - name: Install application chart
   ansible.builtin.import_playbook: app.yaml

@@ -4,12 +4,14 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ConsoleService } from "../../../../gen/agentos/console/v1/console_service_pb.js";
 import { speechClient } from "../../../lib/console.js";
+import { useVoiceCallActive } from "../voice/context.js";
 import { type DictationPhase, RemoteDictationAdapter } from "./dictation.js";
 import { RemoteSpeechAdapter } from "./synthesis.js";
 
 export function useSpeech() {
   const { t, i18n } = useTranslation();
   const [phase, setPhase] = useState<DictationPhase>("idle");
+  const calling = useVoiceCallActive();
   const [selected, setSelected] = useState(() => localStorage.getItem("speech-language"));
   const capabilities = useQuery(
     ConsoleService.method.getSpeechCapabilities,
@@ -17,8 +19,8 @@ export function useSpeech() {
     { staleTime: 60_000 },
   );
   const onError = useCallback((key: string) => void toast.error(t(key)), [t]);
-  const transcription = capabilities.data?.transcription === true;
-  const synthesis = capabilities.data?.synthesis === true;
+  const transcription = !calling && capabilities.data?.transcription === true;
+  const synthesis = !calling && capabilities.data?.synthesis === true;
   const languages = capabilities.data?.transcriptionLanguages ?? [];
   const preferred = i18n.resolvedLanguage?.split("-")[0] ?? "";
   const language =

@@ -5,8 +5,13 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SynthesizeSpeechResponseSchema } from "../gen/agentos/console/v1/speech_pb.js";
 import type { TranscriptionConnection } from "../src/features/chat/speech/connection.js";
 import { RemoteDictationAdapter } from "../src/features/chat/speech/dictation.js";
+import { detectSpeechEnd } from "../src/features/chat/speech/endpointing.js";
 import { RemoteSpeechAdapter } from "../src/features/chat/speech/synthesis.js";
 import { until } from "./harness.js";
+
+vi.mock("../src/features/chat/speech/endpointing.js", () => ({
+  detectSpeechEnd: vi.fn(async () => ({ start: vi.fn(async () => {}), stop: vi.fn() })),
+}));
 
 const recorders: Recorder[] = [];
 const players: Player[] = [];
@@ -142,6 +147,34 @@ it("replaces the complete dictation draft across finalized ranges without insert
   expect(speech).toHaveBeenLastCalledWith({ transcript: "检查交换机。继续", isFinal: false });
   await session.stop();
   expect(speech).toHaveBeenLastCalledWith({ transcript: "检查交换机。继续", isFinal: true });
+});
+
+it("automatically drains the last audio and transcript when the speaker finishes", async () => {
+  const socket = connection();
+  const phase = vi.fn();
+  const session = new RemoteDictationAdapter(report, socket.open, { onPhase: phase }).listen();
+  const ended = vi.fn();
+  session.onSpeechEnd(ended);
+  await until(() => recorders.length === 1);
+  socket.emit("message", {
+    type: "Results",
+    channel: { alternatives: [{ transcript: "检查交换机" }] },
+  });
+  const endpoint = vi.mocked(detectSpeechEnd).mock.calls.at(-1)?.[2];
+  expect(endpoint).toBeDefined();
+  endpoint?.();
+  endpoint?.();
+  await until(() => session.status.type === "ended");
+  expect(socket.sendMedia).toHaveBeenCalledOnce();
+  expect(socket.sendCloseStream).toHaveBeenCalledOnce();
+  expect(ended).toHaveBeenCalledExactlyOnceWith({ transcript: "检查交换机" });
+  expect(phase.mock.calls.map(([value]) => value)).toEqual([
+    "starting",
+    "recording",
+    "processing",
+    "idle",
+  ]);
+  expect(report).not.toHaveBeenCalled();
 });
 
 it("exposes processing and allows cancellation without accepting late results", async () => {

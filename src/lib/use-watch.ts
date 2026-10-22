@@ -1,5 +1,5 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
-import { connection } from "./connection.js";
 import { errorKey, unreachable } from "./errors.js";
 
 const wait = (ms: number, signal: AbortSignal) =>
@@ -35,20 +35,20 @@ export function useWatch<T>(
           for await (const message of latest.current(signal)) {
             if (signal.aborted) return;
             setState({ key, value: message, error: "" });
-            connection.succeeded();
             delay = 500;
           }
         } catch (reason) {
           if (signal.aborted) return;
           const message = errorKey(reason, "connection.reconnecting");
-          const retry = unreachable(reason);
+          const disconnected = unreachable(reason);
+          const retry =
+            disconnected || (reason instanceof ConnectError && reason.code === Code.Internal);
           setState((previous) => ({
             key,
             value: retry && previous?.key === key ? previous.value : undefined,
             error: message,
           }));
           if (!retry) return;
-          connection.failed(message);
         }
         await wait(delay, signal);
       }
