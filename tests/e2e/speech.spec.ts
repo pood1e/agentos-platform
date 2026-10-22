@@ -1,4 +1,5 @@
-import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, fromJson, toBinary } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { expect, test } from "@playwright/test";
 import { ArtifactSchema, TaskState } from "../../gen/a2a_pb.js";
 import {
@@ -202,7 +203,15 @@ test("speaks only the completed answer and preserves visible progress across too
         parts: [
           {
             metadata: { [partTypeKey]: kind },
-            content: { case: "text", value: "raw-tool-payload" },
+            content: {
+              case: "data",
+              value: fromJson(ValueSchema, {
+                id: "speech-check",
+                name: "k8s_get_resources",
+                args: { namespace: "operations" },
+                response: { output: "raw-tool-payload" },
+              }),
+            },
           },
         ],
       }),
@@ -226,6 +235,10 @@ test("speaks only the completed answer and preserves visible progress across too
   await expect(page.getByRole("button", { name: "朗读", exact: true })).toHaveCount(0);
   if (task.status) task.status.state = TaskState.COMPLETED;
   await observeTask(request, task);
+  const call = answer.getByTestId("chat-tool-call");
+  await expect(call).toHaveCount(1);
+  await call.getByRole("button").click();
+  await expect(call.getByTestId("call-output")).toContainText("raw-tool-payload");
   await answer.getByRole("button", { name: "朗读", exact: true }).click();
   await expect.poll(() => spoken).toEqual(["检查结果\n\n所有资源健康。\n\n查看报告"]);
   await page.reload();

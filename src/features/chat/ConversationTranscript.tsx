@@ -14,6 +14,7 @@ import { Approval } from "../shared/Approval.js";
 import { Avatar } from "../shared/Avatar.js";
 import { appearance, StatusIcon } from "../status/Status.js";
 import { SpeechOutput } from "./speech/SpeechControls.js";
+import { ToolFallback } from "./ToolFallback.js";
 import type { Chat } from "./use-chat.js";
 
 const plugins = [remarkGfm];
@@ -58,7 +59,15 @@ function ConversationMessage({
           }
         >
           <MessagePrimitive.Parts
-            components={user ? undefined : { Text: AssistantText, Reasoning: AssistantText }}
+            components={
+              user
+                ? undefined
+                : {
+                    Text: AssistantText,
+                    Reasoning: AssistantText,
+                    tools: { Fallback: ToolFallback },
+                  }
+            }
           />
         </div>
         {!user && <SpeechOutput />}
