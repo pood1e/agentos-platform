@@ -1,22 +1,16 @@
 import { once } from "node:events";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { create } from "@bufbuild/protobuf";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { expect, it, onTestFinished } from "vitest";
 import WebSocket from "ws";
-import { SpeechTranscriptionSchema } from "../gen/agentos/console/v1/speech_pb.js";
+import { SpeechConfigurationSchema } from "../gen/agentos/console/v1/speech_pb.js";
 import { registerTranscription } from "../server/speech/transcription.js";
 
 const origin = "https://agentos.example.test";
 const headers = { origin, authorization: "Bearer reader-token" };
 
 async function workbench(configured = true) {
-  const directory = mkdtempSync(join(tmpdir(), "agentos-transcription-"));
-  const key = join(directory, "key");
-  writeFileSync(key, "private-provider-token", { mode: 0o600 });
   const provider = Fastify();
   await provider.register(websocket);
   const requests: { authorization?: string; query: unknown; frames: string[] }[] = [];
@@ -37,13 +31,19 @@ async function workbench(configured = true) {
   const app = Fastify();
   await registerTranscription(
     app,
-    configured
-      ? create(SpeechTranscriptionSchema, {
-          endpoint: { baseUrl: `${providerURL}/v1`, apiKeyFile: key },
-          model: "configured-model",
-          languageCodes: ["zh", "en", "ar"],
-        })
-      : undefined,
+    async () => ({
+      resourceVersion: "1",
+      transcriptionCredential: "private-provider-token",
+      configuration: create(SpeechConfigurationSchema, {
+        transcription: configured
+          ? {
+              endpoint: { baseUrl: `${providerURL}/v1` },
+              model: "configured-model",
+              languageCodes: ["zh", "en", "ar"],
+            }
+          : undefined,
+      }),
+    }),
     async (request) => {
       if (
         request.get("origin") !== origin ||
@@ -56,7 +56,6 @@ async function workbench(configured = true) {
   onTestFinished(async () => {
     await app.close();
     await provider.close();
-    rmSync(directory, { recursive: true, force: true });
   });
   return { app, url: `${url.replace("http:", "ws:")}/speech/v1/listen`, requests };
 }

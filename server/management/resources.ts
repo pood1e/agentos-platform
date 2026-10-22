@@ -33,7 +33,7 @@ export interface ResourceStore {
   credential(name: string, value: string, owner: JsonObject): Promise<void>;
 }
 
-function translated(error: unknown): never {
+export function resourceError(error: unknown): never {
   if (error instanceof ConnectError) throw error;
   if (error instanceof ApiException) {
     if (error.code === 409) throw conflict("configuration.conflict");
@@ -61,14 +61,14 @@ export function resourceStore(
         const list: { items: JsonObject[] } = await custom.listNamespacedCustomObject(params(kind));
         return list.items;
       } catch (error) {
-        return translated(error);
+        return resourceError(error);
       }
     },
     async get(kind, name) {
       try {
         return await custom.getNamespacedCustomObject({ ...params(kind), name });
       } catch (error) {
-        return translated(error);
+        return resourceError(error);
       }
     },
     async save(kind, resource, create) {
@@ -90,7 +90,7 @@ export function resourceStore(
               fieldValidation: "Strict",
             });
       } catch (error) {
-        return translated(error);
+        return resourceError(error);
       }
     },
     async validate(kind, resource, create = true) {
@@ -108,7 +108,7 @@ export function resourceStore(
             name: String(object(resource.metadata).name ?? ""),
           });
       } catch (error) {
-        translated(error);
+        resourceError(error);
       }
     },
     async remove(kind, name, version) {
@@ -119,7 +119,7 @@ export function resourceStore(
           body: { preconditions: { resourceVersion: version } },
         });
       } catch (error) {
-        return translated(error);
+        return resourceError(error);
       }
     },
     async readCatalog() {
@@ -130,7 +130,7 @@ export function resourceStore(
           version: cm.metadata?.resourceVersion ?? "",
         };
       } catch (error) {
-        return translated(error);
+        return resourceError(error);
       }
     },
     async writeCatalog(value, version) {
@@ -153,7 +153,7 @@ export function resourceStore(
         });
         return cm.metadata?.resourceVersion ?? "";
       } catch (error) {
-        return translated(error);
+        return resourceError(error);
       }
     },
     async credential(name, value, owner) {
@@ -196,7 +196,7 @@ export function resourceStore(
           });
         } else await core.createNamespacedSecret({ namespace, body });
       } catch (error) {
-        translated(error);
+        resourceError(error);
       }
     },
   };

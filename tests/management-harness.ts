@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
-import { KubeConfig } from "@kubernetes/client-node";
+import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import { resourceStore } from "../server/management/resources.js";
 import { managementService } from "../server/management/service.js";
+import { speechSettingsStore } from "../server/speech/store.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
 import { environment } from "./harness.js";
 
@@ -26,6 +27,7 @@ export async function managementEnvironment() {
   });
   const store = resourceStore(config, "agentos", "agentos-skills");
   const dependencies = {
+    speech: speechSettingsStore(config.makeApiClient(CoreV1Api), "agentos", "agentos-speech"),
     store,
     clients: env.clients,
     gateway: {

@@ -1,19 +1,17 @@
-import { readFileSync } from "node:fs";
 import websocket from "@fastify/websocket";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import WebSocket from "ws";
-import {
-  type SpeechTranscription,
-  SpeechTranscription_Protocol,
-} from "../../gen/agentos/console/v1/speech_pb.js";
+import { SpeechTranscription_Protocol } from "../../gen/agentos/console/v1/speech_pb.js";
+import type { SpeechSettings, SpeechSource } from "./store.js";
 import { whisperLiveKitResult } from "./whisperlivekit.js";
 
 export async function registerTranscription(
   app: FastifyInstance,
-  configuration: SpeechTranscription | undefined,
+  source: SpeechSource,
   authorize: (headers: Headers) => Promise<void>,
 ) {
   const clients = new Set<WebSocket>();
+  const snapshots = new WeakMap<FastifyRequest, SpeechSettings>();
   await app.register(websocket, { options: { maxPayload: 256 * 1024 } });
   app.addHook("onClose", async () => {
     for (const client of clients) client.close(1001);
@@ -23,7 +21,8 @@ export async function registerTranscription(
     {
       websocket: true,
       preValidation: async (request, reply) => {
-        if (!configuration?.endpoint) return reply.code(503).send();
+        const settings = await source();
+        if (!settings.configuration.transcription?.endpoint) return reply.code(503).send();
         const headers = new Headers();
         for (const [key, value] of Object.entries(request.headers))
           if (typeof value === "string") headers.set(key, value);
@@ -33,9 +32,12 @@ export async function registerTranscription(
           return reply.code(403).send();
         }
         if (clients.size >= 4) return reply.code(429).send();
+        snapshots.set(request, settings);
       },
     },
     (socket, request) => {
+      const settings = snapshots.get(request);
+      const configuration = settings?.configuration.transcription;
       if (!configuration?.endpoint) return socket.close(1011);
       if (clients.size >= 4) return socket.close(1008, "Transcription capacity reached");
       clients.add(socket);
@@ -51,7 +53,7 @@ export async function registerTranscription(
       const language = new URL(request.url, "http://localhost").searchParams.get("language");
       if (language && configuration.languageCodes.includes(language))
         url.searchParams.set("language", language);
-      const token = endpoint.apiKeyFile ? readFileSync(endpoint.apiKeyFile, "utf8").trim() : "";
+      const token = settings?.transcriptionCredential ?? "";
       const upstream = new WebSocket(url, {
         headers: token ? { Authorization: `${native ? "Bearer" : "Token"} ${token}` } : {},
         handshakeTimeout: 10_000,

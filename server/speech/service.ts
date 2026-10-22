@@ -1,15 +1,14 @@
-import { readFileSync } from "node:fs";
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import OpenAI, { toFile } from "openai";
 import type { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import {
-  type SpeechConfiguration,
   SpeechConfigurationSchema,
   type SpeechEndpoint,
   SpeechSynthesis_Protocol,
 } from "../../gen/agentos/console/v1/speech_pb.js";
 import { fail } from "../shared/errors.js";
+import type { SpeechSource } from "./store.js";
 import { selectVoice } from "./voices.js";
 
 const formats = new Map([
@@ -21,11 +20,11 @@ const formats = new Map([
 ]);
 const maxSpeechBytes = 16 * 1024 * 1024;
 
-function providerClient(provider?: SpeechEndpoint) {
+function providerClient(provider?: SpeechEndpoint, credential?: string) {
   if (!provider) return undefined;
   return new OpenAI({
     baseURL: provider.baseUrl,
-    apiKey: provider.apiKeyFile ? readFileSync(provider.apiKeyFile, "utf8").trim() : "not-required",
+    apiKey: credential || "not-required",
     maxRetries: 0,
     timeout: 60_000,
   });
@@ -70,17 +69,26 @@ async function upstream<T>(
 }
 
 export function speechService(
-  configuration: SpeechConfiguration = create(SpeechConfigurationSchema),
+  source: SpeechSource = async () => ({
+    configuration: create(SpeechConfigurationSchema),
+    resourceVersion: "",
+  }),
 ) {
-  const transcription = providerClient(configuration.transcription?.endpoint);
-  const synthesis = providerClient(configuration.synthesis?.endpoint);
   return {
-    getSpeechCapabilities: () => ({
-      transcription: !!transcription,
-      synthesis: !!synthesis,
-      transcriptionLanguages: configuration.transcription?.languageCodes ?? [],
-    }),
+    getSpeechCapabilities: async () => {
+      const { configuration } = await source();
+      return {
+        transcription: !!configuration.transcription?.endpoint,
+        synthesis: !!configuration.synthesis?.endpoint,
+        transcriptionLanguages: configuration.transcription?.languageCodes ?? [],
+      };
+    },
     async transcribeAudio(request, context) {
+      const { configuration, transcriptionCredential } = await source();
+      const transcription = providerClient(
+        configuration.transcription?.endpoint,
+        transcriptionCredential,
+      );
       if (!transcription || !configuration.transcription)
         throw fail(Code.FailedPrecondition, "speech.unavailable");
       const audio = request.audio;
@@ -97,6 +105,8 @@ export function speechService(
       });
     },
     async *synthesizeSpeech(request, context) {
+      const { configuration, synthesisCredential } = await source();
+      const synthesis = providerClient(configuration.synthesis?.endpoint, synthesisCredential);
       const voice = selectVoice(request.text, configuration.synthesis?.voices ?? []);
       if (!synthesis || !voice) throw fail(Code.FailedPrecondition, "speech.unavailable");
       const nemo = configuration.synthesis?.protocol === SpeechSynthesis_Protocol.NEMO;

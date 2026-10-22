@@ -1,6 +1,7 @@
 """Validate optional speech configuration through platform and solution charts."""
 
 import argparse
+import base64
 import json
 import subprocess
 
@@ -44,46 +45,24 @@ for input_enabled, output_enabled, authenticated in [
     pod = deployment["spec"]["template"]["spec"]
     container = pod["containers"][0]
     environment = {item["name"]: item for item in container["env"]}
-    configs = [
-        item
-        for item in resources
-        if item["kind"] == "ConfigMap" and item["metadata"]["name"].endswith("-speech")
-    ]
-    enabled = input_enabled or output_enabled
-    assert bool(configs) == enabled
-    assert ("AGENTOS_SPEECH_CONFIG" in environment) == enabled
-    if not enabled:
-        assert not any(item["name"].startswith("speech") for item in pod["volumes"])
-        continue
-    effective = json.loads(configs[0]["data"]["configuration.json"])
+    secret = next(
+        item for item in resources
+        if item["kind"] == "Secret" and item["metadata"]["name"].endswith("-speech")
+    )
+    assert environment["AGENTOS_SPEECH_SECRET"]["value"] == secret["metadata"]["name"]
+    assert "AGENTOS_SPEECH_CONFIG" not in environment
+    assert not any(item["name"].startswith("speech") for item in pod.get("volumes", []))
+    assert not any(item["name"].startswith("speech") for item in container.get("volumeMounts", []))
+    effective = json.loads(base64.b64decode(secret["data"]["configuration.json"]))
     assert ("transcription" in effective) == input_enabled
     assert ("synthesis" in effective) == output_enabled
-    assert "checksum/speech" in deployment["spec"]["template"]["metadata"]["annotations"]
-    volume = next(item for item in pod["volumes"] if item["name"] == "speech")
-    credentials = [item["secret"] for item in volume["projected"]["sources"] if "secret" in item]
-    assert bool(credentials) == authenticated
-    for kind in ("transcription", "synthesis"):
-        if kind in effective:
-            assert ("apiKeyFile" in effective[kind]["endpoint"]) == authenticated
-    if input_enabled:
-        assert effective["transcription"]["model"] == transcription["model"]
-        assert effective["transcription"]["protocol"] == transcription["protocol"]
-    if output_enabled:
-        assert effective["synthesis"]["voices"] == synthesis["voices"]
-        assert effective["synthesis"]["protocol"] == synthesis["protocol"]
+    assert ("credentials-secret" in secret["data"]) == authenticated
     if authenticated:
-        expected = {
-            kind + "-api-key" for kind in ("transcription", "synthesis") if kind in effective
-        }
-        secret = credentials[0]
-        assert secret["name"] == "speech-credentials"
-        assert {item["key"] for item in secret["items"]} == expected
-        assert all(item["path"] == "credentials/" + item["key"] for item in secret["items"])
-        assert all(
-            item["readOnly"]
-            for item in container["volumeMounts"]
-            if item["name"].startswith("speech")
-        )
+        assert base64.b64decode(secret["data"]["credentials-secret"]).decode() == "speech-credentials"
+    if input_enabled:
+        assert effective["transcription"] == transcription
+    if output_enabled:
+        assert effective["synthesis"] == synthesis
 
 for invalid in [
     {"transcription": {**transcription, "protocol": "unknown"}},

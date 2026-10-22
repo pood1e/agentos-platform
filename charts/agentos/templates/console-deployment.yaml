@@ -24,9 +24,6 @@ spec:
         app.kubernetes.io/component: console
       annotations:
         checksum/tools: {{ include (print $.Template.BasePath "/execution-tools.yaml") . | sha256sum }}
-        {{- if or .Values.speech.transcription .Values.speech.synthesis }}
-        checksum/speech: {{ include (print $.Template.BasePath "/speech-config.yaml") . | sha256sum }}
-        {{- end }}
         {{- if .Values.evaluation.enabled }}
         checksum/evaluation: {{ include (print $.Template.BasePath "/evaluation-config.yaml") . | sha256sum }}
         {{- end }}
@@ -75,9 +72,7 @@ spec:
             {{- end }}
             - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
             - {name: AGENTOS_EVENT_AUTOMATION_ENABLED, value: {{ .Values.automation.enabled | quote }}}
-            {{- if or .Values.speech.transcription .Values.speech.synthesis }}
-            - {name: AGENTOS_SPEECH_CONFIG, value: /etc/agentos-speech/configuration.json}
-            {{- end }}
+            - {name: AGENTOS_SPEECH_SECRET, value: {{ include "agentos.name" . }}-speech}
             {{- if .Values.global.agentos.environments }}
             - {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
             {{- end }}
@@ -118,9 +113,6 @@ spec:
           securityContext:
             {{- include "agentos.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
-            {{- if or .Values.speech.transcription .Values.speech.synthesis }}
-            - {name: speech, mountPath: /etc/agentos-speech, readOnly: true}
-            {{- end }}
             - {name: runtime-identity, mountPath: /etc/agentos-runtime, readOnly: true}
             - {name: execution-database, mountPath: /etc/agentos-database, readOnly: true}
             {{- if .Values.evaluation.enabled }}
@@ -180,23 +172,6 @@ spec:
             {{- include "agentos.containerSecurityContext" . | nindent 12 }}
         {{- end }}
       volumes:
-        {{- if or .Values.speech.transcription .Values.speech.synthesis }}
-        - name: speech
-          projected:
-            defaultMode: 0440
-            sources:
-              - configMap: {name: {{ include "agentos.name" . }}-speech}
-              {{- if .Values.speech.secretRef }}
-              - secret:
-                  name: {{ .Values.speech.secretRef }}
-                  items:
-                    {{- range $kind := list "transcription" "synthesis" }}
-                    {{- if index $.Values.speech $kind }}
-                    - {key: {{ $kind }}-api-key, path: credentials/{{ $kind }}-api-key}
-                    {{- end }}
-                    {{- end }}
-              {{- end }}
-        {{- end }}
         - name: execution-database
           secret:
             secretName: {{ .Values.execution.databaseCASecret }}

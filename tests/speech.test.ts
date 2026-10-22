@@ -103,12 +103,13 @@ async function workbench(
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
       pack: loadPack(),
-      speech: speechService(
-        create(SpeechConfigurationSchema, {
+      speech: speechService(async () => ({
+        resourceVersion: "1",
+        configuration: create(SpeechConfigurationSchema, {
           transcription: input ? { endpoint: { baseUrl: providerURL }, model: input } : undefined,
           synthesis: output ? { endpoint: { baseUrl: providerURL }, voices } : undefined,
         }),
-      ),
+      })),
     }),
     ready: () => true,
   });
@@ -272,10 +273,10 @@ it("rejects empty, oversized and unsupported input before calling the provider",
 it("redacts upstream failures and returns a localized error", async () => {
   const client = await workbench("unavailable", "unavailable");
   for (const request of [
-    client.transcribeAudio({ audio }, { headers }),
-    synthesize(client, { text: "test" }, { headers }),
+    () => client.transcribeAudio({ audio }, { headers }),
+    () => synthesize(client, { text: "test" }, { headers }),
   ]) {
-    const error = await request.catch((reason: unknown) => reason);
+    const error = await request().catch((reason: unknown) => reason);
     expect(error).toMatchObject({ code: Code.Unavailable });
     expect(String(error)).not.toContain("credential");
     if (!(error instanceof ConnectError)) throw new Error("Expected a ConnectError");

@@ -16,7 +16,7 @@
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/knowledge` | 团队知识检索 |
-| `server/speech`、`src/features/chat/speech` | 可选语音配置、音频 API 适配与 assistant-ui 听写、朗读 |
+| `server/speech`、`src/features/chat/speech` | 语音设置 Secret、音频 API 适配与 assistant-ui 听写、朗读 |
 | `server/team-sessions` | 协作 MCP：发现 Agent、创建与续接会话、知识检索、角色起草 |
 | `server/governance` | 工具分级与身份绑定、原生暂停与外部审批协议的协调 |
 | `server/shared`、`shared/` | 服务端公共配置、错误与前后端共用模型 |

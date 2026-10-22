@@ -3,7 +3,7 @@ import { createServer } from "node:http2";
 import { resolve } from "node:path";
 import { create } from "@bufbuild/protobuf";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { KubeConfig } from "@kubernetes/client-node";
+import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
@@ -35,8 +35,8 @@ import { managementService } from "../management/service.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
-import { speechConfig } from "../speech/config.js";
 import { speechService } from "../speech/service.js";
+import { speechSettingsStore } from "../speech/store.js";
 import { registerTranscription } from "../speech/transcription.js";
 import { taskTagStore } from "../tasks/store.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
@@ -90,9 +90,13 @@ const operations = governanceConfig();
 const automation = automationPresets(config.namespace, packRoot);
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
-const speechConfiguration = speechConfig();
-const speech = speechService(speechConfiguration);
-await registerTranscription(app, speechConfiguration.transcription, async (headers) => {
+const speechSettings = speechSettingsStore(
+  kubeConfig.makeApiClient(CoreV1Api),
+  config.namespace,
+  process.env.AGENTOS_SPEECH_SECRET ?? `${process.env.AGENTOS_RELEASE ?? "agentos"}-speech`,
+);
+const speech = speechService(speechSettings.load);
+await registerTranscription(app, speechSettings.load, async (headers) => {
   const origin = process.env.AGENTOS_ORIGIN;
   if (origin && headers.get("origin") !== origin) throw new Error("Invalid origin");
   if (identity) await identity(headers);
@@ -144,6 +148,7 @@ function services(
       store: resources,
       gateway,
       knowledge,
+      speech: speechSettings,
     }),
   };
 }
