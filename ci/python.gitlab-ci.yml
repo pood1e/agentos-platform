@@ -43,19 +43,19 @@ build-automation:
 
 voice-verify:
   extends: .shell
-  stage: verify
-  tags: [$AGENTOS_COMPILER_RUNNER]
+  stage: package
+  tags: [$AGENTOS_NATIVE_RUNNER]
+  needs: [python-verify, build-contracts]
   before_script:
+    - unset AGENTOS_CI_ENVIRONMENT
     - . ci/shell-env.sh
     - . ci/python-env.sh ci/voice-tools-requirements.txt
     - . ci/voice-env.sh
-    - npm ci --prefer-offline
   script:
-    - ci/tools.sh protoc
-    - node_modules/.bin/buf generate --template buf.python.gen.yaml
+    - .cache/venv/bin/uv pip install --python .cache/voice-venv/bin/python --no-deps dist/contracts/agentos_contracts-*.whl
     - .cache/voice-venv/bin/ruff check voice
     - .cache/voice-venv/bin/ruff format --check voice
-    - .cache/voice-venv/bin/pytest -o 'pythonpath=gen/python voice' voice/tests
+    - .cache/voice-venv/bin/pytest -o 'pythonpath=voice' voice/tests
 
 build-voice:
   extends: .build-python-image
