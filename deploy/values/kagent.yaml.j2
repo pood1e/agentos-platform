@@ -41,8 +41,8 @@ substrateWorkerPool:
   replicas: 3
   sandboxClass: microvm
   workerImage: "{{ substrate_microvm_image }}"
+  serviceAccount: {create: false, name: kagent-workers}
   template:
-    serviceAccountName: kagent-workers
     nodeSelector:
       ate.dev/substrate-version: "v{{ substrate_version }}"
     resources:
