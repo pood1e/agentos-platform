@@ -44,7 +44,9 @@ describe("streamed task content", () => {
       );
     };
     const before = await view();
-    expect(before).toMatchObject({ text: "", progress: "先读取资源。" });
+    expect(before?.parts.map((part) => part.content)).toEqual([
+      { case: "progress", value: "先读取资源。" },
+    ]);
     task.artifacts.push(
       create(ArtifactSchema, {
         artifactId: "call",
@@ -59,7 +61,13 @@ describe("streamed task content", () => {
         ],
       }),
     );
-    expect(await view()).toMatchObject({ id: before?.id, text: "", progress: "先读取资源。" });
+    expect(await view()).toMatchObject({
+      id: before?.id,
+      parts: [
+        before?.parts[0],
+        expect.objectContaining({ content: expect.objectContaining({ case: "toolCall" }) }),
+      ],
+    });
     expect(index.entry(task.id)?.answer).toBe("");
     task.artifacts.push(
       create(ArtifactSchema, {
@@ -79,24 +87,36 @@ describe("streamed task content", () => {
         ],
       }),
     );
-    expect(await view()).toMatchObject({ id: before?.id, text: "", progress: "先读取资源。" });
+    expect(await view()).toMatchObject({
+      id: before?.id,
+      parts: [
+        before?.parts[0],
+        expect.objectContaining({ content: expect.objectContaining({ case: "toolCall" }) }),
+      ],
+    });
     task.artifacts.push(
       create(ArtifactSchema, {
         artifactId: "answer",
         parts: [{ content: { case: "text", value: "资源健康。" } }],
       }),
     );
-    expect(await view()).toMatchObject({
-      id: before?.id,
-      text: "",
-      progress: "先读取资源。\n\n资源健康。",
-    });
+    const draft = await view();
+    expect(draft?.parts.map((part) => part.content.case)).toEqual([
+      "progress",
+      "toolCall",
+      "progress",
+    ]);
+    expect(draft?.parts[0]).toEqual(before?.parts[0]);
     if (task.status) task.status.state = TaskState.COMPLETED;
-    expect(await view()).toMatchObject({
-      id: before?.id,
-      text: "资源健康。",
-      progress: "先读取资源。",
-    });
+    const completed = await view();
+    expect(completed?.id).toBe(before?.id);
+    expect(completed?.parts.map((part) => part.id)).toEqual(draft?.parts.map((part) => part.id));
+    expect(completed?.parts.map((part) => part.content.case)).toEqual([
+      "progress",
+      "toolCall",
+      "text",
+    ]);
+    expect(completed?.parts.at(-1)?.content.value).toBe("资源健康。");
     expect(index.entry(task.id)?.answer).toBe("资源健康。");
   });
   it("observes a text replacement with the same status, history length and part count", () => {

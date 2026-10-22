@@ -1,10 +1,10 @@
 import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
-import { Role, type Task } from "../../gen/a2a_pb.js";
+import type { Task } from "../../gen/a2a_pb.js";
 import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { type ToolCall, ToolCallSchema } from "../../gen/agentos/execution/v1/task_pb.js";
-import { intentKey, text, timeline } from "./decode/messages.js";
+import { intentKey, taskSources, text, timeline } from "./decode/messages.js";
 import {
   type DelegationRef,
   delegationRef,
@@ -12,6 +12,7 @@ import {
   type ToolEvent,
   toolBaseName,
   toolEvent,
+  toolEventId,
   toolOutcome,
 } from "./decode/tools.js";
 import { taskActivity, terminal } from "./state.js";
@@ -43,20 +44,7 @@ export interface CallEntry {
 
 function drafts(task: Task): Draft[] {
   const calls = new Map<string, Draft>();
-  const sources = [
-    ...task.history.map((message) => ({
-      key: `message:${message.messageId}`,
-      parts: message.parts,
-      at: timeline(message.metadata),
-      narration: message.role === Role.AGENT,
-    })),
-    ...task.artifacts.map((artifact) => ({
-      key: `artifact:${artifact.artifactId}`,
-      parts: artifact.parts,
-      at: timeline(artifact.metadata),
-      narration: true,
-    })),
-  ];
+  const sources = taskSources(task);
   let narration = "";
   const replies = new Set<string>();
   const observed = new Set<string>();
@@ -69,7 +57,7 @@ function drafts(task: Task): Draft[] {
       const event: ToolEvent | undefined = toolEvent(part);
       if (!event) continue;
       // Events without an ID stay separate; a tool name cannot identify concurrent calls.
-      const id = event.id || `unpaired:${source.key}:${index}:${event.kind}`;
+      const id = toolEventId(event, source.key, index);
       const previous = calls.get(id);
       const name = event.name || previous?.name || "";
       if (toolBaseName(name) === "adk_request_confirmation") continue;

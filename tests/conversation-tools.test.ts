@@ -54,18 +54,21 @@ it("projects calls without narration while running, then reloads their native re
       await env.sync.refresh();
       const chat = await conversation(env.sync, undefined, ids.chatContext);
       const reply = chat.messages.find((message) => message.role === Role.AGENT);
-      expect(reply).toMatchObject({ id: "answer:tool-only", text: "", progress: "" });
-      expect(reply?.calls).toHaveLength(1);
-      expect(reply?.calls[0]).toMatchObject({
+      expect(reply?.id).toBe("answer:tool-only");
+      expect(reply?.parts).toHaveLength(1);
+      const call = reply?.parts[0]?.content;
+      expect(call?.case).toBe("toolCall");
+      if (call?.case !== "toolCall") throw new Error("Expected a tool call");
+      expect(call.value).toMatchObject({
         id: "resource-read",
         name: "k8s_get_resources",
         state: completed ? ActivityState.SUCCEEDED : ActivityState.WORKING,
       });
-      expect(toJson(ValueSchema, reply?.calls[0]?.args ?? create(ValueSchema))).toEqual({
+      expect(toJson(ValueSchema, call.value.args ?? create(ValueSchema))).toEqual({
         namespace: "operations",
       });
       if (completed)
-        expect(toJson(ValueSchema, reply?.calls[0]?.output ?? create(ValueSchema))).toEqual({
+        expect(toJson(ValueSchema, call.value.output ?? create(ValueSchema))).toEqual({
           healthy: true,
         });
     } finally {
@@ -79,7 +82,9 @@ it("loads tool payloads only from the visible conversation entries", async () =>
   const fullTask = vi.fn(async (id: string) => fixtureTasks().find((task) => task.id === id));
   const chat = await conversation({ index, fullTask } as never, undefined, ids.chatContext);
   expect(
-    chat.messages.find((message) => message.role === Role.AGENT)?.calls.length,
+    chat.messages
+      .find((message) => message.role === Role.AGENT)
+      ?.parts.filter((part) => part.content.case === "toolCall").length,
   ).toBeGreaterThan(0);
   expect(fullTask.mock.calls.map(([id]) => id)).toEqual([ids.chat]);
 });
@@ -106,13 +111,15 @@ it.each([
     const message = create(ChatMessageSchema, {
       id: "reply",
       role: Role.AGENT,
-      progress: "正在检查资源",
-      text: "检查完成",
-      calls: [call],
+      parts: [
+        { id: "progress", content: { case: "progress", value: "正在检查资源" } },
+        { id: "call", content: { case: "toolCall", value: call } },
+        { id: "answer", content: { case: "text", value: "检查完成" } },
+      ],
     });
     const converted = convertMessage(message);
     expect(converted.content).toEqual([
-      { type: "reasoning", text: message.progress },
+      { id: "progress", type: "reasoning", text: "正在检查资源" },
       expect.objectContaining({
         type: "tool-call",
         toolCallId: call.id,
@@ -120,7 +127,7 @@ it.each([
         artifact: call,
         isError: error ?? false,
       }),
-      { type: "text", text: message.text },
+      { id: "answer", type: "text", text: "检查完成" },
     ]);
     const part = Array.isArray(converted.content) ? converted.content[1] : undefined;
     expect(part.argsText).not.toContain("private-token");

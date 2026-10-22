@@ -18,14 +18,21 @@ import { ToolFallback } from "./ToolFallback.js";
 import type { Chat } from "./use-chat.js";
 
 const plugins = [remarkGfm];
-const AssistantText = () => (
-  <MarkdownTextPrimitive
-    remarkPlugins={plugins}
-    skipHtml
-    smooth={false}
-    className="agent-markdown text-sm text-foreground"
-  />
-);
+const AssistantText = ({ id }: { id?: string }) => {
+  const containerProps = {
+    className: "agent-markdown text-sm text-foreground",
+    "data-testid": "chat-text-part",
+    "data-part-id": id,
+  };
+  return (
+    <MarkdownTextPrimitive
+      containerProps={containerProps}
+      remarkPlugins={plugins}
+      skipHtml
+      smooth={false}
+    />
+  );
+};
 
 function ConversationMessage({
   message,

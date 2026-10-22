@@ -11,22 +11,35 @@ import { active, awaiting } from "../status/activity.js";
 export const convertMessage = (message: ChatMessage): ThreadMessageLike => ({
   id: message.id,
   role: message.role === Role.USER ? "user" : "assistant",
-  content: [
-    ...(message.progress ? [{ type: "reasoning" as const, text: message.progress }] : []),
-    ...message.calls.map((call) => ({
-      type: "tool-call" as const,
-      toolCallId: call.id,
-      toolName: call.name,
-      argsText: pretty(call.args) ?? "",
-      result: call.output
-        ? redact(toJson(ValueSchema, call.output))
-        : active(call.state) || awaiting(call.state)
-          ? undefined
-          : null,
-      isError: call.state === ActivityState.FAILED || call.state === ActivityState.REJECTED,
-      isPreliminary: active(call.state) || awaiting(call.state),
-      artifact: call,
-    })),
-    ...(message.text ? [{ type: "text" as const, text: message.text }] : []),
-  ],
+  content: message.parts.flatMap(
+    (part): Exclude<ThreadMessageLike["content"], string>[number][] => {
+      const content = part.content;
+      if (content.case === "text" || content.case === "progress")
+        return [
+          {
+            id: part.id,
+            type: content.case === "text" ? "text" : "reasoning",
+            text: content.value,
+          },
+        ];
+      if (content.case !== "toolCall") return [];
+      const call = content.value;
+      return [
+        {
+          type: "tool-call" as const,
+          toolCallId: call.id,
+          toolName: call.name,
+          argsText: pretty(call.args) ?? "",
+          result: call.output
+            ? redact(toJson(ValueSchema, call.output))
+            : active(call.state) || awaiting(call.state)
+              ? undefined
+              : null,
+          isError: call.state === ActivityState.FAILED || call.state === ActivityState.REJECTED,
+          isPreliminary: active(call.state) || awaiting(call.state),
+          artifact: call,
+        },
+      ];
+    },
+  ),
 });

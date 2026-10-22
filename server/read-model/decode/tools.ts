@@ -19,6 +19,9 @@ export interface ToolEvent {
   response?: JsonValue;
 }
 
+export const toolEventId = (event: ToolEvent, source: string, position: number) =>
+  event.id || `unpaired:${source}:${position}:${event.kind}`;
+
 export function toolEvent(part: Part): ToolEvent | undefined {
   const kind = text(part.metadata?.[partTypeKey]);
   if ((kind !== "function_call" && kind !== "function_response") || part.content.case !== "data")

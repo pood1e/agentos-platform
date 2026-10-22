@@ -1,8 +1,9 @@
 import { create, fromJson, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
-import { Role, TaskState } from "../../../gen/a2a_pb.js";
+import { Role } from "../../../gen/a2a_pb.js";
 import {
   type ChatMessage,
+  type ChatMessagePart,
   ChatMessageSchema,
   type Conversation,
   ConversationSchema,
@@ -14,7 +15,6 @@ import {
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import type { ToolCall } from "../../../gen/agentos/execution/v1/task_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
 import { pool } from "../../kagent/clients.js";
 import { agentKey } from "../agents.js";
@@ -28,6 +28,7 @@ import { type PageRequest, pageOf } from "../page.js";
 import { awaiting } from "../state.js";
 import type { KagentSync } from "../sync.js";
 import { busy, foreground, taskTree } from "../tree.js";
+import { chatParts } from "./chat-parts.js";
 import { runState, stamp } from "./runs.js";
 import { taskSummary } from "./task.js";
 
@@ -88,15 +89,11 @@ function operations(index: TaskIndex, entry: TaskEntry) {
 }
 
 async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]) {
-  const calls = new Map<string, ToolCall[]>();
-  await pool(
-    entries.filter((entry) => entry.calls.length > 0),
-    4,
-    async (entry) => {
-      const task = await sync.fullTask(entry.id);
-      if (task) calls.set(entry.id, toolCalls(task, entry.agentId, approvals(task)));
-    },
-  );
+  const parts = new Map<string, ChatMessagePart[]>();
+  await pool(entries, 4, async (entry) => {
+    const task = await sync.fullTask(entry.id);
+    if (task) parts.set(entry.id, chatParts(task, entry.agentId));
+  });
   const seen = new Set<string>();
   return entries.flatMap((entry): ChatMessage[] => {
     const turns = entry.userMessages
@@ -106,22 +103,19 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
         return create(ChatMessageSchema, {
           id: message.id,
           role: Role.USER,
-          text: message.text,
+          parts: [{ id: `text:${message.id}`, content: { case: "text", value: message.text } }],
           taskId: entry.id,
           tasks: position === 0 ? operations(index, entry) : [],
         });
       });
-    const answer = entry.state === TaskState.COMPLETED ? entry.answer : "";
-    const tools = calls.get(entry.id) ?? [];
-    return answer || entry.progress || tools.length
+    const content = parts.get(entry.id) ?? [];
+    return content.length
       ? [
           ...turns,
           create(ChatMessageSchema, {
             id: `answer:${entry.id}`,
             role: Role.AGENT,
-            text: answer,
-            progress: entry.progress,
-            calls: tools,
+            parts: content,
             taskId: entry.id,
           }),
         ]

@@ -1,6 +1,6 @@
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import { type Timestamp, timestampMs } from "@bufbuild/protobuf/wkt";
-import type { Message, Part, Task } from "../../../gen/a2a_pb.js";
+import { type Message, type Part, Role, type Task } from "../../../gen/a2a_pb.js";
 
 export const timelineKey = "kagent.dev/a2a/timeline-position";
 export const partTypeKey = "kagent.dev/a2a/part-type";
@@ -36,3 +36,18 @@ export const statusMillis = (task: Task) => millis(task.status?.timestamp);
 export const createdMillis = (task: Task) => isoMillis(task.metadata?.[createdAtKey]);
 
 export const metadataText = (message: Message, key: string) => text(message.metadata?.[key]);
+
+export const taskSources = (task: Task) => [
+  ...task.history.map((message) => ({
+    key: `message:${message.messageId}`,
+    parts: message.parts,
+    at: timeline(message.metadata),
+    narration: message.role === Role.AGENT,
+  })),
+  ...task.artifacts.map((artifact) => ({
+    key: `artifact:${artifact.artifactId}`,
+    parts: artifact.parts,
+    at: timeline(artifact.metadata),
+    narration: true,
+  })),
+];
