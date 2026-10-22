@@ -131,7 +131,7 @@ export function evaluationVariant(
         throw new Error("Evaluation model must use an agentgateway-supported provider");
       spec[configKey] = {
         ...object(spec[configKey]),
-        baseUrl: `http://${gatewayName}.${namespace}.svc:8080${provider === "OpenAI" ? "/v1" : ""}`,
+        baseUrl: `http://${gatewayName}.${namespace}.svc.cluster.local:8080${provider === "OpenAI" ? "/v1" : ""}`,
       };
     }
     if (value.kind === "AgentgatewayModel") {

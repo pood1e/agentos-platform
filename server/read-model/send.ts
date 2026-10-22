@@ -1,5 +1,6 @@
 import type { Message, StreamResponse, Task } from "../../gen/a2a_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { sendMessageStream } from "../kagent/send.js";
 import { hitlExtension } from "./decode/hitl.js";
 import { applyEvent } from "./events.js";
 
@@ -14,7 +15,8 @@ export async function openMessage(
 ) {
   const controller = new AbortController();
   const signal = AbortSignal.any([controller.signal, lifetime]);
-  const stream = clients.a2a.sendStreamingMessage(
+  const stream = sendMessageStream(
+    clients.a2a,
     { tenant, message },
     { signal, timeoutMs: 30 * 60_000, headers: { ...headers, "A2A-Extensions": hitlExtension } },
   );
@@ -42,7 +44,7 @@ export async function openMessage(
     };
   } catch (error) {
     controller.abort();
-    await iterator.return?.();
+    await iterator.return?.(undefined);
     throw error;
   } finally {
     clearTimeout(timeout);

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:
-  url: http://{{ include "agentos.name" . }}-mcp-gateway.{{ .Release.Namespace }}.svc:8080/mcp/kagent-collaboration
+  url: http://{{ include "agentos.name" . }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080/mcp/kagent-collaboration
   description: Invoke independent engineer sessions and collect task results.
   timeout: 10m
   sseReadTimeout: 10m

@@ -9,8 +9,8 @@
   "namespace" $evaluation.namespace
   "platformImage" (printf "%s@%s" .Values.image.repository .Values.image.digest)
   "packImage" (required "Evaluation requires a versioned solution pack" .Values.pack.image)
-  "gatewayUrl" (printf "http://%s-mcp-gateway.%s.svc:8080" $name .Release.Namespace)
-  "judgeUrl" (printf "http://%s-judge.%s.svc:8081/v1" $name .Release.Namespace)
+  "gatewayUrl" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace)
+  "judgeUrl" (printf "http://%s-judge.%s.svc.cluster.local:8081/v1" $name .Release.Namespace)
   "langfuseUrl" $evaluation.langfuseURL
   "langfuseSecret" $evaluation.langfuseSecret
   "imagePullSecrets" $pullSecrets

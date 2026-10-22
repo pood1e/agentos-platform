@@ -1,5 +1,5 @@
 {{- define "agentos.executionEnv" -}}
-{{- $audiences := list (printf "http://%s-mcp-gateway.%s.svc:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-console.%s.svc:9091" (include "agentos.name" .) .Release.Namespace) -}}
+{{- $audiences := list (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-console.%s.svc.cluster.local:9091" (include "agentos.name" .) .Release.Namespace) -}}
 {{- range .Values.global.agentos.environments -}}
 {{- $environment := .name -}}
 {{- range $service, $_ := $.Values.global.agentos.toolsets -}}

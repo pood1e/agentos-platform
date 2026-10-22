@@ -10,4 +10,4 @@ spec:
   apiKeySecret: {{ include "agentos.name" . }}-gateway
   apiKeySecretKey: api-key
   openAI:
-    baseUrl: http://{{ include "agentos.name" . }}-gateway.{{ .Release.Namespace }}.svc:8080/v1
+    baseUrl: http://{{ include "agentos.name" . }}-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080/v1
