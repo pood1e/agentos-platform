@@ -7,8 +7,8 @@ import {
 } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
-import { TaskStoreService } from "../../gen/kagent/api/v1alpha1/task_store_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
+import { TaskStoreService } from "../../gen/kagent/runtime/v1/task_store_pb.js";
 import { can } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { KnowledgeConfig } from "../knowledge/service.js";
@@ -38,7 +38,7 @@ export function registerRuntime(
     mode: "read" | "create" | "update" = "read",
     messageIds: string[] = [],
   ) {
-    const { session, actor } = await runtime.authenticatedActor(context.requestHeader);
+    const { session } = await runtime.authenticatedActor(context.requestHeader);
     if (session.id !== sessionId) throw denied();
     // Signed Actors can read their own store before the initial task establishes admission.
     if (mode !== "read") await runtime.registry.record(session, mode === "update", messageIds);
@@ -46,21 +46,18 @@ export function registerRuntime(
       signal: context.signal,
       timeoutMs: 15_000,
       headers: {
-        "x-kagent-insecure-runtime-identity": `${actor.atespace}/${actor.name}/${actor.uid}`,
+        authorization: context.requestHeader.get("authorization") ?? "",
       },
     };
   }
 
-  async function memoryOptions(agentName: string, context: HandlerContext, write: boolean) {
+  async function memoryOptions(context: HandlerContext, write: boolean, requested = "") {
     const { session } = await runtime.authenticatedActor(context.requestHeader);
     const execution = await runtime.registry.resolve(session);
-    const nativeName = agentName.replaceAll("__NS__", "/").replaceAll("_", "-");
-    if (!nativeName.startsWith(`${session.agent?.namespace}/`)) throw denied();
+    const agentName = agentKey(session.agent);
+    if (requested && requested !== agentName) throw denied();
     if (write) {
-      if (
-        nativeName !== agentKey(session.agent) ||
-        (agentName === sharedKnowledge?.agentName && !can(execution, Capability.KNOWLEDGE_MANAGE))
-      )
+      if (agentName === sharedKnowledge?.agentName && !can(execution, Capability.KNOWLEDGE_MANAGE))
         throw denied();
       const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
       if (!agent) throw denied();
@@ -71,7 +68,7 @@ export function registerRuntime(
         { timeoutMs: 5_000 },
       );
       const harness = harnesses.find((item) => item.ref?.name === text(ref.name));
-      const harnessSpec = object(harness?.resource?.value?.spec ?? spec.harness);
+      const harnessSpec = object(harness?.resource?.value?.spec);
       if (!object(harnessSpec.kagent).memory) throw denied();
     }
     const userId =
@@ -79,7 +76,7 @@ export function registerRuntime(
         ? sharedKnowledge.userId
         : execution.identity.subject;
     return {
-      userId,
+      agentName,
       options: {
         signal: context.signal,
         timeoutMs: 15_000,
@@ -120,32 +117,28 @@ export function registerRuntime(
   router.service(MemoryService, {
     addSession: async (r, c) => {
       if (!r.memory) throw denied();
-      const { userId, options } = await memoryOptions(r.memory.agentName, c, true);
-      r.memory.userId = userId;
-      return memory.addSession(r, options);
+      const { agentName, options } = await memoryOptions(c, true, r.managementAgent);
+      return memory.addSession({ ...r, managementAgent: agentName }, options);
     },
     addSessionBatch: async (r, c) => {
-      const first = r.items[0];
-      if (!first || r.items.some((item) => item.agentName !== first.agentName)) throw denied();
-      const { userId, options } = await memoryOptions(first.agentName, c, true);
-      for (const item of r.items) item.userId = userId;
-      return memory.addSessionBatch(r, options);
+      const { agentName, options } = await memoryOptions(c, true, r.managementAgent);
+      return memory.addSessionBatch({ ...r, managementAgent: agentName }, options);
     },
     search: async (r, c) => {
-      const { userId, options } = await memoryOptions(r.agentName, c, false);
-      return memory.search({ ...r, userId }, options);
+      const { agentName, options } = await memoryOptions(c, false, r.managementAgent);
+      return memory.search({ ...r, managementAgent: agentName }, options);
     },
     list: async (r, c) => {
-      const { userId, options } = await memoryOptions(r.agentName, c, false);
-      return memory.list({ ...r, userId }, options);
+      const { agentName, options } = await memoryOptions(c, false, r.agentName);
+      return memory.list({ ...r, agentName }, options);
     },
     delete: async (r, c) => {
-      const { userId, options } = await memoryOptions(r.agentName, c, true);
-      return memory.delete({ ...r, userId }, options);
+      const { agentName, options } = await memoryOptions(c, true, r.agentName);
+      return memory.delete({ ...r, agentName }, options);
     },
     deleteEntry: async (r, c) => {
-      const { userId, options } = await memoryOptions(r.agentName, c, true);
-      return memory.deleteEntry({ ...r, userId }, options);
+      const { agentName, options } = await memoryOptions(c, true, r.agentName);
+      return memory.deleteEntry({ ...r, agentName }, options);
     },
   });
 }

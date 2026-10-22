@@ -5,9 +5,9 @@ import { ResourceProposalSchema } from "../../gen/agentos/evaluation/v1/evaluati
 import {
   CreateAgentTemplateResponseSchema,
   DeleteAgentTemplateResponseSchema,
-} from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import { CreateAgentResponseSchema } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import { StructuredObjectSchema } from "../../gen/kagent/api/v1alpha1/common_pb.js";
+} from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import { CreateAgentResponseSchema } from "../../gen/kagent/api/v1/agents_pb.js";
+import { StructuredObjectSchema } from "../../gen/kagent/api/v1/common_pb.js";
 import type { TemplateWriter } from "../console/template-writer.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { meta, resource } from "../management/native.js";

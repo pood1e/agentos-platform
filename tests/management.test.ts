@@ -6,7 +6,7 @@ import {
   ConnectionSchema,
   ManagementService,
 } from "../gen/agentos/management/v1/management_pb.js";
-import { ModelConfigSchema } from "../gen/kagent/api/v1alpha1/models_pb.js";
+import { ModelConfigSchema } from "../gen/kagent/api/v1/models_pb.js";
 import { object, text } from "../server/read-model/decode/messages.js";
 import { managementEnvironment } from "./management-harness.js";
 
@@ -256,7 +256,8 @@ describe("native knowledge memory", () => {
     const first = await client.addKnowledge({ content: "Selected knowledge" });
     const kept = await client.addKnowledge({ content: "Retained knowledge" });
     const foreign = await env.clients.memory.addSession({
-      memory: { agentName: "private", userId: "agentos", content: "Other scope" },
+      managementAgent: "private",
+      memory: { content: "Other scope" },
     });
     await expect(client.deleteKnowledge({ id: foreign.id })).rejects.toMatchObject({
       code: Code.NotFound,
@@ -288,16 +289,17 @@ describe("native knowledge memory", () => {
       content: "Drain a node only after approval.",
     });
     const record = env.fake.memory.records.get(id);
-    expect(record?.input).toMatchObject({
-      agentName: "agentos__NS__knowledge",
+    expect(record).toMatchObject({
+      agentName: "agentos/knowledge",
       userId: "agentos",
-      ttlDays: 3650,
+      input: { ttlDays: 3650 },
     });
     expect(record?.input.vector).toHaveLength(768);
     expect((await client.searchKnowledge({ query: "node drain" })).memories[0]?.id).toBe(id);
     expect((await client.listKnowledge({})).memories[0]?.accessCount).toBe(1n);
     await env.clients.memory.addSession({
-      memory: { agentName: "private", userId: "agentos", content: "Private memory" },
+      managementAgent: "private",
+      memory: { content: "Private memory" },
     });
     expect((await client.listKnowledge({})).totalSize).toBe(1);
     await expect(client.clearKnowledge({ expectedCount: 0 })).rejects.toMatchObject({

@@ -6,13 +6,13 @@ import "agentos/console/v1/role.proto";
 import "agentos/console/v1/speech.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
-import "kagent/api/v1alpha1/agent_templates.proto";
-import "kagent/api/v1alpha1/agents.proto";
-import "kagent/api/v1alpha1/common.proto";
-import "kagent/api/v1alpha1/harnesses.proto";
-import "kagent/api/v1alpha1/memory.proto";
-import "kagent/api/v1alpha1/models.proto";
-import "kagent/api/v1alpha1/tools.proto";
+import "kagent/api/v1/agent_templates.proto";
+import "kagent/api/v1/agents.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/api/v1/harnesses.proto";
+import "kagent/runtime/v1/memory.proto";
+import "kagent/api/v1/models.proto";
+import "kagent/api/v1/tools.proto";
 
 service ManagementService {
   rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse) {
@@ -41,14 +41,14 @@ service ManagementService {
   rpc AddKnowledge(AddKnowledgeRequest) returns (AddKnowledgeResponse);
   rpc DeleteKnowledge(DeleteKnowledgeRequest) returns (DeleteKnowledgeResponse);
   rpc ClearKnowledge(ClearKnowledgeRequest) returns (ClearKnowledgeResponse);
-  rpc ListHarnesses(kagent.api.v1alpha1.ListHarnessesRequest) returns (kagent.api.v1alpha1.ListHarnessesResponse) {
+  rpc ListHarnesses(kagent.api.v1.ListHarnessesRequest) returns (kagent.api.v1.ListHarnessesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
-  rpc SaveHarness(SaveHarnessRequest) returns (kagent.api.v1alpha1.CreateHarnessResponse);
-  rpc DeleteHarness(DeleteHarnessRequest) returns (kagent.api.v1alpha1.DeleteHarnessResponse);
+  rpc SaveHarness(SaveHarnessRequest) returns (kagent.api.v1.CreateHarnessResponse);
+  rpc DeleteHarness(DeleteHarnessRequest) returns (kagent.api.v1.DeleteHarnessResponse);
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
-  rpc GetEngineerRuntime(kagent.api.v1alpha1.GetAgentRequest) returns (GetEngineerRuntimeResponse) {
+  rpc GetEngineerRuntime(kagent.api.v1.GetAgentRequest) returns (GetEngineerRuntimeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc SetEngineerRuntime(SetEngineerRuntimeRequest) returns (SetEngineerRuntimeResponse);
@@ -67,9 +67,9 @@ message Connection {
     defined_only: true
     not_in: [0]
   }];
-  kagent.api.v1alpha1.StructuredObject resource = 2 [(buf.validate.field).required = true];
-  kagent.api.v1alpha1.ModelConfig model = 3;
-  repeated kagent.api.v1alpha1.DiscoveredTool tools = 4;
+  kagent.api.v1.StructuredObject resource = 2 [(buf.validate.field).required = true];
+  kagent.api.v1.ModelConfig model = 3;
+  repeated kagent.api.v1.DiscoveredTool tools = 4;
   repeated string used_by = 5;
   bool system_managed = 6;
   repeated MCPCredentialBinding credential_bindings = 7;
@@ -77,7 +77,7 @@ message Connection {
 
 message MCPCredentialBinding {
   string engineer = 1;
-  kagent.api.v1alpha1.ToolServer server = 2;
+  kagent.api.v1.ToolServer server = 2;
 }
 
 message GetSchemasRequest {}
@@ -107,35 +107,35 @@ message SaveSpeechConfigurationResponse {
 }
 
 message SaveHarnessRequest {
-  kagent.api.v1alpha1.Harness harness = 1 [(buf.validate.field).required = true];
+  kagent.api.v1.Harness harness = 1 [(buf.validate.field).required = true];
   bool create = 2;
 }
 
 message DeleteHarnessRequest {
-  kagent.api.v1alpha1.ResourceReference ref = 1 [(buf.validate.field).required = true];
+  kagent.api.v1.ResourceReference ref = 1 [(buf.validate.field).required = true];
   string resource_version = 2 [(buf.validate.field).string.min_len = 1];
 }
 
 message GetEngineerRuntimeResponse {
-  kagent.api.v1alpha1.Agent agent = 1;
-  kagent.api.v1alpha1.AgentTemplate agent_template = 2;
+  kagent.api.v1.Agent agent = 1;
+  kagent.api.v1.AgentTemplate agent_template = 2;
 }
 
 message SetEngineerRuntimeRequest {
-  kagent.api.v1alpha1.ResourceReference engineer = 1 [(buf.validate.field).required = true];
-  kagent.api.v1alpha1.ResourceReference harness = 2 [(buf.validate.field).required = true];
+  kagent.api.v1.ResourceReference engineer = 1 [(buf.validate.field).required = true];
+  kagent.api.v1.ResourceReference harness = 2 [(buf.validate.field).required = true];
   reserved 3;
   reserved "resource_version";
   // Configuration generation ignores status-only controller updates.
   uint64 generation = 4 [(buf.validate.field).uint64.gt = 0];
   string expected_uid = 5 [(buf.validate.field).string.min_len = 1];
-  kagent.api.v1alpha1.ResourceReference model_config = 6 [(buf.validate.field).required = true];
+  kagent.api.v1.ResourceReference model_config = 6 [(buf.validate.field).required = true];
   optional string template_resource_version = 7 [(buf.validate.field).string.min_len = 1];
 }
 
 message SetEngineerRuntimeResponse {
-  kagent.api.v1alpha1.Agent agent = 1;
-  kagent.api.v1alpha1.AgentTemplate agent_template = 2;
+  kagent.api.v1.Agent agent = 1;
+  kagent.api.v1.AgentTemplate agent_template = 2;
 }
 
 message ListConnectionsRequest {
@@ -220,7 +220,7 @@ message ListKnowledgeRequest {
   string query = 4 [(buf.validate.field).string.max_len = 200];
 }
 message ListKnowledgeResponse {
-  repeated kagent.api.v1alpha1.MemorySummary memories = 1;
+  repeated kagent.runtime.v1.MemorySummary memories = 1;
   string next_page_token = 2;
   int32 total_size = 3;
 }
@@ -232,7 +232,7 @@ message SearchKnowledgeRequest {
   }];
 }
 message SearchKnowledgeResponse {
-  repeated kagent.api.v1alpha1.MemorySearchResult memories = 1;
+  repeated kagent.runtime.v1.MemorySearchResult memories = 1;
 }
 message AddKnowledgeRequest {
   reserved 1;

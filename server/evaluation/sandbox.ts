@@ -7,7 +7,7 @@ import {
   KubernetesObjectApi,
   PatchStrategy,
 } from "@kubernetes/client-node";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { roleDefinition, templateSpec } from "../console/role-template.js";
 import { toolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";

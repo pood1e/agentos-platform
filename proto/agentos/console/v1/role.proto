@@ -3,7 +3,7 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "buf/validate/validate.proto";
-import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1/common.proto";
 
 // Editable subset of a kagent AgentTemplate. The AgentTemplate CRD validates
 // skill sources; rules here cover fields owned by the console.
@@ -19,7 +19,7 @@ message RoleDefinition {
   repeated Skill skills = 6;
   // Kubernetes resourceVersion read by the editor; required for updates.
   string resource_version = 7;
-  kagent.api.v1alpha1.ResourceReference model_config = 8;
+  kagent.api.v1.ResourceReference model_config = 8;
 }
 
 // Tools selected from one RemoteMCPServer in the workspace namespace.

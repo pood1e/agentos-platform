@@ -9,11 +9,13 @@
       "kind": "Agent",
       "value": {
         "spec": {
-          "templateRef": {
-            "name": "assistant"
-          },
           "harnessRef": {
             "name": "standard"
+          },
+          "template": {
+            "ref": {
+              "name": "assistant"
+            }
           }
         },
         "status": {
@@ -305,11 +307,13 @@
           "generation": 1
         },
         "spec": {
-          "templateRef": {
-            "name": "diagnosis"
-          },
           "harnessRef": {
             "name": "standard"
+          },
+          "template": {
+            "ref": {
+              "name": "diagnosis"
+            }
           }
         }
       }
@@ -424,11 +428,13 @@
           "name": "inspection"
         },
         "spec": {
-          "templateRef": {
-            "name": "inspection"
-          },
           "harnessRef": {
             "name": "standard"
+          },
+          "template": {
+            "ref": {
+              "name": "inspection"
+            }
           }
         },
         "status": {
@@ -621,11 +627,13 @@
           "creationTimestamp": "2026-10-12T09:02:02Z"
         },
         "spec": {
-          "templateRef": {
-            "name": "knowledge"
-          },
           "harnessRef": {
             "name": "memory"
+          },
+          "template": {
+            "ref": {
+              "name": "knowledge"
+            }
           }
         }
       }
@@ -641,11 +649,13 @@
       "kind": "Agent",
       "value": {
         "spec": {
-          "templateRef": {
-            "name": "remediation"
-          },
           "harnessRef": {
             "name": "standard"
+          },
+          "template": {
+            "ref": {
+              "name": "remediation"
+            }
           }
         },
         "status": {
@@ -901,8 +911,10 @@
           "harnessRef": {
             "name": "standard"
           },
-          "templateRef": {
-            "name": "role-builder"
+          "template": {
+            "ref": {
+              "name": "role-builder"
+            }
           }
         },
         "status": {
@@ -957,11 +969,13 @@
       "kind": "Agent",
       "value": {
         "spec": {
-          "templateRef": {
-            "name": "coordinator"
-          },
           "harnessRef": {
             "name": "standard"
+          },
+          "template": {
+            "ref": {
+              "name": "coordinator"
+            }
           }
         },
         "status": {

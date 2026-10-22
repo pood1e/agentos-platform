@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
-import type { ScheduledRun } from "../../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+import type { ScheduledRun } from "../../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { can, isAdministrator } from "../../../shared/permissions.js";
 import { useAccess } from "../../lib/access.js";
 import { automationClient } from "../../lib/console.js";

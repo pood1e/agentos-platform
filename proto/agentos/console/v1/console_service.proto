@@ -15,11 +15,11 @@ import "agentos/execution/v1/task.proto";
 import "agentos/governance/v1/governance.proto";
 import "agentos/kagent/v1/wire.proto";
 import "buf/validate/validate.proto";
-import "kagent/api/v1alpha1/agents.proto";
-import "kagent/api/v1alpha1/common.proto";
-import "kagent/api/v1alpha1/harnesses.proto";
-import "kagent/api/v1alpha1/models.proto";
-import "kagent/api/v1alpha1/tools.proto";
+import "kagent/api/v1/agents.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/api/v1/harnesses.proto";
+import "kagent/api/v1/models.proto";
+import "kagent/api/v1/tools.proto";
 
 // Workbench API. google.rpc.ErrorInfo.reason carries localization keys.
 service ConsoleService {
@@ -166,7 +166,7 @@ message CancelTaskRequest {
 message CancelTaskResponse {}
 
 message ListConversationsRequest {
-  .kagent.api.v1alpha1.ResourceReference agent = 1 [(buf.validate.field).required = true];
+  .kagent.api.v1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   int32 page_size = 2 [(buf.validate.field).int32 = {
     gte: 0
     lte: 100
@@ -182,7 +182,7 @@ message ListConversationsResponse {
 }
 
 message WatchConversationRequest {
-  .kagent.api.v1alpha1.ResourceReference agent = 1 [(buf.validate.field).required = true];
+  .kagent.api.v1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   string context_id = 2 [(buf.validate.field).string.max_len = 128];
 }
 
@@ -191,7 +191,7 @@ message WatchConversationResponse {
 }
 
 message SendMessageRequest {
-  .kagent.api.v1alpha1.ResourceReference agent = 1 [(buf.validate.field).required = true];
+  .kagent.api.v1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   string context_id = 2 [(buf.validate.field).string.max_len = 128];
   string message_id = 3 [(buf.validate.field).string = {
     min_len: 1
@@ -234,18 +234,18 @@ message GetConfigurationRequest {}
 
 message GetConfigurationResponse {
   repeated RoleDefinition roles = 1;
-  repeated .kagent.api.v1alpha1.ToolServer tool_servers = 2;
+  repeated .kagent.api.v1.ToolServer tool_servers = 2;
   reserved 3;
-  repeated .kagent.api.v1alpha1.ModelConfig model_configs = 4;
+  repeated .kagent.api.v1.ModelConfig model_configs = 4;
   repeated EngineerTools engineer_tools = 5;
-  repeated .kagent.api.v1alpha1.Agent agents = 6;
-  repeated .kagent.api.v1alpha1.Harness harnesses = 7;
-  .kagent.api.v1alpha1.ResourceReference default_harness = 8;
+  repeated .kagent.api.v1.Agent agents = 6;
+  repeated .kagent.api.v1.Harness harnesses = 7;
+  .kagent.api.v1.ResourceReference default_harness = 8;
 }
 
 message CreateRoleRequest {
   RoleDefinition role = 1 [(buf.validate.field).required = true];
-  .kagent.api.v1alpha1.ResourceReference harness = 2;
+  .kagent.api.v1.ResourceReference harness = 2;
 }
 
 message CreateRoleResponse {

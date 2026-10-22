@@ -1,7 +1,34 @@
-- name: Install native Actor identity discovery
+- name: Prepare native Substrate operator identity
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('template', 'runtime/idp.yaml.j2') | from_yaml_all | list }}"
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata: {name: agentos-substrate-operator, namespace: ate-system}
+      automountServiceAccountToken: false
+
+- name: Admit platform services to the native Substrate API
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata: {name: agentos-platform-api, namespace: ate-system}
+      spec:
+        podSelector:
+          matchLabels: {app: ate-api-server}
+        policyTypes: [Ingress]
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: "{{ agentos_namespace }}"
+                podSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values: [console, controller]
+            ports: [{port: 443, protocol: TCP}]
 
 - name: Restrict native controller access to the control plane
   kubernetes.core.k8s:

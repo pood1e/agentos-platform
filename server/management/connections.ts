@@ -6,7 +6,7 @@ import {
   type ListConnectionsRequest,
   type SaveConnectionRequest,
 } from "../../gen/agentos/management/v1/management_pb.js";
-import { ModelConfigSchema } from "../../gen/kagent/api/v1alpha1/models_pb.js";
+import { ModelConfigSchema } from "../../gen/kagent/api/v1/models_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { pageOf } from "../read-model/page.js";

@@ -2,7 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import Fastify from "fastify";
 import { expect, it } from "vitest";
-import { TaskStoreService } from "../gen/kagent/api/v1alpha1/task_store_pb.js";
+import { TaskStoreService } from "../gen/kagent/runtime/v1/task_store_pb.js";
 import { grpcServer } from "../server/platform/grpc.js";
 
 it("finishes an accepted persistence RPC while draining its HTTP/2 connection", async () => {

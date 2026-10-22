@@ -2,7 +2,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
-import { HarnessSchema } from "../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import { HarnessSchema } from "../gen/kagent/api/v1/harnesses_pb.js";
 import { object, text } from "../server/read-model/decode/messages.js";
 import { managementEnvironment } from "./management-harness.js";
 
@@ -49,7 +49,7 @@ describe("native Harness configuration", () => {
     const sessions = structuredClone([...env.fake.sessions.values()]);
     const { agent } = await assign("inspection", "codex");
     expect(object(agent?.resource?.value?.spec)).toMatchObject({
-      templateRef: { name: "inspection" },
+      template: { ref: { name: "inspection" } },
       harnessRef: { name: "codex" },
     });
     expect(object((await env.store.get("agents", "inspection-two")).spec).harnessRef).toEqual({

@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { fromJson, type JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { FakeKagent } from "./kagent.js";
 import { nativeRequest } from "./native-http.js";
 

@@ -8,7 +8,7 @@ import {
   McpHeaderSchema,
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { Control } from "../../gen/ateapi_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { scheduledIdentity } from "../automation/identity.js";
 import { roleDefinition } from "../console/role-template.js";
 import type { BindingView } from "../governance/bindings.js";
@@ -79,12 +79,15 @@ export async function executionRuntime(
       ],
     }),
   );
-  const verifyActor = actorVerifier(
-    createRemoteJWKSet(new URL("/openid/v1/jwks", issuer)),
-    issuer,
-    audience,
-  );
+  const keys = createRemoteJWKSet(new URL("/openid/v1/jwks", issuer));
+  const verifyActor = actorVerifier(keys, issuer, audience);
   const resolve = runtimeIdentity(verifyActor, substrate, clients.sessions, workspaces);
+  const resolveRuntime = runtimeIdentity(
+    actorVerifier(keys, issuer, "kagent-runtime"),
+    substrate,
+    clients.sessions,
+    workspaces,
+  );
   const actor = async (headers: Record<string, string | string[] | undefined>) => {
     const bearer = headers[actorTokenHeader];
     if (typeof bearer !== "string" || !/^Bearer [^\s,]+$/.test(bearer))
@@ -92,15 +95,15 @@ export async function executionRuntime(
     return resolve(bearer.slice(7));
   };
   const authenticatedActor = async (headers: Headers) => {
-    const bearer = headers.get(actorTokenHeader);
+    const bearer = headers.get("authorization");
     if (!bearer || !/^Bearer [^\s,]+$/.test(bearer))
       throw new Error("Signed runtime identity required");
-    return { session: await resolve(bearer.slice(7)), actor: await verifyActor(bearer.slice(7)) };
+    return { session: await resolveRuntime(bearer.slice(7)) };
   };
   const agentRole = async (session: Session) => {
     const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
     if (!agent) throw new ConnectError("Execution Agent is unavailable", Code.PermissionDenied);
-    const reference = object(object(agent.resource?.value?.spec).templateRef);
+    const reference = object(object(object(agent.resource?.value?.spec).template).ref);
     const { agentTemplate } = await clients.templates.getAgentTemplate(
       {
         ref: {

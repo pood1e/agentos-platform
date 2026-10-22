@@ -7,7 +7,7 @@ import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { CaseTriggerSchema } from "../gen/agentos/automation/v1/automation_pb.js";
 import { AutomationService } from "../gen/agentos/automation/v1/service_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
-import { ScheduledRunSchema } from "../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+import { ScheduledRunSchema } from "../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { automationPresets } from "../server/automation/presets.js";
 import { automationService } from "../server/automation/service.js";
 import { workspaceContext } from "../server/platform/access.js";
@@ -187,7 +187,7 @@ it("filters foreign-workspace pages and denies guessed schedule and execution ID
   fake.schedules.schedules.set(foreign.id, foreign);
   const execution = await fake.schedules.service().triggerScheduledRun?.(
     {
-      $typeName: "kagent.api.v1alpha1.TriggerScheduledRunRequest",
+      $typeName: "kagent.api.v1.TriggerScheduledRunRequest",
       scheduledRunId: foreign.id,
       requestId: randomUUID(),
     },

@@ -11,6 +11,7 @@
   vars_files: [vars.yaml]
   vars:
     ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+    harness_defaults: "{{ (lookup('file', playbook_dir ~ '/../charts/agentos/values.yaml') | from_yaml).harnesses }}"
     identity_pools:
       - { name: service-dns-ca-pool, namespace: podcertificate-controller-system, type: ca }
       - { name: pod-identity-ca-pool, namespace: podcertificate-controller-system, type: ca }
@@ -201,6 +202,25 @@
     - name: Prepare microVM runtime
       ansible.builtin.import_tasks: microvm/tasks.yaml
 
+    - name: Configure native Substrate access policies
+      ansible.builtin.script:
+        cmd: >-
+          runtime/access-policies.py
+          {{ agentos_namespace | quote }} {{ app_release_name | quote }}
+          {{ ('check' if ansible_check_mode else 'apply') | quote }}
+          {% if agentos_evaluation_enabled %}{{ agentos_evaluation_namespace | quote }}{% endif %}
+        executable: /usr/bin/python3
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+        ATE_CLIENT_SERVICE_ACCOUNT: agentos-substrate-operator
+      delegate_to: "{{ agentos_node }}"
+      become: true
+      register: native_access_policies
+      changed_when: (native_access_policies.stdout | from_json).changed
+      check_mode: false
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+
     - name: Verify Substrate rollout
       ansible.builtin.command:
         argv: [/usr/local/bin/k3s, kubectl, rollout, status, "deployment/{{ item }}", -n, ate-system, --timeout=300s]
@@ -260,7 +280,6 @@
       environment:
         PATH: "{{ ansible_python_interpreter | dirname }}:{{ lookup('env', 'PATH') }}"
         AGENTOS_KAGENT_CONTROLLER_IMAGE: "{{ kagent_controller_image }}"
-        AGENTOS_KAGENT_RUNTIME_URL: "http://{{ app_release_name }}-console.{{ agentos_namespace }}.svc:9091"
       tags: [kagent]
 
     - name: Verify kagent controller rollout

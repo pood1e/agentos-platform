@@ -1,8 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
-import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
-import { SessionSchema } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import { SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
 import { scheduledExecutionId } from "../automation/identity.js";

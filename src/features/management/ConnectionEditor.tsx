@@ -127,16 +127,16 @@ export function ConnectionEditor({
       ? clone(ConnectionSchema, connection)
       : create(ConnectionSchema, { kind });
     draft.resource = {
-      $typeName: "kagent.api.v1alpha1.StructuredObject",
+      $typeName: "kagent.api.v1.StructuredObject",
       apiVersion: String(value.apiVersion),
       kind: String(value.kind),
       value,
     };
     if (kind === ConnectionKind.MODEL)
       draft.model = {
-        $typeName: "kagent.api.v1alpha1.ModelConfig",
+        $typeName: "kagent.api.v1.ModelConfig",
         resource: {
-          $typeName: "kagent.api.v1alpha1.StructuredObject",
+          $typeName: "kagent.api.v1.StructuredObject",
           apiVersion: "api.kagent.dev/v1alpha3",
           kind: "ModelConfig",
           value: {

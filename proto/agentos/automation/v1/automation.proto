@@ -3,7 +3,7 @@ syntax = "proto3";
 package agentos.automation.v1;
 
 import "google/protobuf/any.proto";
-import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1/common.proto";
 
 // Environment-side worker that turns source CloudEvents into Agent executions.
 message AutomationConfig {
@@ -41,7 +41,7 @@ message CaseTrigger {
   string brief = 3;
   uint32 timeout_seconds = 4;
   uint32 cooldown_seconds = 5;
-  .kagent.api.v1alpha1.ResourceReference agent = 6;
+  .kagent.api.v1.ResourceReference agent = 6;
 }
 
 // Members of the source event data that identify and describe a case.

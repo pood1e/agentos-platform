@@ -8,7 +8,7 @@ import "agentos/execution/v1/task.proto";
 import "agentos/governance/v1/governance.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "kagent/api/v1alpha1/sessions.proto";
+import "kagent/api/v1/sessions.proto";
 
 // Root operation, including conversation delegations and system executions.
 message TaskSummary {
@@ -35,7 +35,7 @@ message TaskDetail {
   google.protobuf.Timestamp started_at = 7;
   google.protobuf.Timestamp completed_at = 8;
   // Native session identities and names used by this operation.
-  repeated kagent.api.v1alpha1.Session sessions = 9;
+  repeated kagent.api.v1.Session sessions = 9;
   bool operate = 10;
   bool edit_tags = 11;
 }

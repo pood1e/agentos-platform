@@ -5,14 +5,14 @@ import { A2AService, TaskState } from "../../gen/a2a_pb.js";
 import {
   AgentTemplateSchema,
   AgentTemplateService,
-} from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import { AgentSchema, AgentService } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import { HarnessService } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
-import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
-import { ModelConfigSchema, ModelService } from "../../gen/kagent/api/v1alpha1/models_pb.js";
-import { ScheduledRunService } from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
-import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
-import { ToolService } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+} from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import { AgentSchema, AgentService } from "../../gen/kagent/api/v1/agents_pb.js";
+import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
+import { ModelConfigSchema, ModelService } from "../../gen/kagent/api/v1/models_pb.js";
+import { ScheduledRunService } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
+import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
+import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
 import { millis, object } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";

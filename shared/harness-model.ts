@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
-import type { ToolServer } from "../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { ToolServer } from "../gen/kagent/api/v1/tools_pb.js";
 
 const configured = (value: JsonValue | undefined): boolean =>
   Array.isArray(value)

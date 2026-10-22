@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ManagementService } from "../../../gen/agentos/management/v1/management_pb.js";
-import type { AgentTemplate } from "../../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import type { Agent } from "../../../gen/kagent/api/v1alpha1/agents_pb.js";
-import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
-import type { ModelConfig } from "../../../gen/kagent/api/v1alpha1/models_pb.js";
-import type { ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { AgentTemplate } from "../../../gen/kagent/api/v1/agent_templates_pb.js";
+import type { Agent } from "../../../gen/kagent/api/v1/agents_pb.js";
+import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
+import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
+import type { ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
 import { harnessToolsIssue } from "../../../shared/harness-model.js";
 import { useCapability } from "../../lib/access.js";
 import { RoleModel } from "../engineers/RoleModel.js";
@@ -60,7 +60,7 @@ export function EngineerRuntime({
   const compatible = !!model && compatibleModels(chosen, [model]).length === 1;
   const template =
     runtime.data?.agentTemplate?.resource?.value?.spec ??
-    object(current.resource?.value?.spec).template;
+    object(object(current.resource?.value?.spec).template).inline;
   const changed =
     selected !== currentName(current) ||
     selectedModel !== String(object(object(template).modelConfig).name ?? "");

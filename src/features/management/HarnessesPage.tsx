@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
-import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";

@@ -35,7 +35,8 @@ metadata:
   annotations:
     agentos.dev/description: 将角色需求转换为可编辑的职责与工具配置
 spec:
-  templateRef:
-    name: role-builder
+  template:
+    ref:
+      name: role-builder
   harnessRef:
     name: standard

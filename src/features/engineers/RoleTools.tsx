@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { ToolRequirement } from "../../../gen/agentos/console/v1/tool_pb.js";
-import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
 import { useCapability } from "../../lib/access.js";
 import {
   connectionEnvironment,

@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
-import { AgentSchema } from "../gen/kagent/api/v1alpha1/agents_pb.js";
+import { AgentSchema } from "../gen/kagent/api/v1/agents_pb.js";
 import { agentInfo } from "../server/read-model/agents.js";
 
 it("derives role identity from the assigned template independently of labels", () => {
@@ -9,7 +9,7 @@ it("derives role identity from the assigned template independently of labels", (
     resource: {
       value: {
         metadata: { labels: { "agentos.dev/role": "coordinator" } },
-        spec: { templateRef: { name: "supervisor" } },
+        spec: { template: { ref: { name: "supervisor" } } },
       },
     },
   });

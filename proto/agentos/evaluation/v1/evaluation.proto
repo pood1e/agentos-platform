@@ -6,8 +6,8 @@ import "agentos/kagent/v1/wire.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "kagent/api/v1alpha1/common.proto";
-import "kagent/api/v1alpha1/memory.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/runtime/v1/memory.proto";
 
 service EvaluationService {
   rpc ListCandidates(ListCandidatesRequest) returns (ListCandidatesResponse) {
@@ -114,7 +114,7 @@ message EvaluationBaseline {
 }
 
 message ResourceProposal {
-  .kagent.api.v1alpha1.StructuredObject resource = 1 [(buf.validate.field).required = true];
+  .kagent.api.v1.StructuredObject resource = 1 [(buf.validate.field).required = true];
   bool delete = 2;
 }
 
@@ -123,14 +123,14 @@ message ConfigurationSnapshot {
   string workspace = 1;
   string pack_image = 2;
   string platform_image = 3;
-  repeated .kagent.api.v1alpha1.StructuredObject resources = 4;
+  repeated .kagent.api.v1.StructuredObject resources = 4;
   repeated ResourceProposal proposals = 5;
   EvaluationBaseline baseline = 6;
   repeated ArtifactContent artifacts = 7;
   string knowledge_digest = 8;
   string credentials_digest = 9;
-  repeated .kagent.api.v1alpha1.MemorySummary knowledge = 10;
-  .kagent.api.v1alpha1.ResourceReference subject = 11;
+  repeated .kagent.runtime.v1.MemorySummary knowledge = 10;
+  .kagent.api.v1.ResourceReference subject = 11;
   string subject_model_config = 12;
   string subject_harness = 13;
 }

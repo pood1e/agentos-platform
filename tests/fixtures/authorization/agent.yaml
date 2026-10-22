@@ -43,5 +43,6 @@ metadata:
 spec:
   harnessRef:
     name: standard
-  templateRef:
-    name: authorization-proof
+  template:
+    ref:
+      name: authorization-proof

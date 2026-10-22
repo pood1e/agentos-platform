@@ -1,7 +1,7 @@
 import { Code, ConnectError, type HandlerContext, type ServiceImpl } from "@connectrpc/connect";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
-import type { ScheduledRun } from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+import type { ScheduledRun } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";

@@ -2,8 +2,8 @@ import { create } from "@bufbuild/protobuf";
 import {
   type AgentTemplate,
   AgentTemplateSchema,
-} from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import { type ToolServer, ToolServerSchema } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+} from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import { type ToolServer, ToolServerSchema } from "../../gen/kagent/api/v1/tools_pb.js";
 
 export const namespace = "agentos";
 

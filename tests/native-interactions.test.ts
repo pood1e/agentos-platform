@@ -7,7 +7,7 @@ import {
   SendMessageRequestSchema,
 } from "../gen/agentos/console/v1/console_service_pb.js";
 import { Governance, GovernanceConfigSchema } from "../gen/agentos/governance/v1/governance_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { messageCommands } from "../server/console/messages.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { fixtureAgents } from "./fixtures/kagent.js";
@@ -41,10 +41,7 @@ it("runs a selected Agent without a coordinator, external approvals or a solutio
   const { fake, sync, clients } = environment([]);
   const preset = fixtureAgents().find((agent) => agent.ref?.name === "inspection");
   if (!preset) throw new Error("Agent fixture missing");
-  const writer = clone(
-    (await import("../gen/kagent/api/v1alpha1/agents_pb.js")).AgentSchema,
-    preset,
-  );
+  const writer = clone((await import("../gen/kagent/api/v1/agents_pb.js")).AgentSchema, preset);
   if (writer.ref) writer.ref.name = "writer";
   fake.agents.splice(0, fake.agents.length, writer);
   fake.load({ sessions: [], tasks: [] });

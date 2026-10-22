@@ -3,14 +3,14 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "agentos/authorization/v1/permission.proto";
-import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1/common.proto";
 
 message AccessProfile {
   string workspace = 1;
   string subject = 2;
   reserved 3, 4;
   reserved "operate", "manage";
-  kagent.api.v1alpha1.ResourceReference entry_agent = 5;
+  kagent.api.v1.ResourceReference entry_agent = 5;
   repeated agentos.authorization.v1.Capability capabilities = 6;
   bool write = 7;
 }

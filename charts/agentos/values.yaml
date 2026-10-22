@@ -91,7 +91,6 @@ harnesses:
     workload:
       image: registry.example.com/agentos/standard-harness@sha256:7c2a7e1aa08d360f74271dad5fe0a237ba6d1f395f97ac2cab950f3c941fd35e
     env:
-    - {name: KAGENT_PROPAGATE_TOKEN, value: 'true'}
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
       workerPoolRef: {name: kagent-default}
@@ -104,7 +103,6 @@ harnesses:
     workload:
       image: registry.example.com/agentos/standard-harness@sha256:7c2a7e1aa08d360f74271dad5fe0a237ba6d1f395f97ac2cab950f3c941fd35e
     env:
-    - {name: KAGENT_PROPAGATE_TOKEN, value: 'true'}
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
       workerPoolRef: {name: kagent-default}

@@ -9,7 +9,7 @@ import {
   PatchStrategy,
 } from "@kubernetes/client-node";
 import type { ToolBinding } from "../../gen/agentos/console/v1/role_pb.js";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { engineerServer, logicalPlatformServer } from "../../shared/platform-tools.js";
 import { roleDefinition, templateSpec } from "../console/role-template.js";
 import type { TemplateWriter } from "../console/template-writer.js";

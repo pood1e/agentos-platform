@@ -149,9 +149,9 @@ try {
       nonce,
     });
   }
-  const { actorJwt } = await substrate.mintActorJWT({
+  const { actorJwt } = await substrate.mintActorJwt({
     actor,
-    audience: [audience],
+    audiences: [audience],
     expirationSeconds: 300n,
   });
   await verifyGateway(

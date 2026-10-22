@@ -1,37 +1,51 @@
 import { randomUUID } from "node:crypto";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
+import { Code, ConnectError, type HandlerContext, type ServiceImpl } from "@connectrpc/connect";
 import {
   type MemoryService,
   MemorySummarySchema,
   type SessionMemoryInput,
-} from "../../gen/kagent/api/v1alpha1/memory_pb.js";
+} from "../../gen/kagent/runtime/v1/memory_pb.js";
 
 export class FakeMemory {
-  readonly records = new Map<string, { input: SessionMemoryInput; accesses: bigint }>();
+  readonly records = new Map<
+    string,
+    { input: SessionMemoryInput; agentName: string; userId: string; accesses: bigint }
+  >();
   reset() {
     this.records.clear();
   }
   service(): ServiceImpl<typeof MemoryService> {
-    const matches = (scope: { agentName: string; userId: string }) =>
+    const user = (context: HandlerContext) => context.requestHeader.get("x-user-id") ?? "";
+    const matches = (agentName: string, userId: string) =>
       [...this.records].filter(
-        ([, item]) =>
-          item.input.agentName === scope.agentName && item.input.userId === scope.userId,
+        ([, item]) => item.agentName === agentName && item.userId === userId,
       );
     return {
-      addSession: ({ memory }) => {
+      addSession: ({ memory, managementAgent }, context) => {
         if (!memory) throw new Error("Missing memory");
         const id = randomUUID();
-        this.records.set(id, { input: memory, accesses: 0n });
+        this.records.set(id, {
+          input: memory,
+          agentName: managementAgent,
+          userId: user(context),
+          accesses: 0n,
+        });
         return { id };
       },
-      addSessionBatch: ({ items }) => {
-        for (const input of items) this.records.set(randomUUID(), { input, accesses: 0n });
+      addSessionBatch: ({ items, managementAgent }, context) => {
+        for (const input of items)
+          this.records.set(randomUUID(), {
+            input,
+            agentName: managementAgent,
+            userId: user(context),
+            accesses: 0n,
+          });
         return { count: items.length };
       },
-      list: (scope) => ({
-        memories: matches(scope).map(([id, item]) =>
+      list: (scope, context) => ({
+        memories: matches(scope.agentName, user(context)).map(([id, item]) =>
           create(MemorySummarySchema, {
             id,
             content: item.input.content,
@@ -41,8 +55,8 @@ export class FakeMemory {
           }),
         ),
       }),
-      search: (scope) => ({
-        memories: matches(scope)
+      search: (scope, context) => ({
+        memories: matches(scope.managementAgent, user(context))
           .slice(0, scope.limit ?? 20)
           .map(([id, item]) => {
             item.accesses++;
@@ -55,12 +69,12 @@ export class FakeMemory {
             };
           }),
       }),
-      delete: (scope) => {
-        for (const [id] of matches(scope)) this.records.delete(id);
+      delete: (scope, context) => {
+        for (const [id] of matches(scope.agentName, user(context))) this.records.delete(id);
         return { status: "ok" };
       },
-      deleteEntry: (scope) => {
-        if (!matches(scope).some(([id]) => id === scope.id))
+      deleteEntry: (scope, context) => {
+        if (!matches(scope.agentName, user(context)).some(([id]) => id === scope.id))
           throw new ConnectError("Memory not found", Code.NotFound);
         this.records.delete(scope.id);
         return {};

@@ -161,14 +161,13 @@ describe("joint Harness and model configuration", () => {
     const original = await env.store.get("agents", "diagnosis");
     const spec: JsonObject = {
       ...object(original.spec),
-      template: object(env.fake.template("diagnosis").resource?.value?.spec),
+      template: { inline: object(env.fake.template("diagnosis").resource?.value?.spec) },
     };
-    delete spec.templateRef;
     await env.store.save("agents", { ...original, spec }, false);
     const save = vi.spyOn(env.store, "save");
     const result = await client.setEngineerRuntime(await request("claude", "messages-model"));
     expect(object(result.agent?.resource?.value?.spec)).toMatchObject({
-      template: { modelConfig: { name: "messages-model" } },
+      template: { inline: { modelConfig: { name: "messages-model" } } },
       harnessRef: { name: "claude" },
     });
     expect(result.agentTemplate).toBeUndefined();

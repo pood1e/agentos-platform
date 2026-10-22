@@ -6,7 +6,7 @@ import {
   McpHeaderSchema,
   McpRequestSchema,
 } from "../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { actorTokenHeader } from "../server/authorization/actor.js";
 import { mcpAuthorization } from "../server/authorization/mcp.js";
 

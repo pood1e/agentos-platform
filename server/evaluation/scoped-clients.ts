@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 
 /** The MCP collaboration facade can see only agents and sessions of one evaluation variant. */

@@ -7,7 +7,7 @@ import {
   McpResponseSchema,
 } from "../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import type { ExecutionRuntime } from "../server/authorization/runtime.js";
 import { collaborationGuardrails } from "../server/platform/guardrails.js";

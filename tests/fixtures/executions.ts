@@ -4,7 +4,7 @@ import { create } from "@bufbuild/protobuf";
 import { createLocalJWKSet } from "jose";
 import postgres from "postgres";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { executions } from "../../server/authorization/executions.js";
 import { jwtIdentity } from "../../server/authorization/oidc.js";
 import { executionStore } from "../../server/authorization/store.js";

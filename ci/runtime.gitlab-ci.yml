@@ -75,7 +75,7 @@ build-substrate-microvm:
   extends: build-substrate-api
   variables:
     AGENTOS_DOCKERFILE_DIR: runtime/substrate/microvm
-    AGENTOS_IMAGE_SUFFIX: /substrate/ateom-microvm
+    AGENTOS_IMAGE_SUFFIX: /substrate/ateworker-microvm
     AGENTOS_BUILD_METADATA: .cache/substrate-microvm-build-metadata.json
   artifacts:
     paths: [.cache/substrate-microvm-build-metadata.json]
@@ -101,7 +101,7 @@ build-standard-harness:
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/standard-image
     AGENTOS_DOCKERFILE_DIR: runtime/harness-toolbox
-    AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/golang-adk:1.0.0-alpha11@sha256:29409dfe1a030b50da3ff3f72599752cb5824a50f6aa136c16bf2b1678aa89b8
+    AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/golang-adk:1.0.0-alpha17@sha256:d20d411759d7bb549f00b7d6e8d669b91694aeb57dce847dcd2cbb68aa0d45f3
     AGENTOS_IMAGE_SUFFIX: /standard-harness
     AGENTOS_BUILD_METADATA: .cache/standard-harness-build-metadata.json
   artifacts:
@@ -112,7 +112,7 @@ build-codex-harness:
   extends: build-standard-harness
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/codex-image
-    AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/codex-harness:1.0.0-alpha11@sha256:bb01f2dcf7e07d39f5ce88e97953b7ff849f8cf4e6957640923630e9f8c1952e
+    AGENTOS_HARNESS_IMAGE: ghcr.io/kagent-dev/kagent/codex-harness:1.0.0-alpha17@sha256:1c8565efce78c420b6726c68eaf010363fafd4eeec0c1afcd317d9e517434c22
     AGENTOS_IMAGE_SUFFIX: /codex-harness
     AGENTOS_BUILD_METADATA: .cache/codex-harness-build-metadata.json
   artifacts:

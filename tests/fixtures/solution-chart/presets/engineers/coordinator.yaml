@@ -29,7 +29,8 @@ metadata:
   labels:
     agentos.dev/role: coordinator
 spec:
-  templateRef:
-    name: coordinator
+  template:
+    ref:
+      name: coordinator
   harnessRef:
     name: standard

@@ -144,15 +144,27 @@ describe("team sessions", () => {
       expect(tools.tools.map((tool: { name: string }) => tool.name)).not.toContain("save_memory");
       const scope = env.dependencies.knowledge.scope;
       for (let index = 0; index < 6; index++)
-        await env.clients.memory.addSession({
-          memory: { ...scope, content: `Verified finding ${index}`, vector: Array(768).fill(1) },
-        });
-      await env.clients.memory.addSession({
-        memory: { ...scope, userId: "another-user", content: "Private user knowledge" },
-      });
-      await env.clients.memory.addSession({
-        memory: { ...scope, agentName: "another_team__NS__knowledge", content: "Other team" },
-      });
+        await env.clients.memory.addSession(
+          {
+            managementAgent: scope.agentName,
+            memory: { content: `Verified finding ${index}`, vector: Array(768).fill(1) },
+          },
+          { headers: { "x-user-id": scope.userId } },
+        );
+      await env.clients.memory.addSession(
+        {
+          managementAgent: scope.agentName,
+          memory: { content: "Private user knowledge" },
+        },
+        { headers: { "x-user-id": "another-user" } },
+      );
+      await env.clients.memory.addSession(
+        {
+          managementAgent: "another_team/knowledge",
+          memory: { content: "Other team" },
+        },
+        { headers: { "x-user-id": scope.userId } },
+      );
       await knowledge.add("Console entry shared with all engineers");
       expect((await knowledge.list({ query: "", pageSize: 0, pageToken: "" })).totalSize).toBe(7);
       const nativeSearch = vi.spyOn(env.clients.memory, "search");
@@ -165,7 +177,12 @@ describe("team sessions", () => {
       expect(JSON.stringify(response)).not.toContain("Private user knowledge");
       expect(JSON.stringify(response)).not.toContain("Other team");
       expect(nativeSearch).toHaveBeenCalledWith(
-        expect.objectContaining({ ...scope, limit: 5, minScore: 0.3, vector: expect.any(Array) }),
+        expect.objectContaining({
+          managementAgent: scope.agentName,
+          limit: 5,
+          minScore: 0.3,
+          vector: expect.any(Array),
+        }),
         expect.anything(),
       );
       expect(env.fake.memory.records.size).toBe(9);

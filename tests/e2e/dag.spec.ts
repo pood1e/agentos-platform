@@ -4,7 +4,7 @@ import { createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { expect, test } from "@playwright/test";
 import { TaskSchema } from "../../gen/a2a_pb.js";
-import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { createdAtKey, partTypeKey, timelineKey } from "../../server/read-model/decode/messages.js";
 import { bindSessions, client, observeTask, resetKagent } from "./kagent.js";
 

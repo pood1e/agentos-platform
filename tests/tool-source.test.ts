@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { ToolCallSchema } from "../gen/agentos/execution/v1/task_pb.js";
-import { ToolServerSchema } from "../gen/kagent/api/v1alpha1/tools_pb.js";
+import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { toolSource } from "../src/features/shared/tool-source.js";
 import { mcpCalls } from "../src/features/tasks/flow/mcp-calls.js";
 

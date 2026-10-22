@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { ScheduledRun } from "../../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+import type { ScheduledRun } from "../../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { roleLabel } from "../shared/engineers.js";
 import { scheduledTime } from "./format.js";
 import { ScheduleStatus } from "./ScheduleStatus.js";

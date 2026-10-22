@@ -3,8 +3,8 @@ import type {
   DeleteHarnessRequest,
   SaveHarnessRequest,
 } from "../../gen/agentos/management/v1/management_pb.js";
-import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
-import { HarnessSchema } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import { HarnessSchema } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { conflict, invalid } from "../shared/errors.js";
 import { credentialReferences } from "./credential-references.js";

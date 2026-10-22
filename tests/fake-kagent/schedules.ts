@@ -13,7 +13,7 @@ import {
   ScheduledRunExecutionState,
   ScheduledRunSchema,
   type ScheduledRunService,
-} from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+} from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import type { FakeKagent } from "./kagent.js";
 
 const missing = () => new ConnectError("Schedule not found", Code.NotFound);

@@ -25,7 +25,7 @@ export interface ExecutionDependencies {
   jobs: ReturnType<typeof evaluationJobs>;
   sandboxes: ReturnType<typeof evaluationSandboxes>;
   bindExecution?: (
-    session: import("../../gen/kagent/api/v1alpha1/sessions_pb.js").Session,
+    session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
   ) => Promise<void>;
 }
 

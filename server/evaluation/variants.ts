@@ -102,9 +102,9 @@ export function evaluationVariant(
         });
     }
     if (value.kind === "Agent") {
-      if (!spec.templateRef || !spec.harnessRef)
+      if (!object(spec.template).ref || !spec.harnessRef)
         throw new Error("Evaluation requires native template and harness references");
-      spec.templateRef = localReference(spec.templateRef, namespace, prefix);
+      spec.template = { ref: localReference(object(spec.template).ref, namespace, prefix) };
       spec.harnessRef = localReference(spec.harnessRef, namespace, prefix);
     }
     if (value.kind === "Harness") {

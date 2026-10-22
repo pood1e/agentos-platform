@@ -16,9 +16,9 @@ import {
 import {
   type AgentTemplate,
   AgentTemplateSchema,
-} from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import type { Agent } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import { type Session, SessionSchema } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+} from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import type { Agent } from "../../gen/kagent/api/v1/agents_pb.js";
+import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
 import { hitlPayload } from "../../server/read-model/decode/hitl.js";
 import { createdAtKey, object, partTypeKey } from "../../server/read-model/decode/messages.js";

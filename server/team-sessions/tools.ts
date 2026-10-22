@@ -15,13 +15,13 @@ import {
 import {
   ListAgentsRequestSchema,
   ListAgentsResponseSchema,
-} from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
+} from "../../gen/kagent/api/v1/agents_pb.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import {
   CreateSessionRequestSchema,
   CreateSessionResponseSchema,
-} from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
-import { ListToolServersResponseSchema } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+} from "../../gen/kagent/api/v1/sessions_pb.js";
+import { ListToolServersResponseSchema } from "../../gen/kagent/api/v1/tools_pb.js";
 import roleSchema from "../../gen/schema/agentos.console.v1.RoleDefinition.jsonschema.bundle.json" with {
   type: "json",
 };
@@ -31,13 +31,13 @@ import messageSchema from "../../gen/schema/agentos.kagent.v1.InvokeSessionInput
 import searchSchema from "../../gen/schema/agentos.management.v1.SearchKnowledgeRequest.jsonschema.bundle.json" with {
   type: "json",
 };
-import createSchema from "../../gen/schema/kagent.api.v1alpha1.CreateSessionRequest.jsonschema.bundle.json" with {
+import createSchema from "../../gen/schema/kagent.api.v1.CreateSessionRequest.jsonschema.bundle.json" with {
   type: "json",
 };
-import listSchema from "../../gen/schema/kagent.api.v1alpha1.ListAgentsRequest.jsonschema.bundle.json" with {
+import listSchema from "../../gen/schema/kagent.api.v1.ListAgentsRequest.jsonschema.bundle.json" with {
   type: "json",
 };
-import toolSchema from "../../gen/schema/kagent.api.v1alpha1.ListToolServersRequest.jsonschema.bundle.json" with {
+import toolSchema from "../../gen/schema/kagent.api.v1.ListToolServersRequest.jsonschema.bundle.json" with {
   type: "json",
 };
 import manifest from "../../package.json" with { type: "json" };

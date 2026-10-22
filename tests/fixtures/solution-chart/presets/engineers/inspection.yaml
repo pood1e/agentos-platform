@@ -27,7 +27,8 @@ metadata:
   labels:
     agentos.dev/role: inspection
 spec:
-  templateRef:
-    name: inspection
+  template:
+    ref:
+      name: inspection
   harnessRef:
     name: standard

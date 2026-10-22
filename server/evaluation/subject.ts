@@ -25,13 +25,14 @@ export function evaluationSubject(
       const spec = object(value.spec);
       return changed.some(
         (entry) =>
-          (entry.kind === "AgentTemplate" && meta(entry).name === object(spec.templateRef).name) ||
+          (entry.kind === "AgentTemplate" &&
+            meta(entry).name === object(object(spec.template).ref).name) ||
           (entry.kind === "Harness" && meta(entry).name === object(spec.harnessRef).name) ||
           (entry.kind === "ModelConfig" &&
             resources.some(
               (template) =>
                 template.kind === "AgentTemplate" &&
-                meta(template).name === object(spec.templateRef).name &&
+                meta(template).name === object(object(spec.template).ref).name &&
                 object(object(template.spec).modelConfig).name === meta(entry).name,
             )),
       );
@@ -77,7 +78,8 @@ export function subjectProbe(snapshot: ConfigurationSnapshot, values: JsonObject
   );
   const spec = object(agent?.spec);
   const template = values.find(
-    (value) => value.kind === "AgentTemplate" && meta(value).name === object(spec.templateRef).name,
+    (value) =>
+      value.kind === "AgentTemplate" && meta(value).name === object(object(spec.template).ref).name,
   );
   if (!agent || !template) throw new Error("Evaluation reference configuration is missing");
   const templateSpec = object(template.spec);
@@ -102,7 +104,7 @@ export function subjectProbe(snapshot: ConfigurationSnapshot, values: JsonObject
       metadata: { ...meta(agent), name: probe },
       spec: {
         ...spec,
-        templateRef: { ...object(spec.templateRef), name: probe },
+        template: { ref: { ...object(object(spec.template).ref), name: probe } },
         ...(snapshot.subjectHarness
           ? { harnessRef: { ...object(spec.harnessRef), name: snapshot.subjectHarness } }
           : {}),

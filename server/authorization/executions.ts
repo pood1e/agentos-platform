@@ -6,7 +6,7 @@ import {
   ExecutionBindingSchema,
   type ExecutionIdentity,
 } from "../../gen/agentos/execution/v1/identity_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { intersectCapabilities } from "../../shared/permissions.js";
 import { type KagentClients, pool } from "../kagent/clients.js";
 import type { jwtIdentity } from "./oidc.js";

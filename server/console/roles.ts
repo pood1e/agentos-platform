@@ -3,11 +3,11 @@ import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import { ErrorInfoSchema } from "../../gen/google/rpc/error_details_pb.js";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import {
   type ResourceReference,
   ResourceReferenceSchema,
-} from "../../gen/kagent/api/v1alpha1/common_pb.js";
+} from "../../gen/kagent/api/v1/common_pb.js";
 import type { BindingView } from "../governance/bindings.js";
 import { engineerTools } from "../kagent/builtin-tools.js";
 import type { KagentClients } from "../kagent/clients.js";
@@ -83,7 +83,8 @@ export function roleCommands(
       ? [selectedHarness]
       : agents
           .filter(
-            (agent) => object(object(agent.resource?.value?.spec).templateRef).name === role.name,
+            (agent) =>
+              object(object(object(agent.resource?.value?.spec).template).ref).name === role.name,
           )
           .map((agent) => object(object(agent.resource?.value?.spec).harnessRef));
     for (const assignment of assignments) {
@@ -169,7 +170,7 @@ export function roleCommands(
                   annotations: { ...annotations, "agentos.dev/description": role.description },
                 },
                 spec: {
-                  templateRef: { name: role.name },
+                  template: { ref: { name: role.name } },
                   harnessRef: { name: selectedHarness.name },
                 },
               },

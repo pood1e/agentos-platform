@@ -17,7 +17,7 @@ import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.
 import type {
   MemorySearchResult,
   MemorySummary,
-} from "../../../gen/kagent/api/v1alpha1/memory_pb.js";
+} from "../../../gen/kagent/runtime/v1/memory_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { millis } from "../../lib/format.js";

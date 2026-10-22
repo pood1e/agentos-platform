@@ -1,6 +1,6 @@
 import { ApiException, CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
 import { TaskState } from "../../gen/a2a_pb.js";
-import { RuntimeState } from "../../gen/kagent/api/v1alpha1/runtime_pb.js";
+import { RuntimeState } from "../../gen/kagent/api/v1/runtime_pb.js";
 import { eachPage, type KagentClients } from "../kagent/clients.js";
 import { agentKey } from "../read-model/agents.js";
 import { variantPrefix } from "./names.js";
