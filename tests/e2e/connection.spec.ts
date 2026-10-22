@@ -25,3 +25,45 @@ test("retains graph observations and zoom while queries reconnect", async ({ pag
   await expect(page.getByTestId("error-banner")).toHaveCount(0);
   await expect.poll(zoom).toBe(position);
 });
+
+test("keeps platform connectivity live when an individual resource query fails", async ({
+  page,
+  request,
+}) => {
+  await resetKagent(request);
+  await page.route("**/agentos.console.v1.ConsoleService/ListConversations", (route) =>
+    route.abort(),
+  );
+  await page.goto("/chat");
+  await expect(page.getByTestId("connection")).toHaveAttribute("data-state", "connected");
+  const calls = [];
+  for (let index = 0; index < 3; index++) {
+    await page.waitForResponse((response) => response.url().endsWith("/GetAccessProfile"));
+    calls.push(await page.getByTestId("connection").getAttribute("data-state"));
+    await expect(page.getByTestId("error-banner")).toHaveCount(0);
+  }
+  expect(calls).toEqual(["connected", "connected", "connected"]);
+});
+
+test("reauthenticates an expired browser session while preserving the conversation URL", async ({
+  page,
+  request,
+}) => {
+  await resetKagent(request);
+  await page.goto(`/chat?task=${ids.dispatchRoot}`);
+  await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
+  const url = page.url();
+  let rejected = false;
+  await page.route("**/agentos.console.v1.ConsoleService/GetAccessProfile", (route) => {
+    if (rejected) return route.continue();
+    rejected = true;
+    return route.fulfill({ status: 401, json: { code: "unauthenticated", message: "expired" } });
+  });
+  await page.waitForEvent("framenavigated", {
+    predicate: (frame) => frame === page.mainFrame(),
+    timeout: 20_000,
+  });
+  await expect(page).toHaveURL(url);
+  await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
+  await expect(page.getByTestId("connection")).toHaveAttribute("data-state", "connected");
+});

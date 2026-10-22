@@ -13,7 +13,5 @@ export function errorKey(error: unknown, fallback: string): string {
 /** Errors that mean the workbench or kagent cannot be reached, as opposed to rejected requests. */
 export function unreachable(error: unknown): boolean {
   if (!(error instanceof ConnectError)) return true;
-  return [Code.Unavailable, Code.Unknown, Code.DeadlineExceeded, Code.Internal].includes(
-    error.code,
-  );
+  return [Code.Unavailable, Code.Unknown, Code.DeadlineExceeded].includes(error.code);
 }

@@ -16,7 +16,7 @@ function publish(state: State, error: string) {
   for (const listener of listeners) listener();
 }
 
-/** Workbench connectivity derived from streams and queries. */
+/** Workbench connectivity follows the authenticated platform heartbeat. */
 export const connection = {
   succeeded: () => publish("live", ""),
   failed: (error: string) => publish("failed", error),

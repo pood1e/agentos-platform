@@ -87,17 +87,18 @@ it.each([
   ["zh", "RCA 完成：nginx deployment CrashLoopBackOff，建议检查 memory limit。", "zh"],
   ["ar", "نعم، Kubernetes Deployment nginx و Prometheus يعملان بشكل طبيعي.", "ar-MSA"],
   ["en", "Please inspect Kubernetes Deployment nginx and Prometheus metrics.", "en"],
-])("uses NeMo's %s language and supported WAV format", async (_language, text, expected) => {
+])("uses NeMo's %s language and streamed PCM format", async (_language, text, expected) => {
   const provider = Fastify();
   provider.post("/v1/audio/speech", (request, reply) => {
     expect(request.body).toEqual({
       model: "magpie",
       voice: "Aria",
       input: text,
-      response_format: "wav",
+      response_format: "pcm",
       language: expected,
+      sample_rate: 22050,
     });
-    return reply.type("audio/wav").send(Buffer.from("RIFF-audio"));
+    return reply.type("audio/pcm;rate=22050;channels=1").send(Buffer.from("PCM-audio"));
   });
   const url = await provider.listen({ host: "127.0.0.1", port: 0 });
   onTestFinished(() => provider.close());
@@ -128,5 +129,5 @@ it.each([
     context,
   ))
     chunks.push(chunk.audio?.data ?? new Uint8Array());
-  expect(Buffer.concat(chunks).toString()).toBe("RIFF-audio");
+  expect(Buffer.concat(chunks).toString()).toBe("PCM-audio");
 });

@@ -5,6 +5,7 @@ import { unavailable } from "../shared/errors.js";
 
 const settle = 250;
 const healthCheck = 5_000;
+const heartbeat = 15_000;
 // Streams end periodically so intermediaries never hold idle responses indefinitely.
 const lifetime = 5 * 60_000;
 
@@ -15,7 +16,7 @@ const sleep = (ms: number, signal: AbortSignal) =>
 
 /** Yields the current view, then a new view whenever the read model changes it. */
 export async function* watch<Desc extends DescMessage>(
-  sync: KagentSync,
+  sync: Pick<KagentSync, "index" | "healthy">,
   schema: Desc,
   signal: AbortSignal,
   view: () => MessageShape<Desc> | Promise<MessageShape<Desc>>,
@@ -29,6 +30,7 @@ export async function* watch<Desc extends DescMessage>(
   });
   const deadline = Date.now() + lifetime;
   let last: MessageShape<Desc> | undefined;
+  let sentAt = 0;
   try {
     while (!signal.aborted && Date.now() < deadline) {
       if (!sync.healthy()) throw unavailable();
@@ -37,6 +39,7 @@ export async function* watch<Desc extends DescMessage>(
         const next = await view();
         if (!last || !equals(schema, last, next)) {
           last = next;
+          sentAt = Date.now();
           yield next;
         }
         await sleep(settle, signal);
@@ -45,6 +48,11 @@ export async function* watch<Desc extends DescMessage>(
       const stop = new AbortController();
       wake = () => stop.abort();
       await sleep(healthCheck, AbortSignal.any([signal, stop.signal]));
+      if (!signal.aborted && last && Date.now() - sentAt >= heartbeat) {
+        if (!sync.healthy()) throw unavailable();
+        sentAt = Date.now();
+        yield last;
+      }
       if (poll) changed = true;
       wake = () => {};
     }

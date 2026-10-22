@@ -377,6 +377,20 @@
     "processing": "Finishing transcription…",
     "cancel": "Cancel",
     "generating": "Generating speech…",
-    "transcriptionTimeout": "Transcription timed out. Review the preserved text before sending."
+    "transcriptionTimeout": "Transcription timed out. Review the preserved text before sending.",
+    "callStart": "Voice call",
+    "callEnableAudio": "Enable call audio",
+    "callEnd": "Hang up",
+    "callMute": "Mute microphone",
+    "callUnmute": "Unmute microphone",
+    "callMuted": "Microphone muted",
+    "call_connecting": "Connecting…",
+    "call_listening": "Listening; your turn sends automatically",
+    "call_speaking": "Speaking; talk to interrupt",
+    "callWaiting": "Waiting for the assistant; you can keep talking",
+    "callRetry": "Retry sending",
+    "callFailed": "Voice call failed. Try again.",
+    "callQueueFull": "Too many pending voice turns. Wait for the current task to finish.",
+    "callUnsent": "These messages have not been sent:"
   }
 }

@@ -371,6 +371,20 @@
     "processing": "正在处理尾部语音…",
     "cancel": "取消",
     "generating": "正在生成语音…",
-    "transcriptionTimeout": "语音处理超时，已保留当前文字，请检查后发送。"
+    "transcriptionTimeout": "语音处理超时，已保留当前文字，请检查后发送。",
+    "callStart": "语音通话",
+    "callEnableAudio": "启用通话声音",
+    "callEnd": "挂断",
+    "callMute": "关闭麦克风",
+    "callUnmute": "开启麦克风",
+    "callMuted": "麦克风已关闭",
+    "call_connecting": "正在接通…",
+    "call_listening": "正在聆听，说完后自动发送",
+    "call_speaking": "正在回答，可以直接说话打断",
+    "callWaiting": "等待助手处理，仍可继续说话",
+    "callRetry": "重试发送",
+    "callFailed": "语音通话失败，请重试。",
+    "callQueueFull": "待处理的语音过多，请等待当前任务完成后再说。",
+    "callUnsent": "以下内容尚未发送："
   }
 }

@@ -40,3 +40,30 @@ build-automation:
   artifacts:
     paths: [.cache/automation-build-metadata.json]
     expire_in: 7 days
+
+voice-verify:
+  extends: .shell
+  stage: verify
+  before_script:
+    - . ci/shell-env.sh
+    - . ci/python-env.sh ci/voice-tools-requirements.txt
+    - . ci/voice-env.sh
+    - npm ci --prefer-offline
+  script:
+    - ci/tools.sh protoc
+    - node_modules/.bin/buf generate --template buf.python.gen.yaml
+    - .cache/voice-venv/bin/ruff check voice
+    - .cache/voice-venv/bin/ruff format --check voice
+    - .cache/voice-venv/bin/pytest -o 'pythonpath=gen/python voice' voice/tests
+
+build-voice:
+  extends: .build-python-image
+  needs: [voice-verify, build-contracts]
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/voice-image
+    AGENTOS_DOCKERFILE_DIR: voice
+    AGENTOS_IMAGE_SUFFIX: /voice
+    AGENTOS_BUILD_METADATA: .cache/voice-build-metadata.json
+  artifacts:
+    paths: [.cache/voice-build-metadata.json]
+    expire_in: 7 days

@@ -18,6 +18,9 @@ import { ConversationRuntime } from "./ConversationRuntime.js";
 import { ConversationTranscript } from "./ConversationTranscript.js";
 import { rememberConversation } from "./conversation-storage.js";
 import { useChat } from "./use-chat.js";
+import { VoiceCallContext } from "./voice/context.js";
+import { useVoiceCall } from "./voice/use-voice-call.js";
+import { VoiceCallControls } from "./voice/VoiceCallControls.js";
 
 const TaskPanel = lazy(() =>
   import("../tasks/TaskPanel.js").then((module) => ({ default: module.TaskPanel })),
@@ -34,6 +37,7 @@ export function ChatPage() {
   const name = access.data?.entryAgent?.name ?? "assistant";
   const agent = { namespace: access.data?.workspace ?? "", name };
   const chat = useChat(agent, contextId, (id) => navigate(`/chat/${id}`));
+  const call = useVoiceCall(chat, contextId);
   const list = useQuery(
     ConsoleService.method.listConversations,
     agent.namespace
@@ -112,38 +116,44 @@ export function ChatPage() {
           selected && "xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] xl:gap-5",
         )}
       >
-        <ConversationRuntime
-          key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
-          chat={chat}
-        >
-          <ThreadPrimitive.Root
-            data-testid="conversation"
-            className={cn("min-h-0 min-w-0 flex-col", selected ? "hidden xl:flex" : "flex")}
-          >
-            <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <h1 className="min-w-0 truncate text-sm font-medium">
-                  {title || t("chat.assistant")}
-                </h1>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t("chat.new")}
-                title={t("chat.new")}
-                disabled={chat.sending || !access.data}
-                onClick={() => {
-                  chat.reset();
-                  navigate("/chat");
-                }}
-              >
-                <SquarePen />
-              </Button>
+        <div className={cn("min-h-0 min-w-0 flex-col", selected ? "hidden xl:flex" : "flex")}>
+          <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="min-w-0 truncate text-sm font-medium">
+                {title || t("chat.assistant")}
+              </h1>
             </div>
-            <ConversationTranscript chat={chat} onTask={selectTask} />
-            <ChatComposer chat={chat} />
-          </ThreadPrimitive.Root>
-        </ConversationRuntime>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("chat.new")}
+              title={t("chat.new")}
+              disabled={chat.sending || !access.data}
+              onClick={() => {
+                call.stop();
+                chat.reset();
+                navigate("/chat");
+              }}
+            >
+              <SquarePen />
+            </Button>
+          </div>
+          <VoiceCallControls call={call} disabled={!chat.ready || !chat.conversation?.operate} />
+          <VoiceCallContext value={call.active}>
+            <ConversationRuntime
+              key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
+              chat={chat}
+            >
+              <ThreadPrimitive.Root
+                data-testid="conversation"
+                className="flex min-h-0 min-w-0 flex-1 flex-col"
+              >
+                <ConversationTranscript chat={chat} onTask={selectTask} />
+                <ChatComposer chat={chat} />
+              </ThreadPrimitive.Root>
+            </ConversationRuntime>
+          </VoiceCallContext>
+        </div>
         {selected && (
           <Suspense fallback={null}>
             <TaskPanel

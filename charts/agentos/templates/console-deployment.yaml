@@ -77,6 +77,11 @@ spec:
             - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
             - {name: AGENTOS_EVENT_AUTOMATION_ENABLED, value: {{ .Values.automation.enabled | quote }}}
             - {name: AGENTOS_SPEECH_SECRET, value: {{ include "agentos.name" . }}-speech}
+            {{- if .Values.voice.enabled }}
+            - {name: AGENTOS_VOICE_URL, value: "http://{{ include "agentos.name" . }}-voice:8080"}
+            - name: AGENTOS_VOICE_TOKEN
+              valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-token}}
+            {{- end }}
             {{- if .Values.global.agentos.environments }}
             - {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
             {{- end }}

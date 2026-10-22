@@ -33,6 +33,7 @@ import { managementService } from "../management/service.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
+import { voiceCalls } from "../speech/calls.js";
 import { speechService } from "../speech/service.js";
 import { speechSettingsStore } from "../speech/store.js";
 import { registerTranscription } from "../speech/transcription.js";
@@ -94,7 +95,10 @@ const speechSettings = speechSettingsStore(
   config.namespace,
   process.env.AGENTOS_SPEECH_SECRET ?? `${process.env.AGENTOS_RELEASE ?? "agentos"}-speech`,
 );
-const speech = speechService(speechSettings.load);
+const speech = speechService(
+  speechSettings.load,
+  voiceCalls(speechSettings.load, process.env.AGENTOS_VOICE_URL, process.env.AGENTOS_VOICE_TOKEN),
+);
 await registerTranscription(app, speechSettings.load, async (headers) => {
   const origin = process.env.AGENTOS_ORIGIN;
   if (origin && headers.get("origin") !== origin) throw new Error("Invalid origin");

@@ -1,0 +1,37 @@
+fullnameOverride: agentos-livekit
+replicaCount: 1
+image:
+  repository: livekit/livekit-server
+  tag: v1.13.10@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a
+deploymentStrategy: {type: Recreate}
+terminationGracePeriodSeconds: 30
+podHostNetwork: true
+livekit:
+  port: 7880
+  log_level: warn
+  key_file: keys.yaml
+  rtc:
+    tcp_port: 7881
+    udp_port: 7882
+    port_range_start: 0
+    port_range_end: 0
+    use_external_ip: false
+    node_ip: {{ agentos_address }}
+storeKeysInSecret:
+  enabled: true
+  existingSecret: {{ voice_configuration.get('secretRef', 'agentos-voice') }}
+loadBalancer: {type: disable, servicePort: 80}
+autoscaling: {enabled: false}
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: '2', memory: 512Mi}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile: {type: RuntimeDefault}
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: {drop: [ALL]}

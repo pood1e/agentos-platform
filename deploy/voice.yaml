@@ -1,0 +1,103 @@
+- name: Connect real-time voice transport
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  vars:
+    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+    voice_configuration: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('voice', {}) }}"
+    voice_platform_values: "{{ (app_values | default({})).get('agentos', app_values | default({})) }}"
+  module_defaults:
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+    kubernetes.core.k8s_info:
+      kubeconfig: "{{ kubeconfig_path }}"
+  tasks:
+    - name: Configure self-hosted voice transport
+      when: voice_configuration.get('enabled', false) | bool
+      block:
+        - name: Discover voice credentials
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: "{{ voice_configuration.get('secretRef', 'agentos-voice') }}"
+            namespace: "{{ agentos_namespace }}"
+          register: voice_credentials
+          no_log: true
+
+        - name: Prepare voice credentials
+          ansible.builtin.set_fact:
+            voice_api_key: "{{ lookup('ansible.builtin.password', '/dev/null', length=24, chars=['ascii_letters', 'digits']) }}"
+            voice_api_secret: "{{ lookup('ansible.builtin.password', '/dev/null', length=64, chars=['ascii_letters', 'digits']) }}"
+            voice_api_token: "{{ lookup('ansible.builtin.password', '/dev/null', length=64, chars=['ascii_letters', 'digits']) }}"
+          when: voice_credentials.resources | length == 0
+          no_log: true
+
+        - name: Store voice credentials
+          kubernetes.core.k8s:
+            definition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: "{{ voice_configuration.get('secretRef', 'agentos-voice') }}"
+                namespace: "{{ agentos_namespace }}"
+              type: Opaque
+              data:
+                api-key: "{{ voice_api_key | b64encode }}"
+                api-secret: "{{ voice_api_secret | b64encode }}"
+                api-token: "{{ voice_api_token | b64encode }}"
+                keys.yaml: "{{ {voice_api_key: voice_api_secret} | to_nice_yaml | b64encode }}"
+          when: voice_credentials.resources | length == 0
+          no_log: true
+          diff: false
+
+        - name: Download the official LiveKit chart
+          ansible.builtin.get_url:
+            url: https://helm.livekit.io/livekit-server-1.9.0.tgz
+            dest: "{{ playbook_dir }}/../.cache/livekit-server-1.9.0.tgz"
+            checksum: sha256:4fafb11011747552803061ce41480c7d2b4fa58d3471f6d3579d988c53399109
+            mode: "0644"
+
+        - name: Deploy the LiveKit media server
+          kubernetes.core.helm:
+            name: agentos-livekit
+            binary_path: "{{ helm_binary }}"
+            kubeconfig: "{{ kubeconfig_path }}"
+            chart_ref: "{{ playbook_dir }}/../.cache/livekit-server-1.9.0.tgz"
+            release_namespace: "{{ agentos_namespace }}"
+            reset_values: true
+            wait: true
+            timeout: 5m
+            release_values: "{{ lookup('ansible.builtin.template', 'voice/livekit-values.yaml.j2') | from_yaml }}"
+          environment:
+            HELM_DIFF_USE_UPGRADE_DRY_RUN: "true"
+
+        - name: Route voice signaling through the application TLS endpoint
+          kubernetes.core.k8s:
+            definition:
+              - apiVersion: traefik.io/v1alpha1
+                kind: Middleware
+                metadata: {name: agentos-livekit, namespace: "{{ agentos_namespace }}"}
+                spec:
+                  stripPrefix: {prefixes: [/livekit]}
+              - apiVersion: networking.k8s.io/v1
+                kind: Ingress
+                metadata:
+                  name: agentos-livekit
+                  namespace: "{{ agentos_namespace }}"
+                  annotations:
+                    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                    traefik.ingress.kubernetes.io/router.middlewares: "{{ agentos_namespace }}-agentos-livekit@kubernetescrd"
+                spec:
+                  ingressClassName: traefik
+                  tls:
+                    - secretName: "{{ voice_platform_values.ingress.get('tlsSecret', 'agentos-ingress') }}"
+                      hosts: ["{{ voice_platform_values.ingress.host }}"]
+                  rules:
+                    - host: "{{ voice_platform_values.ingress.host }}"
+                      http:
+                        paths:
+                          - path: /livekit
+                            pathType: Prefix
+                            backend:
+                              service: {name: agentos-livekit, port: {name: http}}

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { create, fromBinary, fromJson, toBinary } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { expect, test } from "@playwright/test";
@@ -49,8 +50,9 @@ test.beforeEach(async ({ page, request }) => {
       }
     }
     Object.defineProperty(window, "MediaRecorder", { value: Recorder });
+    const microphone = new AudioContext().createMediaStreamDestination().stream;
     Object.defineProperty(navigator, "mediaDevices", {
-      value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+      value: { getUserMedia: async () => microphone },
     });
     class Player extends EventTarget {
       async play() {}
@@ -127,6 +129,61 @@ test("dictates multilingual text into the existing composer and waits for the us
   await input.fill("修正后的查询");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByTestId("chat-message")).toHaveCount(2);
+});
+
+test("ends dictation after real speech and silence using the shipped Silero VAD", async ({
+  page,
+}) => {
+  const wav = readFileSync("tests/fixtures/speech/zh.wav").toString("base64");
+  await page.addInitScript(
+    ({ wav }) => {
+      const context = new AudioContext();
+      const destination = context.createMediaStreamDestination();
+      let source: AudioBufferSourceNode;
+      navigator.mediaDevices.getUserMedia = async () => {
+        const data = Uint8Array.from(atob(wav), (character) => character.charCodeAt(0));
+        source = context.createBufferSource();
+        source.buffer = await context.decodeAudioData(data.buffer);
+        source.connect(destination);
+        await context.resume();
+        return destination.stream;
+      };
+      const start = MediaRecorder.prototype.start;
+      MediaRecorder.prototype.start = function () {
+        start.call(this);
+        source.start();
+      };
+    },
+    { wav },
+  );
+  await page.route("**/agentos.console.v1.ConsoleService/GetSpeechCapabilities", (route) =>
+    route.fulfill({ json: { transcription: true } }),
+  );
+  let finalized = 0;
+  await page.routeWebSocket("**/speech/v1/listen*", (socket) => {
+    socket.onMessage((message) => {
+      const final = typeof message === "string";
+      if (final) finalized++;
+      socket.send(
+        JSON.stringify({
+          type: "Results",
+          is_final: final,
+          channel: { alternatives: [{ transcript: final ? "尾字完整保留。" : "正在输入" }] },
+        }),
+      );
+      if (final) socket.close({ code: 1000 });
+    });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "语音输入", exact: true }).click();
+  await expect(page.getByRole("button", { name: "停止录音", exact: true })).toBeVisible();
+  const started = Date.now();
+  const input = page.getByRole("textbox", { name: "消息", exact: true });
+  await expect(input).toHaveValue("尾字完整保留。", { timeout: 10_000 });
+  expect(Date.now() - started).toBeLessThan(10_000);
+  await expect(input).toBeEditable();
+  expect(finalized).toBe(1);
+  await expect(page.getByTestId("chat-message")).toHaveCount(0);
 });
 
 test("reads an assistant answer with the official playback controls and stops on request", async ({
