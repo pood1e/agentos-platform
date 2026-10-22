@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http2";
 import { resolve } from "node:path";
 import { create } from "@bufbuild/protobuf";
-import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
@@ -44,6 +42,7 @@ import { startContinuations } from "../team-sessions/continuation.js";
 import { sessionTools } from "../team-sessions/tools.js";
 import { workspaceContext } from "./access.js";
 import { automationTools } from "./automation.js";
+import { grpcServer } from "./grpc.js";
 import { collaborationGuardrails } from "./guardrails.js";
 import { machineIdentities } from "./machine-identities.js";
 
@@ -292,34 +291,29 @@ const stopOperations = approvalCoordinator(sync, operations, app.log, async (con
   if (!session) throw new Error("Execution session is unavailable");
   await execution.authorizeTools(session, tools);
 });
-const processor = createServer(
-  connectNodeAdapter({
-    routes: (router) => {
-      const collaboration = collaborationGuardrails(evaluation.workspaces, execution);
-      router.service(ExtMcp, {
-        checkRequest: (request, context) =>
-          request.metadataContext?.execution === true
-            ? execution.guardrails.checkRequest(request, context)
-            : collaboration.checkRequest(request, context),
-        checkResponse: (request, context) =>
-          request.metadataContext?.execution === true
-            ? execution.guardrails.checkResponse(request, context)
-            : collaboration.checkResponse(request, context),
-      });
-    },
-  }),
-);
-const runtimeProcessor = createServer(
-  connectNodeAdapter({
-    routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
-  }),
-);
+const processor = grpcServer({
+  routes: (router) => {
+    const collaboration = collaborationGuardrails(evaluation.workspaces, execution);
+    router.service(ExtMcp, {
+      checkRequest: (request, context) =>
+        request.metadataContext?.execution === true
+          ? execution.guardrails.checkRequest(request, context)
+          : collaboration.checkRequest(request, context),
+      checkResponse: (request, context) =>
+        request.metadataContext?.execution === true
+          ? execution.guardrails.checkResponse(request, context)
+          : collaboration.checkResponse(request, context),
+    });
+  },
+});
+const runtimeProcessor = grpcServer({
+  routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
+});
 app.addHook("onClose", async () => {
   stopContinuations();
   stopOperations();
   sync.close();
-  await new Promise<void>((resolve) => processor.close(() => resolve()));
-  await new Promise<void>((resolve) => runtimeProcessor.close(() => resolve()));
+  await Promise.all([processor.close(), runtimeProcessor.close()]);
   await execution.close();
   await tags.close();
 });
@@ -339,6 +333,8 @@ const align = (): void =>
     });
 align();
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => void app.close());
+await Promise.all([
+  processor.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), listenConfig().host),
+  runtimeProcessor.listen(Number(process.env.AGENTOS_RUNTIME_PORT ?? "9091"), listenConfig().host),
+]);
 await app.listen(listenConfig());
-processor.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), listenConfig().host);
-runtimeProcessor.listen(Number(process.env.AGENTOS_RUNTIME_PORT ?? "9091"), listenConfig().host);

@@ -10,7 +10,10 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 2
-  strategy: {type: Recreate}
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
   selector:
     matchLabels:
       app.kubernetes.io/name: agentos
@@ -28,6 +31,7 @@ spec:
         checksum/evaluation: {{ include (print $.Template.BasePath "/evaluation-config.yaml") . | sha256sum }}
         {{- end }}
     spec:
+      terminationGracePeriodSeconds: 60
       serviceAccountName: {{ include "agentos.name" . }}-console
       automountServiceAccountToken: true
       {{- with .Values.imagePullSecrets }}
@@ -105,6 +109,9 @@ spec:
           readinessProbe:
             httpGet: {path: /readyz, port: http}
             periodSeconds: 3
+          lifecycle:
+            preStop:
+              sleep: {seconds: 5}
           livenessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 20

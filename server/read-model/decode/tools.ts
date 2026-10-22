@@ -124,19 +124,21 @@ function invocation(output: JsonValue | undefined) {
   }
 }
 
-/** dispatch_session takes an A2A Message, whose JSON accepts both field name spellings. */
+/** Accepted background results carry the native Task's context and input identity. */
 function dispatched(args: JsonValue | undefined, output: JsonValue | undefined) {
-  const message = object(args);
-  let taskId = "";
+  let contextId = text(object(args).session_id),
+    messageId = text(object(args).message_id),
+    taskId = "";
   try {
     const response = fromJson(SendMessageResponseSchema, object(structured(output)), lenient);
-    if (response.payload.case === "task") taskId = response.payload.value.id;
+    if (response.payload.case === "task") {
+      const task = response.payload.value;
+      taskId = task.id;
+      contextId = task.contextId || contextId;
+      messageId ||= task.history.at(0)?.messageId ?? "";
+    }
   } catch {}
-  return {
-    contextId: text(message.contextId) || text(message.context_id),
-    messageId: text(message.messageId) || text(message.message_id),
-    taskId,
-  };
+  return { contextId, messageId, taskId };
 }
 
 export function delegationRef(

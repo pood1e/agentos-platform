@@ -65,6 +65,29 @@ const servers = [
 ];
 
 describe("engineer tool access", () => {
+  it("merges overlapping identities without duplicate tools or weaker approval requirements", () => {
+    const bindings = [
+      create(ToolBindingSchema, {
+        server: "lab-kubernetes-remediation",
+        tools: [read, write],
+      }),
+      create(ToolBindingSchema, {
+        server: "lab-kubernetes-remediation-changes",
+        tools: [read, write],
+      }),
+    ];
+    const merged = access.bindings("remediation", bindings, servers, false);
+    expect(merged).toEqual([
+      create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read] }),
+      create(ToolBindingSchema, {
+        server: "lab-kubernetes-remediation-changes",
+        tools: [write],
+        requireApproval: true,
+      }),
+    ]);
+    expect(access.bindings("remediation", merged ?? [], servers, false)).toEqual(merged);
+  });
+
   it("intersects the caller's write permission with the Agent's environment ceiling and denies unknown tools", () => {
     expect(access.permitsCall("inspection", ["lab-kubernetes"], "pods_list", false)).toBe(true);
     expect(

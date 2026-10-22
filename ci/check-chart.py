@@ -140,8 +140,11 @@ for name, source, overrides, presets, config in [
     assert len(platform_bindings) == 1 and set(platform_bindings[0]['tools']) == {'list_agents', 'create_session', 'search_knowledge'}, 'Chat assistant must discover and select native Agents'
     assert all('agentos.dev/display-name' not in doc['metadata'].get('annotations', {}) for doc in templates)
     api = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-console'))
-    assert api['spec']['strategy'] == {'type': 'Recreate'}
+    assert api['spec']['strategy'] == {'type': 'RollingUpdate', 'rollingUpdate': {'maxSurge': 1, 'maxUnavailable': 0}}
+    assert api['spec']['minReadySeconds'] == 5
+    assert api['spec']['template']['spec']['terminationGracePeriodSeconds'] == 60
     container = api['spec']['template']['spec']['containers'][0]
+    assert container['lifecycle']['preStop'] == {'sleep': {'seconds': 5}}
     assert container['command'] == ['node', 'build/server/platform/main.js']
     env = {item['name']: item for item in container['env']}
     mode = 'oidc' if source == chart else 'none'

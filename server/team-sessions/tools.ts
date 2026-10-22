@@ -7,6 +7,7 @@ import {
   SendMessageResponseSchema,
 } from "../../gen/a2a_pb.js";
 import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
+import { InvokeSessionInputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
 import {
   SearchKnowledgeRequestSchema,
   SearchKnowledgeResponseSchema,
@@ -24,6 +25,9 @@ import { ListToolServersResponseSchema } from "../../gen/kagent/api/v1alpha1/too
 import roleSchema from "../../gen/schema/agentos.console.v1.RoleDefinition.jsonschema.bundle.json" with {
   type: "json",
 };
+import messageSchema from "../../gen/schema/agentos.kagent.v1.InvokeSessionInput.jsonschema.bundle.json" with {
+  type: "json",
+};
 import searchSchema from "../../gen/schema/agentos.management.v1.SearchKnowledgeRequest.jsonschema.bundle.json" with {
   type: "json",
 };
@@ -34,9 +38,6 @@ import listSchema from "../../gen/schema/kagent.api.v1alpha1.ListAgentsRequest.j
   type: "json",
 };
 import toolSchema from "../../gen/schema/kagent.api.v1alpha1.ListToolServersRequest.jsonschema.bundle.json" with {
-  type: "json",
-};
-import messageSchema from "../../gen/schema/lf.a2a.v1.Message.jsonschema.bundle.json" with {
   type: "json",
 };
 import manifest from "../../package.json" with { type: "json" };
@@ -96,13 +97,13 @@ export function sessionTools(
       server.registerTool(
         "list_agents",
         {
-          description:
-            "Discover available Agents and their capabilities and readiness in the team namespace.",
+          description: `Discover available Agents and their capabilities and readiness in workspace ${namespace}. Omit namespace to use this workspace.`,
           inputSchema: inputSchema(listSchema),
           annotations: { readOnlyHint: true },
         },
         async (args) => {
           const request = fromJson(ListAgentsRequestSchema, args);
+          request.namespace ||= namespace;
           if (request.namespace !== namespace)
             throw new Error("Agent namespace is outside this workspace");
           const response = await clients.agents.listAgents(request, { timeoutMs: 10_000 });
@@ -149,22 +150,21 @@ export function sessionTools(
         "dispatch_session",
         {
           description:
-            "Dispatch independent background work to an existing Session without waiting for completion. Input is an official A2A Message: contextId is the session.id, messageId is a fresh random UUID, role is ROLE_USER, and parts contains the task text. Returns the accepted A2A Task; acceptance does not mean completion. Use for knowledge persistence after the main goal is verified. Use invoke_session when the main result depends on the child's answer, including knowledge retrieval.",
+            "Dispatch independent background work without waiting for completion. Uses the same session_id, message_id and message fields as invoke_session. Use a fresh random UUID message_id and reuse identical inputs for retries. Returns the accepted A2A Task; acceptance does not mean completion. Use for knowledge persistence after the main goal is verified. Use invoke_session when the main result depends on the child's answer.",
           inputSchema: inputSchema(messageSchema),
           annotations: { destructiveHint: false },
         },
         async (args) => {
-          const message = fromJson(MessageSchema, args);
-          if (
-            !message.contextId ||
-            !message.messageId ||
-            message.role !== Role.USER ||
-            message.taskId ||
-            !message.parts.length
-          )
-            throw new Error(
-              "A new background task requires a user message, messageId and Session contextId",
-            );
+          const input = fromJson(InvokeSessionInputSchema, args);
+          input.message = input.message?.trim();
+          const validation = validator.validate(InvokeSessionInputSchema, input);
+          if (validation.kind !== "valid") throw new Error(String(validation.error));
+          const message = create(MessageSchema, {
+            contextId: input.sessionId,
+            messageId: input.messageId,
+            role: Role.USER,
+            parts: [{ content: { case: "text", value: input.message ?? "" } }],
+          });
           const { session } = await clients.sessions.getSession(
             { sessionId: message.contextId },
             { timeoutMs: 10_000 },

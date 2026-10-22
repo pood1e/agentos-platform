@@ -6,7 +6,7 @@ import "agentos/execution/v1/state.proto";
 import "kagent/api/v1alpha1/common.proto";
 import "kagent/api/v1alpha1/tools.proto";
 
-// kagent Agent identified by namespace/name; role comes from its label or template.
+// kagent Agent identified by namespace/name; its template reference selects the role.
 message Engineer {
   string id = 1;
   string name = 2;

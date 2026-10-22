@@ -106,7 +106,7 @@ async function knowledge(fake: FakeKagent, task: Task) {
   const accepted = fake.accept(message);
   return activity(
     "dispatch_session",
-    toJson(MessageSchema, message),
+    { session_id: session.id, message_id: message.messageId, message: messageText(message) },
     toJson(
       SendMessageResponseSchema,
       create(SendMessageResponseSchema, { payload: { case: "task", value: accepted } }),

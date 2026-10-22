@@ -74,6 +74,10 @@
       environment:
         HELM_DIFF_USE_UPGRADE_DRY_RUN: "true"
 
+    - name: Publish the current collaboration tool catalog
+      ansible.builtin.include_tasks: mcp-discovery.yaml
+      when: not ansible_check_mode
+
     - name: Retire console OIDC credentials
       kubernetes.core.k8s:
         api_version: v1

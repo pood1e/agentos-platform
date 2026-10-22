@@ -37,9 +37,7 @@ export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTem
   const blocking = conditions.find((condition) => condition.status === "False") ?? readiness;
   return {
     id: agentKey(agent.ref),
-    role:
-      text(object(metadata.labels)["agentos.dev/role"]) ||
-      text(object(object(resource?.spec).templateRef).name),
+    role: text(templateRef.name),
     displayName: text(annotations["agentos.dev/display-name"]),
     description: template
       ? text(object(template.spec).description)
