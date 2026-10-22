@@ -11,6 +11,8 @@ plugins:
     types:
       - agentos.console.v1.RoleDefinition
       - agentos.management.v1.SearchKnowledgeRequest
+      - agentos.console.v1.SpeechTranscription
+      - agentos.console.v1.SpeechSynthesis
       - kagent.api.v1alpha1.ListAgentsRequest
       - kagent.api.v1alpha1.CreateSessionRequest
       - kagent.api.v1alpha1.ListToolServersRequest

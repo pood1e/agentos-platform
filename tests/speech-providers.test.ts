@@ -10,7 +10,6 @@ import {
   SpeechConfigurationSchema,
   SpeechSynthesis_Protocol,
   SpeechTranscription_Protocol,
-  SpeechTranscriptionSchema,
   SynthesizeSpeechRequestSchema,
 } from "../gen/agentos/console/v1/speech_pb.js";
 import { speechService } from "../server/speech/service.js";
@@ -44,11 +43,16 @@ it("preserves native cumulative drafts and drains WhisperLiveKit through empty b
   const app = Fastify();
   await registerTranscription(
     app,
-    create(SpeechTranscriptionSchema, {
-      endpoint: { baseUrl: `${providerUrl}/v1` },
-      model: "large-v3",
-      languageCodes: ["ar"],
-      protocol: SpeechTranscription_Protocol.WHISPERLIVEKIT,
+    async () => ({
+      resourceVersion: "1",
+      configuration: create(SpeechConfigurationSchema, {
+        transcription: {
+          endpoint: { baseUrl: `${providerUrl}/v1` },
+          model: "large-v3",
+          languageCodes: ["ar"],
+          protocol: SpeechTranscription_Protocol.WHISPERLIVEKIT,
+        },
+      }),
     }),
     async () => {},
   );
@@ -97,8 +101,9 @@ it.each([
   });
   const url = await provider.listen({ host: "127.0.0.1", port: 0 });
   onTestFinished(() => provider.close());
-  const service = speechService(
-    create(SpeechConfigurationSchema, {
+  const service = speechService(async () => ({
+    resourceVersion: "1",
+    configuration: create(SpeechConfigurationSchema, {
       synthesis: {
         endpoint: { baseUrl: `${url}/v1` },
         protocol: SpeechSynthesis_Protocol.NEMO,
@@ -109,7 +114,7 @@ it.each([
         })),
       },
     }),
-  );
+  }));
   const context = createHandlerContext({
     service: ConsoleService,
     method: ConsoleService.method.synthesizeSpeech,

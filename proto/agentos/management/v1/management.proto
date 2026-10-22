@@ -3,6 +3,7 @@ syntax = "proto3";
 package agentos.management.v1;
 
 import "agentos/console/v1/role.proto";
+import "agentos/console/v1/speech.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "kagent/api/v1alpha1/agent_templates.proto";
@@ -22,6 +23,10 @@ service ManagementService {
   }
   rpc SaveConnection(SaveConnectionRequest) returns (SaveConnectionResponse);
   rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
+  rpc GetSpeechConfiguration(GetSpeechConfigurationRequest) returns (GetSpeechConfigurationResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SaveSpeechConfiguration(SaveSpeechConfigurationRequest) returns (SaveSpeechConfigurationResponse);
   rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -80,6 +85,25 @@ message GetSchemasResponse {
   google.protobuf.Struct model = 1;
   google.protobuf.Struct mcp = 2;
   google.protobuf.Struct harness = 3;
+  google.protobuf.Struct speech_transcription = 4;
+  google.protobuf.Struct speech_synthesis = 5;
+}
+
+message GetSpeechConfigurationRequest {}
+message GetSpeechConfigurationResponse {
+  agentos.console.v1.SpeechConfiguration configuration = 1;
+  string resource_version = 2;
+  bool transcription_credential_configured = 3;
+  bool synthesis_credential_configured = 4;
+}
+message SaveSpeechConfigurationRequest {
+  agentos.console.v1.SpeechConfiguration configuration = 1 [(buf.validate.field).required = true];
+  string resource_version = 2 [(buf.validate.field).string.min_len = 1];
+  optional string transcription_credential = 3 [(buf.validate.field).string.max_len = 8000];
+  optional string synthesis_credential = 4 [(buf.validate.field).string.max_len = 8000];
+}
+message SaveSpeechConfigurationResponse {
+  GetSpeechConfigurationResponse settings = 1;
 }
 
 message SaveHarnessRequest {

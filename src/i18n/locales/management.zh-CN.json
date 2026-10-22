@@ -104,5 +104,34 @@
   },
   "knowledgeEvidence": "来源与执行依据",
   "viewEvidenceTask": "查看执行任务",
-  "knowledgePlaceholder": "# 简短标题\n\n## 结论\n一句话说明已验证的经验。\n\n## 适用范围\n环境及前置条件。\n\n## 验证与限制\n验证方法及尚未覆盖的内容。\n\n## 来源\n相关任务或文档链接。"
+  "knowledgePlaceholder": "# 简短标题\n\n## 结论\n一句话说明已验证的经验。\n\n## 适用范围\n环境及前置条件。\n\n## 验证与限制\n验证方法及尚未覆盖的内容。\n\n## 来源\n相关任务或文档链接。",
+  "speech": {
+    "languageModels": "对话模型",
+    "models": "语音模型",
+    "transcription": "语音输入（ASR）",
+    "synthesis": "语音输出（TTS）",
+    "configured": "已配置",
+    "unconfigured": "未配置",
+    "enabled": "启用",
+    "credentialConfigured": "凭据已配置",
+    "clearCredential": "清除已有密钥",
+    "fields": {
+      "endpoint": "接口",
+      "baseUrl": "服务地址",
+      "model": "模型",
+      "protocol": "服务协议",
+      "languageCodes": "支持的语言",
+      "voices": "音色",
+      "languageCode": "语言代码",
+      "voice": "音色名称",
+      "target": "音色"
+    },
+    "protocols": {
+      "PROTOCOL_OPENAI": "OpenAI 兼容接口",
+      "PROTOCOL_NEMO": "NVIDIA NeMo",
+      "PROTOCOL_DEEPGRAM": "Deepgram",
+      "PROTOCOL_WHISPERLIVEKIT": "WhisperLiveKit"
+    },
+    "refresh": "刷新"
+  }
 }

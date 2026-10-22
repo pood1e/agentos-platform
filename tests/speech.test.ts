@@ -103,12 +103,13 @@ async function workbench(
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
       pack: loadPack(),
-      speech: speechService(
-        create(SpeechConfigurationSchema, {
+      speech: speechService(async () => ({
+        resourceVersion: "1",
+        configuration: create(SpeechConfigurationSchema, {
           transcription: input ? { endpoint: { baseUrl: providerURL }, model: input } : undefined,
           synthesis: output ? { endpoint: { baseUrl: providerURL }, voices } : undefined,
         }),
-      ),
+      })),
     }),
     ready: () => true,
   });

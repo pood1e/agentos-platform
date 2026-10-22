@@ -19,6 +19,7 @@ const requirements = new Map<string, Capability>([
   [key(ConsoleService.method.createRole), Capability.AGENTS_MANAGE],
   [key(ConsoleService.method.updateRole), Capability.AGENTS_MANAGE],
   [key(ManagementService.method.setEngineerRuntime), Capability.AGENTS_MANAGE],
+  [key(ManagementService.method.saveSpeechConfiguration), Capability.MODELS_MANAGE],
   [key(ManagementService.method.saveSkill), Capability.SKILLS_MANAGE],
   [key(ManagementService.method.deleteSkill), Capability.SKILLS_MANAGE],
   [key(ManagementService.method.addKnowledge), Capability.KNOWLEDGE_MANAGE],

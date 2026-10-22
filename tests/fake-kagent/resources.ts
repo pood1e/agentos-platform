@@ -31,6 +31,16 @@ export class FakeResources {
     this.data.clear();
     this.version = 0;
     this.save(
+      "secrets",
+      {
+        apiVersion: "v1",
+        kind: "Secret",
+        metadata: { name: "agentos-speech" },
+        data: { "configuration.json": Buffer.from("{}").toString("base64") },
+      },
+      true,
+    );
+    this.save(
       "configmaps",
       {
         apiVersion: "v1",

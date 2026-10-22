@@ -1,14 +1,12 @@
-import { readFileSync } from "node:fs";
-import { create, fromJsonString } from "@bufbuild/protobuf";
+import { clone } from "@bufbuild/protobuf";
 import { createValidator } from "@bufbuild/protovalidate";
-import { SpeechConfigurationSchema } from "../../gen/agentos/console/v1/speech_pb.js";
+import {
+  type SpeechConfiguration,
+  SpeechConfigurationSchema,
+} from "../../gen/agentos/console/v1/speech_pb.js";
 
-export function speechConfig(env = process.env) {
-  if (!env.AGENTOS_SPEECH_CONFIG) return create(SpeechConfigurationSchema);
-  const configuration = fromJsonString(
-    SpeechConfigurationSchema,
-    readFileSync(env.AGENTOS_SPEECH_CONFIG, "utf8"),
-  );
+export function validateSpeechConfiguration(value: SpeechConfiguration) {
+  const configuration = clone(SpeechConfigurationSchema, value);
   const result = createValidator().validate(SpeechConfigurationSchema, configuration);
   if (result.kind !== "valid") throw new Error(`Invalid speech configuration: ${result.error}`);
   for (const provider of [configuration.transcription, configuration.synthesis]) {

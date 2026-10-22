@@ -67,10 +67,9 @@ export const router = createBrowserRouter([
           },
           {
             path: "models",
-            lazy: async () => {
-              const { ConnectionsPage } = await import("../features/management/ConnectionsPage.js");
-              return { element: <ConnectionsPage key="models" kind={ConnectionKind.MODEL} /> };
-            },
+            lazy: async () => ({
+              Component: (await import("../features/management/ModelsPage.js")).ModelsPage,
+            }),
           },
           {
             path: "harnesses",

@@ -104,5 +104,34 @@
   },
   "knowledgeEvidence": "Sources and execution evidence",
   "viewEvidenceTask": "View execution task",
-  "knowledgePlaceholder": "# Short title\n\n## Finding\nOne verified conclusion.\n\n## Scope\nEnvironment and prerequisites.\n\n## Validation and limits\nHow it was verified and what remains untested.\n\n## Sources\nRelated task or documentation links."
+  "knowledgePlaceholder": "# Short title\n\n## Finding\nOne verified conclusion.\n\n## Scope\nEnvironment and prerequisites.\n\n## Validation and limits\nHow it was verified and what remains untested.\n\n## Sources\nRelated task or documentation links.",
+  "speech": {
+    "languageModels": "Language models",
+    "models": "Speech models",
+    "transcription": "Speech input (ASR)",
+    "synthesis": "Speech output (TTS)",
+    "configured": "Configured",
+    "unconfigured": "Not configured",
+    "enabled": "Enabled",
+    "credentialConfigured": "Credential configured",
+    "clearCredential": "Clear existing key",
+    "fields": {
+      "endpoint": "Endpoint",
+      "baseUrl": "Service URL",
+      "model": "Model",
+      "protocol": "Service protocol",
+      "languageCodes": "Supported languages",
+      "voices": "Voices",
+      "languageCode": "Language code",
+      "voice": "Voice name",
+      "target": "Voice"
+    },
+    "protocols": {
+      "PROTOCOL_OPENAI": "OpenAI compatible",
+      "PROTOCOL_NEMO": "NVIDIA NeMo",
+      "PROTOCOL_DEEPGRAM": "Deepgram",
+      "PROTOCOL_WHISPERLIVEKIT": "WhisperLiveKit"
+    },
+    "refresh": "Refresh"
+  }
 }

@@ -99,7 +99,9 @@ TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服�
 
 ## 语音
 
-`speech` 默认关闭；转写与合成分别配置，聊天页按能力显示麦克风和助手回答的朗读控件。
+模型接入页的“语音模型”分别管理转写和语音合成；聊天页按能力显示麦克风和助手回答的朗读控件。
+模型管理权限允许修改服务地址、模型、语言、音色与访问密钥；配置保存后用于新请求，无需重启控制台。
+未配置语音服务时，两项能力默认关闭。
 聊天录音通过 Deepgram Live 兼容的 `WS /v1/listen` 持续发送音频和接收中间、最终转写结果。
 转写 `protocol: PROTOCOL_WHISPERLIVEKIT` 接入原生 `/asr`，平台将完整草稿映射为浏览器流式结果，保留模型的分词和空格。
 平台使用官方 Deepgram SDK 与 WebSocket 组件，认证与同源校验位于平台代理，模型凭据留在服务端。
@@ -130,12 +132,15 @@ speech:
   secretRef: speech-credentials
 ```
 
-方案 Chart 的配置位于 `app_values.agentos.speech`。仅启用一项时，另一项保留 `{}`。
+方案 Chart 的初始配置位于 `app_values.agentos.speech`。仅启用一项时，另一项保留 `{}`。
+Helm 首次创建 `<release>-speech` Secret，后续升级保留模型管理页保存的配置与凭据。
+配置与凭据在同一 Secret 中按 `resourceVersion` 原子更新；并发编辑冲突需刷新后重新保存。
 合成配置至少包含一个音色，每种语言配置一个模型和音色；平台按文本语言选择，首项作为无法识别时的默认值。
 语言代码使用 ISO 639，重复语言被拒绝；语音语言独立于界面语言。
 `secretRef` 可省略；配置时引用已有 Kubernetes Secret，启用转写需要 `transcription-api-key`，启用合成需要
-`synthesis-api-key`，凭据以只读文件挂载。开发环境通过 `AGENTOS_SPEECH_CONFIG` 指定 proto JSON 文件，
-凭据由各自的 `endpoint.apiKeyFile` 提供。
+`synthesis-api-key`。管理接口只返回密钥是否配置；留空保留原密钥，显式清除会停止使用引用密钥。
+开发环境通过 `AGENTOS_SPEECH_SECRET` 指定设置 Secret 的名称，默认 `<release>-speech`；
+`configuration.json` 使用 `SpeechConfiguration` 的 proto JSON。
 
 录音使用浏览器 MediaRecorder，需 HTTPS 或 localhost 与麦克风授权；每次最多 60 秒、1 MiB。
 采集保留回声消除，关闭浏览器降噪和自动增益，减少对识别音素和音量包络的改写。

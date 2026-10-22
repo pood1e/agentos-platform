@@ -1,20 +1,18 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { expect, it, onTestFinished } from "vitest";
-import { speechConfig } from "../server/speech/config.js";
+import { create, fromJsonString } from "@bufbuild/protobuf";
+import { expect, it } from "vitest";
+import { SpeechConfigurationSchema } from "../gen/agentos/console/v1/speech_pb.js";
+import { validateSpeechConfiguration } from "../server/speech/config.js";
 
 function configuration(value: unknown) {
-  const directory = mkdtempSync(join(tmpdir(), "agentos-speech-"));
-  onTestFinished(() => rmSync(directory, { recursive: true }));
-  const file = join(directory, "speech.json");
-  writeFileSync(file, JSON.stringify(value));
-  return () => speechConfig({ AGENTOS_SPEECH_CONFIG: file });
+  return () =>
+    validateSpeechConfiguration(fromJsonString(SpeechConfigurationSchema, JSON.stringify(value)));
 }
 
 it("defaults to no speech capabilities", () => {
-  expect(speechConfig({}).transcription).toBeUndefined();
-  expect(speechConfig({}).synthesis).toBeUndefined();
+  expect(
+    validateSpeechConfiguration(create(SpeechConfigurationSchema)).transcription,
+  ).toBeUndefined();
+  expect(validateSpeechConfiguration(create(SpeechConfigurationSchema)).synthesis).toBeUndefined();
 });
 
 it("loads independent provider settings without requiring OIDC", () => {
@@ -26,7 +24,7 @@ it("loads independent provider settings without requiring OIDC", () => {
   expect(
     configuration({
       synthesis: {
-        endpoint: { baseUrl: "https://speech.example.test/v1", apiKeyFile: "/run/credentials/tts" },
+        endpoint: { baseUrl: "https://speech.example.test/v1" },
         voices: [{ languageCode: "cmn", model: "tts", voice: "default" }],
       },
     })(),
@@ -59,6 +57,12 @@ it.each([
   },
   { transcription: { baseUrl: "https://speech.example.test/v1", model: "asr" } },
   { voice: "removed" },
+  {
+    transcription: {
+      endpoint: { baseUrl: "https://speech.example.test/v1", apiKeyFile: "/run/key" },
+      model: "asr",
+    },
+  },
   {
     synthesis: {
       endpoint: { baseUrl: "https://speech.example.test/v1" },
