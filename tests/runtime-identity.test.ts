@@ -4,7 +4,7 @@ import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { expect, it } from "vitest";
 import { ActorSchema, Control } from "../gen/ateapi_pb.js";
-import { SessionService } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionService } from "../gen/kagent/api/v1/sessions_pb.js";
 import { actorVerifier, runtimeIdentity } from "../server/authorization/actor.js";
 
 const issuer = "https://idp.ate-system.svc";

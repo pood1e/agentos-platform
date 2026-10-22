@@ -10,7 +10,7 @@ import {
   ApprovalService,
   GovernanceConfigSchema,
 } from "../gen/agentos/governance/v1/governance_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { approvalCoordinator } from "../server/governance/coordinator.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { ingest } from "../server/read-model/entry.js";

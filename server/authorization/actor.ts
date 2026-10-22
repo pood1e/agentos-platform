@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { type Client, Code, ConnectError } from "@connectrpc/connect";
 import { type JWTPayload, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { type Control, ResourceMetadataSchema } from "../../gen/ateapi_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 
 export const actorTokenHeader = "x-substrate-actor-token";

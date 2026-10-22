@@ -1,10 +1,10 @@
 import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { SetEngineerRuntimeRequest } from "../../gen/agentos/management/v1/management_pb.js";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import { AgentSchema } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
-import { ModelConfigSchema } from "../../gen/kagent/api/v1alpha1/models_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import { AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import { ModelConfigSchema } from "../../gen/kagent/api/v1/models_pb.js";
 import { harnessModelIssue } from "../../shared/harness-model.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { validateHarness } from "../kagent/harness.js";
@@ -26,7 +26,7 @@ export function engineerRuntime(store: ResourceStore, clients: KagentClients, na
     const value = await store.get("agents", name);
     const agent = create(AgentSchema, { ref: { name, namespace }, resource: resource(value) });
     if (systemRoles.has(agentInfo(agent).role)) throw invalid("harness.invalidEngineer");
-    const templateName = text(object(object(value.spec).templateRef).name);
+    const templateName = text(object(object(object(value.spec).template).ref).name);
     const agentTemplate = templateName
       ? create(AgentTemplateSchema, {
           ref: { namespace, name: templateName },
@@ -39,7 +39,7 @@ export function engineerRuntime(store: ResourceStore, clients: KagentClients, na
     const { agent, agentTemplate } = await read(request.engineer);
     const value = agent.resource?.value ?? {};
     const original = agentTemplate?.resource?.value;
-    const template = object(original?.spec ?? object(value.spec).template);
+    const template = object(original?.spec ?? object(object(value.spec).template).inline);
     function unchanged(value: JsonObject) {
       if (
         meta(value).uid !== request.expectedUid ||
@@ -73,13 +73,13 @@ export function engineerRuntime(store: ResourceStore, clients: KagentClients, na
       const siblings = (await store.list("agents")).filter(
         (item) =>
           meta(item).name !== agent.ref?.name &&
-          object(object(item.spec).templateRef).name === agentTemplate?.ref?.name,
+          object(object(object(item.spec).template).ref).name === agentTemplate?.ref?.name,
       );
       for (const sibling of siblings) {
         const spec = object(sibling.spec);
-        const siblingHarness = spec.harnessRef
-          ? asHarness(await store.get("harnesses", text(object(spec.harnessRef).name)))
-          : asHarness({ spec: spec.harness });
+        const siblingHarness = asHarness(
+          await store.get("harnesses", text(object(spec.harnessRef).name)),
+        );
         if (harnessModelIssue(siblingHarness.runtime, object(model.spec)))
           throw invalid("harness.sharedModel");
       }
@@ -97,8 +97,7 @@ export function engineerRuntime(store: ResourceStore, clients: KagentClients, na
             throw conflict("configuration.conflict");
         }
         const spec: JsonObject = { ...object(current.spec), harnessRef: { name: harnessName } };
-        delete spec.harness;
-        if (!original) spec.template = updatedTemplate;
+        if (!original) spec.template = { inline: updatedTemplate };
         try {
           const saved = await store.save("agents", { ...current, spec }, false);
           return {

@@ -1,4 +1,4 @@
-import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
 
 /** Gateway-qualified names identify the service shared by its credential profiles. */
 export function toolSource(servers: ToolServer[], name: string) {

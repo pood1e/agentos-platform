@@ -2,7 +2,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
 import { type ToolBinding, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { ToolRequirementSchema } from "../../gen/agentos/console/v1/tool_pb.js";
-import type { ToolServer } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
 import { platformProfile } from "../../shared/platform-tools.js";
 import { loadCatalog, requiresApproval, type ToolCatalog } from "../../shared/tool-catalog.js";
 import { object, text } from "../read-model/decode/messages.js";

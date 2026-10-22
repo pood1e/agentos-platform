@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { ApiException, type CoreV1Api } from "@kubernetes/client-node";
-import { MemorySummarySchema } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
+import { MemorySummarySchema } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { digest } from "../../shared/digest.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { type KnowledgeConfig, knowledgeService } from "../knowledge/service.js";

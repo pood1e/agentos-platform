@@ -4,17 +4,21 @@ metadata:
   name: microvm
 spec:
   sandboxClass: microvm
-  assets:
-    amd64:
-      cloud-hypervisor:
-        url: s3://ate-snapshots/kata-assets/cloud-hypervisor
-        sha256: 448af3d4e59b22c2987f7df94c213ad40fb53a10d437e42b5ee6c4fce7c29ecc
-      virtiofsd:
-        url: s3://ate-snapshots/kata-assets/virtiofsd
-        sha256: 15b2e72a78cc08a9bd8a6943e89fb69c88cb3cbeb63069efceade835342ac7d4
-      kata-kernel:
-        url: s3://ate-snapshots/kata-assets/kata-kernel
-        sha256: 8e9dbc3a6e4c26adb089d23d31201edebce905c7f3e31aa67b32bdd41df1b86f
-      kata-image:
-        url: s3://ate-snapshots/kata-assets/kata-image
-        sha256: 96497f64da1de9c7473fef46c3d29ddd0805d334731cf9d903a21a5b2c33cefb
+  defaultVersion: v1
+  versions:
+    - name: v1
+      state: Enabled
+      assets:
+        amd64:
+          cloud-hypervisor:
+            url: s3://ate-snapshots/kata-assets/cloud-hypervisor
+            sha256: 448af3d4e59b22c2987f7df94c213ad40fb53a10d437e42b5ee6c4fce7c29ecc
+          virtiofsd:
+            url: s3://ate-snapshots/kata-assets/virtiofsd
+            sha256: 15b2e72a78cc08a9bd8a6943e89fb69c88cb3cbeb63069efceade835342ac7d4
+          kata-kernel:
+            url: s3://ate-snapshots/kata-assets/kata-kernel
+            sha256: 8e9dbc3a6e4c26adb089d23d31201edebce905c7f3e31aa67b32bdd41df1b86f
+          kata-image:
+            url: s3://ate-snapshots/kata-assets/kata-image
+            sha256: 96497f64da1de9c7473fef46c3d29ddd0805d334731cf9d903a21a5b2c33cefb

@@ -7,11 +7,8 @@ import {
   type EvaluationBaseline,
   type ResourceProposal,
 } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
-import { StructuredObjectSchema } from "../../gen/kagent/api/v1alpha1/common_pb.js";
-import {
-  type MemorySummary,
-  MemorySummarySchema,
-} from "../../gen/kagent/api/v1alpha1/memory_pb.js";
+import { StructuredObjectSchema } from "../../gen/kagent/api/v1/common_pb.js";
+import { type MemorySummary, MemorySummarySchema } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { digest } from "../../shared/digest.js";
 import { resource } from "../management/native.js";
 import type { ResourceStore } from "../management/resources.js";

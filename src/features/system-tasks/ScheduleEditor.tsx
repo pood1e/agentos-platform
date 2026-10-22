@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   type ScheduledRun,
   ScheduledRunConfigSchema,
-} from "../../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+} from "../../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { useAccess } from "../../lib/access.js";
 import { automationClient, consoleClient } from "../../lib/console.js";
 import { SaveButton } from "../management/ResourceDialog.js";

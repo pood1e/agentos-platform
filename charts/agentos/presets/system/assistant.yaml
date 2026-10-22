@@ -43,7 +43,8 @@ metadata:
   annotations:
     agentos.dev/description: 团队的聊天入口
 spec:
-  templateRef:
-    name: assistant
+  template:
+    ref:
+      name: assistant
   harnessRef:
-    name: standard
+    name: {{ .Values.defaultHarness }}

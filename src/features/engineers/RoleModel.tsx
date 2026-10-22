@@ -8,8 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
-import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
-import type { ModelConfig } from "../../../gen/kagent/api/v1alpha1/models_pb.js";
+import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
+import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
 import { compatibleModels } from "../management/runtime-models.js";
 import { editRole } from "./role-draft.js";
 

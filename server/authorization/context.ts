@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { sessionTools } from "../team-sessions/tools.js";
 import type { Executions } from "./executions.js";
 

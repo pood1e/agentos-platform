@@ -1,5 +1,3 @@
-images:
-  agentgateway: gsoci.azurecr.io/giantswarm/agentgateway-upstream/agentgateway:2.6.3@sha256:dbca0e92a69ba08a6ca28e471495df846ca35e55b9fbe91234187e17b6409a5a
 postgres:
   readWriteConnectionStringSecretRef:
     name: substrate-postgres
@@ -10,6 +8,10 @@ postgres:
   readWriteRole: kagent_owner
   ownerRole: kagent_owner
   schema: substrate
+ateApi:
+  authorization:
+    enabled: true
+    bootstrapOwners: [system:serviceaccount:ate-system:agentos-substrate-operator]
 credentialProvider:
   namespacePolicies:
     - atespace: "{{ agentos_namespace }}"
@@ -22,7 +24,7 @@ atelet:
     providers:
       - name: busybox
         apiVersion: credentialprovider.kubelet.k8s.io/v1
-        matchImages: ["{{ agentos_image_registry }}"]
+        matchImages: {{ (microvm_image_credentials | default({'auth': {agentos_image_registry.split('/')[0]: {}}})).auth.keys() | list | to_json }}
         defaultCacheDuration: 0s
         args: [cat, /run/image-credentials/response.json]
   resources:

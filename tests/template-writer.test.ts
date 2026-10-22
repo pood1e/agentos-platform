@@ -4,7 +4,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { KubeConfig } from "@kubernetes/client-node";
 import { expect, it } from "vitest";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
-import { AgentTemplateSchema } from "../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { templateWriter } from "../server/console/template-writer.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
 import { environment } from "./harness.js";

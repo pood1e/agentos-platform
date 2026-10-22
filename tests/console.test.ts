@@ -190,6 +190,12 @@ describe("console service", () => {
     );
     expect(knowledge?.builtinTools.map((tool) => tool.name)).toEqual([
       "ask_user",
+      "read_file",
+      "write_file",
+      "edit_file",
+      "bash",
+      "list_files",
+      "grep_file",
       "save_memory",
       "load_memory",
       "preload_memory",

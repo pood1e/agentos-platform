@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { create, type JsonObject } from "@bufbuild/protobuf";
 import { MCPCredentialBindingSchema } from "../../gen/agentos/management/v1/management_pb.js";
-import { type ToolServer, ToolServerSchema } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+import { type ToolServer, ToolServerSchema } from "../../gen/kagent/api/v1/tools_pb.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { meta } from "./native.js";
 import type { ResourceStore } from "./resources.js";

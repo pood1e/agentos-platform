@@ -4,7 +4,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { TaskSchema, TaskState } from "../../gen/a2a_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { type ToolActivity, ToolActivitySchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { redact } from "../../shared/redact.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { agentKey } from "../read-model/agents.js";

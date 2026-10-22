@@ -3,7 +3,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ConnectionSchema } from "../gen/agentos/management/v1/management_pb.js";
-import { ToolServerSchema } from "../gen/kagent/api/v1alpha1/tools_pb.js";
+import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
 import { parseCatalog } from "../shared/tool-catalog.js";
 import { ownIdentities, toolRequirements } from "../src/features/engineers/mcp-services.js";

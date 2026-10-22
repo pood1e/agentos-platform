@@ -11,7 +11,7 @@ import {
   McpRequestResultSchema,
   McpResponseResultSchema,
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { actorTokenHeader, type runtimeIdentity } from "./actor.js";
 
 export const discoveryMethods = new Set([

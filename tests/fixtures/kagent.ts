@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { type Task, TaskSchema } from "../../gen/a2a_pb.js";
-import { type Agent, AgentSchema } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import { type Session, SessionSchema } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { type Agent, AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
+import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { agentInfo, agentKey, sessionInfo } from "../../server/read-model/agents.js";
 import { ingest } from "../../server/read-model/entry.js";
 import { TaskIndex } from "../../server/read-model/index.js";

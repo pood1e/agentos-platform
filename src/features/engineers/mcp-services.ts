@@ -1,6 +1,6 @@
 import type { ToolRequirement } from "../../../gen/agentos/console/v1/tool_pb.js";
 import type { Connection } from "../../../gen/agentos/management/v1/management_pb.js";
-import type { ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
 
 export const serverName = (server: ToolServer) => server.ref.split("/").at(-1) ?? server.ref;
 

@@ -1,7 +1,7 @@
-import type { AgentTemplate } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import type { Agent } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import type { ResourceReference } from "../../gen/kagent/api/v1alpha1/common_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { AgentTemplate } from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import type { Agent } from "../../gen/kagent/api/v1/agents_pb.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { millis, object, text } from "./decode/messages.js";
 
 export const systemRoles = new Set(["assistant", "role-builder"]);
@@ -23,10 +23,9 @@ export interface AgentInfo {
 export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTemplate>): AgentInfo {
   const resource = agent.resource?.value;
   const metadata = object(resource?.metadata);
-  const templateRef = object(object(resource?.spec).templateRef);
-  const template = templates?.get(
-    `${text(templateRef.namespace) || agent.ref?.namespace}/${text(templateRef.name)}`,
-  )?.resource?.value;
+  const templateRef = object(object(object(resource?.spec).template).ref);
+  const template = templates?.get(`${agent.ref?.namespace}/${text(templateRef.name)}`)?.resource
+    ?.value;
   const annotations = object(
     template ? object(template.metadata).annotations : metadata.annotations,
   );

@@ -1,7 +1,7 @@
 import type { JsonObject } from "@bufbuild/protobuf";
-import type { Harness } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
-import type { ModelConfig } from "../../gen/kagent/api/v1alpha1/models_pb.js";
-import type { ToolServer } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+import type { Harness } from "../../gen/kagent/api/v1/harnesses_pb.js";
+import type { ModelConfig } from "../../gen/kagent/api/v1/models_pb.js";
+import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
 import { harnessModelIssue, harnessToolsIssue } from "../../shared/harness-model.js";
 import { object } from "../read-model/decode/messages.js";
 import { invalid } from "../shared/errors.js";

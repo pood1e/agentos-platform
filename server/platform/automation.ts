@@ -7,7 +7,7 @@ import {
   CaseRequestSchema,
 } from "../../gen/agentos/automation/v1/case_pb.js";
 import { InvokeSessionOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import referenceSchema from "../../gen/schema/agentos.automation.v1.CaseReference.jsonschema.bundle.json" with {
   type: "json",
 };

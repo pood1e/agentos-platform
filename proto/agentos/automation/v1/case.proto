@@ -3,7 +3,7 @@ syntax = "proto3";
 package agentos.automation.v1;
 
 import "buf/validate/validate.proto";
-import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1/common.proto";
 
 message CaseReference {
   string key = 1 [(buf.validate.field).string = {
@@ -11,7 +11,7 @@ message CaseReference {
     max_len: 500
   }];
   uint64 version = 2 [(buf.validate.field).uint64.gt = 0];
-  .kagent.api.v1alpha1.ResourceReference agent = 3 [(buf.validate.field).required = true];
+  .kagent.api.v1.ResourceReference agent = 3 [(buf.validate.field).required = true];
 }
 
 message CaseRequest {

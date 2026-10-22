@@ -1,5 +1,5 @@
-import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
-import type { ModelConfig } from "../../../gen/kagent/api/v1alpha1/models_pb.js";
+import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
+import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
 import { harnessModelIssue } from "../../../shared/harness-model.js";
 import { object } from "./connection-schema.js";
 

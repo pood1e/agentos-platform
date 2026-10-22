@@ -32,6 +32,25 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `AGENTOS_CI_CACHE` | 可选，工具与 Python 环境缓存目录，默认 `~/.cache/agentos` |
 | `AGENTOS_REGISTRY_MIRROR` | 可选，BuildKit 使用的 Docker Hub 镜像源 |
 
+## 方案 Harness
+
+平台发布通用 Harness 基础镜像与原生运行协议。方案包可继承基础镜像构建自己的运行镜像，由方案 CI 发布并在 Chart 中固定摘要。方案包通过 `agentos.harnesses` 声明原生 Harness，`defaultHarness` 指定系统助手与新建智能体的默认运行配置；各智能体通过 `spec.harnessRef.name` 独立选择。
+
+```yaml
+agentos:
+  defaultHarness: operations
+  harnesses:
+    operations:
+      kagent: {}
+      workload:
+        image: registry.example.com/team/operations@sha256:<digest>
+      substrate:
+        workerPoolRef: {name: kagent-default}
+        snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+```
+
+Harness 配置直接使用固定版本的原生 CRD schema，支持 kagent、Claude、Codex 及 BYO 运行时。镜像须实现相应运行时协议、健康检查与持久化目录约定；基于平台基础镜像扩展时保留这些契约。目标系统凭据由执行时授权与宿主网关注入。方案镜像与平台默认镜像分别发布，工作负载使用 Harness 明确配置的镜像。私有注册表凭据使用站点 `registry_config_file` 的 Docker 配置；运行时按其中的各注册表提供拉取凭据。
+
 ## 部署
 
 参考部署为一台支持 KVM 的 Ubuntu 主机运行单节点 K3s。Ansible 管理节点、DNS、TLS、CNPG、agentgateway、Agent Substrate、kagent 与应用

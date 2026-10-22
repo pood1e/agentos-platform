@@ -1,20 +1,30 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import OpenAI from "openai";
-import type { SessionMemoryInput } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
+import type {
+  MemoryServiceListRequest,
+  SessionMemoryInput,
+} from "../../gen/kagent/runtime/v1/memory_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { millis } from "../read-model/decode/messages.js";
 import { type PageRequest, pageOf } from "../read-model/page.js";
+import type { KagentConfig } from "../shared/config.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 
 export interface KnowledgeConfig {
   url: string;
   token: string;
   model: string;
-  scope: Pick<SessionMemoryInput, "agentName" | "userId" | "ttlDays">;
+  scope: Pick<MemoryServiceListRequest, "agentName"> &
+    Pick<SessionMemoryInput, "ttlDays"> &
+    Pick<KagentConfig, "userId">;
 }
 
 /** The console and read-only MCP search share the knowledge curator's native memory. */
 export function knowledgeService(clients: KagentClients, config: KnowledgeConfig) {
+  const options = (timeoutMs = 10_000) => ({
+    timeoutMs,
+    headers: { "x-user-id": config.scope.userId },
+  });
   const embedding = new OpenAI({
     baseURL: config.url,
     apiKey: config.token,
@@ -38,7 +48,10 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
     }
   }
   async function list(request: PageRequest) {
-    const { memories } = await clients.memory.list(config.scope, { timeoutMs: 10_000 });
+    const { memories } = await clients.memory.list(
+      { agentName: config.scope.agentName },
+      options(),
+    );
     const query = request.query.toLowerCase().trim();
     const items = memories
       .filter((item) => item.content.toLowerCase().includes(query))
@@ -54,32 +67,41 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
   }
   async function search(query: string, limit = 20) {
     return clients.memory.search(
-      { ...config.scope, vector: await vector(query), limit, minScore: 0.3 },
-      { timeoutMs: 10_000 },
+      {
+        managementAgent: config.scope.agentName,
+        vector: await vector(query),
+        limit,
+        minScore: 0.3,
+      },
+      options(),
     );
   }
   async function add(content: string) {
     return clients.memory.addSession(
       {
+        managementAgent: config.scope.agentName,
         memory: {
-          ...config.scope,
+          ttlDays: config.scope.ttlDays,
           content,
           vector: await vector(content),
           metadata: { source: "console" },
         },
       },
-      { timeoutMs: 10_000 },
+      options(),
     );
   }
   async function clear(expected: number) {
-    const { memories } = await clients.memory.list(config.scope, { timeoutMs: 10_000 });
+    const { memories } = await clients.memory.list(
+      { agentName: config.scope.agentName },
+      options(),
+    );
     if (memories.length !== expected) throw conflict("management.knowledgeChanged");
-    await clients.memory.delete(config.scope, { timeoutMs: 10_000 });
+    await clients.memory.delete({ agentName: config.scope.agentName }, options());
     return {};
   }
   async function remove(id: string) {
     try {
-      await clients.memory.deleteEntry({ ...config.scope, id }, { timeoutMs: 10_000 });
+      await clients.memory.deleteEntry({ agentName: config.scope.agentName, id }, options());
       return {};
     } catch (error) {
       if (error instanceof ConnectError && error.code === Code.NotFound)

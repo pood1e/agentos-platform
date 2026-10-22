@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Role } from "../../../gen/a2a_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ChatMessageSchema } from "../../../gen/agentos/console/v1/conversation_pb.js";
-import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
+import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import { useAccess } from "../../lib/access.js";
 import { consoleClient } from "../../lib/console.js";
 import { errorKey } from "../../lib/errors.js";

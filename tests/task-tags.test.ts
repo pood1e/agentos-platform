@@ -7,7 +7,7 @@ import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";

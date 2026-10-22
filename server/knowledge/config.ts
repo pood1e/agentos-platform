@@ -7,7 +7,7 @@ export function knowledgeConfig(workspace: KagentConfig, env = process.env): Kno
     token: env.AGENTOS_GATEWAY_TOKEN ?? "local-development",
     model: env.AGENTOS_EMBEDDING_MODEL ?? "embeddinggemma:300m",
     scope: {
-      agentName: `${workspace.namespace.replaceAll("-", "_")}__NS__knowledge`,
+      agentName: `${workspace.namespace}/knowledge`,
       userId: workspace.userId,
       ttlDays: Number(env.AGENTOS_KNOWLEDGE_TTL_DAYS ?? "3650"),
     },

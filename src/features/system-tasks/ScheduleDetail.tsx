@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScheduledRunExecutionState } from "../../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
+import { ScheduledRunExecutionState } from "../../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { automationClient } from "../../lib/console.js";
 import { ResourceSheet } from "../management/ResourceDialog.js";
 import { Failure } from "../management/ResourcePage.js";

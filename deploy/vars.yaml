@@ -14,14 +14,13 @@ k3s_checksum: sha256:92b94582eb7b34a8cf532e6006842b9ed215a6783cf56a3dd6271fd3524
 k3s_install_checksum: sha256:ed01f89fd977bf20ac1516bbebf8370bf3ddbaa55dac8aba610956a4c78cc00b
 helm_version: v3.22.0
 helm_checksum: sha256:1e4ab49e429626cf6c6958d914248b78c9730803c2751b87627e171dc800e7bb
-substrate_version: 0.5.0-alpha2
-substrate_idp_image: ghcr.io/kagent-dev/substrate/ate-idp-server@sha256:fb60d2e8d23298983a38f2a66e9970a67a4fbf2148a5e5478865c9516064b7fb
-substrate_api_image: "{{ agentos_image_registry }}/substrate/ateapi@sha256:1dbc49965cdc9e734d256fbe40d76456426e89739c857fb48436a0727500ac9c"
-substrate_microvm_image: "{{ agentos_image_registry }}/substrate/ateom-microvm@sha256:0ee91095c1a9debe0f3e9cf6d72ab61e3cb5c5b23260277f3d55ca091967de79"
-kubectl_ate_checksum: sha256:149d1dadc31dfe28a2d042bb66abd4f8e3faf6e784e4f15d7019f5a9b01548de
-kagent_version: 1.0.0-alpha11
-kagent_controller_image: "{{ agentos_image_registry }}/kagent-controller@sha256:9057a7fd276f62f0af52c342d7d23eabf9104e7446199f56864a314d3c59060c"
-kagent_cli_checksum: sha256:afc712066d0d460a64d5ae1656831a9ed866e06085a89a6f05a230ddafc2319c
+substrate_version: 0.6.0-alpha3
+substrate_api_image: "{{ agentos_image_registry }}/substrate/ateapi@sha256:81e24c533468e9bce6759e1825a9a9d4b6a544323e98cd00236da51a346002a1"
+substrate_microvm_image: "{{ agentos_image_registry }}/substrate/ateworker-microvm@sha256:b4d7dd6b0f6c1143b19bc963982c34fcb30756da78c24615b5a1323cd399f20b"
+kubectl_ate_checksum: sha256:bbebe540531aa0cd6b436b2f6a0665eca82feba2cb4942bb3e3f997c3c9c4ad1
+kagent_version: 1.0.0-alpha17
+kagent_controller_image: "{{ agentos_image_registry }}/kagent-controller@sha256:ae115472be828632a0a399819dcdfb0f6bb5332fc970e1f7b971b9565c5d1977"
+kagent_cli_checksum: sha256:01fb21bc46130dcffac5b5a720d903122563a4d926f4455cd8234c6112d338a3
 kubeconfig_path: "{{ playbook_dir }}/../.cache/kubeconfig.yaml"
 helm_binary: "{{ playbook_dir }}/../.cache/helm/linux-amd64/helm"
 cert_manager_version: v1.21.2

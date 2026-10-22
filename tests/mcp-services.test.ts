@@ -2,7 +2,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConnectionKind, ManagementService } from "../gen/agentos/management/v1/management_pb.js";
-import { ToolServerSchema } from "../gen/kagent/api/v1alpha1/tools_pb.js";
+import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { object, text } from "../server/read-model/decode/messages.js";
 import { managementEnvironment } from "./management-harness.js";
 

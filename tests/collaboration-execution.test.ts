@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { scopedCollaboration } from "../server/authorization/context.js";
 import type { Executions } from "../server/authorization/executions.js";
 import { knowledgeConfig } from "../server/knowledge/config.js";

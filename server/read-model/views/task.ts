@@ -11,7 +11,7 @@ import {
   TaskSummarySchema,
 } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import { SessionSchema } from "../../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../../../gen/kagent/api/v1/sessions_pb.js";
 import { shortTitle } from "../../../shared/title.js";
 import { emptyTags, normalizeTags, type TaskTags } from "../../tasks/tags.js";
 import { systemRoles } from "../agents.js";

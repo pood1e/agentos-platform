@@ -3,8 +3,8 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "agentos/execution/v1/state.proto";
-import "kagent/api/v1alpha1/common.proto";
-import "kagent/api/v1alpha1/tools.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/api/v1/tools.proto";
 
 // kagent Agent identified by namespace/name; its template reference selects the role.
 message Engineer {
@@ -21,6 +21,6 @@ message Engineer {
 
 // Runtime-provided tools are observed per engineer, independently of editable MCP bindings.
 message EngineerTools {
-  kagent.api.v1alpha1.ResourceReference engineer = 1;
-  repeated kagent.api.v1alpha1.DiscoveredTool builtin_tools = 2;
+  kagent.api.v1.ResourceReference engineer = 1;
+  repeated kagent.api.v1.DiscoveredTool builtin_tools = 2;
 }

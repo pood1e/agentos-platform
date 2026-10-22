@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { clone, create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { type Task, TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
-import { SessionSchema } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { hitlPayload } from "../../server/read-model/decode/hitl.js";
 import { toolEvent, toolOutcome } from "../../server/read-model/decode/tools.js";
 import { fixtureIds, fixtureSessions, fixtureTasks } from "../fixtures/kagent.js";

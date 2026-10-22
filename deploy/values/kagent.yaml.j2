@@ -3,22 +3,39 @@ global:
 providers: null
 database:
   postgres:
+    readWriteConnectionStringSecretRef: {name: kagent-postgres, key: connectionString}
+    ownerConnectionStringSecretRef: {name: kagent-postgres, key: connectionString}
+config:
+  harnessImages:
+    release: "{{ kagent_version }}-agentos.1"
+    kagent: "{{ harness_defaults.standard.workload.image | replace('registry.example.com/agentos', agentos_image_registry) }}"
+    claude: "{{ harness_defaults.claude.workload.image | replace('registry.example.com/agentos', agentos_image_registry) }}"
+    codex: "{{ harness_defaults.codex.workload.image | replace('registry.example.com/agentos', agentos_image_registry) }}"
+  database:
+    owner: {role: kagent_owner}
+    readWrite: {role: kagent_owner}
     vectorEnabled: true
-controller:
-  imagePullSecrets: [{name: agentos-registry}]
-  sandbox:
-    guestImage:
-      digest: sha256:fb1218d5bdc397ecb514c5aa81d7958843635ca090c1419b191051f7bb01a3e2
+  sandboxes:
+    guestImage: ghcr.io/kagent-dev/kagent/sandbox-guest@sha256:5355072effb219e157c3e0471637ca64d1f84ab7513dde23968c20cd65d18c9b
     cpu: "1"
     memory: 1Gi
-    defaultTTL: 1h
-    maxTTL: 24h
-  grpc:
-    reflection: false
-  substrate:
+    defaultTtl: 3600s
+    maxTtl: 86400s
+  runtimeDefaults:
+    telemetry: &telemetry
+      captureContent: false
+      captureRawApiBodies: false
+{% if langfuse_enabled %}
+      traces:
+        endpoint: http://langfuse-collector.{{ langfuse_namespace }}.svc:4317
+        protocol: grpc
+{% endif %}
+    controlPlaneUrl: "http://{{ app_release_name }}-console.{{ agentos_namespace }}.svc:9091"
+  telemetry: *telemetry
+controller:
+  imagePullSecrets: [{name: agentos-registry}]
+  substrateClientCertificate:
     enabled: true
-    ateApiEndpoint: dns:///api.ate-system.svc:443
-    atenetRouterURL: http://atenet-router.ate-system.svc:80
 substrateWorkerPool:
   create: true
   replicas: 3
@@ -27,7 +44,7 @@ substrateWorkerPool:
   template:
     serviceAccountName: kagent-workers
     nodeSelector:
-      ate.dev/substrate-version: v0.5.0-alpha2
+      ate.dev/substrate-version: "v{{ substrate_version }}"
     resources:
       requests:
         cpu: 500m
@@ -43,11 +60,3 @@ kagent-tools:
   enabled: false
 grafana-mcp:
   enabled: false
-otel:
-  traces:
-    enabled: {{ 'true' if langfuse_enabled else 'false' }}
-    endpoint: http://langfuse-collector.{{ langfuse_namespace }}.svc:4317
-    protocol: grpc
-  capture:
-    messageContent: false
-    rawApiBodies: false

@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import type { JsonObject } from "@bufbuild/protobuf";
 import { create } from "@bufbuild/protobuf";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { roleDefinition } from "../console/role-template.js";
 import { meta } from "../management/native.js";
 import type { ResourceStore } from "../management/resources.js";
@@ -44,7 +44,7 @@ export function publicationReadiness(store: ResourceStore) {
     for (const agent of agents) {
       const spec = object(agent.spec);
       const template = templates.find(
-        (value) => meta(value).name === object(spec.templateRef).name,
+        (value) => meta(value).name === object(object(spec.template).ref).name,
       );
       const harness = harnesses.find((value) => meta(value).name === object(spec.harnessRef).name);
       const ts = object(template?.spec),

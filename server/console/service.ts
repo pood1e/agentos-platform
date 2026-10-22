@@ -47,7 +47,7 @@ export interface ConsoleDependencies {
   executions?: Executions;
   entryAgent?: string;
   authorizeTools?: (
-    session: import("../../gen/kagent/api/v1alpha1/sessions_pb.js").Session,
+    session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
     tools: string[],
   ) => Promise<void>;
 }

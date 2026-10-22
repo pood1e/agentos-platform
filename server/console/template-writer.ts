@@ -4,7 +4,7 @@ import { ApiException, CustomObjectsApi, type KubeConfig } from "@kubernetes/cli
 import {
   type AgentTemplate,
   AgentTemplateSchema,
-} from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+} from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { conflict, fail, invalid } from "../shared/errors.js";
 
 export type TemplateWriter = (template: AgentTemplate) => Promise<AgentTemplate>;

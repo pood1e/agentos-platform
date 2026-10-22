@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import Fastify from "fastify";
 import { expect, it, vi } from "vitest";
-import { MemoryServiceSearchResponseSchema } from "../gen/kagent/api/v1alpha1/memory_pb.js";
+import { MemoryServiceSearchResponseSchema } from "../gen/kagent/runtime/v1/memory_pb.js";
 import { knowledgeConfig } from "../server/knowledge/config.js";
 import { knowledgeService } from "../server/knowledge/service.js";
 import { registerTeamSessions } from "../server/team-sessions/app.js";

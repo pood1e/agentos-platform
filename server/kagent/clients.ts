@@ -1,14 +1,14 @@
 import { createClient, type Transport } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { A2AService } from "../../gen/a2a_pb.js";
-import { AgentTemplateService } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import { AgentService } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import { HarnessService } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
-import { MemoryService } from "../../gen/kagent/api/v1alpha1/memory_pb.js";
-import { ModelService } from "../../gen/kagent/api/v1alpha1/models_pb.js";
-import { ScheduledRunService } from "../../gen/kagent/api/v1alpha1/scheduled_runs_pb.js";
-import { SessionService } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
-import { ToolService } from "../../gen/kagent/api/v1alpha1/tools_pb.js";
+import { AgentTemplateService } from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import { AgentService } from "../../gen/kagent/api/v1/agents_pb.js";
+import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
+import { ModelService } from "../../gen/kagent/api/v1/models_pb.js";
+import { ScheduledRunService } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
+import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
+import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import type { KagentConfig } from "../shared/config.js";
 
 export function kagentTransport(config: KagentConfig): Transport {
@@ -16,7 +16,7 @@ export function kagentTransport(config: KagentConfig): Transport {
     baseUrl: config.url,
     interceptors: [
       (next) => (request) => {
-        request.header.set("X-User-Id", config.userId);
+        if (!request.header.has("X-User-Id")) request.header.set("X-User-Id", config.userId);
         if (config.token) request.header.set("Authorization", `Bearer ${config.token}`);
         return next(request);
       },

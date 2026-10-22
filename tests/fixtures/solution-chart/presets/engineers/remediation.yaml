@@ -26,7 +26,8 @@ metadata:
   labels:
     agentos.dev/role: remediation
 spec:
-  templateRef:
-    name: remediation
+  template:
+    ref:
+      name: remediation
   harnessRef:
     name: standard

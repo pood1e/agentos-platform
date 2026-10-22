@@ -3,7 +3,7 @@ syntax = "proto3";
 package agentos.execution.v1;
 
 import "agentos/authorization/v1/permission.proto";
-import "kagent/api/v1alpha1/common.proto";
+import "kagent/api/v1/common.proto";
 
 // Private execution state persisted outside the runtime and model context.
 message ExecutionIdentity {
@@ -20,7 +20,7 @@ message ExecutionBinding {
   string session_id = 1;
   string root_session_id = 2;
   string parent_session_id = 3;
-  kagent.api.v1alpha1.ResourceReference agent = 4;
+  kagent.api.v1.ResourceReference agent = 4;
   string subject = 5;
   bool write = 6;
   bool revoked = 7;

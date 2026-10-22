@@ -8,7 +8,7 @@ import {
   CandidateState,
   type ResourceProposal,
 } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { roleDefinition, templateSpec } from "../console/role-template.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { meta, optional } from "../management/native.js";

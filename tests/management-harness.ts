@@ -41,7 +41,7 @@ export async function managementEnvironment() {
       url: `${url}/v1`,
       token: "test-gateway-token",
       model: "embeddinggemma:300m",
-      scope: { agentName: "agentos__NS__knowledge", userId: "agentos", ttlDays: 3650 },
+      scope: { agentName: "agentos/knowledge", userId: "agentos", ttlDays: 3650 },
     },
   };
   return {

@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package kagent.api.v1alpha1;
+package kagent.api.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
-import "kagent/api/v1alpha1/common.proto";
-import "kagent/api/v1alpha1/runtime.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/api/v1/runtime.proto";
 
-option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1alpha1;apiv1alpha1";
+option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
 
 // Lifecycle mutations execute inline. After a retryable error, repeat the same
 // mutation; CreateSession retries must keep the same request_id and input.
@@ -26,14 +26,6 @@ service SessionService {
   rpc CreateSessionShare(CreateSessionShareRequest) returns (CreateSessionShareResponse);
   rpc ListSessionShares(ListSessionSharesRequest) returns (ListSessionSharesResponse);
   rpc RevokeSessionShare(RevokeSessionShareRequest) returns (RevokeSessionShareResponse);
-}
-
-enum SessionSharePermission {
-  SESSION_SHARE_PERMISSION_UNSPECIFIED = 0;
-  // Allows A2A get, list, and subscribe operations.
-  SESSION_SHARE_PERMISSION_READ_ONLY = 1;
-  // Also allows A2A send and cancel operations.
-  SESSION_SHARE_PERMISSION_READ_WRITE = 2;
 }
 
 message Failure {
@@ -146,25 +138,21 @@ message DeleteSessionResponse {
   Session session = 1;
 }
 
+// Grants read-only access to a session, including A2A get, list, and subscribe.
 message SessionShare {
   string id = 1;
   string session_id = 2;
-  SessionSharePermission permission = 3;
-  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp created_at = 3;
   // When the share's token stops granting access. Unset means never.
-  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp expires_at = 4;
 }
 
 message CreateSessionShareRequest {
   string session_id = 1 [(buf.validate.field).string.uuid = true];
-  SessionSharePermission permission = 2 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: 0
-  }];
   // How long the share's token grants access, from its creation. Unset takes the
   // controller's maximum share lifetime; without one, the share grants access
   // until it is revoked or the session deleted.
-  google.protobuf.Duration ttl = 3 [(buf.validate.field).duration.gt = {}];
+  google.protobuf.Duration ttl = 2 [(buf.validate.field).duration.gt = {}];
 }
 
 message CreateSessionShareResponse {

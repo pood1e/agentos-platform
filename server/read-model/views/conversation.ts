@@ -15,7 +15,7 @@ import {
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
+import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import { pool } from "../../kagent/clients.js";
 import { agentKey } from "../agents.js";
 import { toolCalls } from "../calls.js";

@@ -1,8 +1,8 @@
 import { create, type JsonObject } from "@bufbuild/protobuf";
 import { EngineerToolsSchema } from "../../gen/agentos/console/v1/engineer_pb.js";
-import type { AgentTemplate } from "../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
-import type { Agent } from "../../gen/kagent/api/v1alpha1/agents_pb.js";
-import type { Harness } from "../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import type { AgentTemplate } from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import type { Agent } from "../../gen/kagent/api/v1/agents_pb.js";
+import type { Harness } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { agentKey } from "../read-model/agents.js";
 import { object, text } from "../read-model/decode/messages.js";
 
@@ -27,29 +27,19 @@ type Builtin = keyof typeof descriptions;
 /** Mirrors the pinned Go ADK's memory, skill and user-input tool registration. */
 export function builtinTools(template: JsonObject, harness: JsonObject) {
   if (harness.kagent === undefined) return [];
-  const names: Builtin[] = ["ask_user"];
+  const names: Builtin[] = [
+    "ask_user",
+    "read_file",
+    "write_file",
+    "edit_file",
+    "bash",
+    "list_files",
+    "grep_file",
+  ];
   if (object(harness.kagent).memory !== undefined)
     names.push("save_memory", "load_memory", "preload_memory");
-  if (Array.isArray(template.skills) && template.skills.length) {
-    names.push(
-      "list_skills",
-      "load_skill",
-      "load_skill_resource",
-      "read_file",
-      "write_file",
-      "edit_file",
-      "bash",
-    );
-    const env = Array.isArray(harness.env) ? harness.env.map(object) : [];
-    if (
-      env.some(
-        (entry) =>
-          entry.name === "KAGENT_ENABLE_FILE_SEARCH_TOOLS" &&
-          /^(true|t|1)$/i.test(text(entry.value)),
-      )
-    )
-      names.push("list_files", "grep_file");
-  }
+  if (Array.isArray(template.skills) && template.skills.length)
+    names.push("list_skills", "load_skill", "load_skill_resource");
   return names.map((name) => ({ name, description: descriptions[name] }));
 }
 
@@ -63,16 +53,15 @@ export function engineerTools(agents: Agent[], templates: AgentTemplate[], harne
   return agents.map((agent) => {
     const spec = object(agent.resource?.value?.spec);
     const namespace = agent.ref?.namespace ?? "";
-    const resolve = (field: "template" | "harness", specs: ReadonlyMap<string, JsonObject>) =>
-      spec[field] !== undefined
-        ? object(spec[field])
-        : (specs.get(`${namespace}/${text(object(spec[`${field}Ref`]).name)}`) ?? {});
+    const source = object(spec.template);
+    const template =
+      source.inline !== undefined
+        ? object(source.inline)
+        : (templateSpecs.get(`${namespace}/${text(object(source.ref).name)}`) ?? {});
+    const harness = harnessSpecs.get(`${namespace}/${text(object(spec.harnessRef).name)}`) ?? {};
     return create(EngineerToolsSchema, {
       engineer: agent.ref,
-      builtinTools: builtinTools(
-        resolve("template", templateSpecs),
-        resolve("harness", harnessSpecs),
-      ),
+      builtinTools: builtinTools(template, harness),
     });
   });
 }

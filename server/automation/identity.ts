@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
-import type { Session } from "../../gen/kagent/api/v1alpha1/sessions_pb.js";
+import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { agentKey } from "../read-model/agents.js";
 

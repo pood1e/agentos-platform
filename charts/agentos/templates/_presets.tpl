@@ -16,9 +16,6 @@ Environment tool bindings are appended from global.agentos.identities.
 {{- if $current }}
 {{- if hasKey $current.spec "harnessRef" }}
 {{- $_ := set $resource.spec "harnessRef" $current.spec.harnessRef }}
-{{- else if hasKey $current.spec "harness" }}
-{{- $_ := unset $resource.spec "harnessRef" }}
-{{- $_ := set $resource.spec "harness" $current.spec.harness }}
 {{- end }}
 {{- end }}
 {{- end }}

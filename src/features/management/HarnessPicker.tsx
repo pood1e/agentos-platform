@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
 

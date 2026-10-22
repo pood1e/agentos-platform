@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package kagent.api.v1alpha1;
+package kagent.runtime.v1;
 
 import "a2a.proto";
 import "buf/validate/validate.proto";
 
-option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1alpha1;apiv1alpha1";
+option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/runtime/v1;runtimev1";
 
 // TaskStoreService is the private persistence API for agent runtimes. Every call
 // requires workload authority for the requested session. Public user and share

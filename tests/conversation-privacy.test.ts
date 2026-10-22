@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
-import { SessionSchema } from "../gen/kagent/api/v1alpha1/sessions_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
