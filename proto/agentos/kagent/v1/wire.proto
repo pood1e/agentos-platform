@@ -3,6 +3,7 @@ syntax = "proto3";
 package agentos.kagent.v1;
 
 import "a2a.proto";
+import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 
 // JSON payloads that kagent v1.0.0-alpha11 defines as Go structs rather than
@@ -71,6 +72,24 @@ message AskUserResponse {
   string type = 1;
   string id = 2;
   repeated AskUserAnswer answers = 3;
+}
+
+// Native kagent MCP input shared by synchronous and background delegation.
+message InvokeSessionInput {
+  optional string session_id = 1 [
+    json_name = "session_id",
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  optional string message = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  optional string message_id = 3 [
+    json_name = "message_id",
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
 }
 
 // Structured output of the kagent-collaboration invoke_session tool.

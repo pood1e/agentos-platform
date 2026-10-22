@@ -48,6 +48,7 @@ flowchart LR
 ## 调用链路
 
 - 对话与协作：普通聊天统一通过 `entryAgent` 进入，用户历史按发起人隔离。助手经 `list_agents`、`create_session`、原生 `invoke_session` 或异步 `dispatch_session` 委派专业 Agent，目标直接使用 kagent 资源引用。重试与续接复用原生会话和确定性 messageId。
+- 委派契约：同步与后台委派共用 `session_id`、`message_id`、`message` 三个输入字段；平台构造原生 A2A 用户消息。角色由 Agent 的 `templateRef` 决定，工具上限绑定该模板，资源标签不参与角色授权。
 - 工具访问：Agent 的模型与 MCP 请求只到平台网关，凭据由 Substrate 按目标主机注入。环境工具经环境网关，平台逐次校验用户、会话和 Agent 工具权限；环境按显式执行类型选择用户 OBO 或服务身份，目标系统原生权限决定资源上限。
 - 工具确认：声明需要确认的调用以 kagent 原生 HITL 暂停。默认由控制台提交精确工具 ID 的批准或拒绝；配置外部 `ApprovalService` 后，由服务决定、准备执行并接收结果，控制台展示状态和链接。外部服务不可用时保留暂停。同一次暂停的工具使用同一类决定来源。
 - 团队知识：知识角色以带向量记忆的 Harness 写入原生 MemoryService；其他成员经 `search_knowledge` 只读检索，范围与服务用户由服务端固定。
@@ -66,6 +67,7 @@ flowchart LR
 
 平台需要有 KVM 的节点运行 microVM。平台 Chart 包含单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent；
 环境套件包含环境网关、身份路由与凭据模板；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
+平台 API 使用滚动更新，新实例就绪后才移除旧实例；HTTP/2 连接通过 GOAWAY 排空已接收的 RPC。发布脚本在应用更新完成后刷新平台协作工具目录，保持网关与原生工具发现一致。
 测评作业与案例自动化以镜像随平台发布：前者由平台 API 在测评命名空间以 Job 运行，后者在环境侧按需部署，依赖 NATS JetStream 与 Temporal。
 
 ## 安全边界

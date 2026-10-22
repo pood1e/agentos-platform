@@ -203,7 +203,7 @@ export class ToolBindings {
         const key = `${view}:${requireApproval}`;
         const group =
           groups.get(key) ?? create(ToolBindingSchema, { server: view, requireApproval });
-        group.tools.push(name);
+        if (!group.tools.includes(name)) group.tools.push(name);
         groups.set(key, group);
       }
     }

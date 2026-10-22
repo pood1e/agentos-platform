@@ -1,0 +1,80 @@
+- name: Read the ready application runtime
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ agentos_namespace }}"
+    label_selectors:
+      - app.kubernetes.io/component=console
+      - "app.kubernetes.io/instance={{ app_release_name }}"
+  register: application_runtime
+
+- name: Identify the platform tool catalog
+  ansible.builtin.set_fact:
+    platform_gateway: "{{ application_runtime.resources[0].metadata.name | regex_replace('-console$', '-gateway') }}"
+    platform_mcp_revision: >-
+      {{ (application_runtime.resources[0].spec.template.spec.containers
+         | selectattr('name', 'equalto', 'console') | first).image | hash('sha256') }}
+
+- name: Refresh gateway tools after the application is ready
+  kubernetes.core.k8s:
+    state: patched
+    api_version: agentgateway.dev/v1alpha1
+    kind: AgentgatewayParameters
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ platform_gateway }}"
+    definition:
+      spec:
+        deployment:
+          spec:
+            template:
+              metadata:
+                annotations:
+                  agentos.dev/platform-mcp-revision: "{{ platform_mcp_revision }}"
+
+- name: Wait for the current platform tool catalog
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ platform_gateway }}"
+  register: platform_gateway_runtime
+  until:
+    - platform_gateway_runtime.resources | length == 1
+    - >-
+      platform_gateway_runtime.resources[0].spec.template.metadata.annotations['agentos.dev/platform-mcp-revision']
+      | default('') == platform_mcp_revision
+    - >-
+      platform_gateway_runtime.resources[0].status.observedGeneration | default(0)
+      >= platform_gateway_runtime.resources[0].metadata.generation
+    - >-
+      platform_gateway_runtime.resources[0].status.updatedReplicas | default(0)
+      == platform_gateway_runtime.resources[0].spec.replicas
+    - >-
+      platform_gateway_runtime.resources[0].status.readyReplicas | default(0)
+      == platform_gateway_runtime.resources[0].spec.replicas
+    - >-
+      platform_gateway_runtime.resources[0].status.replicas | default(0)
+      == platform_gateway_runtime.resources[0].spec.replicas
+  retries: 60
+  delay: 2
+
+- name: Read engineer collaboration connections
+  kubernetes.core.k8s_info:
+    api_version: api.kagent.dev/v1alpha3
+    kind: RemoteMCPServer
+    namespace: "{{ agentos_namespace }}"
+    label_selectors: [agentos.dev/platform-service]
+  register: platform_mcp_connections
+
+- name: Rediscover the published collaboration contracts
+  kubernetes.core.k8s:
+    state: patched
+    api_version: api.kagent.dev/v1alpha3
+    kind: RemoteMCPServer
+    namespace: "{{ agentos_namespace }}"
+    name: "{{ item }}"
+    definition:
+      metadata:
+        labels:
+          agentos.dev/platform-mcp-revision: "{{ platform_mcp_revision[:16] }}"
+  loop: "{{ ['team-sessions', 'kagent-collaboration'] + (platform_mcp_connections.resources | map(attribute='metadata.name') | list) }}"

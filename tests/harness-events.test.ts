@@ -69,7 +69,7 @@ describe("native Harness tool activity", () => {
   it("resolves Claude MCP text results and preserves background delegation order", () => {
     const current = task(
       "mcp__team-sessions__dispatch_session",
-      { contextId: "child-session", messageId: "child-message" },
+      { session_id: "child-session", message_id: "child-message", message: "Work" },
       { result: [{ type: "text", text: JSON.stringify({ task: { id: "child-task" } }) }] },
     );
     expect(callEntries(current, new Map())[0]?.delegation).toMatchObject({
