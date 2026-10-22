@@ -6,6 +6,7 @@ import "a2a.proto";
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/execution/v1/state.proto";
+import "agentos/execution/v1/task.proto";
 import "google/protobuf/timestamp.proto";
 
 message ConversationSummary {
@@ -24,6 +25,7 @@ message ChatMessage {
   repeated TaskSummary tasks = 5;
   // Assistant narration and the current draft while work is in progress.
   string progress = 6;
+  repeated agentos.execution.v1.ToolCall calls = 7;
 }
 
 // Empty context_id describes a conversation that has not started yet.

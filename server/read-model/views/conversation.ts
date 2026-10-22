@@ -14,7 +14,9 @@ import {
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import type { ToolCall } from "../../../gen/agentos/execution/v1/task_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1alpha1/common_pb.js";
+import { pool } from "../../kagent/clients.js";
 import { agentKey } from "../agents.js";
 import { toolCalls } from "../calls.js";
 import { object } from "../decode/messages.js";
@@ -85,9 +87,18 @@ function operations(index: TaskIndex, entry: TaskEntry) {
   });
 }
 
-function messages(index: TaskIndex, entries: TaskEntry[]): ChatMessage[] {
+async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]) {
+  const calls = new Map<string, ToolCall[]>();
+  await pool(
+    entries.filter((entry) => entry.calls.length > 0),
+    4,
+    async (entry) => {
+      const task = await sync.fullTask(entry.id);
+      if (task) calls.set(entry.id, toolCalls(task, entry.agentId, approvals(task)));
+    },
+  );
   const seen = new Set<string>();
-  return entries.flatMap((entry) => {
+  return entries.flatMap((entry): ChatMessage[] => {
     const turns = entry.userMessages
       .filter((message) => !seen.has(message.id))
       .map((message, position) => {
@@ -101,7 +112,8 @@ function messages(index: TaskIndex, entries: TaskEntry[]): ChatMessage[] {
         });
       });
     const answer = entry.state === TaskState.COMPLETED ? entry.answer : "";
-    return answer || entry.progress
+    const tools = calls.get(entry.id) ?? [];
+    return answer || entry.progress || tools.length
       ? [
           ...turns,
           create(ChatMessageSchema, {
@@ -109,6 +121,7 @@ function messages(index: TaskIndex, entries: TaskEntry[]): ChatMessage[] {
             role: Role.AGENT,
             text: answer,
             progress: entry.progress,
+            calls: tools,
             taskId: entry.id,
           }),
         ]
@@ -156,7 +169,7 @@ export async function conversation(
     title: index.session(contextId)?.name ?? "",
     busy: tree ? busy(tree) : false,
     state: runState(latest),
-    messages: messages(index, entries),
+    messages: await messages(sync, index, entries),
     pending: tree
       ? foreground(tree).flatMap((entry) =>
           entry.interactions.filter((item) => awaiting(item.state)),

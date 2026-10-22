@@ -1,7 +1,7 @@
-import { create, fromJson } from "@bufbuild/protobuf";
+import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { expect, test } from "@playwright/test";
-import { ArtifactSchema, TaskState } from "../../gen/a2a_pb.js";
+import { ArtifactSchema, PartSchema, TaskState } from "../../gen/a2a_pb.js";
 import { partTypeKey } from "../../server/read-model/decode/messages.js";
 import {
   decideApproval,
@@ -149,6 +149,9 @@ test("keeps streamed text visible while tools run, after completion and after re
     await observeTask(request, task);
     await expect(answer).toBeVisible();
     await expect(answer).toHaveAttribute("data-message-id", messageId ?? "");
+    const call = answer.getByTestId("chat-tool-call");
+    await expect(call).toHaveCount(1);
+    await expect(call).toContainText(kind === "function_call" ? "执行中" : "已完成");
   }
   task.artifacts.push(
     create(ArtifactSchema, {
@@ -165,6 +168,78 @@ test("keeps streamed text visible while tools run, after completion and after re
   await expect(answer).toContainText("先读取当前资源。");
   await expect(answer).toContainText("所有资源健康。");
   await expect(answer).toHaveAttribute("data-message-id", messageId ?? "");
+  await expect(answer.getByTestId("chat-tool-call")).toHaveCount(1);
+});
+
+test("shows tool-only turns, keeps parallel calls separate and retains failures and results after reload", async ({
+  page,
+  request,
+}) => {
+  const task = await recordedTask(request, ids.chat);
+  task.artifacts = [
+    create(ArtifactSchema, {
+      artifactId: "parallel-calls",
+      parts: ["read-a", "read-b"].map((id) =>
+        create(PartSchema, {
+          metadata: { [partTypeKey]: "function_call" },
+          content: {
+            case: "data",
+            value: fromJson(ValueSchema, {
+              id,
+              name: "k8s_get_resources",
+              args: { namespace: id, token: "private-tool-token" },
+            }),
+          },
+        }),
+      ),
+    }),
+  ];
+  if (task.status) task.status.state = TaskState.WORKING;
+  await observeTask(request, task);
+  await page.goto(`/chat/${task.contextId}`);
+  const calls = page.getByTestId("chat-tool-call");
+  await expect(calls).toHaveCount(2);
+  await expect(calls.first()).toContainText("执行中");
+  await expect(calls.first().getByTestId("tool-icon")).toHaveAttribute(
+    "data-tool-brand",
+    "Kubernetes",
+  );
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
+  await calls.first().getByRole("button").click();
+  await expect(calls.first().getByTestId("call-input")).toContainText("read-a");
+  await expect(calls.first().getByTestId("call-input")).toContainText("[REDACTED]");
+  await expect(calls.first()).not.toContainText("private-tool-token");
+  const results: { id: string; response: JsonValue }[] = [
+    { id: "read-a", response: { output: { healthy: true } } },
+    { id: "read-b", response: { error: "upstream unavailable" } },
+  ];
+  task.artifacts.push(
+    create(ArtifactSchema, {
+      artifactId: "parallel-results",
+      parts: results.map((result) =>
+        create(PartSchema, {
+          metadata: { [partTypeKey]: "function_response" },
+          content: {
+            case: "data",
+            value: fromJson(ValueSchema, { name: "k8s_get_resources", ...result }),
+          },
+        }),
+      ),
+    }),
+  );
+  if (task.status) task.status.state = TaskState.COMPLETED;
+  await observeTask(request, task);
+  await expect(calls.first()).toContainText("已完成");
+  await expect(calls.last()).toContainText("失败");
+  await expect(calls.first().getByTestId("call-output")).toContainText('"healthy": true');
+  await page.screenshot({ path: test.info().outputPath("chat-tool-calls.png") });
+  await page.reload();
+  await expect(calls).toHaveCount(2);
+  await expect(calls.first()).toHaveAttribute("data-call-id", "read-a");
+  await expect(calls.last()).toHaveAttribute("data-call-id", "read-b");
+  await calls.last().getByRole("button").click();
+  await expect(calls.last().getByTestId("call-output")).toContainText("upstream unavailable");
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
 });
 
 test("shows a native pending approval in the same conversation and retains a rejection reason", async ({

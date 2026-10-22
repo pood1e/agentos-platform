@@ -7,7 +7,7 @@ import { ingest } from "../server/read-model/entry.js";
 import { TaskIndex } from "../server/read-model/index.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
-import { fixtureIds, fixtureIndex } from "./fixtures/kagent.js";
+import { fixtureIds, fixtureIndex, fixtureTasks } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
 
 describe("streamed task content", () => {
@@ -31,7 +31,11 @@ describe("streamed task content", () => {
     const view = async () => {
       index.upsert(ingest(task, "agentos/assistant"));
       const result = await conversation(
-        { index } as never,
+        {
+          index,
+          fullTask: async (id: string) =>
+            id === task.id ? task : fixtureTasks().find((item) => item.id === id),
+        } as never,
         { namespace: "agentos", name: "assistant" },
         task.contextId,
       );
