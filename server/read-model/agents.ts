@@ -24,9 +24,8 @@ export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTem
   const resource = agent.resource?.value;
   const metadata = object(resource?.metadata);
   const templateRef = object(object(object(resource?.spec).template).ref);
-  const template = templates?.get(
-    `${text(templateRef.namespace) || agent.ref?.namespace}/${text(templateRef.name)}`,
-  )?.resource?.value;
+  const template = templates?.get(`${agent.ref?.namespace}/${text(templateRef.name)}`)?.resource
+    ?.value;
   const annotations = object(
     template ? object(template.metadata).annotations : metadata.annotations,
   );

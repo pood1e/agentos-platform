@@ -24,7 +24,7 @@ atelet:
     providers:
       - name: busybox
         apiVersion: credentialprovider.kubelet.k8s.io/v1
-        matchImages: ["{{ agentos_image_registry }}"]
+        matchImages: {{ (microvm_image_credentials | default({'auth': {agentos_image_registry.split('/')[0]: {}}})).auth.keys() | list | to_json }}
         defaultCacheDuration: 0s
         args: [cat, /run/image-credentials/response.json]
   resources:

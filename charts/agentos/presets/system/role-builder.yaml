@@ -39,4 +39,4 @@ spec:
     ref:
       name: role-builder
   harnessRef:
-    name: standard
+    name: {{ .Values.defaultHarness }}

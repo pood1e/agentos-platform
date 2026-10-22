@@ -6,16 +6,16 @@ test.beforeEach(async ({ request }) => resetKagent(request));
 test("shows and counts runtime tools without persisting them as MCP bindings", async ({ page }) => {
   await page.goto("/engineers");
   const knowledge = page.locator('[data-testid="team-card"][data-role="knowledge"]');
-  await expect(knowledge).toContainText("工具 4");
+  await expect(knowledge).toContainText("工具 10");
   await knowledge.getByRole("button", { name: "配置", exact: true }).click();
   const editor = page.getByTestId("role-editor");
   await editor.getByRole("tab", { name: "工具", exact: true }).click();
   const builtin = editor.getByTestId("builtin-tools");
-  await expect(builtin.locator("[data-tool-name]")).toHaveCount(4);
+  await expect(builtin.locator("[data-tool-name]")).toHaveCount(10);
   for (const name of ["询问用户", "沉淀知识", "检索历史知识", "自动检索知识"])
     await expect(builtin.getByText(name, { exact: true })).toBeVisible();
   await expect(builtin.getByRole("checkbox")).toHaveCount(0);
-  await expect(builtin.locator('[data-tool-brand="kagent"]')).toHaveCount(5);
+  await expect(builtin.locator('[data-tool-brand="kagent"]')).toHaveCount(11);
   const search = editor.getByRole("textbox", { name: "搜索工具", exact: true });
   await search.fill("自动检索");
   await expect(builtin.locator("[data-tool-name]")).toHaveCount(1);
@@ -23,7 +23,7 @@ test("shows and counts runtime tools without persisting them as MCP bindings", a
   await search.fill("");
   await editor.getByRole("button", { name: "保存", exact: true }).click();
   await expect(editor).toHaveCount(0);
-  await expect(knowledge).toContainText("工具 4");
+  await expect(knowledge).toContainText("工具 10");
   const response = await page.request.post("/agentos.console.v1.ConsoleService/GetConfiguration", {
     data: {},
   });

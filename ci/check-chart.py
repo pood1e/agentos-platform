@@ -36,8 +36,11 @@ def pinned(name):
 
 def render(path):
     context = {**versions, **site, 'substrate_microvm_image': pinned('substrate_microvm_image'),
-               'harness_defaults': yaml.safe_load(Path(chart, 'values.yaml').read_text())['harnesses']}
-    return jinja2.Template(Path(path).read_text(), undefined=jinja2.StrictUndefined).render(context)
+               'harness_defaults': yaml.safe_load(Path(chart, 'values.yaml').read_text())['harnesses'],
+               'microvm_image_credentials': {'auth': {'registry.example.com': {}, 'harness.example.com': {}}}}
+    templates = jinja2.Environment(undefined=jinja2.StrictUndefined)
+    templates.filters['to_json'] = json.dumps
+    return templates.from_string(Path(path).read_text()).render(context)
 
 
 subprocess.run([helm, 'dependency', 'build', solution, '--skip-refresh'], check=True)
@@ -237,7 +240,7 @@ atelet_pod = patched[3]['spec']['template']['spec']
 assert atelet_pod['volumes'] == [{'name': 'image-credentials', 'secret': {'secretName': 'atelet-image-credentials', 'defaultMode': 0o400}}]
 assert atelet_pod['containers'][0]['volumeMounts'] == [{'name': 'image-credentials', 'mountPath': '/run/image-credentials', 'readOnly': True}]
 provider = yaml.safe_load(substrate_values['atelet']['imageCredentialProviderConfigYAML'])['providers'][0]
-assert provider['matchImages'] == [registry]
+assert provider['matchImages'] == ['registry.example.com', 'harness.example.com']
 assert provider['args'] == ['cat', '/run/image-credentials/response.json']
 assert provider['defaultCacheDuration'] == '0s'
 kagent_values = yaml.safe_load(render('deploy/values/kagent.yaml.j2'))

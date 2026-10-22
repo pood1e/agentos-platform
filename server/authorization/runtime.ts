@@ -107,7 +107,7 @@ export async function executionRuntime(
     const { agentTemplate } = await clients.templates.getAgentTemplate(
       {
         ref: {
-          namespace: text(reference.namespace) || session.agent?.namespace,
+          namespace: session.agent?.namespace,
           name: text(reference.name),
         },
       },

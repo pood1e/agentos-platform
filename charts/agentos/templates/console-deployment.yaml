@@ -94,6 +94,7 @@ spec:
             - {name: KAGENT_URL, value: {{ .Values.kagent.endpoint | quote }}}
             - {name: KAGENT_NAMESPACE, value: {{ .Release.Namespace | quote }}}
             - {name: KAGENT_USER_ID, value: {{ .Values.kagent.userId | quote }}}
+            - {name: AGENTOS_HARNESS, value: {{ .Values.defaultHarness | quote }}}
             - {name: AGENTOS_MCP_GATEWAY_URL, value: "http://{{ include "agentos.name" . }}-mcp-gateway.{{ .Release.Namespace }}.svc:8080"}
             - {name: AGENTOS_GATEWAY_URL, value: 'http://{{ include "agentos.name" . }}-gateway.{{ .Release.Namespace }}.svc:8080'}
             - {name: AGENTOS_GATEWAY_NAME, value: {{ printf "%s-gateway" (include "agentos.name" .) | quote }}}
