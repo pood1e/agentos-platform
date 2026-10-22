@@ -1,21 +1,10 @@
 import { clone } from "@bufbuild/protobuf";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
-import {
-  Blocks,
-  BookOpen,
-  ChevronDown,
-  LoaderCircle,
-  NotebookPen,
-  Play,
-  Save,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { Blocks, BookOpen, LoaderCircle, NotebookPen, Play, Save, X } from "lucide-react";
 import { type ChangeEvent, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import {
   ConsoleService,
   type GetConfigurationResponse,
@@ -35,9 +25,10 @@ import {
   type RoleDefinition,
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { errorKey } from "../../lib/errors.js";
 import { engineerName } from "../shared/engineers.js";
-import { RoleBuilder } from "./RoleBuilder.js";
+import { RoleBuilderPanel } from "./RoleBuilder.js";
 import { RoleRuntime } from "./RoleRuntime.js";
 import { RoleSection as Section } from "./RoleSection.js";
 import { RoleSkills } from "./RoleSkills.js";
@@ -60,6 +51,7 @@ export function RoleEditor({
   onRuntimeApplied: () => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.AGENTS_MANAGE);
   const [draft, setDraft] = useState(() => {
     if (role) return clone(RoleDefinitionSchema, role);
     const draft = newRole();
@@ -108,6 +100,7 @@ export function RoleEditor({
     [role],
   );
   async function save() {
+    if (!editable) return;
     try {
       if (role) await update.mutateAsync({ role: draft });
       else
@@ -132,7 +125,15 @@ export function RoleEditor({
     >
       <SheetHeader className="shrink-0 flex-row items-center justify-between border-b">
         <div>
-          <SheetTitle>{t(role ? "configuration.editRole" : "configuration.newRole")}</SheetTitle>
+          <SheetTitle>
+            {t(
+              !editable
+                ? "management.view"
+                : role
+                  ? "configuration.editRole"
+                  : "configuration.newRole",
+            )}
+          </SheetTitle>
           <SheetDescription className="sr-only">
             {t("configuration.roleDescription")}
           </SheetDescription>
@@ -212,6 +213,7 @@ export function RoleEditor({
                   <Input
                     id="role-description"
                     maxLength={400}
+                    readOnly={!editable}
                     value={draft.description}
                     onChange={field("description")}
                   />
@@ -223,27 +225,13 @@ export function RoleEditor({
                     required
                     maxLength={24000}
                     rows={12}
+                    readOnly={!editable}
                     value={draft.systemPrompt}
                     onChange={field("systemPrompt")}
                   />
                 </div>
               </form>
-              <Collapsible defaultOpen={!role} className="rounded-xl border bg-muted/30">
-                <CollapsibleTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="group h-11 w-full justify-start gap-2 px-4"
-                  >
-                    <Sparkles className="text-primary" />
-                    {t("configuration.builder")}
-                    <ChevronDown className="ml-auto transition-transform group-data-[state=open]:rotate-180" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent forceMount className="data-[state=closed]:hidden">
-                  <RoleBuilder onDraft={applyDraft} />
-                </CollapsibleContent>
-              </Collapsible>
+              {editable && <RoleBuilderPanel onDraft={applyDraft} defaultOpen={!role} />}
             </div>
           </Section>
           <Section value="skills">
@@ -280,7 +268,7 @@ export function RoleEditor({
           </Section>
         </Tabs>
       </div>
-      {(!role || tab !== "runtime") && (
+      {editable && (!role || tab !== "runtime") && (
         <div className="shrink-0 space-y-3 border-t p-4">
           {failure && (
             <Alert variant="destructive">

@@ -1,8 +1,10 @@
 import { equals } from "@bufbuild/protobuf";
-import { LoaderCircle } from "lucide-react";
+import { ChevronDown, LoaderCircle, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   type RoleDefinition,
   RoleDefinitionSchema,
@@ -50,5 +52,33 @@ export function RoleBuilder({ onDraft }: { onDraft: (draft: RoleDefinition) => v
         </Alert>
       )}
     </section>
+  );
+}
+
+export function RoleBuilderPanel({
+  onDraft,
+  defaultOpen,
+}: {
+  onDraft: (draft: RoleDefinition) => void;
+  defaultOpen: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Collapsible defaultOpen={defaultOpen} className="rounded-xl border bg-muted/30">
+      <CollapsibleTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="group h-11 w-full justify-start gap-2 px-4"
+        >
+          <Sparkles className="text-primary" />
+          {t("configuration.builder")}
+          <ChevronDown className="ml-auto transition-transform group-data-[state=open]:rotate-180" />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent forceMount className="data-[state=closed]:hidden">
+        <RoleBuilder onDraft={onDraft} />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

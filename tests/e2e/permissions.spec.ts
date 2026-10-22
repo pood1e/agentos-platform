@@ -15,7 +15,7 @@ const pages = new Map([
 ]);
 
 for (const capability of allCapabilities) {
-  test(`limits navigation and direct routes to ${capabilityRole(capability)}`, async ({
+  test(`limits management actions to ${capabilityRole(capability)} while sharing resource reads`, async ({
     page,
     context,
     request,
@@ -33,12 +33,18 @@ for (const capability of allCapabilities) {
     else await expect(page.getByTestId("advanced")).toHaveCount(0);
     for (const [required, path] of pages) {
       const link = page.locator(`nav a[href="${path}"]`);
-      if (required === capability) await expect(link).toBeVisible();
+      if (required !== Capability.EVALUATIONS_MANAGE || required === capability)
+        await expect(link).toBeVisible();
       else await expect(link).toHaveCount(0);
     }
-    const forbidden = capability === Capability.AGENTS_MANAGE ? "/engineers/skills" : "/engineers";
-    await page.goto(forbidden);
-    await expect(page).toHaveURL(/\/chat$/);
+    if (capability !== Capability.EVALUATIONS_MANAGE) {
+      await page.goto("/engineers/evaluation");
+      await expect(page).toHaveURL(/\/chat$/);
+    }
+    await page.goto("/engineers/skills");
+    if (capability === Capability.SKILLS_MANAGE)
+      await expect(page.getByRole("button", { name: "新增", exact: true })).toBeVisible();
+    else await expect(page.getByRole("button", { name: "新增", exact: true })).toHaveCount(0);
     const denied = await context.request.post(
       "/agentos.management.v1.ManagementService/SaveHarness",
       {

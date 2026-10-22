@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { ResourceSheet } from "./ResourceDialog.js";
 import { Failure } from "./ResourcePage.js";
@@ -12,6 +14,7 @@ import { SpeechEditor, type SpeechKind } from "./SpeechEditor.js";
 
 export function SpeechModelsPage() {
   const { t, i18n } = useTranslation();
+  const editable = useCapability(Capability.MODELS_MANAGE);
   const [editing, setEditing] = useState<SpeechKind>();
   const settings = useQuery({
     queryKey: ["management", "speech"],
@@ -53,8 +56,19 @@ export function SpeechModelsPage() {
                     {t(`management.speech.${kind}`)}
                   </CardTitle>
                   <CardAction>
-                    <Button variant="outline" size="sm" onClick={() => setEditing(kind)}>
-                      {t(provider ? "management.edit" : "management.addConnection")}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!provider && !editable}
+                      onClick={() => setEditing(kind)}
+                    >
+                      {t(
+                        !editable
+                          ? "management.view"
+                          : provider
+                            ? "management.edit"
+                            : "management.addConnection",
+                      )}
                     </Button>
                   </CardAction>
                 </CardHeader>

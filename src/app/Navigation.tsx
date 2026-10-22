@@ -17,7 +17,7 @@ import { useAccess } from "@/lib/access";
 import { evaluationClient } from "@/lib/console";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
-import { managementCapability } from "../lib/permissions.js";
+import { canViewManagementPage } from "../lib/permissions.js";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
@@ -67,8 +67,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
     ));
   const permitted = (item: (typeof settings)[number]) => {
     if (item.path === "/system-tasks") return isAdministrator(access.data);
-    const capability = managementCapability(item.path);
-    return !capability || can(access.data, capability);
+    return canViewManagementPage(item.path, access.data);
   };
   const visibleSettings = settings.filter(permitted);
   return (

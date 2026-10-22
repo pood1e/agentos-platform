@@ -5,14 +5,17 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { errorKey } from "../../lib/errors.js";
 import { RoleEditor } from "./RoleEditor.js";
 import { Team } from "./Team.js";
 
 export function EngineersPage() {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.AGENTS_MANAGE);
   const engineers = useQuery(ConsoleService.method.listEngineers, {}, { refetchInterval: 3_000 });
   const configuration = useQuery(ConsoleService.method.getConfiguration, {});
   const error = configuration.error ?? engineers.error;
@@ -36,13 +39,15 @@ export function EngineersPage() {
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
           {t("configuration.title")}
         </h1>
-        <Button
-          disabled={!configuration.data}
-          onClick={(event) => configure(undefined, event.currentTarget)}
-        >
-          <Plus />
-          {t("configuration.newRole")}
-        </Button>
+        {editable && (
+          <Button
+            disabled={!configuration.data}
+            onClick={(event) => configure(undefined, event.currentTarget)}
+          >
+            <Plus />
+            {t("configuration.newRole")}
+          </Button>
+        )}
       </div>
       {error && (
         <Alert variant="destructive">

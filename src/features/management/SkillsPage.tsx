@@ -1,6 +1,6 @@
 import { clone } from "@bufbuild/protobuf";
 import { useMutation } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import {
   type SkillItem,
   SkillItemSchema,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { editSkill, newSkill, skillKinds, withKind } from "../engineers/role-draft.js";
 import { SkillSourceFields } from "../engineers/SkillSourceFields.js";
@@ -34,6 +36,7 @@ import { Failure, ResourcePage, useManagementPage } from "./ResourcePage.js";
 
 function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.SKILLS_MANAGE);
   const [skill, setSkill] = useState(() =>
     item?.skill ? (clone(SkillItemSchema, item).skill ?? newSkill()) : newSkill(),
   );
@@ -51,7 +54,7 @@ function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void 
       className="space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
-        save.mutate();
+        if (editable) save.mutate();
       }}
     >
       <div className="space-y-2">
@@ -59,7 +62,7 @@ function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void 
         <Input
           id="skill-name"
           required
-          disabled={!!item}
+          disabled={!!item || !editable}
           value={skill.name}
           onChange={(event) =>
             setSkill(
@@ -75,11 +78,13 @@ function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void 
         <Input
           id="skill-description"
           maxLength={400}
+          readOnly={!editable}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
       </div>
       <Select
+        disabled={!editable}
         value={skill.source.case ?? "oci"}
         onValueChange={(value) => {
           const kind = skillKinds.find((item) => item === value);
@@ -97,15 +102,16 @@ function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void 
           ))}
         </SelectContent>
       </Select>
-      <SkillSourceFields skill={skill} onChange={setSkill} />
+      <SkillSourceFields skill={skill} onChange={setSkill} readOnly={!editable} />
       <Failure error={save.error} />
-      <SaveButton pending={save.isPending} />
+      {editable && <SaveButton pending={save.isPending} />}
     </form>
   );
 }
 
 export function SkillsPage() {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.SKILLS_MANAGE);
   const list = useManagementPage("skills", (request, signal) =>
     managementClient.listSkills(request, { signal }),
   );
@@ -123,7 +129,7 @@ export function SkillsPage() {
         fetching={list.isFetching}
         error={list.error}
         onRefresh={() => void list.refetch()}
-        onAdd={() => setEditing({})}
+        onAdd={editable ? () => setEditing({}) : undefined}
         page={list.page}
         onPage={list.onPage}
       >
@@ -165,19 +171,21 @@ export function SkillsPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={t("management.edit")}
+                    aria-label={t(editable ? "management.edit" : "management.view")}
                     onClick={() => setEditing({ item })}
                   >
-                    <Pencil />
+                    {editable ? <Pencil /> : <Eye />}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("management.delete")}
-                    onClick={() => setDeleting(item)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  {editable && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("management.delete")}
+                      onClick={() => setDeleting(item)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -185,7 +193,13 @@ export function SkillsPage() {
         </Table>
       </ResourcePage>
       <ResourceSheet
-        title={t(editing?.item ? "management.editSkill" : "management.addSkill")}
+        title={t(
+          !editable
+            ? "management.view"
+            : editing?.item
+              ? "management.editSkill"
+              : "management.addSkill",
+        )}
         open={!!editing}
         onOpenChange={(open) => {
           if (!open) setEditing(undefined);
@@ -202,7 +216,7 @@ export function SkillsPage() {
           />
         )}
       </ResourceSheet>
-      {deleting && (
+      {editable && deleting && (
         <ConfirmDelete
           title={t("management.deleteNamed", { name: deleting.skill?.name })}
           description={t("management.deleteSkillNotice")}

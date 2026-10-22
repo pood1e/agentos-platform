@@ -13,10 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type {
   MemorySearchResult,
   MemorySummary,
 } from "../../../gen/kagent/api/v1alpha1/memory_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { millis } from "../../lib/format.js";
 import { KnowledgeArticle } from "./KnowledgeArticle.js";
@@ -57,6 +59,7 @@ function AddKnowledge({ onSaved }: { onSaved: () => void }) {
 
 export function KnowledgePage() {
   const { t, i18n } = useTranslation();
+  const editable = useCapability(Capability.KNOWLEDGE_MANAGE);
   const [semantic, setSemantic] = useState<MemorySearchResult[]>();
   const list = useManagementPage(
     "knowledge",
@@ -98,7 +101,7 @@ export function KnowledgePage() {
           setSemantic(undefined);
           void list.refetch();
         }}
-        onAdd={() => setAdding(true)}
+        onAdd={editable ? () => setAdding(true) : undefined}
         page={list.page}
         onPage={list.onPage}
         pagination={semantic === undefined}
@@ -117,15 +120,17 @@ export function KnowledgePage() {
                 {t("management.allKnowledge")}
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("management.clearKnowledge")}
-              disabled={!!list.search || semantic !== undefined || !list.data?.totalSize}
-              onClick={() => setClearing(true)}
-            >
-              <Trash2 />
-            </Button>
+            {editable && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("management.clearKnowledge")}
+                disabled={!!list.search || semantic !== undefined || !list.data?.totalSize}
+                onClick={() => setClearing(true)}
+              >
+                <Trash2 />
+              </Button>
+            )}
           </>
         }
       >
@@ -170,14 +175,16 @@ export function KnowledgePage() {
                     {date(millis(item.createdAt), false)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("management.deleteKnowledge")}
-                      onClick={() => setDeleting(item)}
-                    >
-                      <Trash2 />
-                    </Button>
+                    {editable && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("management.deleteKnowledge")}
+                        onClick={() => setDeleting(item)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               );
@@ -185,8 +192,12 @@ export function KnowledgePage() {
           </TableBody>
         </Table>
       </ResourcePage>
-      <ResourceSheet title={t("management.addKnowledge")} open={adding} onOpenChange={setAdding}>
-        {adding && (
+      <ResourceSheet
+        title={t("management.addKnowledge")}
+        open={adding && editable}
+        onOpenChange={setAdding}
+      >
+        {adding && editable && (
           <AddKnowledge
             onSaved={() => {
               setAdding(false);
@@ -213,7 +224,7 @@ export function KnowledgePage() {
           </div>
         )}
       </ResourceSheet>
-      {clearing && (
+      {editable && clearing && (
         <ConfirmDelete
           title={t("management.clearKnowledge")}
           description={t("management.clearKnowledgeNotice", {
@@ -230,7 +241,7 @@ export function KnowledgePage() {
           }}
         />
       )}
-      {deleting && (
+      {editable && deleting && (
         <ConfirmDelete
           title={t("management.deleteNamed", {
             name: knowledgeDocument(deleting.content).title.slice(0, 80) || deleting.id,

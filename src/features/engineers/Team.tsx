@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { Engineer, EngineerTools } from "../../../gen/agentos/console/v1/engineer_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { Avatar } from "../shared/Avatar.js";
 import { engineerDescription, engineerName, roleLabel } from "../shared/engineers.js";
 import { posture } from "../status/activity.js";
@@ -36,6 +38,7 @@ export function Team({
   onConfigure: (role: RoleDefinition, trigger: HTMLButtonElement, engineer: string) => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.AGENTS_MANAGE);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("*");
   const roles = new Map<string, number>();
@@ -178,7 +181,7 @@ export function Team({
                       if (definition) onConfigure(definition, event.currentTarget, agent.id);
                     }}
                   >
-                    {t("configuration.configure")}
+                    {t(editable ? "configuration.configure" : "management.view")}
                   </Button>
                 </div>
               </CardContent>

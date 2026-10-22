@@ -14,7 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import { type Harness, HarnessSchema } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { localizedSchema, object, translateSchema } from "./connection-schema.js";
@@ -35,6 +37,7 @@ export function HarnessEditor({
   onSaved: () => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.HARNESSES_MANAGE);
   const [name, setName] = useState(harness ? harnessName(harness) : "");
   const [runtime, setRuntime] = useState(harness?.runtime ?? "byo");
   const [spec, setSpec] = useState<JsonObject>(() =>
@@ -83,6 +86,7 @@ export function HarnessEditor({
     }
   }
   function submit(data: JsonObject) {
+    if (!editable) return;
     const value: JsonObject = harness
       ? structuredClone(harness.resource?.value ?? {})
       : { apiVersion: "api.kagent.dev/v1alpha3", kind: "Harness", metadata: { name } };
@@ -103,12 +107,12 @@ export function HarnessEditor({
           pattern="[a-z0-9](([a-z0-9]|-)*[a-z0-9])?"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          disabled={!!harness}
+          disabled={!!harness || !editable}
         />
       </div>
       <div className="space-y-2">
         <Label>{t("harness.runtime")}</Label>
-        <Select value={runtime} onValueChange={setRuntime} disabled={save.isPending}>
+        <Select value={runtime} onValueChange={setRuntime} disabled={save.isPending || !editable}>
           <SelectTrigger aria-label={t("harness.runtime")}>
             <SelectValue />
           </SelectTrigger>
@@ -138,6 +142,7 @@ export function HarnessEditor({
           uiSchema={{ "ui:globalOptions": { enableOptionalDataFieldForType: ["object", "array"] } }}
           translateString={translateSchema(t)}
           disabled={save.isPending}
+          readonly={!editable}
           showErrorList="top"
           onChange={(event) => {
             if (event.formData) setSpec(event.formData as JsonObject);
@@ -147,7 +152,7 @@ export function HarnessEditor({
           }}
         >
           <Failure error={save.error} />
-          <SaveButton pending={save.isPending} />
+          {editable && <SaveButton pending={save.isPending} />}
         </Form>
       )}
       <Failure error={schemas.error} />

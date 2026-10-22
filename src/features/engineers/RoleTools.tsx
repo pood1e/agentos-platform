@@ -10,9 +10,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { ToolRequirement } from "../../../gen/agentos/console/v1/tool_pb.js";
 import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
+import { useCapability } from "../../lib/access.js";
 import {
   connectionEnvironment,
   connectionLabel,
@@ -40,6 +42,7 @@ export function RoleTools({
   onChange: (role: RoleDefinition) => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.AGENTS_MANAGE);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string[]>();
   const catalog = useMCPServices();
@@ -193,7 +196,7 @@ export function RoleTools({
                       <Checkbox
                         className="mt-1"
                         aria-label={tool.label.name}
-                        disabled={decision === undefined}
+                        disabled={!editable || decision === undefined}
                         checked={hasTool(role, tool.server, tool.name)}
                         onCheckedChange={(checked) =>
                           onChange(

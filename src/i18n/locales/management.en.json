@@ -133,5 +133,6 @@
       "PROTOCOL_WHISPERLIVEKIT": "WhisperLiveKit"
     },
     "refresh": "Refresh"
-  }
+  },
+  "view": "View"
 }

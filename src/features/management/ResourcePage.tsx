@@ -94,7 +94,7 @@ export function ResourcePage({
   error: unknown;
   onQuery: (value: string) => void;
   onRefresh: () => void;
-  onAdd: () => void;
+  onAdd?: () => void;
   page: number;
   onPage: (page: number) => void;
   toolbar?: ReactNode;
@@ -112,10 +112,12 @@ export function ResourcePage({
             <span className="ml-2 text-sm font-normal text-muted-foreground">{total}</span>
           )}
         </h1>
-        <Button onClick={onAdd} disabled={addDisabled}>
-          <Plus />
-          {t("management.add")}
-        </Button>
+        {onAdd && (
+          <Button onClick={onAdd} disabled={addDisabled}>
+            <Plus />
+            {t("management.add")}
+          </Button>
+        )}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         <div className="relative min-w-40 flex-1 sm:max-w-sm">

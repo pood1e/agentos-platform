@@ -1,13 +1,10 @@
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
+import { can } from "../../shared/permissions.js";
 
-const pages = new Map([
-  ["/engineers", Capability.AGENTS_MANAGE],
-  ["/engineers/skills", Capability.SKILLS_MANAGE],
-  ["/engineers/mcp", Capability.MCP_MANAGE],
-  ["/engineers/models", Capability.MODELS_MANAGE],
-  ["/engineers/harnesses", Capability.HARNESSES_MANAGE],
-  ["/engineers/knowledge", Capability.KNOWLEDGE_MANAGE],
-  ["/engineers/evaluation", Capability.EVALUATIONS_MANAGE],
-]);
-
-export const managementCapability = (path: string) => pages.get(path.replace(/\/+$/, ""));
+export function canViewManagementPage(path: string, profile: Parameters<typeof can>[0]) {
+  return (
+    !!profile &&
+    (path.replace(/\/+$/, "") !== "/engineers/evaluation" ||
+      can(profile, Capability.EVALUATIONS_MANAGE))
+  );
+}

@@ -133,5 +133,6 @@
       "PROTOCOL_WHISPERLIVEKIT": "WhisperLiveKit"
     },
     "refresh": "刷新"
-  }
+  },
+  "view": "查看"
 }
