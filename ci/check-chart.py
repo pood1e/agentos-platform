@@ -248,4 +248,13 @@ assert kagent_values['substrateWorkerPool']['workerImage'] == pinned('substrate_
 assert kagent_values['global']['watchNamespaces'] == ['agentos']
 assert kagent_values['config']['runtimeDefaults']['controlPlaneUrl'] == 'http://agentos-console.agentos.svc:9091'
 assert kagent_values['controller']['substrateClientCertificate']['enabled']
+native_values = cache / 'kagent-values.yaml'
+native_values.write_text(yaml.safe_dump(kagent_values))
+native = yaml.safe_load_all(run(
+    helm, 'template', 'kagent', 'oci://ghcr.io/kagent-dev/kagent/helm/kagent',
+    '--version', versions['kagent_version'], '-f', str(native_values),
+))
+pool = next(item for item in native if item and item['kind'] == 'WorkerPool')
+assert pool['spec']['template']['serviceAccountName'] == 'kagent-workers'
+assert pool['spec']['replicas'] == 3
 print('Chart validation passed')
