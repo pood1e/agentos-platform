@@ -64,6 +64,7 @@ class Call:
             stt=self.stt,
             tts=self.tts,
             vad=vad,
+            aec_warmup_duration=None,
             turn_handling={
                 "turn_detection": "vad",
                 "endpointing": {"min_delay": 0.5, "max_delay": 3.0},
