@@ -1,5 +1,5 @@
 import { cn } from "cn";
-import { CircleCheck, Clock, Pencil, Trash2 } from "lucide-react";
+import { CircleCheck, Clock, Eye, Pencil, Trash2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import {
   type Connection,
   ConnectionKind,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { roleLabel } from "../shared/engineers.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
@@ -54,6 +56,9 @@ function accepted(connection: Connection) {
 
 export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
   const { t } = useTranslation();
+  const editable = useCapability(
+    kind === ConnectionKind.MODEL ? Capability.MODELS_MANAGE : Capability.MCP_MANAGE,
+  );
   const isMCP = kind === ConnectionKind.MCP;
   const title = t(kind === ConnectionKind.MODEL ? "management.tabs.models" : "management.tabs.mcp");
   const list = useManagementPage(`connections:${kind}`, (request, signal) =>
@@ -72,7 +77,7 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
         fetching={list.isFetching}
         error={list.error}
         onRefresh={() => void list.refetch()}
-        onAdd={() => setEditing({})}
+        onAdd={editable ? () => setEditing({}) : undefined}
         page={list.page}
         onPage={list.onPage}
       >
@@ -159,20 +164,22 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={t("management.edit")}
+                      aria-label={t(editable ? "management.edit" : "management.view")}
                       onClick={() => setEditing({ connection })}
                     >
-                      <Pencil />
+                      {editable ? <Pencil /> : <Eye />}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t("management.delete")}
-                      disabled={connection.systemManaged || !!connection.usedBy.length}
-                      onClick={() => setDeleting(connection)}
-                    >
-                      <Trash2 />
-                    </Button>
+                    {editable && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={t("management.delete")}
+                        disabled={connection.systemManaged || !!connection.usedBy.length}
+                        onClick={() => setDeleting(connection)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               );
@@ -181,7 +188,13 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
         </Table>
       </ResourcePage>
       <ResourceSheet
-        title={t(editing?.connection ? "management.editConnection" : "management.addConnection")}
+        title={t(
+          !editable
+            ? "management.view"
+            : editing?.connection
+              ? "management.editConnection"
+              : "management.addConnection",
+        )}
         open={!!editing}
         onOpenChange={(open) => {
           if (!open) setEditing(undefined);
@@ -201,7 +214,7 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
           </Suspense>
         )}
       </ResourceSheet>
-      {deleting && (
+      {editable && deleting && (
         <ConfirmDelete
           title={t("management.deleteNamed", { name: connectionName(deleting) })}
           description={t("management.deleteConnectionNotice")}

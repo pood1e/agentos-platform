@@ -3,6 +3,7 @@ import { Check, LoaderCircle, Save } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ManagementService } from "../../../gen/agentos/management/v1/management_pb.js";
 import type { AgentTemplate } from "../../../gen/kagent/api/v1alpha1/agent_templates_pb.js";
@@ -11,6 +12,7 @@ import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1alpha1/models_pb.js";
 import type { ToolServer } from "../../../gen/kagent/api/v1alpha1/tools_pb.js";
 import { harnessToolsIssue } from "../../../shared/harness-model.js";
+import { useCapability } from "../../lib/access.js";
 import { RoleModel } from "../engineers/RoleModel.js";
 import { runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
@@ -36,6 +38,7 @@ export function EngineerRuntime({
   active: boolean;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.AGENTS_MANAGE);
   const currentName = (agent: Agent) =>
     String(object(object(agent.resource?.value?.spec).harnessRef).name ?? "");
   const [selected, setSelected] = useState(() => currentName(agent));
@@ -70,6 +73,7 @@ export function EngineerRuntime({
     ? conditions.find((item) => object(item).status === "False" && object(item).message)
     : undefined;
   async function save() {
+    if (!editable) return;
     try {
       const result = await apply.mutateAsync({
         ...version,
@@ -101,7 +105,7 @@ export function EngineerRuntime({
           );
           apply.reset();
         }}
-        disabled={apply.isPending}
+        disabled={apply.isPending || !editable}
       />
       <RoleModel
         role={{ ...role, modelConfig: model?.ref }}
@@ -111,7 +115,7 @@ export function EngineerRuntime({
           setSelectedModel(next.modelConfig?.name ?? "");
           apply.reset();
         }}
-        disabled={apply.isPending}
+        disabled={apply.isPending || !editable}
       />
       {chosen && (
         <dl className="space-y-3 text-sm">
@@ -131,16 +135,23 @@ export function EngineerRuntime({
         <p className="text-xs leading-5 text-destructive">{String(object(issue).message)}</p>
       )}
       <Failure error={apply.error ?? runtime.error} />
-      <Button
-        onClick={() => void save()}
-        disabled={
-          apply.isPending || runtime.isPending || !chosen || !compatible || !!toolIssue || !changed
-        }
-        className="w-full"
-      >
-        {apply.isPending ? <LoaderCircle className="animate-spin" /> : <Save />}
-        {t("harness.apply")}
-      </Button>
+      {editable && (
+        <Button
+          onClick={() => void save()}
+          disabled={
+            apply.isPending ||
+            runtime.isPending ||
+            !chosen ||
+            !compatible ||
+            !!toolIssue ||
+            !changed
+          }
+          className="w-full"
+        >
+          {apply.isPending ? <LoaderCircle className="animate-spin" /> : <Save />}
+          {t("harness.apply")}
+        </Button>
+      )}
       {apply.isSuccess && !changed && (
         <p className="flex items-center gap-2 text-xs text-success">
           <Check className="size-3.5" />

@@ -7,11 +7,13 @@ import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import {
   type Connection,
   ConnectionKind,
   ConnectionSchema,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { toolText } from "../shared/tool-label.js";
@@ -40,6 +42,9 @@ export function ConnectionEditor({
   onSaved: () => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(
+    kind === ConnectionKind.MODEL ? Capability.MODELS_MANAGE : Capability.MCP_MANAGE,
+  );
   const [name, setName] = useState(connection ? connectionName(connection) : "");
   const [credential, setCredential] = useState("");
   const [displayName, setDisplayName] = useState(connection ? connectionLabel(connection) : "");
@@ -87,6 +92,7 @@ export function ConnectionEditor({
     onSuccess: onSaved,
   });
   function submit(data: JsonObject) {
+    if (!editable) return;
     if (kind === ConnectionKind.MCP) {
       const targets = object(data.mcp).targets;
       if (Array.isArray(targets))
@@ -151,7 +157,7 @@ export function ConnectionEditor({
             form="connection-form"
             value={displayName}
             maxLength={80}
-            disabled={connection?.systemManaged}
+            disabled={connection?.systemManaged || !editable}
             onChange={(event) => setDisplayName(event.target.value)}
           />
         </div>
@@ -177,6 +183,7 @@ export function ConnectionEditor({
           translateString={translateSchema(t)}
           formData={spec}
           disabled={connection?.systemManaged || save.isPending}
+          readonly={!editable}
           showErrorList={false}
           onChange={(event) => {
             if (event.formData) setSpec(event.formData as JsonObject);
@@ -189,19 +196,19 @@ export function ConnectionEditor({
             <ModelRequestOptions
               spec={request}
               onChange={setRequest}
-              disabled={!!connection?.systemManaged}
+              disabled={!!connection?.systemManaged || !editable}
             />
           ) : (
             <Label className="mb-5">
               <Checkbox
                 checked={tls}
-                disabled={connection?.systemManaged}
+                disabled={connection?.systemManaged || !editable}
                 onCheckedChange={(checked) => setTLS(checked === true)}
               />
               {t("management.tls")}
             </Label>
           )}
-          {!connection?.systemManaged && (
+          {editable && !connection?.systemManaged && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="connection-credential">{t("management.credential")}</Label>

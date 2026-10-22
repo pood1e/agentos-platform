@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { Harness } from "../../../gen/kagent/api/v1alpha1/harnesses_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
@@ -23,6 +25,7 @@ import { ResourcePage } from "./ResourcePage.js";
 
 export function HarnessesPage() {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.HARNESSES_MANAGE);
   const list = useQuery({
     queryKey: ["management", "harnesses"],
     queryFn: () => managementClient.listHarnesses({}),
@@ -51,7 +54,7 @@ export function HarnessesPage() {
         fetching={list.isFetching}
         error={list.error}
         onRefresh={() => void list.refetch()}
-        onAdd={() => edit()}
+        onAdd={editable ? () => edit() : undefined}
         page={0}
         onPage={() => {}}
         pagination={false}
@@ -93,23 +96,25 @@ export function HarnessesPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={t("configuration.configure")}
+                    aria-label={t(editable ? "configuration.configure" : "management.view")}
                     onClick={() => edit(item)}
                   >
-                    <Pencil />
+                    {editable ? <Pencil /> : <Eye />}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("management.delete")}
-                    disabled={
-                      object(harnessMetadata(item).labels)["app.kubernetes.io/managed-by"] ===
-                      "Helm"
-                    }
-                    onClick={() => setRemoving(item)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  {editable && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("management.delete")}
+                      disabled={
+                        object(harnessMetadata(item).labels)["app.kubernetes.io/managed-by"] ===
+                        "Helm"
+                      }
+                      onClick={() => setRemoving(item)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -117,7 +122,7 @@ export function HarnessesPage() {
         </Table>
       </ResourcePage>
       <ResourceSheet
-        title={t(selected ? "harness.edit" : "harness.add")}
+        title={t(!editable ? "management.view" : selected ? "harness.edit" : "harness.add")}
         open={open}
         onOpenChange={setOpen}
       >
@@ -133,7 +138,7 @@ export function HarnessesPage() {
           />
         )}
       </ResourceSheet>
-      {removing && (
+      {editable && removing && (
         <ConfirmDelete
           title={t("management.delete")}
           description={t("harness.deleteConfirm", { name: harnessName(removing) })}

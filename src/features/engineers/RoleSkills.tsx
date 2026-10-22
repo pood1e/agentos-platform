@@ -11,7 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition, Skill } from "../../../gen/agentos/console/v1/role_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { editRole, editSkill, newSkill, skillKinds, withKind } from "./role-draft.js";
 import { SkillPicker } from "./SkillPicker.js";
 import { SkillSourceFields } from "./SkillSourceFields.js";
@@ -24,6 +26,7 @@ export function RoleSkills({
   onChange: (role: RoleDefinition) => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.AGENTS_MANAGE);
   const [picker, setPicker] = useState(false);
   const replace = (index: number, skill: Skill) =>
     onChange(editRole(role, (draft) => draft.skills.splice(index, 1, skill)));
@@ -33,26 +36,30 @@ export function RoleSkills({
         <span className="text-xs text-muted-foreground">
           {t("configuration.skillCount", { count: role.skills.length })}
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={role.skills.length >= 50}
-          onClick={() => setPicker(true)}
-        >
-          <Library />
-          {t("management.fromCatalog")}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={role.skills.length >= 50}
-          onClick={() => onChange(editRole(role, (draft) => draft.skills.push(newSkill())))}
-        >
-          <Plus />
-          {t("configuration.addSkill")}
-        </Button>
+        {editable && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={role.skills.length >= 50}
+            onClick={() => setPicker(true)}
+          >
+            <Library />
+            {t("management.fromCatalog")}
+          </Button>
+        )}
+        {editable && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={role.skills.length >= 50}
+            onClick={() => onChange(editRole(role, (draft) => draft.skills.push(newSkill())))}
+          >
+            <Plus />
+            {t("configuration.addSkill")}
+          </Button>
+        )}
       </div>
       {!role.skills.length && (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-muted-foreground">
@@ -72,6 +79,7 @@ export function RoleSkills({
             <Label className="min-w-0 flex-1 flex-col items-start gap-1.5 text-xs">
               {t("configuration.skillName")}
               <Input
+                readOnly={!editable}
                 value={skill.name}
                 onChange={(event) =>
                   replace(
@@ -84,18 +92,21 @@ export function RoleSkills({
                 placeholder={t("configuration.skillPlaceholders.name")}
               />
             </Label>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              className="mt-5 text-muted-foreground"
-              aria-label={t("configuration.removeSkill")}
-              onClick={() => onChange(editRole(role, (draft) => draft.skills.splice(index, 1)))}
-            >
-              <Trash2 />
-            </Button>
+            {editable && (
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                className="mt-5 text-muted-foreground"
+                aria-label={t("configuration.removeSkill")}
+                onClick={() => onChange(editRole(role, (draft) => draft.skills.splice(index, 1)))}
+              >
+                <Trash2 />
+              </Button>
+            )}
           </div>
           <Select
+            disabled={!editable}
             value={skill.source.case ?? "oci"}
             onValueChange={(value) => {
               const kind = skillKinds.find((item) => item === value);
@@ -113,7 +124,11 @@ export function RoleSkills({
               ))}
             </SelectContent>
           </Select>
-          <SkillSourceFields skill={skill} onChange={(next) => replace(index, next)} />
+          <SkillSourceFields
+            skill={skill}
+            onChange={(next) => replace(index, next)}
+            readOnly={!editable}
+          />
         </fieldset>
       ))}
       {picker && (

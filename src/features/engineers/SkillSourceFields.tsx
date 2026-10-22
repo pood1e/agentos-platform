@@ -58,9 +58,11 @@ const path: Field = {
 export function SkillSourceFields({
   skill,
   onChange,
+  readOnly = false,
 }: {
   skill: Skill;
   onChange: (skill: Skill) => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -73,6 +75,7 @@ export function SkillSourceFields({
           </Label>
           <Input
             id={`${id}-${field.key}`}
+            readOnly={readOnly}
             value={field.get(skill)}
             placeholder={t(`configuration.skillPlaceholders.${field.key}`)}
             onChange={(event) =>

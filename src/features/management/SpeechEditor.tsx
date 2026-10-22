@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import {
   SpeechConfigurationSchema,
   SpeechSynthesisSchema,
   SpeechTranscriptionSchema,
 } from "../../../gen/agentos/console/v1/speech_pb.js";
 import type { GetSpeechConfigurationResponse } from "../../../gen/agentos/management/v1/management_pb.js";
+import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { translateSchema } from "./connection-schema.js";
 import { SaveButton } from "./ResourceDialog.js";
@@ -33,6 +35,7 @@ export function SpeechEditor({
   onSaved: () => void;
 }) {
   const { t } = useTranslation();
+  const editable = useCapability(Capability.MODELS_MANAGE);
   const query = useQueryClient();
   const provider = settings.configuration?.[kind];
   const [enabled, setEnabled] = useState(!!provider);
@@ -68,6 +71,7 @@ export function SpeechEditor({
   });
   const save = useMutation({
     mutationFn: async (formData: JsonObject) => {
+      if (!editable) return;
       const configuration = clone(
         SpeechConfigurationSchema,
         settings.configuration ?? create(SpeechConfigurationSchema),
@@ -128,7 +132,7 @@ export function SpeechEditor({
       <Label>
         <Checkbox
           checked={enabled}
-          disabled={save.isPending}
+          disabled={save.isPending || !editable}
           onCheckedChange={(checked) => setEnabled(checked === true)}
         />
         {t("management.speech.enabled")}
@@ -137,6 +141,7 @@ export function SpeechEditor({
         <Form
           schema={speechSchema(source, t)}
           uiSchema={{
+            "ui:submitButtonOptions": { norender: !editable },
             "ui:order":
               kind === "transcription"
                 ? ["endpoint", "model", "protocol", "languageCodes", "*"]
@@ -147,6 +152,7 @@ export function SpeechEditor({
           translateString={translateSchema(t)}
           formData={data}
           disabled={save.isPending}
+          readonly={!editable}
           showErrorList={false}
           onChange={(event) => {
             if (event.formData) setData(event.formData as JsonObject);
@@ -155,9 +161,9 @@ export function SpeechEditor({
             if (event.formData) save.mutate(event.formData as JsonObject);
           }}
         >
-          {controls}
+          {editable && controls}
         </Form>
-      ) : !enabled ? (
+      ) : !enabled && editable ? (
         <form
           onSubmit={(event) => {
             event.preventDefault();
