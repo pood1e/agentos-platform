@@ -130,6 +130,7 @@ for name, source, overrides, presets, config in [
     assert any(json.loads(value)['keyHash'] == expected_hash for value in keys['data'].values()), 'Gateway key hash does not match the client credential'
     remotes = [doc for doc in docs if doc['kind'] == 'RemoteMCPServer']
     assert all('agentos-mcp-gateway.' in item['spec']['url'] for item in remotes)
+    assert all(urlparse(item['spec']['url']).hostname.endswith('.svc.cluster.local') for item in remotes)
     assert all(item['spec']['headersFrom'][0]['valueFrom']['name'] == 'agentos-gateway' for item in remotes)
     assert all(item['spec']['timeout'] == '10m' for item in remotes)
     for backend in [doc for doc in docs if doc['kind'] == 'AgentgatewayBackend' and 'mcp' in doc['spec']]:
@@ -160,7 +161,9 @@ for name, source, overrides, presets, config in [
         assert f"--oidc-extra-audience={env['AGENTOS_OIDC_AUDIENCE']['value']}" in proxy[0]['args']
     if mode == 'none':
         assert 'AGENTOS_OIDC_ISSUER' not in env
-    assert env['AGENTOS_GATEWAY_URL']['value'].startswith('http://agentos-gateway.')
+    assert urlparse(env['AGENTOS_GATEWAY_URL']['value']).hostname.endswith('.svc.cluster.local')
+    assert urlparse(env['AGENTOS_MCP_GATEWAY_URL']['value']).hostname.endswith('.svc.cluster.local')
+    assert all(urlparse(origin).hostname.endswith('.svc.cluster.local') for origin in json.loads(env['AGENTOS_ACTOR_AUDIENCES']['value']))
     assert env['AGENTOS_GATEWAY_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'api-key'
     assert env['AGENTOS_MCP_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'token'
     assert 'AGENTOS_AUTH_CONFIG' not in env
@@ -246,7 +249,7 @@ assert provider['defaultCacheDuration'] == '0s'
 kagent_values = yaml.safe_load(render('deploy/values/kagent.yaml.j2'))
 assert kagent_values['substrateWorkerPool']['workerImage'] == pinned('substrate_microvm_image')
 assert kagent_values['global']['watchNamespaces'] == ['agentos']
-assert kagent_values['config']['runtimeDefaults']['controlPlaneUrl'] == 'http://agentos-console.agentos.svc:9091'
+assert kagent_values['config']['runtimeDefaults']['controlPlaneUrl'] == 'http://agentos-console.agentos.svc.cluster.local:9091'
 assert kagent_values['controller']['substrateClientCertificate']['enabled']
 native_values = cache / 'kagent-values.yaml'
 native_values.write_text(yaml.safe_dump(kagent_values))
