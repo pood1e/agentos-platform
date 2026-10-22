@@ -228,7 +228,10 @@ describe("views", () => {
 
   it("attaches delegated operations to the chat turn", async () => {
     const { conversation } = await import("../server/read-model/views/conversation.js");
-    const sync = { index, fullTask: async () => undefined } as never;
+    const sync = {
+      index,
+      fullTask: async (id: string) => fixtureTasks().find((task) => task.id === id),
+    } as never;
     const chat = await conversation(
       sync,
       { namespace: "agentos", name: "assistant" },

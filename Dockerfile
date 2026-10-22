@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 ENV NODE_ENV=production AGENTOS_HOST=0.0.0.0 AGENTOS_PORT=8080
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts --fetch-timeout=30000 --fetch-retries=1 && npm cache clean --force
 COPY build ./build
 COPY dist ./dist
 USER node

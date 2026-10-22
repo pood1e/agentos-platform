@@ -51,7 +51,11 @@ export function useChat(
     !history.some((message) => message.id === outgoing.id)
       ? [
           ...history,
-          create(ChatMessageSchema, { id: outgoing.id, role: Role.USER, text: outgoing.text }),
+          create(ChatMessageSchema, {
+            id: outgoing.id,
+            role: Role.USER,
+            parts: [{ id: `text:${outgoing.id}`, content: { case: "text", value: outgoing.text } }],
+          }),
         ]
       : history;
   const ready = conversation?.ready ?? false;

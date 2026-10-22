@@ -16,16 +16,26 @@ message ConversationSummary {
 }
 
 message ChatMessage {
+  reserved 3, 6, 7;
+  reserved "text", "progress", "calls";
+
   string id = 1;
   lf.a2a.v1.Role role = 2;
-  // User text or a completed assistant answer.
-  string text = 3;
   string task_id = 4;
   // Operations started from this user message.
   repeated TaskSummary tasks = 5;
-  // Assistant narration and the current draft while work is in progress.
-  string progress = 6;
-  repeated agentos.execution.v1.ToolCall calls = 7;
+  repeated ChatMessagePart parts = 8;
+}
+
+message ChatMessagePart {
+  string id = 1;
+  oneof content {
+    // User text or a completed assistant answer.
+    string text = 2;
+    // Assistant narration and the current draft while work is in progress.
+    string progress = 3;
+    agentos.execution.v1.ToolCall tool_call = 4;
+  }
 }
 
 // Empty context_id describes a conversation that has not started yet.

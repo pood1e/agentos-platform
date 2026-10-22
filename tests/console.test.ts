@@ -115,7 +115,14 @@ describe("console service", () => {
       { agent: { namespace: "agentos", name: "assistant" }, contextId: sent.contextId },
       { signal: controller.signal },
     )) {
-      if (conversation?.messages.some((message) => message.text === "已处理：巡检 agentos-lab"))
+      if (
+        conversation?.messages.some((message) =>
+          message.parts.some(
+            (part) =>
+              part.content.case === "text" && part.content.value === "已处理：巡检 agentos-lab",
+          ),
+        )
+      )
         break;
     }
     controller.abort();
