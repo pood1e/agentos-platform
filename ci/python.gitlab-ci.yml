@@ -44,6 +44,7 @@ build-automation:
 voice-verify:
   extends: .shell
   stage: verify
+  tags: [$AGENTOS_COMPILER_RUNNER]
   before_script:
     - . ci/shell-env.sh
     - . ci/python-env.sh ci/voice-tools-requirements.txt
