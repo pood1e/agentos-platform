@@ -27,7 +27,7 @@ flowchart LR
 
 环境令牌的 audience 为 `gateway_resource`。平台网关使用原生 HTTP 外部鉴权为每次上游请求设置令牌，包括初始化通知、SSE 建连与会话清理；ExtMCP 单独校验工具授权。用户执行请求采用 RFC 8693 并保留原用户 `sub`；服务执行和控制器发现采用 client credentials。外部鉴权只由网关通过私有 h2c 端口 9090 调用。路径 `/mcp/<identity>/<service>` 校验 `azp == agentos-<identity>`。环境网关按 RFC 9728 发布受保护资源元数据。
 
-原生控制器通过 `agentos.dev/discovery-auth: kubernetes` 的 RemoteMCPServer 使用可刷新绑定 ServiceAccount 凭据，只向配置的平台网关地址发送。平台验证签发者、受众和控制器 ServiceAccount 主体。Agent 的握手、发现和调用验证 Actor JWT，工具调用额外校验执行绑定、权限上限和已选工具。
+原生控制器通过 `agentos.dev/discovery-auth: kubernetes` 的 RemoteMCPServer 使用可刷新绑定 ServiceAccount 凭据。发现请求保留 MCP 路径，统一发送到配置的平台网关，凭据仅在该网关使用，重定向终止。Agent 继续使用按服务隔离的地址与 Actor JWT。平台分别验证签发者、受众和控制器主体，工具调用额外校验执行绑定、权限上限和已选工具。
 
 每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。Substrate 按请求目标 origin 签发 Actor JWT；RemoteMCPServer 地址、Service 与网关策略的 audience 必须一致。
 
