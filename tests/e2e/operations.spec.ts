@@ -36,20 +36,23 @@ test("stops a task with a completed root and a pending foreground worker", async
     .toBe(false);
 });
 
-test("stops a delegated operation from the chat composer", async ({ page }) => {
+test("stops a delegated operation and continues in the same conversation", async ({ page }) => {
   await startOperation(page);
   await page.getByTestId("conversation").getByRole("button", { name: "停止", exact: true }).click();
   await expect(page.getByRole("button", { name: "停止", exact: true })).toHaveCount(0);
   await expect(page.getByTestId("approval-detail")).toHaveCount(0);
-  await expect(page.getByText("当前会话只读，可新建对话发起查询。", { exact: true })).toBeVisible();
+  const input = page.getByRole("textbox", { name: "消息", exact: true });
+  await expect(input).toBeEditable();
   await page.getByTestId("chat-task").click();
   await expect(page.getByTestId("task-title")).toBeVisible();
   await expect(
     page.getByTestId("chat-task-panel").getByText("已取消", { exact: true }).first(),
   ).toBeVisible();
-  await page.getByRole("link", { name: "聊天", exact: true }).click();
-  await page.getByRole("button", { name: "新对话", exact: true }).click();
-  await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
+  const conversation = new URL(page.url()).pathname;
+  await input.fill("停止后继续聊");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect(page.getByTestId("chat-message").last()).toContainText("已处理：停止后继续聊");
+  expect(new URL(page.url()).pathname).toBe(conversation);
 });
 
 test("shows execution, delegation and approval intervals with working drawers", async ({
