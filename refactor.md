@@ -1,198 +1,135 @@
 # 维护面收敛重构
 
-状态：实施中。目标：平台 0.27.0。基线：平台 0.26.5（`40e4bc1`），AIOps 方案包 1.23.4。
-范围：测评移出平台；以组件原生能力替换平台自研的后台协调、机器身份、环境发布与交付校验；收敛上游补丁。执行授权、会话隔离与审批语义不变。
-
-## 现状
-
-| 环节 | 现状 | 问题 |
-| --- | --- | --- |
-| 测评 | 候选快照、带前缀的隔离副本、评测 Job 回调、门禁与发布；服务端约 3100 行，另有前端页面与 Python 作业 | 默认关闭且站点未启用；依赖平台内部实现，维护面最大 |
-| 观测 Web | 按 `upstream.json` 的字节偏移替换 Langfuse 打包产物中的 NextAuth 会话函数，访客共享预置账号 | 上游构建变化即导致镜像构建失败；访问不区分用户 |
-| 后台协调 | 审批协调每 2 秒扫描全部任务，完成与错误状态保存在进程内 LRU；续接与角色对齐各自实现重试 | 重启后全量重扫；重试与节流逻辑分散 |
-| 机器身份 | 平台按角色签发静态 API key，写入网关 key ConfigMap 并按角色生成 RemoteMCPServer；平台网关按 7 类 `apiKey.service` 授权 | 长期静态凭据；环境路由已使用 Actor JWT 与发现令牌，平台内路由仍为另一套认证 |
-| 执行授权 | `authorization/` 的 OpenFGA 模型与 `server/authorization/policy.ts` 仅用于测试，运行时由 `executions.ts` 校验委派链 | 两套授权实现并存 |
-| 环境套件 | Ansible 渲染 Jinja2 清单后直接应用；删除身份依赖手写清理任务 | 无版本化制品、回滚与资源回收 |
-| 交付 | `ci/check-chart.py` 以 288 行断言校验渲染结果；每个 PR 手工提升版本；Cloudflare 记录由自写脚本维护 | 断言难以维护；并行开发时版本冲突 |
-| 运行时补丁 | kagent `platform.patch` 2420 行（52 个文件）；Substrate `golden-skills.patch` 5659 行 | 每次上游升级需重新适配；Substrate 补丁主体已进入上游发布 |
-| 依赖 | `d3-dag`、`parse5`、`entities` 无引用 | 无效升级与审计负担 |
+状态：第一轮已发布并完成站点切换；第二轮为待实施设计。
+已部署基线：平台 0.27.5（`e8daac8`），AIOps 方案包 1.24.2（`cca755a`）。
 
 ## 原则
 
-- 平台保留运行、协作、治理、控制台与环境接入，测评移出平台。
-- 优先使用组件原生能力，不新增常驻基础设施服务。
-- 通用改动提交上游，平台补丁随上游版本删除。
+- 平台负责运行、协作、治理、控制台与环境接入，业务方案和平台外测评分开交付。
+- 优先复用维护中的组件、官方 SDK 与原生部署接口，复用现有基础设施。
+- GitLab Free 为部署约束。授权、交付和验证能力按实际 API 与组件版本设计。
+- 平台拥有的模型以 proto 为唯一来源；第三方模型复用官方 proto、SDK 与 CRD schema。
+- 静态配置的编译与请求时授权分层，执行始终受原始发起人的当前授权约束。
+- 每项替换完成一次切换并删除旧实现；通用补丁在所选上游发布版本具备对应能力后删除。
 
-## 设计
+## 第一轮结果
 
-### 测评移出平台
+| 阶段 | 内容 | PR | 结果 |
+| --- | --- | --- | --- |
+| 1 | 测评移出、Langfuse 官方镜像、OpenFGA 清理、依赖与 DNS 模块整理 | #75 | 已合入并部署 |
+| 2 | release-please 与内网发布 | #78、#84 | 正式 tag 不可变，0.27.5 发布流水线通过 |
+| 3 | pg-boss 持久化审批协调与续接 | #77 | 已合入并部署 |
+| 4 | 平台网关与平台 API 使用工作负载 JWT | #80 | 已切换并清理旧机器令牌 |
+| 5 | 环境网关与平台连接独立 Helm release | #82 | 已完成清单与资源所有权移交 |
+| 6 | helm-unittest、Conftest 与 kubeconform | #83 | 已替代对应手写校验 |
+| 7 | 上游收敛 | — | 待按能力提交与跟踪 |
 
-删除测评的服务、页面、契约、作业镜像、Chart 资源与部署变量：`server/evaluation`、`shared/evaluation.ts`、`src/features/evaluation`、
-`proto/agentos/evaluation/v1`、`evaluation/`、`charts/agentos/templates/evaluation-*.yaml`、平台网关中 `evaluator`、`evaluation`、`online-judge` 的授权、
-`deploy/vars.yaml` 的 `agentos_evaluation_*`、kagent 的测评监听命名空间，以及 CI 的测评镜像与 wheel 发布。
+站点采用官方 Langfuse Web/worker 4.62.0 与个人 OIDC 登录，环境和连接分别由独立 Helm release 管理。现有 11 个智能体模板配置已保留。已验证用户退出、访问令牌到期后的后台委派续接、原始发起人 OBO、只读权限上限及执行撤销。
 
-权限目录删除 `CAPABILITY_EVALUATIONS_MANAGE`。案例自动化删除 `/evaluations` 回报入口、`evaluation_token_file` 与 `evaluations.completed` 事实。
-控制台的配置修改直接写入工作空间，与未启用测评时一致。移除前的实现见 `40e4bc1`；平台外的回归测评不在本次范围。
+第一轮方案见本文件 `154e1c6` 版本，现行架构与运维入口见 [代码导航](docs/code-navigation.md)。后续发布已修复 Actor 身份头、服务级 audience、MCP 发现入口与原生探针。第二轮的切换验收继续覆盖这些约束。
 
-### 观测 Web 使用官方镜像
+## 第二轮
 
-删除 `runtime/langfuse` 与 `ci/langfuse.gitlab-ci.yml`，Langfuse Web 与 worker 使用同一发布版本，各自固定官方镜像摘要。
+### 现状与目标
 
-- 站点提供 OIDC 客户端时启用 Langfuse 通用 OIDC 登录（`AUTH_CUSTOM_*`），关闭用户名密码登录；`LANGFUSE_DEFAULT_ORG_ID/ROLE` 与
-  `LANGFUSE_DEFAULT_PROJECT_ID/ROLE` 把首次登录的用户加入预置组织与项目。
-- 未提供 OIDC 客户端时启用用户名密码登录，使用已初始化的 `LANGFUSE_INIT_USER_*` 运维账号。
-
-页面访问需要登录，项目 API Key 与 OTel 采集不变。
-
-### 后台协调使用持久任务队列
-
-审批协调与续接改为 [pg-boss](https://github.com/timgit/pg-boss) 任务，使用平台执行数据库，不新增服务：
-
-- 读模型变更时按交互与子任务入队，使用 `stately` 队列策略与稳定的 `singletonKey` 收敛待处理任务并约束同一键的并发。
-- 每次启动从 kagent 加载未完成审批及待续接任务，补齐队列；变更处理进度在持久入队后确认，入队失败从未确认进度重放。删除独立的周期性全量扫描。
-- 外部决定未出属于业务等待，使用延迟任务继续检查；调用错误由 pg-boss 退避重试，耗尽后进入死信队列并支持重放。等待时限与任务保留时间覆盖审批周期。
-- 授权复验、准备执行、原生回复与结果回写保持现有顺序。原生回复沿用确定性 messageId；外部审批的创建、准备执行与结果回写按稳定业务引用幂等。
-  在外部操作成功、队列尚未确认时崩溃，重放先核对原生状态及外部审批记录，再继续未完成步骤。
-- pg-boss 管理重试、过期与任务认领；业务副作用的幂等由上述原生消息和审批接口保证。删除进程内 LRU、错误节流与续接重试表。
-- kagent 原生状态仍是唯一事实来源，队列只保存待处理的引用。每次消费重新解析执行绑定与发起人授权，用户任务按原用户离线授权续期后执行 OBO。
-- 续接在 kagent 子 Agent 嵌套 HITL 修复（[kagent #3244](https://github.com/kagent-dev/kagent/issues/3244)）后删除；角色对齐随机器身份迁移删除。
-
-### 机器身份迁移到工作负载身份
-
-平台网关全部路由沿用环境路由已采用的 JWT 认证，删除 `apiKeyAuthentication`：
-
-| 调用方 | 凭据 | 授权依据 |
+| 环节 | 当前维护面 | 目标 |
 | --- | --- | --- |
-| Agent 的模型请求 | Substrate 注入的 Actor JWT | Actor 对应的会话、Agent 模型配置与允许的模型 API |
-| Agent 的协作 MCP 与平台工具请求 | Substrate 注入的 Actor JWT | Actor 对应的会话、Agent 与模板工具绑定 |
-| kagent 控制器工具发现 | Kubernetes 绑定 ServiceAccount 令牌，audience `agentos-mcp-discovery` | 指定控制器 ServiceAccount，仅允许元数据发现方法 |
-| 平台 API 的模型调用（知识嵌入、语音） | Kubernetes 绑定 ServiceAccount 令牌，使用模型入口专用 audience | 指定平台 ServiceAccount 与允许的模型 API |
-| 环境侧案例自动化 | 来源环境 realm 的 client credentials 令牌 | 已登记的 issuer、audience、客户端 `azp` 与服务账号 `sub`，仅允许对应环境的自动化入口 |
+| 合并检查 | GitHub main 未启用分支保护；主要检查在合并后的 GitLab 执行 | 功能 PR 与发布 PR 在合并前通过相同门禁 |
+| CI 环境 | shell executor 在宿主机启动 PostgreSQL、安装工具和虚拟环境 | 容器隔离作业，固定工具镜像，原生服务容器与缓存 |
+| 工具访问规则 | Helm、Ansible、运行时与 Rego 分别推导工具分类和绑定 | 单一静态访问计划，保留独立的权限不变量校验 |
+| values 契约 | 手写 schema、脚本拼接 schema 与运行时 proto 转换并存 | 平台字段从 proto 生成，第三方字段复用原生 schema |
+| 制品交付 | generic package、自定义发布清单与下载器 | 标准注册表与包管理器，保留来源、版本和完整性校验 |
+| 密钥轮换 | 部署时内联 Actor 与 Kubernetes JWKS | 原生远程 JWKS 与 TokenReview，覆盖轮换和撤销 |
+| 模型授权 | 每次请求包含多次 kagent/Substrate RPC 与执行绑定查询 | 减少配置重复查询，保留实时身份与撤销校验；收益由测量确认 |
+| 网关策略 | Gateway 级 CEL 拼接较多路由条件 | 路由或 Backend 级原生策略，验证组合后的有效权限 |
+| 后置渲染 | Python 修改上游 Kubernetes 对象及内嵌配置 | 上游 values 优先，资源补丁采用 Kustomize |
+| 依赖与文档 | 缺少未使用入口检查，存在历史规划和候选未使用依赖 | 按实际入口核实并清理，文档与发布状态一致 |
 
-JWT 校验包含 issuer、audience、有效期与调用方主体。Actor JWT 进一步核对当前 Actor UID、会话及执行绑定；发现、模型与自动化令牌按路由和方法分别授权。
-模型请求通过 HTTP 授权校验模型配置和调用范围，MCP 请求通过 ExtMCP 校验工具绑定。Kubernetes 令牌使用投射卷并随轮换重新读取。
+### 合并检查与 CI 环境
 
-平台工作负载身份用于认证系统调用，用户执行权限由原发起人、执行绑定与委派链共同收窄。后台消费沿用原用户 OBO 和既有权限上限；
-普通退出保留后台执行授权，撤销执行绑定后拒绝后续调用，离线授权失效或账号禁用后刷新被拒绝。未配置浏览器 OIDC 的现有模式保持可用。
+- GitHub main 通过分支保护要求检查通过后合并，功能 PR 与 release PR 使用同一组门禁。GitHub Actions 承担可公开复现的检查；依赖内网注册表的构建和发布由 GitLab 承担。
+- release-please 使用权限限定到本仓库的 GitHub App installation token 创建发布 PR，使检查自动运行。当前 GitHub 文档中，`GITHUB_TOKEN` 创建的 PR 检查可能进入待批准状态，门禁接入同时验收此触发链路。
+- GitLab 的外部仓库 CI 集成和拉取镜像受版本与订阅限制，保留现有源码同步任务。外部服务可通过 GitHub Commit Status API 回写结果，这与 GitLab Premium 集成是不同能力。
+- 校验作业改用容器 executor，在实施 PR 中依据现有 Runner 资源固定 Docker 或 Kubernetes 选型。每个作业使用独立工作目录，PostgreSQL 18/pgvector 以服务容器运行。
+- Node、Python、Go、envtest、浏览器、Helm、Conftest、kubeconform、protoc 与 buf 固定到有摘要的 CI 镜像。GitHub 检查所需镜像和依赖可在其执行环境访问；随后删除宿主机工具安装器与 PostgreSQL 启停脚本。
+- 缓存由 GitLab/GitHub 原生机制管理，以依赖锁文件及工具链版本为键，区分受信分支与外部 PR。镜像构建继续使用 rootless BuildKit。
 
-删除 `machine-identities.ts` 的密钥签发、按角色生成的 RemoteMCPServer 与启动时的绑定对齐，以及 `gateway-keys.yaml` 和机器令牌 Secret。
-每个平台服务只注册一个 RemoteMCPServer，工具调用继续由 ExtMCP 按 Agent 模板的工具绑定逐次授权。
+### 工具访问计划与 values 契约
 
-### 执行授权单轨
+- 平台 proto 描述环境、项目与身份的静态工具访问计划，包括只读、写入与审批集合。编译器复用 `server/governance` 的规则，部署命令与平台 API 消费同一实现。
+- Helm 与 Ansible 只消费编译结果，删除模板中的重复业务推导。方案包提供工具分类与默认配置，用户在平台维护的模板绑定继续保留。
+- 静态计划限定可配置范围。每次调用仍校验原始发起人、执行绑定、所选工具、审批与下游 OBO 权限；MCP annotations 仅作提示，实际授权来自可信配置与服务端校验。
+- Vitest 验证编译规则；Conftest 保留跨资源 audience、主体、路由覆盖和越权等不变量，删除其中重复的业务分类推导。
+- 三个 Chart 中平台拥有的 values 字段由同一 proto 生成 JSON Schema，运行时直接读取同一 proto JSON。复用已有 Governance 模型和第三方 schema，避免重复定义 Kubernetes、kagent 与 agentgateway 的完整资源。
+- 生成结果验证 Helm/ProtoJSON 的类型、默认值、可选字段和枚举语义一致；删除对应手写 schema、拼接与转换逻辑。
 
-删除 `authorization/` 的 OpenFGA 模型与模型测试、`server/authorization/policy.ts`、OpenFGA 集成测试、`@openfga/sdk`、`ci/tools.sh` 的 `fga` 与 `openfga`，
-以及 `ci/verify-authorization.sh` 与对应 CI 作业。Keycloak 客户端策略移至 `tests/proofs`。执行授权保留 `executions.ts` 的委派链收窄与撤销；
-逐资源业务 ACL 实施时再引入关系授权服务。
+### 签名密钥与令牌校验
 
-### 环境套件发布为 Helm Chart
+- 网关采用所选 agentgateway 版本原生支持的远程 JWKS，平台 API 采用现有 JOSE SDK 的远程 JWKS 缓存。issuer 与地址由受信配置指定，HTTPS 使用对应 CA 校验。
+- Kubernetes TokenReview 显式传入目标 audience，校验 `authenticated`、返回 audience 与预期 ServiceAccount 主体，绑定对象有效性由 Kubernetes 验证。调用方仅授予所需的 TokenReview 创建权限。
+- 密钥轮换保留覆盖未到期令牌的旧公钥，缓存刷新、未知 `kid`、网络故障与过期缓存按 SDK 的明确策略处理；无法建立有效信任时拒绝。
+- 验收包含新旧密钥交叠、旧密钥撤除、错误 issuer/audience、删除绑定 Pod/ServiceAccount 及 JWKS 不可用。用户退出后，后台执行继续使用原始用户离线授权。执行绑定撤销在下一次请求生效；身份提供方授权撤销通过刷新或内省检测，验收记录实际发现时延。
 
-`environments/templates` 转为 Helm Chart，随平台版本发布到 OCI 注册表，输入由 `values.schema.json` 校验：
+### 模型授权查询收敛
 
-- 目标环境中的环境网关与平台命名空间中的预置接入资源分属两个 release，Helm 负责各自清单内 Kubernetes 资源的增删与回滚。
-- 每个对象具有单一管理方。预置接入资源由 release 管理；控制台创建的接入资源及可编辑的 AgentTemplate 由平台管理，与 release 使用独立对象名。
-  Chart 升级保留平台管理的配置，模板工具绑定的初始化与解绑通过现有平台接口完成。
-- 一次性接管时核对现有 release 清单、所有权元数据与 ownerReferences，移交管理关系，保持资源名称、选择器和引用稳定；验证升级与回退时的资源归属。
-- 移除身份或环境时，先完成模板解绑及执行准入撤销，再通过目标原生 API 撤销身份客户端、权限与 API 令牌，最后由 release 升级或卸载回收 Kubernetes 资源。
-- `retire-platform-identities.yaml` 中的资源删除由 Helm 接管；模板解绑与原生凭据撤销保留为显式生命周期步骤，替代现有的分散清理任务。
-- Ansible 保留身份客户端与令牌交换配置、证书签发、凭据生成与撤销、平台绑定初始化与解绑及 Chart 安装。
-- `ci/check-environments.py` 与 `ci/render-environments.yaml` 由 Chart 测试替代。
+- 先记录授权 RPC 数量与耗时，再分离配置读取和身份校验。Agent、模板、Harness 与模型配置通过现有读模型索引读取，并校验索引健康及资源版本。
+- 每次请求继续使用原生 Substrate 接口确认当前 Actor UID，防止 Actor 恢复或替换后复用旧身份。Actor UID 到会话引用可有界缓存，期限不超过相关凭据有效期；会话授权和用户权限不随该引用一起缓存。
+- 每次请求重新解析执行绑定及撤销状态，校验当前用户授权、角色上限与模型范围。配置变更、Actor 替换、执行撤销和离线授权撤销分别覆盖失效行为。
+- 冷启动或索引未就绪时区分暂时不可用与权限拒绝；旧索引不产生额外授权。热路径目标为零次 kagent 配置查询，保留必要的 Substrate 身份校验和数据库撤销查询。
 
-### 交付工具链
+### 网关策略与后置渲染
 
-- 版本：[release-please](https://github.com/googleapis/release-please) 依据 Conventional Commits 维护 `package.json`、各 Chart 版本与变更记录，功能 PR 不修改版本。
-  GitHub 主仓库维护 release PR 与 tag，GitLab 发布流水线核对相同 tag 与提交 SHA。正式版本由指向 release 提交的受保护 tag 触发，其他 main 提交发布开发制品。
-  发布任务按版本串行执行；重试核对已发布清单的提交与摘要，一致时复用，冲突时失败。
+- 入口的 issuer、audience 与主体约束由 HTTPRoute 上的 traffic 策略表达，连接认证和工具约束按原生支持范围配置 Backend 策略。校验策略的继承、覆盖与组合语义后，删除 Gateway 级重复 CEL。
+- 控制器工具发现经受信平台网关执行；Actor 访问继续使用服务级 origin 与 audience。发现失败与空工具集合分别处理，跨服务令牌、发现身份执行工具及模型身份越权均需拒绝。
+- 上游 Chart 的原生 values 优先承载配置与镜像摘要。Kubernetes 对象补丁通过 Kustomize 作为 Helm post-renderer 执行，按名称、标签和容器名定位。
+- 当前 Substrate 渲染器还修改 `ConfigMap.data["config.yaml"]` 内的 `requestParking`，该字段是字符串中的 YAML，普通资源 patch 不能直接修改其内部结构。先核实所选上游 Chart 是否提供参数，缺失时优先提交上游参数支持；使用结构化 YAML 工具的必要适配保持最小。
+- 替换验收包括资源语义对比、内嵌配置检查、权限负例与实际启动。具备等价行为后一次切换并删除对应 Python 渲染器，快照用于辅助检查。
 
-  | 制品 | 正式版本示例 | 开发版本示例 |
-  | --- | --- | --- |
-  | npm 契约与 Helm Chart（SemVer） | `0.27.0` | `0.27.0-dev.12.gabcdef123456` |
-  | Python wheel（PEP 440） | `0.27.0` | `0.27.0.dev12+gabcdef123456` |
+### 标准制品注册表
 
-  开发序号由固定 `bootstrap-sha` 基线后的提交计数确定，同一提交的版本映射保持稳定。映射集中在发布入口，制品清单记录各格式版本、同一提交与摘要，方案包按清单锁定。
+- npm 契约发布到 GitLab npm registry，Python 契约发布到 GitLab PyPI registry，Chart 与镜像采用 OCI。参考部署交付 Ansible collection，由 `ansible-galaxy` 从固定提交安装并锁定 collection 依赖。
+- 同一发布版本的包、Chart 和 collection 来自同一源码提交。正式 tag 和制品不可覆盖；重试遇到已有制品先核对身份及内容。候选构建先确认运行时镜像摘要，正式发布前检查引用闭合，避免发布后才发现 pin 不一致。
+- npm 和 Python 由包管理器锁定版本及内容哈希。平台 Chart 固定自身镜像，collection 同时固定 kagent、Harness 与 Substrate 等运行时镜像，站点可明确覆写。
+- Chart 使用 Helm provenance 签名与验签，OCI 使用内容摘要；下载、依赖归档及安装均验证来源和完整性。当前 Helm 3.22 的 `Chart.lock.digest` 校验依赖声明，不能代替 `.tgz` 内容校验。
+- 标准安装链路完成版本一致性、完整性和部署回归后，一次删除 generic package 交付、`deployment.tar.gz`、自定义发布清单、`fetch-platform.py` 与 `platform.lock.json`。现有校验能力在新链路中具有明确对应项。
 
-- Chart 测试：[helm-unittest](https://github.com/helm-unittest/helm-unittest) 覆盖模板断言与非法 values，跨资源约束使用 [Conftest](https://www.conftest.dev/) 策略，
-  保留 kubeconform；`ci/check-chart.py` 删除。
-- DNS：`deploy/dns_record.py` 改用 `community.general.cloudflare_dns`。
-- 依赖：删除 `d3-dag`、`parse5`、`entities`。
+### 清理与上游收敛
 
-### 上游收敛
+- 引入 knip，声明 CLI、脚本、动态加载与生成代码的实际入口，按需排除 vendored UI 组件。候选依赖以检查结果及真实使用核实后删除，权限负例继续保留。
+- 更新过时的 `plan.md` 与发布说明；`docs/delivery.md` 的官方 Langfuse 登录说明已修正，按当前实现继续校验。
+- pg-boss 轮询间隔调整到 2 秒前后测量任务唤醒、审批恢复与续接延迟，以可接受延迟确定配置。
+- kagent 补丁按 MemoryService、Actor 身份、Harness 工具约束与准备策略等能力提交上游；续接跟踪 [kagent #3244](https://github.com/kagent-dev/kagent/issues/3244)。
+- Substrate 回移跟踪 [#2159](https://github.com/agent-substrate/substrate/pull/2159) 及恢复期间出站修复。是否删除以所选发布版本包含修复且站点回归通过为准。
 
-- kagent：`platform.patch` 按能力拆分为上游 PR，包括 MemoryService 的身份范围与单条删除、持久化接口的 Actor JWT、Claude 工具白名单与 PreToolUse、
-  首次准备的出站策略。合入并发布后删除对应补丁。
-- Substrate：kagent main 已依赖 kagent-dev/substrate v0.6.0，其中包含 [#2159](https://github.com/agent-substrate/substrate/pull/2159)。随 kagent 下一版本升级并删除该回移；
-  恢复期间放行出站的修复提交上游。
+### 实施顺序与验收
 
-上游收敛独立持续交付，以选定上游发布版本通过站点回归为补丁删除条件。0.27.0 保留仍需本地承载的补丁及续接能力，并记录对应 issue、PR 与验证状态。
+阶段编号沿用上一版，执行顺序先建立合并门禁与隔离环境。
 
-## 契约与配置
+| 顺序 | 阶段 | 内容 | 验收 |
+| --- | --- | --- | --- |
+| 1 | 9 | PR 检查与分支保护 | 普通 PR 与自动发布 PR 均触发检查，失败时不可合并 |
+| 2 | 10 | 容器 executor 与固定 CI 镜像 | 作业可从干净环境复现，PostgreSQL、Go 和浏览器检查通过 |
+| 3 | 8 | 入口、依赖和文档整理，队列轮询测量 | knip、现有检查通过，续接延迟满足验收界限 |
+| 4 | 11 | 远程 JWKS、TokenReview 与授权查询收敛 | 轮换、绑定对象删除、旧 Actor、配置变更与撤销均验证；记录查询数与延迟 |
+| 5 | 12 | 单一访问计划与 values proto | 编译结果由部署和运行时共同消费，schema 无漂移，权限不变量通过 |
+| 6 | 13 | 路由级策略与原生配置/Kustomize | 渲染语义一致，内嵌配置及真实发现、调用和权限负例通过 |
+| 7 | 14 | 标准注册表交付 | 从锁定制品完成干净安装与升级，篡改或错版本制品被拒绝 |
+| 独立推进 | 7 | 上游收敛 | 记录 issue、PR、包含修复的发布版本与回归结果 |
 
-| 对象 | 变更 |
-| --- | --- |
-| `proto/agentos/evaluation/v1` | 删除 |
-| `proto/agentos/authorization/v1` 的 `Capability` | 删除 `CAPABILITY_EVALUATIONS_MANAGE`，保留编号 |
-| `proto/agentos/automation/v1` 的 `AutomationConfig` | 删除 `evaluation_token_file`，保留编号 |
-| 平台 Chart values | 删除 `evaluation`；机器令牌改为 JWT 认证 |
-| 部署变量 | 删除 `agentos_evaluation_*` 与 `langfuse_web_image_tag`；新增可选的 Langfuse OIDC 客户端变量 |
-| 发布清单 | 关联提交、SemVer 版本、PEP 440 版本与制品摘要 |
-| 方案包 | 删除测评 wheel 固定与测评角色；环境接入改用环境 Chart |
+每个阶段独立 PR，保留执行授权、用户会话隔离、审批与后台续接语义。新链路验收包含用户退出及令牌到期后继续执行、只读用户写入拒绝、执行撤销及身份提供方授权撤销的生效边界和现有智能体配置保留。
 
-## 进度
+## 范围
 
-- 阶段 1：PR #75 已合入。371 项 PostgreSQL 测试、88 项浏览器测试、13 项 Python 测试及部署校验通过。
-- 阶段 2：PR #78 已合入。发布清单、双版本映射、开发制品消费与不可变发布验证通过；GitLab 内网 Runner 定时同步主分支和正式 tag。
-- 阶段 3：PR #77 已合入。持久协调队列通过多副本、启动恢复、死信重放、外部提交后故障恢复及 88 项浏览器测试；待续接期间保持执行中。
+本轮处理维护成本与交付一致性。平台外测评、配置 GitOps、语音链路合并、全局任务变更流和专用密钥服务另行规划。GitLab Premium 集成不作为前提。
 
-- 阶段 4：PR #80 已合入，380 项 PostgreSQL 测试、88 项浏览器测试、14 项 Python 测试通过；原生 agentgateway 验证 Actor 工具与模型、发现隔离、执行撤销和环境自动化准入。
+## 依据
 
-- 阶段 5：PR #82 已合入，两套环境 Chart、release 生命周期与原生模板解绑完成。14 项 Chart 单测、103 项严格资源与服务端 dry-run、真实 Helm 安装／升级／回退／卸载验证通过，用户连接及模板配置保留。
+组件官方接口与协议约束用于验证可行性；阶段顺序、缓存边界与交付选型属于本项目设计。
 
-- 阶段 6：PR #83 已合入，手写 Chart 与语音断言脚本已删除。49 项 Chart 测试、6 项策略回归与后置渲染器单测通过；正式发布流水线通过。
-
-## 实施顺序
-
-| 阶段 | 内容 | 验证 |
-| --- | --- | --- |
-| 1 | 测评移出、观测 Web 官方镜像、OpenFGA 清理、未使用依赖、DNS 模块 | `npm run verify`、Playwright、Python 测试、Chart 与部署校验 |
-| 2 | release-please 与发布脚本 | release tag 与提交绑定；开发版本的 npm、Chart、wheel 构建与消费；并发发布与重试 |
-| 3 | pg-boss 后台协调 | 启动补偿、入队失败重放、多副本、死信恢复；外部副作用成功后崩溃与结束竞态 |
-| 4 | 工作负载身份 | Actor 模型与 MCP 授权；发现令牌隔离、自动化客户端准入、令牌轮换、OBO 与无 OIDC 部署 |
-| 5 | 环境套件 Chart | 清单对比与严格服务端 dry-run；所有权移交、控制台配置保留、模板解绑与外部凭据回收 |
-| 6 | Chart 测试工具 | `check-chart.py` 断言逐项迁移 |
-
-阶段 1–6 为 0.27.0 的交付范围，各阶段为独立 PR。AIOps 方案包在这六个阶段完成后一次升级。上游收敛按已验证的发布版本独立推进。
-
-## 切换
-
-1. 部署观测：官方 Langfuse Web 镜像，按站点配置 OIDC 或账号登录。
-2. 部署平台与方案包新版本。
-3. 一次性移交环境接入资源的 release 清单与所有权，由环境 Chart 接管；通过平台接口完成绑定调整。
-4. 对移除的身份完成模板解绑与原生凭据撤销，验收新身份链路后清理旧机器令牌 Secret 与 key ConfigMap。
-
-回退时重新部署 0.26.5、AIOps 1.23.4 及其环境套件，同步移交资源所有权，由目标版本部署流程重建所需机器凭据。
-
-## 验收
-
-- 平台不含测评代码、资源与权限，控制台配置修改直接生效。
-- Langfuse 使用官方镜像：OIDC 站点以 SSO 登录并自动加入项目，其他站点以运维账号登录。
-- 审批协调与续接通过启动补偿、入队失败重放及多副本验证；外部操作成功后崩溃可恢复，业务副作用幂等，死信可重放；独立的周期性全量扫描已删除。
-- 平台网关按 JWT 主体、路由及方法授权；发现令牌调用工具与模型被拒绝，其他环境客户端无法调用自动化入口，Actor 模型与工具请求受配置和执行权限约束。
-- 用户 OBO 保留原发起人及权限上限；只读用户写入被拒绝，普通退出及短期令牌过期后后台任务继续执行，执行撤销与离线授权失效后按上述规则拒绝后续操作；无 OIDC 部署可用。
-- 平台网关的 `apiKeyAuthentication`、退役机器令牌 Secret 与 key ConfigMap 已删除，工作负载令牌轮换后调用正常。
-- 环境接入以 Chart 发布，升级与回退保持单一资源所有权及控制台配置；删除身份或环境后模板引用解除、外部凭据撤销、release 资源回收。
-- 功能 PR 不修改版本；正式版本由 release tag 触发并关联唯一提交；开发制品通过 npm、Helm、Python 安装验证，已发布版本保持不可变。
-- `runtime/` 保留补丁记录对应上游 issue、PR 与验证状态，按已验证发布版本删除；0.27.0 的发布门禁为阶段 1–6。
-
-## 不在本次范围
-
-- 平台外的回归测评与配置 GitOps。
-- 语音听写与实时通话的转写链路合并，语音为可选组件。
-- 读模型轮询：kagent 未提供全局任务变更流。
-- 凭据保管由部署机迁移至专用密钥服务。
-
-## 参考
-
-- [pg-boss](https://github.com/timgit/pg-boss)、[队列策略](https://github.com/timgit/pg-boss/blob/master/docs/api/queues.md)与[任务重试及过期](https://github.com/timgit/pg-boss/blob/master/docs/api/jobs.md)
-- [Langfuse：认证与 SSO](https://langfuse.com/self-hosting/security/authentication-and-sso)与[自动授予组织和项目访问](https://langfuse.com/self-hosting/administration/automated-access-provisioning)
-- [release-please](https://github.com/googleapis/release-please)、[helm-unittest](https://github.com/helm-unittest/helm-unittest)、[Conftest](https://www.conftest.dev/)
-- [Python 版本规范（PEP 440）](https://packaging.python.org/en/latest/specifications/version-specifiers/)
-- [community.general.cloudflare_dns](https://docs.ansible.com/ansible/latest/collections/community/general/cloudflare_dns_module.html)
+- [GitHub 受保护分支](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)、[工作流触发](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)、[Commit Status API](https://docs.github.com/en/rest/commits/statuses)
+- [GitLab 外部仓库 CI](https://docs.gitlab.com/ci/ci_cd_for_external_repos/)、[Runner executor](https://docs.gitlab.com/runner/executors/)、[npm](https://docs.gitlab.com/user/packages/npm_registry/) 与 [PyPI](https://docs.gitlab.com/user/packages/pypi_repository/) 注册表
+- [Kubernetes TokenReview](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/)、[ServiceAccount 令牌](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/)
+- [agentgateway 策略作用域与合并](https://agentgateway.dev/docs/kubernetes/latest/documentation/about/policies/target-merge/)、[远程 JWKS](https://agentgateway.dev/docs/kubernetes/latest/documentation/security/jwt/setup/)
+- [JWT 安全实践 RFC 8725](https://www.rfc-editor.org/rfc/rfc8725)、[OAuth 安全实践 RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)、[MCP 工具 annotations](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
+- [Helm 3 OCI](https://helm.sh/docs/v3/topics/registries/)、[provenance](https://helm.sh/docs/v3/topics/provenance/)、[Chart.lock 实现](https://github.com/helm/helm/blob/v3.22.0/internal/resolver/resolver.go#L195)、[post-rendering](https://helm.sh/docs/v3/topics/advanced/#post-rendering)
+- [Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)、[Ansible collection 安装](https://docs.ansible.com/ansible/latest/collections_guide/collections_installing.html)、[knip 入口配置](https://knip.dev/reference/configuration)
