@@ -67,9 +67,10 @@ Langfuse Web 与 worker 使用同一版本的官方镜像，各自按摘要固�
 langfuse_values:
   langfuse:
     web:
-      additionalEnv:
-        - name: AUTH_IGNORE_ACCOUNT_FIELDS
-          value: refresh_expires_in,not-before-policy
+      pod:
+        additionalEnv:
+          - name: AUTH_IGNORE_ACCOUNT_FIELDS
+            value: refresh_expires_in,not-before-policy
 ```
 
 ## 方案 Harness
