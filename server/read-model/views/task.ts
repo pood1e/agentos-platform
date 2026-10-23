@@ -34,7 +34,11 @@ function treeState(tree: TaskTree): ActivityState {
       ? ActivityState.AWAITING_APPROVAL
       : ActivityState.AWAITING_INPUT;
   const running = active.find((entry) => !terminal(entry.state));
-  return running ? runState(running) : taskActivity(outcomeState(tree));
+  return running
+    ? runState(running)
+    : busy(tree)
+      ? ActivityState.WORKING
+      : taskActivity(outcomeState(tree));
 }
 
 /** The chat request that started this operation, when it was delegated from a conversation. */
