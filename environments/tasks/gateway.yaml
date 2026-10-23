@@ -28,6 +28,9 @@
     wait_condition: {type: Ready, status: 'True'}
     wait_timeout: 180
 
+- name: Configure environment gateway trust
+  ansible.builtin.import_tasks: platform-trust.yaml
+
 - name: Install environment agentgateway CRDs
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig }}"

@@ -873,7 +873,7 @@ index ee3ada8..4b8882f 100644
 +}
 diff --git a/go/core/internal/service/tool/discovery_auth.go b/go/core/internal/service/tool/discovery_auth.go
 new file mode 100644
-index 0000000..4eaa2b4
+index 0000000..3a717f4
 --- /dev/null
 +++ b/go/core/internal/service/tool/discovery_auth.go
 @@ -0,0 +1,40 @@
@@ -883,12 +883,12 @@ index 0000000..4eaa2b4
 +	"fmt"
 +	"net/http"
 +	"net/url"
-+	"os"
 +	"strings"
 +
 +	"k8s.io/client-go/transport"
 +
 +	"github.com/kagent-dev/kagent/go/api/v1alpha3"
++	"github.com/kagent-dev/kagent/go/core/pkg/env"
 +)
 +
 +// Projected credentials are restricted to the operator-configured platform origin.
@@ -896,7 +896,7 @@ index 0000000..4eaa2b4
 +	if server.Annotations["agentos.dev/discovery-auth"] != "kubernetes" {
 +		return base, nil
 +	}
-+	origin, err := url.Parse(os.Getenv("KAGENT_MCP_DISCOVERY_URL"))
++	origin, err := url.Parse(env.MCPDiscoveryURL.Get())
 +	if err != nil || origin.Host == "" {
 +		return nil, fmt.Errorf("MCP discovery origin is unavailable")
 +	}
@@ -904,7 +904,7 @@ index 0000000..4eaa2b4
 +	if err != nil || target.User != nil || target.Scheme != origin.Scheme || target.Host != origin.Host || !strings.HasPrefix(target.Path, "/mcp/") {
 +		return nil, fmt.Errorf("MCP discovery target is outside the platform origin")
 +	}
-+	tokenFile := os.Getenv("KAGENT_MCP_DISCOVERY_TOKEN_FILE")
++	tokenFile := env.MCPDiscoveryTokenFile.Get()
 +	if tokenFile == "" {
 +		return nil, fmt.Errorf("MCP discovery token file is unavailable")
 +	}
@@ -1825,6 +1825,19 @@ index 0000000..663c022
 +	headers[ActorIdentityHeader] = "required"
 +	return headers, nil
 +}
+diff --git a/go/core/pkg/env/controller.go b/go/core/pkg/env/controller.go
+index d18fe0f..33f7497 100644
+--- a/go/core/pkg/env/controller.go
++++ b/go/core/pkg/env/controller.go
+@@ -2,3 +2,8 @@ package env
+ 
+ // KUBECONFIG remains an external client-go interface.
+ var Kubeconfig = RegisterStringVar("KUBECONFIG", "", "Kubernetes client configuration file list. When unset, client-go uses its normal in-cluster or user kubeconfig discovery.", ComponentController, ComponentCLI, ComponentTesting)
++
++var (
++	MCPDiscoveryURL       = RegisterStringVar("KAGENT_MCP_DISCOVERY_URL", "", "Platform gateway origin accepting projected credentials for managed MCP discovery.", ComponentController)
++	MCPDiscoveryTokenFile = RegisterStringVar("KAGENT_MCP_DISCOVERY_TOKEN_FILE", "", "Projected Kubernetes service account token for managed MCP discovery.", ComponentController)
++)
 diff --git a/go/core/pkg/env/testing.go b/go/core/pkg/env/testing.go
 index 13c4473..a42c294 100644
 --- a/go/core/pkg/env/testing.go

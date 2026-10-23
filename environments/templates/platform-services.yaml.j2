@@ -1,5 +1,6 @@
 {% for project in toolsets %}
 {% set name = environment_name + '-' + project %}
+{% if name not in existing_services %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -35,4 +36,5 @@ spec:
               failureMode: FailClosed
               allowedRequestHeaders: [x-substrate-actor-token]
               metadata: {execution: 'true', environment: "'{{ environment_name }}'", identity: "'catalog'"}
+{% endif %}
 {% endfor %}

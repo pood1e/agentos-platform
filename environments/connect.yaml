@@ -19,15 +19,8 @@
     - name: Retire engineer access outside the environment scope
       ansible.builtin.import_tasks: tasks/retire-platform-identities.yaml
 
-    - name: Read the environment gateway certificate authority
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ kubeconfig }}"
-        api_version: v1
-        kind: Secret
-        namespace: "{{ gateway_namespace }}"
-        name: mcp-gateway-tls
-      register: gateway_certificate
-      no_log: true
+    - name: Configure environment gateway trust
+      ansible.builtin.import_tasks: tasks/platform-trust.yaml
 
     - name: Discover native runtime identities
       ansible.builtin.command:
@@ -52,12 +45,6 @@
         kubeconfig: "{{ platform_kubeconfig }}"
         definition: "{{ lookup('ansible.builtin.template', 'templates/platform-governance.yaml.j2') | from_yaml }}"
       when: inventory_hostname == groups['environments'][-1]
-      no_log: true
-
-    - name: Configure platform trust for the environment gateway
-      kubernetes.core.k8s:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-credentials.yaml.j2') | from_yaml_all | list }}"
       no_log: true
 
     - name: Read existing environment MCP services
