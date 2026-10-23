@@ -14,12 +14,16 @@ Skill 目录、模型接入与控制台；业务以方案包提供团队、Skill
 
 ## 开发
 
-需要 Node.js 24.13 或更高版本。
+工具版本由 [mise.toml](mise.toml) 与锁文件固定。数据库使用 PostgreSQL 18/pgvector。
 
 ```sh
-npm ci
-npm run verify      # 生成代码、构建、Biome / buf lint / tsc 检查与单元测试
-npm run test:e2e    # 浏览器测试，使用 fake kagent 与示例方案包
+mise install --locked
+docker compose up --wait
+export CHANGE_TEST_DATABASE_URL='postgresql://postgres:agentos-dev@localhost:55432/agentos?sslmode=disable'
+mise exec -- npm ci
+mise exec -- npm run verify    # 生成、构建、静态检查与单元测试
+mise exec -- npm run test:e2e  # fake kagent 与示例方案包
+docker compose down
 ```
 
 本地调试参考 `.env.example`：
@@ -27,14 +31,14 @@ npm run test:e2e    # 浏览器测试，使用 fake kagent 与示例方案包
 
 ## 文档
 
-- [实施计划](plan.md)：当前优先级、身份与 OBO 实施阶段、控制台改进记录
+- [实施计划](plan.md)：当前能力与后续优先级
 - [架构](docs/architecture.md)：组件、调用链路、部署形态与安全边界
 - [代码导航](docs/code-navigation.md)：目录与模块职责
 - [构建与部署](docs/delivery.md)：CI、发布与单节点参考部署
 - [执行授权](docs/execution-authorization.md)：用户身份、运行时边界、工具授权与 OBO
 - [环境接入](docs/environments.md)：环境网关、身份绑定与可选审批服务
 - [扩展契约](docs/extension.md)：方案包可提供的内容与格式
-- [边界迁移](docs/domain-boundaries.md)：0.5 的契约变化与 AIOps 迁移
+- [维护面重构](refactor.md)：维护成本、交付链路与上游收敛
 
 ## 许可证
 

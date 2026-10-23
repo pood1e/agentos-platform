@@ -46,6 +46,8 @@ Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根�
 | 平台 API | 绑定 ServiceAccount JWT，audience 为模型入口 | 配置的团队知识嵌入模型与 `/v1/embeddings` |
 | 环境自动化 worker | 已登记环境的 client credentials JWT | 对应环境的案例运行、观察与取消 |
 
+Kubernetes 工作负载通过官方客户端调用 TokenReview，显式传入目标 audience，并校验认证结果、返回 audience 与精确 ServiceAccount 主体。每次请求重新审核，绑定对象撤销与签名密钥轮换由 API Server 处理；平台仅拥有创建 TokenReview 的权限，API 不可用时拒绝请求。
+
 平台模型与协作 MCP 分别使用独立入口 audience。每个平台 MCP 服务只注册一次，ExtMCP 按具体服务及工具校验当前 Agent 的绑定，工具同名不会跨服务授权。
 自动化客户端精确匹配 issuer、audience、azp、服务账号 sub，人工用户令牌或其他环境客户端无法接管该入口。
 

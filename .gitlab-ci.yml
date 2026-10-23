@@ -8,7 +8,40 @@ workflow:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TITLE =~ /^chore\(main\): release /'
       when: never
-    - when: always
+    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
+      changes:
+        compare_to: refs/heads/main
+        paths: &build-paths
+          - .gitlab-ci.yml
+          - .github/workflows/**/*
+          - .dockerignore
+          - .env.example
+          - Dockerfile
+          - compose.yaml
+          - mise.*
+          - package*.json
+          - '*config*.*'
+          - buf.*
+          - index.html
+          - LICENSE
+          - charts/**/*
+          - contracts/**/*
+          - ci/**/*
+          - automation/**/*
+          - deploy/**/*
+          - environments/**/*
+          - proto/**/*
+          - runtime/**/*
+          - scripts/**/*
+          - server/**/*
+          - shared/**/*
+          - src/**/*
+          - tests/**/*
+          - third_party/**/*
+          - voice/**/*
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: *build-paths
+    - when: never
 
 include:
   - local: ci/toolchain.gitlab-ci.yml

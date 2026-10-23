@@ -7,13 +7,18 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 
 | 作业 | 内容 |
 | --- | --- |
-| `verify` | 生成、构建、Biome / buf lint / tsc、单元测试（临时 PostgreSQL）与浏览器测试 |
+| `verify` | 生成、构建、Biome / buf lint / tsc / Knip 与单元测试；PostgreSQL 使用独立服务容器 |
+| `e2e` | Playwright 原生三分片；每个作业独立 fake kagent、数据库和浏览器 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
 | `python-verify` | 生成 Python 契约；ruff 检查与格式校验；案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
 | `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness 与案例自动化镜像，推送到 `$CI_REGISTRY_IMAGE` |
-| `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按版本与源提交固定；版本统一由 `ci/versions.py` 映射 |
-| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录各制品版本、源提交与摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
+| `build-contracts` | 提前构建 Node SDK 与 Python protobuf wheel，并验证发布打包；不上传发布注册表 |
+| `voice-verify` | 在本次构建的语音镜像中校验语音源码与单元测试 |
+| `release` | 所有检查通过后，发布契约和部署包，打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录各制品版本、源提交与摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
+
+GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执行应用、部署、Python、运行时与浏览器检查，`Required checks` 汇总必需结果；纯文档变更跳过无关检查。
+release-please 使用仓库令牌管理发布 PR，并通过原生 `workflow_dispatch` 在其分支触发相同门禁。
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
 合并发布 PR 后生成版本 tag，GitLab 的 `GitHub source sync` 定时流水线从内网同步 main 与 tag；GitLab 核对 tag、源提交和版本一致性后构建。
@@ -25,19 +30,18 @@ Python、npm 契约与部署源码包位于 GitLab Generic Package `agentos-plat
 发布任务串行执行；重试复用一致的文件和 Chart，版本或摘要冲突直接失败。Chart 归档按源提交时间规范化，打包不会修改仓库中的值。
 
 仓库内的镜像以摘要固定、注册表用占位符：Chart 值使用 `registry.example.com/agentos`，部署变量使用 `agentos_image_registry`。
-协议生成使用本地官方工具：Protobuf 36.2 与 Buf JSON Schema 插件 0.6.0，由 `ci/tools.sh` 安装固定版本。
+工具版本与来源校验由 `mise.toml`、`mise.lock` 管理；CI 镜像在 `ci/images/Dockerfile` 构建，消费者在 `ci/toolchain.gitlab-ci.yml` 固定其摘要。
+PostgreSQL 使用原生服务容器，npm 与 Go 缓存由 CI 管理。镜像按自身路径使用资源锁，可并行构建；最终发布串行执行且不被新提交取消。
+发布 PR 的版本提交跳过重复的 main 构建，由正式 tag 完成发布。协议生成使用官方 protoc 与 Buf 插件。
 发布时占位符替换为 `$CI_REGISTRY_IMAGE`。运行时镜像更新分两步：运行时作业构建出新摘要后，在 `deploy/vars.yaml` 与
 `charts/agentos/values.yaml` 更新固定摘要；发布作业核对本次构建的摘要与固定值一致。
 
 | CI/CD 变量 | 说明 |
 | --- | --- |
-| `AGENTOS_SHELL_RUNNER` | Shell runner 标签：Node.js 24、PostgreSQL 18 与 pgvector、Playwright Chromium、Python 3 |
-| `AGENTOS_COMPILER_RUNNER` | Go 测试与编译的 runner 标签 |
-| `AGENTOS_NATIVE_RUNNER` | 语音依赖验证的 runner 标签，CPU 支持官方原生库的指令集 |
+| `AGENTOS_CI_RUNNER` | 普通 Docker executor 标签，默认 `agentos-container` |
+| `AGENTOS_GO_RUNNER` | Go Docker executor 标签，默认 `agentos-compiler` |
 | `AGENTOS_BUILDKIT_RUNNER` | rootless BuildKit 的 runner 标签 |
 | `AGENTOS_BUILDKIT_IMAGE` | rootless BuildKit 镜像，按摘要固定 |
-| `AGENTOS_CI_ENVIRONMENT` | 可选，Shell 作业开始时加载的环境脚本，如工具链 `PATH` |
-| `AGENTOS_CI_CACHE` | 可选，工具与 Python 环境缓存目录，默认 `~/.cache/agentos` |
 | `AGENTOS_REGISTRY_MIRROR` | 可选，BuildKit 使用的 Docker Hub 镜像源 |
 
 ## 后台协调

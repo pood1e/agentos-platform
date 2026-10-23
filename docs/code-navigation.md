@@ -35,6 +35,8 @@
 | `tests/fixtures/solution-chart` | 依赖平台 Chart 的示例方案 Chart，供 Chart 校验使用 |
 | `runtime` | kagent、Agent Substrate 的固定版本补丁与 Harness 工具箱镜像 |
 | `contracts` | Python wheel 与 Node SDK 的打包配置，SDK 同时发布官方依赖的 proto 源码 |
+| `mise.toml`、`mise.lock` | 开发与 CI 共用的工具版本、平台来源与完整性锁定 |
+| `.github/workflows` | 合并前检查、自动发布 PR 与正式 tag |
 | `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |
 | `deploy` | 单节点参考部署的 Ansible 剧本、运行时 Helm 值与 post-renderer |
 | `environments` | 环境套件：环境网关、连接器后端、身份映射与平台接入 |
