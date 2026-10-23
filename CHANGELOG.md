@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/pood1e/agentos-platform/compare/v0.27.0...v0.27.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* preserve release-please generated manifest formatting ([#84](https://github.com/pood1e/agentos-platform/issues/84)) ([bfbc1bf](https://github.com/pood1e/agentos-platform/commit/bfbc1bf43cb71874a0de2da26af128ae543b3f11))
+
 ## [0.27.0](https://github.com/pood1e/agentos-platform/compare/v0.26.5...v0.27.0) (2026-10-23)
 
 
