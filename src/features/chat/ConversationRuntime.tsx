@@ -18,6 +18,7 @@ export function ConversationRuntime({ chat, children }: { chat: Chat; children: 
     isRunning: chat.sending || (chat.busy && !chat.pending.length),
     isDisabled: chat.sending,
     isSendDisabled: chat.blocked,
+    onCancel: () => chat.cancel(),
     onNew: async (message) => {
       const text = message.content
         .flatMap((part) => (part.type === "text" ? [part.text] : []))

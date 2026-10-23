@@ -135,6 +135,7 @@ export function useVoiceCall(chat: Chat, contextId: string) {
         const event = fromJsonString(VoiceEventSchema, new TextDecoder().decode(payload));
         switch (event.event.case) {
           case "inputStarted":
+            bridge.interrupt();
             setPhase("listening");
             setDraft("");
             break;

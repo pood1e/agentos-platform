@@ -28,6 +28,7 @@ function fixture() {
     error: "",
     reset: vi.fn(),
     submit,
+    cancel: vi.fn(async () => {}),
   };
   const bridge = new VoiceChatBridge(reply, changed, error);
   bridge.update(chat);
@@ -115,4 +116,98 @@ it("preserves unsent turns on hangup and never submits or speaks after closing",
   add("turn-3", "late");
   expect(submit).not.toHaveBeenCalled();
   expect(reply).not.toHaveBeenCalled();
+});
+
+it("cancels the interrupted foreground turn and suppresses its late answer before sending the next", async () => {
+  const { bridge, chat, submit, reply, add } = fixture();
+  let release = () => {};
+  const cancel = vi.fn(() => new Promise<void>((resolve) => (release = resolve)));
+  add();
+  await until(() => submit.mock.calls.length === 1);
+  await Promise.resolve();
+  const user = create(ChatMessageSchema, {
+    id: submit.mock.calls[0]?.[1],
+    role: Role.USER,
+    taskId: "interrupted-root",
+  });
+  const running = { ...chat, cancel, busy: true, blocked: true, messages: [user] };
+  bridge.update(running);
+  bridge.interrupt();
+  bridge.interrupt();
+  add("turn-2", "停下，换个问题");
+  expect(cancel).toHaveBeenCalledExactlyOnceWith("interrupted-root");
+  const late = create(ChatMessageSchema, {
+    role: Role.AGENT,
+    taskId: user.taskId,
+    parts: [{ content: { case: "text", value: "过期答复" } }],
+  });
+  bridge.update({ ...running, messages: [user, late] });
+  expect(reply).not.toHaveBeenCalled();
+  release();
+  await Promise.resolve();
+  expect(submit).toHaveBeenCalledOnce();
+  bridge.update({ ...chat, cancel, messages: [user, late] });
+  expect(submit).toHaveBeenCalledTimes(2);
+  expect(submit.mock.calls[1]?.[0]).toBe("停下，换个问题");
+});
+
+it("waits for the interrupted send to be admitted and cancels only its matching task", async () => {
+  const { bridge, chat, submit, add } = fixture();
+  let accepted = (_value: boolean) => {};
+  submit.mockImplementationOnce(() => new Promise<boolean>((resolve) => (accepted = resolve)));
+  add();
+  bridge.interrupt();
+  add("turn-2", "下一句");
+  bridge.update({
+    ...chat,
+    messages: [create(ChatMessageSchema, { role: Role.USER, taskId: "unrelated" })],
+  });
+  expect(chat.cancel).not.toHaveBeenCalled();
+  accepted(true);
+  await Promise.resolve();
+  expect(chat.cancel).not.toHaveBeenCalled();
+  bridge.update({
+    ...chat,
+    blocked: true,
+    messages: [
+      create(ChatMessageSchema, {
+        id: submit.mock.calls[0]?.[1],
+        role: Role.USER,
+        taskId: "admitted-root",
+      }),
+    ],
+  });
+  expect(chat.cancel).toHaveBeenCalledExactlyOnceWith("admitted-root");
+  expect(submit).toHaveBeenCalledOnce();
+});
+
+it("retries a failed interruption without resubmitting the accepted message", async () => {
+  const { bridge, chat, submit, error, changed, add } = fixture();
+  vi.mocked(chat.cancel).mockRejectedValueOnce(new Error("unavailable"));
+  add();
+  await until(() => submit.mock.calls.length === 1);
+  await Promise.resolve();
+  const running = {
+    ...chat,
+    blocked: true,
+    busy: true,
+    messages: [
+      create(ChatMessageSchema, {
+        id: submit.mock.calls[0]?.[1],
+        role: Role.USER,
+        taskId: "root",
+      }),
+    ],
+  };
+  bridge.update(running);
+  bridge.interrupt();
+  await until(() => error.mock.calls.length === 1);
+  expect(error).toHaveBeenCalledWith("task.cancelFailed");
+  expect(changed).toHaveBeenLastCalledWith(1, true);
+  bridge.update(running);
+  expect(chat.cancel).toHaveBeenCalledOnce();
+  bridge.retry();
+  await Promise.resolve();
+  expect(chat.cancel).toHaveBeenCalledTimes(2);
+  expect(submit).toHaveBeenCalledOnce();
 });
