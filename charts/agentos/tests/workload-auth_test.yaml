@@ -1,0 +1,37 @@
+suite: delegated Kubernetes workload authentication
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release:
+  name: platform
+  namespace: operations
+templates:
+- workload-auth-role.yaml
+- workload-auth-rolebinding.yaml
+tests:
+- it: grants only TokenReview creation under a namespace-qualified name
+  template: workload-auth-role.yaml
+  asserts:
+  - equal:
+      path: metadata.name
+      value: operations.platform-workload-auth
+  - equal:
+      path: rules
+      value:
+      - apiGroups: [authentication.k8s.io]
+        resources: [tokenreviews]
+        verbs: [create]
+- it: binds the verifier to this release's console identity
+  template: workload-auth-rolebinding.yaml
+  asserts:
+  - equal:
+      path: roleRef
+      value:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: operations.platform-workload-auth
+  - equal:
+      path: subjects
+      value:
+      - kind: ServiceAccount
+        name: platform-console
+        namespace: operations

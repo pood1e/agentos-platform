@@ -1,13 +1,8 @@
 import { readFileSync } from "node:fs";
 import type { IncomingHttpHeaders } from "node:http";
 import { fromJsonString } from "@bufbuild/protobuf";
-import {
-  createLocalJWKSet,
-  createRemoteJWKSet,
-  decodeJwt,
-  type JSONWebKeySet,
-  jwtVerify,
-} from "jose";
+import { type AuthenticationV1Api, createConfiguration } from "@kubernetes/client-node";
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose";
 import { discovery } from "openid-client";
 import {
   type WorkloadAuthentication,
@@ -29,27 +24,46 @@ export function workloadConfiguration() {
 }
 
 /** Workload authentication does not grant a user execution or tool authority. */
-export function workloadIdentity(config: WorkloadAuthentication) {
+export function workloadIdentity(
+  config: WorkloadAuthentication,
+  api: Pick<AuthenticationV1Api, "createTokenReview">,
+) {
   if (
-    !config.kubernetesIssuer ||
-    !config.kubernetesJwks ||
     !config.controllerSubject ||
     !config.platformSubject ||
     !config.modelAudience ||
     !config.mcpAudience
   )
     throw new Error("Kubernetes workload trust is incomplete");
-  const keys = createLocalJWKSet(config.kubernetesJwks as unknown as JSONWebKeySet);
+  const { middleware } = createConfiguration({
+    promiseMiddleware: [
+      {
+        async pre(request) {
+          request.setSignal(AbortSignal.timeout(5_000));
+          return request;
+        },
+        post: async (response) => response,
+      },
+    ],
+  });
   const providers = new Map<string, Promise<ReturnType<typeof createRemoteJWKSet>>>();
   async function kubernetes(headers: IncomingHttpHeaders, audience: string, subject: string) {
-    const { payload } = await jwtVerify(bearer(headers), keys, {
-      issuer: config.kubernetesIssuer,
-      audience,
-      algorithms: ["RS256", "ES256"],
-      requiredClaims: ["iss", "sub", "aud", "exp", "iat"],
-    });
-    if (payload.sub !== subject) throw new Error("Workload subject does not match");
-    return payload;
+    const { status } = await api.createTokenReview(
+      {
+        body: {
+          apiVersion: "authentication.k8s.io/v1",
+          kind: "TokenReview",
+          spec: { token: bearer(headers), audiences: [audience] },
+        },
+      },
+      { middleware, middlewareMergeStrategy: "append" },
+    );
+    if (
+      !status?.authenticated ||
+      !status.audiences?.includes(audience) ||
+      status.user?.username !== subject
+    )
+      throw new Error("Workload identity is invalid");
   }
   return {
     config,

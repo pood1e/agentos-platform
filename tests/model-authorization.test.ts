@@ -28,7 +28,17 @@ it("checks the Actor audience, execution binding, current model and API for ever
     registry: { resolve },
     agentRole: async () => ({ role: { modelConfig: { name: "default-model-config" } } }),
   } as unknown as ExecutionRuntime;
-  const authorize = modelAuthorization(clients, execution, workloadIdentity(trust), "agentos");
+  const authorize = modelAuthorization(
+    clients,
+    execution,
+    workloadIdentity(trust, {
+      createTokenReview: vi.fn(async () => ({
+        spec: { token: "controller" },
+        status: { authenticated: false },
+      })),
+    }),
+    "agentos",
+  );
   const headers = { "x-substrate-actor-token": "Bearer actor" };
   const request = create(ModelAuthorizationSchema, {
     path: "/v1/chat/completions",

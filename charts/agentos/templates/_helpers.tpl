@@ -30,5 +30,8 @@ capabilities: {drop: [ALL]}
 {{- $audiences | toJson -}}
 {{- end -}}
 {{- define "agentos.workloadAuth" -}}
-{{- dict "kubernetesIssuer" .Values.execution.kubernetesIssuer "kubernetesJwks" .Values.execution.kubernetesJWKS "controllerSubject" (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) "platformSubject" (printf "system:serviceaccount:%s:%s-console" .Release.Namespace (include "agentos.name" .)) "modelAudience" (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "mcpAudience" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "automationSources" .Values.automation.sources | toJson -}}
+{{- dict "controllerSubject" (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) "platformSubject" (printf "system:serviceaccount:%s:%s-console" .Release.Namespace (include "agentos.name" .)) "modelAudience" (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "mcpAudience" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "automationSources" .Values.automation.sources | toJson -}}
+{{- end -}}
+{{- define "agentos.workloadAuthName" -}}
+{{- printf "%s.%s-workload-auth" .Release.Namespace (include "agentos.name" .) -}}
 {{- end -}}

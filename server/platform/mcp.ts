@@ -38,7 +38,7 @@ export async function registerPlatformMcp(
     const actorProof =
       headers[actorTokenHeader] ?? (claims?.iss === execution.issuer ? authorization : undefined);
     if (actorProof === undefined) {
-      if (claims?.iss !== workloads.config.kubernetesIssuer) {
+      if (workloads.config.automationSources.some((source) => source.issuer === claims?.iss)) {
         const { environment, subject } = await workloads.automation(headers);
         return {
           clientId: subject,

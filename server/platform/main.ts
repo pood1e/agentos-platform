@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
+import { AuthenticationV1Api, CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { discovery } from "openid-client";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
@@ -108,7 +108,10 @@ const tags = await taskTagStore(
     : undefined,
 );
 const automation = automationPresets(config.namespace, packRoot);
-const workloads = workloadIdentity(workloadConfiguration());
+const workloads = workloadIdentity(
+  workloadConfiguration(),
+  kubeConfig.makeApiClient(AuthenticationV1Api),
+);
 const knowledge = knowledgeConfig(config);
 const speechSettings = speechSettingsStore(
   kubeConfig.makeApiClient(CoreV1Api),

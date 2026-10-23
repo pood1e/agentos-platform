@@ -3,12 +3,9 @@ syntax = "proto3";
 package agentos.authorization.v1;
 
 import "buf/validate/validate.proto";
-import "google/protobuf/struct.proto";
 
-// Trusted runtime issuers and exact workload subjects for one deployment.
+// Exact workload subjects and environment issuers for one deployment.
 message WorkloadAuthentication {
-  string kubernetes_issuer = 1;
-  google.protobuf.Struct kubernetes_jwks = 2;
   string controller_subject = 3;
   string platform_subject = 4;
   string model_audience = 5;
