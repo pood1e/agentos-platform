@@ -9,7 +9,7 @@ TARGET = "git@gitlab.dev.supranett.com:aiops/agentos-platform.git"
 
 
 def git(*args, cwd=None):
-    result = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True)
+    result = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True, timeout=120)
     if result.returncode:
         raise RuntimeError(f"Source synchronization failed during git {args[0]}")
     return result.stdout.strip()

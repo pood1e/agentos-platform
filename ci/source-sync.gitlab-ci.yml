@@ -6,5 +6,6 @@ source-sync:
   environment: {name: source-sync, action: prepare}
   retry: {max: 2, when: [runner_system_failure, script_failure]}
   before_script:
+    - . ci/shell-env.sh
     - export GIT_SSH_COMMAND="ssh -F /dev/null -i $AGENTOS_SOURCE_MIRROR_KEY -o IdentitiesOnly=yes -o UserKnownHostsFile=$AGENTOS_SOURCE_MIRROR_HOST_KEYS -o StrictHostKeyChecking=yes"
   script: [python3 ci/source-sync.py]
