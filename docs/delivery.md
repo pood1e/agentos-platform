@@ -16,8 +16,8 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录各制品版本、源提交与摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
-合并发布 PR 后生成版本 tag，工作流把 main 与 tag 同步到 GitLab；GitLab 核对 tag、源提交和版本一致性后构建。
-`GITLAB_MIRROR_SSH_KEY` 使用项目写入部署密钥，`GITLAB_MIRROR_HOST_KEYS` 保存核验过的 SSH 主机公钥；部署密钥具有 main 与受保护 tag 的推送权限。
+合并发布 PR 后生成版本 tag，GitLab 的 `GitHub source sync` 定时流水线从内网同步 main 与 tag；GitLab 核对 tag、源提交和版本一致性后构建。
+同步使用当次 CI_JOB_TOKEN，并启用项目的 Job Token 仓库推送权限；同步只做快进更新，拒绝覆盖已有版本 tag。Job Token 推送后显式触发对应引用的构建流水线，核对触发后的提交 SHA。
 
 开发版本从固定的 `bootstrap-sha` 计数，与提交摘要组成 npm/Chart 的 SemVer 和 Python 的 PEP 440 版本，同一提交重复构建保持一致。
 Python、npm 契约与部署源码包位于 GitLab Generic Package `agentos-platform/<version>`；发布清单位于 `agentos-release/<version>/release.json`。

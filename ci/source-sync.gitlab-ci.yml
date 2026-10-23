@@ -1,0 +1,6 @@
+stages: [sync]
+source-sync:
+  stage: sync
+  tags: [$AGENTOS_SHELL_RUNNER]
+  resource_group: agentos-source-sync
+  script: [python3 ci/source-sync.py]

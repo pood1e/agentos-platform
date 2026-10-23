@@ -18,21 +18,3 @@ jobs:
           fetch-depth: 0
       - id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-      - name: Mirror source and release tag to GitLab
-        env:
-          MIRROR_KEY: ${{ secrets.GITLAB_MIRROR_SSH_KEY }}
-          MIRROR_HOST_KEYS: ${{ vars.GITLAB_MIRROR_HOST_KEYS }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
-        run: |
-          umask 077
-          mkdir -p "$RUNNER_TEMP/mirror"
-          printf '%s\n' "$MIRROR_KEY" > "$RUNNER_TEMP/mirror/key"
-          printf '%s\n' "$MIRROR_HOST_KEYS" > "$RUNNER_TEMP/mirror/known_hosts"
-          export GIT_SSH_COMMAND="ssh -F /dev/null -i $RUNNER_TEMP/mirror/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/mirror/known_hosts -o StrictHostKeyChecking=yes"
-          trap 'rm -rf "$RUNNER_TEMP/mirror"' EXIT
-          git remote add mirror git@gitlab.dev.supranett.com:aiops/agentos-platform.git
-          git push mirror HEAD:refs/heads/main
-          if [ -n "$RELEASE_TAG" ]; then
-            git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
-            git push mirror "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
-          fi
