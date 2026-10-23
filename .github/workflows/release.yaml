@@ -3,31 +3,42 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 concurrency:
   group: release
   cancel-in-progress: false
 jobs:
   release:
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - id: release
-        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+  approve-release-checks:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'action_required' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'github-actions[bot]' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'release-please--branches--main--')
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        if: steps.release.outputs.prs_created == 'true'
-        env:
-          RELEASE_PR: ${{ steps.release.outputs.pr }}
         with:
           script: |
-            const pr = JSON.parse(process.env.RELEASE_PR);
-            await github.rest.actions.createWorkflowDispatch({
+            await github.rest.actions.approveWorkflowRun({
               ...context.repo,
-              workflow_id: 'verify.yaml',
-              ref: pr.headBranchName,
+              run_id: context.payload.workflow_run.id,
             });
