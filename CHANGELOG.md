@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.28.0](https://github.com/pood1e/agentos-platform/compare/v0.27.5...v0.28.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* simplify dependencies, authorization and CI delivery ([#97](https://github.com/pood1e/agentos-platform/issues/97))
+
+### Code Refactoring
+
+* simplify dependencies, authorization and CI delivery ([#97](https://github.com/pood1e/agentos-platform/issues/97)) ([fe79449](https://github.com/pood1e/agentos-platform/commit/fe79449e99a88a08c9234d06fefacb6972090925))
+
 ## [0.27.5](https://github.com/pood1e/agentos-platform/compare/v0.27.4...v0.27.5) (2026-10-23)
 
 
