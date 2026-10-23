@@ -57,6 +57,10 @@ spec:
 {% if delegated %}
             - {name: x-agentos-execution-kind, type: Exact, value: {{ execution_kind }}}
 {% endif %}
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            remove: {{ (['x-substrate-actor-token'] + ([] if execution_kind == 'user' else ['x-agentos-subject-token'])) | to_json }}
       backendRefs:
         - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ backend }}}
 {% endfor %}

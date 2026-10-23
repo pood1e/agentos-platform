@@ -54,6 +54,22 @@ environment_connectors:
          auth: {secretRef: {name: tickets-api-<identity>, key: token}}}
 ```
 
+## 连接器收到的上下文
+
+环境网关转发前移除平台侧凭据：Actor JWT（`x-substrate-actor-token`）不进入连接器，用户令牌头（`x-agentos-subject-token`）只在配置 `userAuth` 的路由上由原生令牌交换消费。
+连接器可读取的执行上下文均为标准格式：
+
+| 内容 | 标准 | 字段 |
+| --- | --- | --- |
+| 追踪 | W3C Trace Context | `traceparent`、`tracestate`，与平台原生追踪同属一个 trace |
+| 会话、任务与单次调用 | W3C Baggage，键名遵循 OpenTelemetry GenAI 语义约定 | `gen_ai.conversation.id`、`a2a.task.id`、`gen_ai.tool.call.id`、`gen_ai.agent.name` |
+| 发起人 | RFC 8693 交换令牌 | `userAuth` 换取的 JWT，`sub` 为发起用户 |
+
+agentgateway 按 MCP SEP-414 同时把 `traceparent`、`tracestate`、`baggage` 写入请求的 `_meta`。上述 Baggage 由 kagent 原生运行时写入，其他 Harness 取决于其 MCP 客户端，连接器按可选字段处理。
+Baggage 用于关联与去重，例如以 `gen_ai.conversation.id` 与 `gen_ai.tool.call.id` 组合作为写操作的幂等键；可验证的发起人以交换令牌为准。
+
+服务身份桥接的连接器需要在目标侧记录发起人时，`userAuth` 以 `oauthTokenExchange` 换取受众为该连接器的令牌，并以 `credentials` 携带目标系统的服务凭据；连接器按 OIDC 发现校验签名、issuer 与 audience。
+
 ## 站点变量
 
 清单的 `environments` 组每台主机对应一套环境，`ansible_host` 为平台访问环境网关的地址：

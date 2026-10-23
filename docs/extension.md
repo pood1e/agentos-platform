@@ -60,6 +60,7 @@ global:
       <service>:                                      # 连接器 MCP 服务
         readOnly: [<tool>, ...]
         write: [<tool>, ...]
+        approval: [<tool>, ...]                       # 可选，approval 环境中需原生确认的工具，省略时为 write
         managementReadOnly: [<tool>, ...]             # 仅 manage 级别可见
         management: [<tool>, ...]                     # 仅 manage 级别可见
     identities:
@@ -77,7 +78,7 @@ global:
 | `operate` | `readOnly` | `write` |
 | `manage` | `readOnly`、`managementReadOnly` | `write`、`management` |
 
-身份 `catalog` 为平台保留，用于发现各服务的工具，须对每个服务有只读访问。写绑定在 `approval` 环境以 kagent 原生 `requireApproval` 暂停。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
+身份 `catalog` 为平台保留，用于发现各服务的工具，须对每个服务有只读访问。`approval` 环境中，`approval` 列出的写绑定工具以 kagent 原生 `requireApproval` 暂停；目标系统自行审批的写工具可不列入。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
 `skillRepository` 设置后，平台的只读 Skill 网关代理该 Git 仓库并由 agentgateway 注入凭据，Agent 不持有仓库凭据。
 
 业务角色以模板文件提供，方案包 Chart 调用平台模板渲染，预置中可用 `agentos.presetSkill` 引用目录中的 Skill，完整示例见
