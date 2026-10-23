@@ -20,6 +20,13 @@
         fail_msg: The environment must be declared in global.agentos.environments with a catalog identity in scope.
         quiet: true
 
+    - name: Publish environment resource coordinates
+      tags: [always]
+      ansible.builtin.set_fact:
+        environment_issuer: "{{ environment_issuer }}"
+        gateway_resource: "{{ gateway_resource }}"
+        approval_service_url: "{{ approval_service_url }}"
+
     - name: Create private environment state directory
       tags: [always]
       ansible.builtin.file:
@@ -121,3 +128,10 @@
     - name: Connect environment gateway backends
       ansible.builtin.import_tasks: tasks/backends.yaml
       tags: [backends]
+
+    - name: Publish platform environment connections
+      kubernetes.core.k8s:
+        kubeconfig: "{{ platform_kubeconfig }}"
+        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-governance.yaml.j2') | from_yaml }}"
+      when: inventory_hostname == groups['environments'][-1]
+      no_log: true
