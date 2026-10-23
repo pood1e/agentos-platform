@@ -1903,8 +1903,15 @@
                           "description": "`url` directly specifies the HTTP(S) endpoint for this policy.\nWhen the scheme is `https`, backend TLS is enabled automatically.\nMutually exclusive with `backendRef`.\nURLs are opaque; referencing a Kubernetes service hostname like `hello.ns.svc.cluster.local`\nwill not apply Service policies or load balancing.",
                           "maxLength": 1024,
                           "minLength": 1,
-                          "pattern": "^https?://[^/?#@]+(/[^?#]*)?$",
-                          "type": "string"
+                          "type": "string",
+                          "anyOf": [
+                            {
+                              "pattern": "^https?://[^/?#@]+(/[^?#]*)?$"
+                            },
+                            {
+                              "pattern": "^<issuer>(/[^?#]*)?$"
+                            }
+                          ]
                         }
                       },
                       "type": "object",

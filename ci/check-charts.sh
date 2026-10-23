@@ -6,7 +6,7 @@ ANSIBLE_CONFIG=deploy/ansible.cfg .cache/venv/bin/ansible-playbook ci/render-cha
 .cache/venv/bin/python -m unittest discover -s tests/deployment
 .cache/bin/conftest verify --policy tests/policies
 .cache/bin/helm-unittest --strict charts/agentos
-.cache/bin/helm dependency build tests/fixtures/solution-chart --skip-refresh
+.cache/bin/helm dependency update tests/fixtures/solution-chart --skip-refresh
 .cache/bin/helm lint charts/agentos -f tests/fixtures/chart-values.yaml --strict
 .cache/bin/helm lint tests/fixtures/solution-chart --strict
 .cache/bin/helm template agentos charts/agentos -n agentos -f tests/fixtures/chart-values.yaml > .cache/chart-check/platform.yaml

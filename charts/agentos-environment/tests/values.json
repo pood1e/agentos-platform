@@ -68,7 +68,7 @@
           "port": 8000,
           "auth": {
             "oauthTokenExchange": {
-              "url": "https://identity.example.test/realms/<environment>/protocol/openid-connect/token",
+              "url": "<issuer>/protocol/openid-connect/token",
               "grantType": "TokenExchange",
               "audiences": ["<environment>-kubernetes"],
               "subjectToken": {
