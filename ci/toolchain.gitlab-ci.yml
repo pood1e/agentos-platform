@@ -1,6 +1,7 @@
 variables:
   AGENTOS_CI_RUNNER: agentos-container
   AGENTOS_GO_RUNNER: agentos-compiler
+  AGENTOS_VOICE_RUNNER: agentos-avx2
   FF_USE_FASTZIP: "true"
   CACHE_COMPRESSION_LEVEL: fastest
 

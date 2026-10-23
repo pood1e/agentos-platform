@@ -41,6 +41,7 @@ PostgreSQL 使用原生服务容器，npm 与 Go 缓存由 CI 管理。镜像按
 | --- | --- |
 | `AGENTOS_CI_RUNNER` | 普通 Docker executor 标签，默认 `agentos-container` |
 | `AGENTOS_GO_RUNNER` | Go Docker executor 标签，默认 `agentos-compiler` |
+| `AGENTOS_VOICE_RUNNER` | 支持原生语音库指令集的 Docker executor，默认 `agentos-avx2` |
 | `AGENTOS_BUILDKIT_RUNNER` | rootless BuildKit 的 runner 标签 |
 | `AGENTOS_BUILDKIT_IMAGE` | rootless BuildKit 镜像，按摘要固定 |
 | `AGENTOS_REGISTRY_MIRROR` | 可选，BuildKit 使用的 Docker Hub 镜像源 |

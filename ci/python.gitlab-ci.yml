@@ -38,6 +38,7 @@ build-voice:
 
 voice-verify:
   extends: .agentos-ci
+  tags: [$AGENTOS_VOICE_RUNNER]
   stage: package
   needs: [build-voice]
   image:
