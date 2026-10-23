@@ -19,7 +19,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `release` | 所有检查通过后，发布契约和部署包，打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录各制品版本、源提交与摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
 
 GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执行应用、部署、Python、运行时与浏览器检查，`Required checks` 汇总必需结果；纯文档变更跳过无关检查。运行时变更合入 main 后更新默认分支的 Go 缓存，后续 PR 通过原生缓存复用。
-release-please 使用仓库令牌管理发布 PR。GitHub 原生审批 API 自动启动同仓库、release-please 分支上由 GitHub Actions 创建的检查；普通 PR 与发布 PR 均在合并提交执行相同门禁。审批作业仅持有 Actions 写权限。
+release-please 使用仓库令牌管理发布 PR。创建后，同一作业通过 GitHub 原生审批 API 启动同仓库、release-please 分支的检查；普通 PR 与发布 PR 均在合并提交执行相同门禁。
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
 合并发布 PR 后生成版本 tag，GitLab 的 `GitHub source sync` 定时流水线从内网同步 main 与 tag；GitLab 核对 tag、源提交和版本一致性后构建。
