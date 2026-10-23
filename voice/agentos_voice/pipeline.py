@@ -85,6 +85,7 @@ class Call:
         @self.session.on("user_state_changed")
         def user_state(event):
             if event.new_state == "speaking":
+                self.session.interrupt()
                 self.agent.turn_id = str(uuid.uuid4())
                 self.spawn(self.agent.publish(VoiceEvent(input_started=self.agent.turn_id)))
             elif event.old_state == "speaking" and isinstance(self.stt, WhisperLiveKitSTT):

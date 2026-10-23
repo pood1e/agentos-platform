@@ -15,7 +15,9 @@ from agentos_voice.sessions import Configuration, Sessions
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    vad = await asyncio.to_thread(silero.VAD.load, min_silence_duration=0.8)
+    vad = await asyncio.to_thread(
+        silero.VAD.load, min_speech_duration=0.2, min_silence_duration=0.8
+    )
     app.state.sessions = Sessions(
         Configuration(
             url=os.environ["LIVEKIT_URL"],

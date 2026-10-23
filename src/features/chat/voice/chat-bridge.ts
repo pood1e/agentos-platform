@@ -4,7 +4,15 @@ import type { VoiceTurn } from "../../../../gen/agentos/voice/v1/worker_pb.js";
 import { speechText } from "../speech/text.js";
 import type { Chat } from "../use-chat.js";
 
-type Turn = { id: string; text: string; messageId: string; accepted: boolean; failed: boolean };
+type Turn = {
+  id: string;
+  text: string;
+  messageId: string;
+  accepted: boolean;
+  failed: boolean;
+  interrupted: boolean;
+  stopping: boolean;
+};
 
 /** Voice uses the same send/watch path as typed messages, with one foreground turn at a time. */
 export class VoiceChatBridge {
@@ -28,7 +36,14 @@ export class VoiceChatBridge {
       return;
     }
     this.seen.add(turn.id);
-    this.queue.push({ ...turn, messageId: crypto.randomUUID(), accepted: false, failed: false });
+    this.queue.push({
+      ...turn,
+      messageId: crypto.randomUUID(),
+      accepted: false,
+      failed: false,
+      interrupted: false,
+      stopping: false,
+    });
     this.notify();
     this.pump();
   }
@@ -43,6 +58,11 @@ export class VoiceChatBridge {
     const turn = this.current;
     if (turn?.accepted) {
       const user = chat.messages.find((message) => message.id === turn.messageId);
+      if (turn.interrupted) {
+        if (user?.taskId && !turn.stopping && !turn.failed)
+          void this.cancel(turn, chat, user.taskId);
+        return;
+      }
       const answer = user?.taskId
         ? chat.messages.find(
             (message) => message.role === Role.AGENT && message.taskId === user.taskId,
@@ -72,10 +92,37 @@ export class VoiceChatBridge {
   retry() {
     if (!this.current?.failed) return;
     this.current.failed = false;
+    if (this.current.interrupted && this.current.accepted) {
+      if (this.chat) this.update(this.chat);
+      return;
+    }
     this.queue.unshift(this.current);
     this.current = undefined;
     this.notify();
     this.pump();
+  }
+
+  interrupt() {
+    if (this.closed || !this.current) return;
+    this.current.interrupted = true;
+    if (this.chat) this.update(this.chat);
+  }
+
+  private async cancel(turn: Turn, chat: Chat, taskId: string) {
+    turn.stopping = true;
+    try {
+      await chat.cancel(taskId);
+      if (this.closed || this.current !== turn) return;
+      this.current = undefined;
+      this.notify();
+      this.pump();
+    } catch {
+      if (this.closed || this.current !== turn) return;
+      turn.stopping = false;
+      turn.failed = true;
+      this.notify();
+      this.error("task.cancelFailed");
+    }
   }
 
   close() {

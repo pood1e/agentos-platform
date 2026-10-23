@@ -150,3 +150,58 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
     env.sync.close();
   }
 });
+
+it("interrupts a foreground run while preserving the owner's conversation and tool scope", async () => {
+  const env = environment([]);
+  const registry = executions(memoryStore());
+  const owner = identity("user:voice-caller");
+  const agent = { namespace: "agentos", name: "assistant" };
+  const session = create(SessionSchema, { id: "voice-context", agent });
+  const task = create(TaskSchema, {
+    id: "voice-task",
+    contextId: session.id,
+    status: { state: TaskState.WORKING },
+    history: [{ messageId: "voice-message", role: Role.USER }],
+  });
+  env.fake.load({ sessions: [session], tasks: [task] });
+  await registry.bind(session, owner);
+  await env.sync.refresh();
+  const client = createClient(
+    ConsoleService,
+    createRouterTransport(
+      (router) =>
+        router.service(
+          ConsoleService,
+          consoleService({
+            ...env,
+            namespace: "agentos",
+            access: testBindings(env.fake),
+            executions: registry,
+            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
+            roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
+            replaceTemplate: async (value) => env.fake.replaceTemplate(value),
+            pack: loadPack(),
+          }),
+        ),
+      { router: { interceptors: [workspaceContext("agentos", "assistant", async () => owner)] } },
+    ),
+  );
+  try {
+    await client.cancelTask({ taskId: task.id });
+    expect(env.fake.task(task.id).status?.state).toBe(TaskState.CANCELED);
+    const authorized = await registry.resolve(session);
+    expect(authorized.binding.revoked).toBe(false);
+    expect(authorized.binding.subject).toBe(owner.subject);
+    expect(authorized.write).toBe(false);
+    const next = await client.sendMessage({
+      agent,
+      contextId: session.id,
+      messageId: "next-voice-turn",
+      text: "你好",
+    });
+    expect(next.contextId).toBe(session.id);
+    expect(next.taskId).not.toBe(task.id);
+  } finally {
+    env.sync.close();
+  }
+});

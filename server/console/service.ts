@@ -191,14 +191,13 @@ export function consoleService({
       if (executions) {
         const { session } = await clients.sessions.getSession({ sessionId: tree.root.contextId });
         if (!session) throw notFound("task.notFound");
+        await executions.own(session, context.values.get(requestIdentity));
         await relatedExecutions(
           executions,
           clients.sessions,
           session,
           tree.entries.map((entry) => entry.contextId),
-          true,
         );
-        await executions.revoke(session, context.values.get(requestIdentity));
       }
       await cancelTree(clients, sync, tree, context.signal);
       return {};

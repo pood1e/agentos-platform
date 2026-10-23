@@ -43,6 +43,7 @@ export function useChat(
     (signal) => follow(agent, contextId, signal),
   );
   const send = useMutation(ConsoleService.method.sendMessage);
+  const stop = useMutation(ConsoleService.method.cancelTask);
   const [outgoing, setOutgoing] = useState<Outgoing>();
   const history = conversation?.messages ?? [];
   const messages =
@@ -61,7 +62,8 @@ export function useChat(
   const ready = conversation?.ready ?? false;
   const busy = conversation?.busy ?? false;
   const pending = conversation?.pending ?? [];
-  const blocked = !access.data || !conversation?.operate || send.isPending || busy || !ready;
+  const blocked =
+    !access.data || !conversation?.operate || send.isPending || stop.isPending || busy || !ready;
 
   async function submit(input: string, messageId?: string): Promise<boolean> {
     const text = input.trim();
@@ -94,7 +96,15 @@ export function useChat(
     pending,
     blocked,
     sending: send.isPending,
-    error: send.error ? errorKey(send.error, "chat.sendFailed") : watchError,
+    error: send.error
+      ? errorKey(send.error, "chat.sendFailed")
+      : stop.error
+        ? errorKey(stop.error, "task.cancelFailed")
+        : watchError,
+    cancel: async (taskId?: string) => {
+      const id = taskId ?? messages.findLast((message) => message.role === Role.USER)?.taskId;
+      if (id) await stop.mutateAsync({ taskId: id });
+    },
     reset: () => {
       setOutgoing(undefined);
       send.reset();
