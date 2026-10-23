@@ -7,6 +7,16 @@ import yaml
 
 resources = [resource for resource in yaml.safe_load_all(sys.stdin) if resource]
 for resource in resources:
+    if resource.get('kind') == 'ConfigMap' and resource['metadata']['name'] == 'atenet-router-agentgateway-config':
+        config = yaml.safe_load(resource['data']['config.yaml'])
+        routes = [config.get('routes', [])]
+        routes.extend(listener.get('routes', []) for bind in config.get('binds', []) for listener in bind.get('listeners', []))
+        for group in routes:
+            for route in group:
+                ingress = route.get('policies', {}).get('substrateIngress')
+                if ingress is not None:
+                    ingress['requestParking'] = {'budget': '2m'}
+        resource['data']['config.yaml'] = yaml.safe_dump(config, sort_keys=False)
     if resource.get('kind') == 'DaemonSet' and resource['metadata']['name'] == 'atelet':
         pod = resource['spec']['template']['spec']
         pod.setdefault('volumes', []).append({

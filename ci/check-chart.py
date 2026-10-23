@@ -242,11 +242,18 @@ atelet = {
     'apiVersion': 'apps/v1', 'kind': 'DaemonSet', 'metadata': {'name': 'atelet'},
     'spec': {'template': {'spec': {'containers': [{'name': 'atelet', 'image': 'upstream'}]}}},
 }
+router = {
+    'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'atenet-router-agentgateway-config'},
+    'data': {'config.yaml': yaml.safe_dump({
+        'routes': [{'policies': {'substrateIngress': {'host': 'api:443'}}}],
+        'binds': [{'listeners': [{'routes': [{'policies': {'substrateIngress': {'host': 'api:443'}}}]}]}],
+    })},
+}
 substrate_values = yaml.safe_load(render('deploy/values/substrate.yaml.j2'))
 assert not substrate_values.get('imagePullSecrets'), 'Global pull secrets change immutable initialization Jobs'
 rendered = subprocess.check_output(
     [sys.executable, 'deploy/microvm/substrate-post-renderer.py'],
-    input=yaml.safe_dump_all([substrate_deployment, original[1], bucket_job, atelet]), text=True,
+    input=yaml.safe_dump_all([substrate_deployment, original[1], bucket_job, atelet, router]), text=True,
     env={**os.environ, 'AGENTOS_SUBSTRATE_API_IMAGE': pinned('substrate_api_image')},
 )
 patched = list(yaml.safe_load_all(rendered))
@@ -257,6 +264,9 @@ assert patched[2] == bucket_job, 'Post-renderer changed an immutable initializat
 atelet_pod = patched[3]['spec']['template']['spec']
 assert atelet_pod['volumes'] == [{'name': 'image-credentials', 'secret': {'secretName': 'atelet-image-credentials', 'defaultMode': 0o400}}]
 assert atelet_pod['containers'][0]['volumeMounts'] == [{'name': 'image-credentials', 'mountPath': '/run/image-credentials', 'readOnly': True}]
+router_config = yaml.safe_load(patched[4]['data']['config.yaml'])
+for route in [router_config['routes'][0], router_config['binds'][0]['listeners'][0]['routes'][0]]:
+    assert route['policies']['substrateIngress'] == {'host': 'api:443', 'requestParking': {'budget': '2m'}}
 provider = yaml.safe_load(substrate_values['atelet']['imageCredentialProviderConfigYAML'])['providers'][0]
 assert provider['matchImages'] == ['registry.example.com', 'harness.example.com']
 assert provider['args'] == ['cat', '/run/image-credentials/response.json']
