@@ -1,4 +1,4 @@
-"""Package generated Python contracts and the evaluation SDK at the platform release version."""
+"""Package generated Python contracts at the platform release version."""
 
 import json
 import os
@@ -52,11 +52,4 @@ def wheel(name, project, sources, requirements=""):
 
 
 wheel("contracts", root / "contracts/pyproject.toml", {".": root / "gen/python"})
-evaluation = root / "evaluation"
-wheel(
-    "evaluation",
-    evaluation / "pyproject.toml",
-    {"agentos_evaluation": evaluation / "agentos_evaluation"},
-    (evaluation / "requirements.in").read_text() + f"agentos-contracts=={version}\n",
-)
 subprocess.run([sys.executable, str(root / "ci/node-contracts.py")], cwd=root, check=True)

@@ -1,14 +1,11 @@
 import asyncio
-import hmac
 import json
 from functools import cache
-from pathlib import Path
 from uuid import UUID
 
 import httpx
 import jwt
 from agentos.automation.v1.automation_pb2 import CaseFeedback
-from agentos.evaluation.v1.evaluation_pb2 import EvaluationFeedback
 from google.protobuf.json_format import MessageToDict, ParseDict, ParseError
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -34,10 +31,6 @@ def claim(claims, path):
 
 
 def application(config, bus, healthy):
-    token = Path(config.evaluation_token_file).read_text().strip()
-    if not token:
-        raise ValueError("Evaluation feedback identity is required")
-
     async def human(request):
         authorization = request.headers.get("authorization", "")
         if not config.oidc_issuer or not authorization.startswith("Bearer "):
@@ -67,24 +60,6 @@ def application(config, bus, healthy):
         if not isinstance(decoded, dict):
             raise ValueError("A structured event is required")
         return decoded
-
-    async def evaluations(request: Request):
-        if not hmac.compare_digest(
-            request.headers.get("authorization", "").encode(), ("Bearer " + token).encode()
-        ):
-            return JSONResponse({"error": "machine_authentication_required"}, 401)
-        try:
-            feedback = ParseDict(await body(request), EvaluationFeedback())
-            UUID(feedback.candidate_id)
-            if (
-                feedback.workspace != config.workspace
-                or not feedback.report.binding_digest
-                or not feedback.report.HasField("completed_at")
-            ):
-                raise ValueError("Evaluation identity differs")
-            return JSONResponse({"id": await bus.evaluation(feedback)})
-        except (ValueError, TypeError, ParseError):
-            return JSONResponse({"error": "invalid_evaluation"}, 400)
 
     async def feedback(request: Request):
         try:
@@ -137,7 +112,6 @@ def application(config, bus, healthy):
 
     return Starlette(
         routes=[
-            Route("/evaluations", evaluations, methods=["POST"]),
             Route("/feedback", feedback, methods=["POST"]),
             Route("/metrics", metrics, methods=["POST"]),
             Route("/healthz", health),

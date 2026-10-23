@@ -1,4 +1,3 @@
-import asyncio
 import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -15,7 +14,6 @@ from agentos.automation.v1.automation_pb2 import (
     AutomationConfig,
     CaseFeedback,
 )
-from agentos.evaluation.v1.evaluation_pb2 import EvaluationFeedback
 from agentos_automation import http as api_module
 from agentos_automation.bus import EventBus, source_case
 from agentos_automation.http import application
@@ -90,11 +88,8 @@ async def test_facts_are_namespaced_durable_and_reuse_their_identity():
 
 
 @pytest.fixture
-def api(tmp_path, monkeypatch):
-    token = tmp_path / "evaluation-token"
-    token.write_text("private-test-identity")
+def api(monkeypatch):
     settings = config(
-        evaluation_token_file=str(token),
         oidc_issuer=ISSUER,
         oidc_audience="events",
         role_claim="realm_access.roles",
@@ -105,7 +100,6 @@ def api(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(api_module, "signing_keys", lambda issuer: keys)
     bus = AsyncMock()
-    bus.evaluation = AsyncMock(side_effect=lambda message: message.candidate_id)
     bus.publish = AsyncMock(return_value="recorded")
     transport = httpx.ASGITransport(app=application(settings, bus, lambda: True))
     return httpx.AsyncClient(transport=transport, base_url="http://automation"), bus
@@ -142,51 +136,3 @@ async def test_feedback_requires_the_configured_audience_and_role_claim(api):
     assert response.json() == {"id": "recorded"}
     kind, key, version, payload = bus.publish.call_args.args
     assert (kind, key, version, payload["actor"]) == ("feedback.recorded", value.id, 10, "operator")
-
-
-async def test_evaluation_identity_cannot_submit_human_feedback_or_another_workspace(api):
-    client, bus = api
-    async with client:
-        assert (await client.post("/evaluations", json={})).status_code == 401
-        headers = {"Authorization": "Bearer private-test-identity"}
-        assert (await client.post("/feedback", headers=headers, json={})).status_code == 403
-        value = EvaluationFeedback(
-            candidate_id="7109ab84-0dab-4150-a134-2f18282eb789", workspace="foreign"
-        )
-        value.report.binding_digest = "a" * 64
-        value.report.completed_at.GetCurrentTime()
-        assert (
-            await client.post("/evaluations", headers=headers, json=MessageToDict(value))
-        ).status_code == 400
-        assert (
-            await client.post("/evaluations", headers=headers, json={"unexpected": True})
-        ).status_code == 400
-    bus.evaluation.assert_not_called()
-
-
-async def test_evaluation_receipt_waits_for_the_native_event_stream(api):
-    client, bus = api
-    confirmed = asyncio.Event()
-
-    async def persist(message):
-        await confirmed.wait()
-        return message.candidate_id
-
-    bus.evaluation.side_effect = persist
-    value = EvaluationFeedback(
-        candidate_id="7109ab84-0dab-4150-a134-2f18282eb789", workspace="operations"
-    )
-    value.report.binding_digest = "b" * 64
-    value.report.completed_at.GetCurrentTime()
-    async with client:
-        request = asyncio.create_task(
-            client.post(
-                "/evaluations",
-                headers={"Authorization": "Bearer private-test-identity"},
-                json=MessageToDict(value),
-            )
-        )
-        await asyncio.sleep(0)
-        assert not request.done()
-        confirmed.set()
-        assert (await request).json() == {"id": value.candidate_id}

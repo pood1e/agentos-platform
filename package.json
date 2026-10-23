@@ -15,8 +15,7 @@
     "build": "npm run generate && vite build && tsc --project tsconfig.server.json",
     "check": "buf lint proto && biome check . && tsc --noEmit",
     "format": "biome check --write .",
-    "test": "ci/tools.sh fga openfga && vitest run",
-    "test:authorization": "ci/verify-authorization.sh",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "verify": "npm run build && npm run check && npm test"
   },
@@ -42,7 +41,6 @@
     "@modelcontextprotocol/core": "2.3.1",
     "@modelcontextprotocol/node": "2.1.1",
     "@modelcontextprotocol/server": "2.3.1",
-    "@openfga/sdk": "0.9.7",
     "@ricky0123/vad-web": "0.0.31",
     "@rjsf/core": "6.11.0",
     "@rjsf/shadcn": "6.11.0",
@@ -55,9 +53,7 @@
     "canonicalize": "5.1.0",
     "class-variance-authority": "0.7.1",
     "cn": "0.4.0",
-    "d3-dag": "1.2.2",
     "elkjs": "0.12.0",
-    "entities": "8.1.0",
     "fastify": "5.12.5",
     "franc-min": "6.2.0",
     "i18next": "26.4.4",
@@ -71,7 +67,6 @@
     "next-themes": "0.4.6",
     "openai": "7.32.0",
     "openid-client": "6.8.8",
-    "parse5": "8.0.1",
     "postgres": "3.4.9",
     "radix-ui": "1.8.0",
     "react": "19.3.0",
@@ -89,11 +84,6 @@
     "vis-timeline": "8.5.4",
     "ws": "8.22.0",
     "yaml": "2.9.1"
-  },
-  "overrides": {
-    "@openfga/sdk": {
-      "axios": "1.20.0"
-    }
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

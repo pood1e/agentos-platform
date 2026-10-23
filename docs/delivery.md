@@ -9,12 +9,11 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | --- | --- |
 | `verify` | 生成、构建、Biome / buf lint / tsc、单元测试（临时 PostgreSQL）与浏览器测试 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
-| `authorization-check` | OpenFGA 官方 CLI 校验授权模型、主体交集、分享、委派过期与撤销 |
-| `python-verify` | 生成 Python 契约；ruff 检查与格式校验；测评作业与案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
+| `python-verify` | 生成 Python 契约；ruff 检查与格式校验；案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
-| `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness、Langfuse Web、测评作业与案例自动化镜像，推送到 `$CI_REGISTRY_IMAGE` |
-| `build-contracts` | 发布 Python protobuf wheel、测评 SDK wheel、部署源码包及 SHA-256 清单，按 Git 提交固定；wheel 版本取 `package.json` |
-| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录测评作业与案例自动化镜像摘要；功能分支版本追加提交摘要 |
+| `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness 与案例自动化镜像，推送到 `$CI_REGISTRY_IMAGE` |
+| `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按 Git 提交固定；wheel 版本取 `package.json` |
+| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录案例自动化镜像摘要；正式版本仅由受保护的版本 tag 发布 |
 
 仓库内的镜像以摘要固定、注册表用占位符：Chart 值使用 `registry.example.com/agentos`，部署变量使用 `agentos_image_registry`。
 协议生成使用本地官方工具：Protobuf 36.2 与 Buf JSON Schema 插件 0.6.0，由 `ci/tools.sh` 安装固定版本。
@@ -31,6 +30,13 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `AGENTOS_CI_ENVIRONMENT` | 可选，Shell 作业开始时加载的环境脚本，如工具链 `PATH` |
 | `AGENTOS_CI_CACHE` | 可选，工具与 Python 环境缓存目录，默认 `~/.cache/agentos` |
 | `AGENTOS_REGISTRY_MIRROR` | 可选，BuildKit 使用的 Docker Hub 镜像源 |
+
+## 观测登录
+
+Langfuse Web 与 worker 使用同一版本的官方镜像，各自按摘要固定。默认使用初始化的运维账号登录。
+配置 `langfuse_oidc_issuer`、`langfuse_oidc_client_id` 与 `langfuse_oidc_client_secret_file` 后启用通用 OIDC，
+关闭用户名密码登录，并将首次登录的用户以 VIEWER 加入预置组织和项目。客户端回调为
+`https://<langfuse_domain>/api/auth/callback/custom`，密钥文件保存在站点私有目录。
 
 ## 方案 Harness
 
@@ -103,7 +109,7 @@ identity:
 身份提供方由部署方提供，平台复用标准 OIDC Discovery、Authorization Code 与 PKCE S256。
 OAuth 应用回调为 `https://<ingress.host>/auth/callback`。引用的 Secret 包含 `client-secret` 与 `cookie-secret`，后者为 Base64 编码的 32 字节随机值。
 方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户可聊天和执行只读查询。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
-RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作；认证用户可管理自己的对话、交互和取消，配置写操作分别要求智能体、Skill、MCP、团队知识、模型、Harness 或测评的应用角色；角色可组合，目录由发布包 `authorization.json` 提供。目标系统写角色仅决定运维操作上限。实际工具调用独立校验会话与 Agent 权限，见[执行授权](execution-authorization.md)。开放模式使用共享服务主体。
+RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作；认证用户可管理自己的对话、交互和取消，配置写操作分别要求智能体、Skill、MCP、团队知识、模型或 Harness 的应用角色；角色可组合，目录由发布包 `authorization.json` 提供。目标系统写角色仅决定运维操作上限。实际工具调用独立校验会话与 Agent 权限，见[执行授权](execution-authorization.md)。开放模式使用共享服务主体。
 执行授权复用 PostgreSQL 连接及 CA Secret；`<release>-execution` 保存加密密钥，升级保留，备份时与数据库一并保存。
 
 ```sh

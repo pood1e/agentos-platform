@@ -20,22 +20,17 @@
       no_log: true
 
     - name: Converge application DNS record
-      ansible.builtin.command:
-        argv:
-          - "{{ ansible_python_interpreter }}"
-          - "{{ playbook_dir }}/dns_record.py"
-          - --zone
-          - "{{ dns_zone }}"
-          - --name
-          - "{{ agentos_domain }}"
-          - --address
-          - "{{ agentos_address }}"
-      environment:
-        CLOUDFLARE_API_TOKEN: "{{ cloudflare_token }}"
-      register: dns_record
-      changed_when: (dns_record.stdout | from_json).changed
+      community.general.cloudflare_dns:
+        zone: "{{ dns_zone }}"
+        record: "{{ agentos_domain }}"
+        type: A
+        value: "{{ agentos_address }}"
+        proxied: false
+        solo: true
+        api_token: "{{ cloudflare_token }}"
+        state: present
       no_log: true
-      when: not ansible_check_mode
+      diff: false
 
     - name: Install cert-manager
       kubernetes.core.helm:

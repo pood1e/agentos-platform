@@ -35,7 +35,9 @@ message SpeechTranscription {
   repeated string language_codes = 3 [(buf.validate.field).repeated = {
     max_items: 32
     unique: true
-    items: {string: {pattern: "^[a-z]{2,3}$"}}
+    items: {
+      string: {pattern: "^[a-z]{2,3}$"}
+    }
   }];
   Protocol protocol = 4 [(buf.validate.field).enum.defined_only = true];
 }

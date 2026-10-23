@@ -17,7 +17,6 @@ REQUIRED = [
     "task_queue",
     "platform_url",
     "platform_token_file",
-    "evaluation_token_file",
 ]
 NAMESPACE = re.compile(r"[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*")
 

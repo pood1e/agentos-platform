@@ -24,7 +24,6 @@ import { loadPack } from "../console/pack.js";
 import { roleCommands } from "../console/roles.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
-import { platformEvaluation } from "../evaluation/platform.js";
 import { toolBindings } from "../governance/bindings.js";
 import { governanceConfig } from "../governance/config.js";
 import { approvalCoordinator } from "../governance/coordinator.js";
@@ -186,32 +185,6 @@ function services(
     }),
   };
 }
-const evaluation = await platformEvaluation({
-  app,
-  config: kubeConfig,
-  native: clients,
-  store,
-  workspace: config.namespace,
-  release: process.env.AGENTOS_RELEASE ?? "agentos",
-  catalogName,
-  knowledge,
-  userId: config.userId,
-  mcpUrl: gateway.mcpUrl,
-  bind: identities.bind,
-  bindExecution: (session) =>
-    execution.registry.bind(
-      session,
-      create(ExecutionIdentitySchema, {
-        subject: `service:evaluation:${session.agent?.namespace}`,
-        write: false,
-        capabilities: [Capability.KNOWLEDGE_MANAGE],
-        credential: { case: "service", value: true },
-      }),
-    ),
-  services: (draft) =>
-    services(draft.clients(clients), draft.store, draft.replace, async (_role, tools) => tools),
-});
-const activeClients = evaluation.clients;
 const { alignRoles } = roleCommands(
   clients,
   config.namespace,
@@ -228,8 +201,7 @@ await registerConsole(app, {
     process.env.AGENTOS_ORIGIN ?? "",
     execution.registry.remember,
   ),
-  ...services(activeClients),
-  ...evaluation.routes,
+  ...services(),
   automation: automationService(
     clients,
     config.namespace,
@@ -243,7 +215,7 @@ await registerConsole(app, {
 });
 await registerTeamSessions(
   app,
-  sessionTools(activeClients, config.namespace, access, knowledgeService(activeClients, knowledge)),
+  sessionTools(clients, config.namespace, access, knowledgeService(clients, knowledge)),
   token,
   async (role, headers, method, tool) => {
     if (role === "automation") {
@@ -256,7 +228,7 @@ await registerTeamSessions(
       return {
         scopes: ["run_case", "observe_case", "cancel_case"],
         handler: automationTools(
-          activeClients,
+          clients,
           sync,
           config.namespace,
           environment,
@@ -287,26 +259,18 @@ await registerTeamSessions(
         ),
       };
     }
-    const scope: { scopes: string[]; handler?: ReturnType<typeof sessionTools> } = await (headers[
-      "x-agentos-workspace"
-    ] && headers["x-agentos-workspace"] !== config.namespace
-      ? evaluation.machine(headers, role)
-      : role === "platform"
-        ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
-        : identities.authorize(role, clients).then((scopes) => ({ scopes })));
+    if (headers["x-agentos-workspace"] !== config.namespace)
+      throw new Error("Workspace access denied");
+    const scope = await (role === "platform"
+      ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
+      : identities.authorize(role, clients).then((scopes) => ({ scopes })));
     if (discoveryMethods.has(method)) return scope;
     const parent = await execution.actor(headers);
     await execution.authorizeTools(parent, [tool]);
     return {
       ...scope,
       handler: scopedCollaboration(
-        scope.handler ??
-          sessionTools(
-            activeClients,
-            config.namespace,
-            access,
-            knowledgeService(activeClients, knowledge),
-          ),
+        sessionTools(clients, config.namespace, access, knowledgeService(clients, knowledge)),
         parent,
         execution.registry,
       ),
@@ -335,7 +299,10 @@ const stopOperations = approvalCoordinator(
 const processor = grpcServer(app, {
   fallback: environmentAuthorization(execution.authorizeTransport),
   routes: (router) => {
-    const collaboration = collaborationGuardrails(evaluation.workspaces, execution);
+    const collaboration = collaborationGuardrails(
+      new Map([[config.namespace, clients]]),
+      execution,
+    );
     router.service(ExtMcp, {
       checkRequest: (request, context) =>
         request.metadataContext?.execution === true

@@ -30,17 +30,3 @@ spec:
             matchLabels: {app.kubernetes.io/name: traefik}
       ports: [{port: 8080, protocol: TCP}]
     {{- end }}
-    {{- if .Values.evaluation.enabled }}
-    - from:
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: {{ .Values.evaluation.namespace }}}
-          podSelector:
-            matchLabels: {agentos.dev/component: evaluation}
-      ports: [{port: 8080, protocol: TCP}, {port: 8081, protocol: TCP}]
-    - from:
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: {{ .Values.evaluation.langfuseNamespace }}}
-          podSelector:
-            matchLabels: {app.kubernetes.io/name: langfuse, app.kubernetes.io/component: worker}
-      ports: [{port: 8081, protocol: TCP}]
-    {{- end }}

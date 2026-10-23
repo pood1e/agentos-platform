@@ -113,7 +113,6 @@ def check_bindings(templates, config):
 for name, source, overrides, presets, config in [
     ('platform', chart, ['-f', values], system_presets, None),
     ('alternate', chart, ['-f', values, '--namespace', 'operations', '--set-string', 'kagent.userId=operations-owner'], system_presets, None),
-    ('evaluation', chart, ['-f', values, '-f', 'tests/fixtures/evaluation-values.yaml'], system_presets, None),
     ('solution', solution, ['--namespace', 'agentos'], system_presets | solution_presets, solution_values),
     ('direct-only', solution, ['--namespace', 'agentos', '--set-json', f'global.agentos.environments={direct_only}'], system_presets | solution_presets,
      {**solution_values, 'environments': json.loads(direct_only)}),
@@ -164,8 +163,6 @@ for name, source, overrides, presets, config in [
             assert len(owner) == 1, f'{name}: duplicate native MCP session owners'
             owners[policy['metadata']['name']] = json.loads(owner[0])
     expected_owners = {'kagent-collaboration-tool-access': env['KAGENT_USER_ID']['value']}
-    if name == 'evaluation':
-        expected_owners['evaluation-collaboration-identity'] = env['KAGENT_USER_ID']['value']
     assert owners == expected_owners, f'{name}: native MCP session owner policy differs'
     mode = 'oidc' if source == chart else 'none'
     assert env['AGENTOS_AUTH_MODE']['value'] == mode

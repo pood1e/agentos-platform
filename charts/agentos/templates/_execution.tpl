@@ -19,7 +19,7 @@
 - {name: AGENTOS_SUBSTRATE_URL, value: {{ .Values.execution.substrateURL | quote }}}
 - {name: AGENTOS_ACTOR_ISSUER, value: {{ .Values.execution.actorIssuer | quote }}}
 - name: AGENTOS_EXECUTION_WORKSPACES
-  value: {{ list .Release.Namespace | concat (ternary (list .Values.evaluation.namespace) list .Values.evaluation.enabled) | toJson | quote }}
+  value: {{ list .Release.Namespace | toJson | quote }}
 - name: AGENTOS_ACTOR_AUDIENCES
   value: {{ $audiences | toJson | quote }}
 {{- end -}}

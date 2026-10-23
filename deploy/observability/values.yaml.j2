@@ -1,10 +1,10 @@
 langfuse:
   image: {tag: '{{ langfuse_version }}', pullPolicy: IfNotPresent}
-  features: {telemetryEnabled: false, signUpDisabled: true}
+  features: {telemetryEnabled: false, signUpDisabled: {{ langfuse_oidc_issuer | length == 0 }}}
   salt: {secretKeyRef: {name: langfuse-cryptography, key: salt}}
   encryptionKey: {secretKeyRef: {name: langfuse-cryptography, key: encryption-key}}
   auth:
-    disableUsernamePassword: true
+    disableUsernamePassword: {{ langfuse_oidc_issuer | length > 0 }}
   nextauth:
     url: 'https://{{ langfuse_domain }}'
     secret: {secretKeyRef: {name: langfuse-cryptography, key: nextauth-secret}}
@@ -26,6 +26,17 @@ langfuse:
     allowPrivilegeEscalation: false
     capabilities: {drop: [ALL]}
   additionalEnv:
+{% if langfuse_oidc_issuer | length > 0 %}
+    - {name: AUTH_CUSTOM_ISSUER, value: {{ langfuse_oidc_issuer | to_json }}}
+    - {name: AUTH_CUSTOM_CLIENT_ID, value: {{ langfuse_oidc_client_id | to_json }}}
+    - {name: AUTH_CUSTOM_NAME, value: SSO}
+    - name: AUTH_CUSTOM_CLIENT_SECRET
+      valueFrom: {secretKeyRef: {name: langfuse-oidc, key: client-secret}}
+    - {name: LANGFUSE_DEFAULT_ORG_ID, value: '{{ agentos_namespace }}'}
+    - {name: LANGFUSE_DEFAULT_ORG_ROLE, value: VIEWER}
+    - {name: LANGFUSE_DEFAULT_PROJECT_ID, value: '{{ agentos_namespace }}'}
+    - {name: LANGFUSE_DEFAULT_PROJECT_ROLE, value: VIEWER}
+{% endif %}
     - {name: LANGFUSE_INIT_ORG_ID, value: '{{ agentos_namespace }}'}
     - {name: LANGFUSE_INIT_ORG_NAME, value: AgentOS}
     - {name: LANGFUSE_INIT_PROJECT_ID, value: '{{ agentos_namespace }}'}
@@ -40,14 +51,15 @@ langfuse:
       valueFrom: {secretKeyRef: {name: langfuse-project, key: secret-key}}
   web:
     image:
-      repository: '{{ agentos_image_registry }}/langfuse-web'
-      tag: '{{ langfuse_web_image_tag }}'
-      pullSecrets: [{name: agentos-registry}]
+      repository: langfuse/langfuse
+      tag: '{{ langfuse_version }}@{{ langfuse_web_image_digest }}'
     resources:
       requests: {cpu: 250m, memory: 512Mi}
       limits: {cpu: '2', memory: 2Gi}
   worker:
-    image: {tag: '{{ langfuse_version }}@sha256:050653ef8847a09cb9c264896f832a90550fbc0cf3367ac0a1f5bf6de6f23b19'}
+    image:
+      repository: langfuse/langfuse-worker
+      tag: '{{ langfuse_version }}@{{ langfuse_worker_image_digest }}'
     resources:
       requests: {cpu: 250m, memory: 512Mi}
       limits: {cpu: '2', memory: 2Gi}

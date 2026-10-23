@@ -1,4 +1,4 @@
-- name: Install Langfuse observability and evaluation services
+- name: Install Langfuse observability services
   hosts: localhost
   connection: local
   gather_facts: false

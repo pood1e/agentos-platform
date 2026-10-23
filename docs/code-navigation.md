@@ -6,7 +6,6 @@
 | `proto/agentos/console/v1` | 控制台 RPC：会话、任务、角色、工具、方案包展示（`pack.proto`） |
 | `proto/agentos/management/v1` | 管理 RPC：连接、模型、Harness、Skill、知识 |
 | `proto/agentos/governance/v1` | 环境、可选外部审批协议 |
-| `proto/agentos/evaluation/v1` | 测评：候选、基线、执行与回报，内置评分器读取的 `Expectation` |
 | `proto/agentos/automation/v1` | 自动化 RPC、方案预置、案例 MCP 入参、worker 配置与案例事实；定时任务复用 kagent 官方协议 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/console` | 控制台服务：Connect RPC、静态资源、方案包加载、角色模板读写 |
@@ -26,7 +25,6 @@
 | `src/features/shared` | 头像、工具图标、原生确认与外部审批等公共展示 |
 | `src/features/tasks` | 聊天内任务面板、Agent 协作图、按 MCP 服务聚合的调用图、vis-timeline 时间线与执行抽屉 |
 | `src/features/system-tasks` | 管理员共享的系统任务页面：定时任务管理、运行历史和环境事件入口 |
-| `shared/evaluation.ts` | 测评逐例规则判定与候选、已发布配置的规则汇总 |
 | `src/lib` | RPC 客户端、方案包展示（`pack.ts`）与通用工具 |
 | `src/i18n` | 平台通用文案 |
 | `charts/agentos` | 平台 Chart：单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent |
@@ -44,7 +42,5 @@
 | 扩展路径 | 职责 |
 | --- | --- |
 | `server/platform` | 进程入口、人类身份验证、机器权限与协作边界 |
-| `server/evaluation` | 候选快照、隔离运行、Job 与发布门禁 |
-| `evaluation` | 测评作业与 SDK（Python）：Langfuse 实验、评分器注册表与内置评分器、数据集冻结 |
-| `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、反馈与测评回报入口 |
+| `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、人工反馈入口 |
 | `deploy/observability` | 官方 Langfuse、Collector 与独立存储 |

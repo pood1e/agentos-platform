@@ -20,7 +20,8 @@ message AutomationConfig {
   string task_queue = 11;
   string platform_url = 12;
   string platform_token_file = 13;
-  string evaluation_token_file = 14;
+  reserved 14;
+  reserved "evaluation_token_file";
   // Human feedback and metrics accept OIDC tokens of this issuer and audience.
   string oidc_issuer = 15;
   string oidc_audience = 16;

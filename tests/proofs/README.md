@@ -1,6 +1,6 @@
 # 真实组件验证
 
-集成测试覆盖实际 OpenFGA；本目录覆盖原生 microVM、网关、身份提供方和目标 API。验证记录见[身份与授权链路验证](../../docs/authorization-validation.md)。
+本目录覆盖原生 microVM、网关、身份提供方和目标 API。验证记录见[身份与授权链路验证](../../docs/authorization-validation.md)。
 
 ## 原生运行时与 MCP
 
@@ -72,7 +72,7 @@ npx tsx tests/proofs/keycloak-exchange.ts
 
 `PROOF_KEYCLOAK_ADMIN_USERNAME` 默认 `admin`。`PROOF_KEYCLOAK_ADDRESS` 可指定验证站点的连接 IP，证书主机名与 TLS 校验继续使用配置 URL。
 测试覆盖两个用户、只读角色 scope、交换客户端限制、目标 API 读写权限、额外 scope、错误 audience、用户刷新与注销。
-客户端策略来自 `authorization/keycloak/realm-policy.json`。
+客户端策略来自 `tests/proofs/keycloak-policy.json`。
 
 ## NetBox 服务身份桥接
 

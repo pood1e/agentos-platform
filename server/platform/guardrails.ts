@@ -32,15 +32,13 @@ export function collaborationGuardrails(
   execution?: ExecutionRuntime,
 ): Required<ServiceImpl<typeof ExtMcp>> {
   const scope = (metadata?: JsonObject) => {
-    const workspace = text(metadata?.workspace),
-      prefix = text(metadata?.agentPrefix);
+    const workspace = text(metadata?.workspace);
     const clients = workspaces.get(workspace);
     if (!clients) throw new Error("Workspace access denied");
     return {
       workspace,
-      prefix,
       clients,
-      accepts: (agent: string) => agent.startsWith(`${workspace}/${prefix}`),
+      accepts: (agent: string) => agent.startsWith(`${workspace}/`),
     };
   };
   return {
@@ -62,7 +60,7 @@ export function collaborationGuardrails(
               : undefined;
           if (execution) {
             if (parent) await execution.registry.resolve(parent);
-            else if (!["platform", "evaluation"].includes(text(request.metadataContext?.service)))
+            else if (!["platform"].includes(text(request.metadataContext?.service)))
               throw new Error("Signed runtime identity required");
           }
           const params = object(JSON.parse(new TextDecoder().decode(request.mcpRequest)));
@@ -80,7 +78,7 @@ export function collaborationGuardrails(
               !session?.agent ||
               !access.accepts(`${session.agent.namespace}/${session.agent.name}`)
             )
-              throw new Error("Session belongs to another workspace or evaluation");
+              throw new Error("Session belongs to another workspace");
             if (execution && access.workspace === session.agent.namespace) {
               if (parent) {
                 await execution.registry.delegate(parent, session);
@@ -115,7 +113,7 @@ export function collaborationGuardrails(
           const bearer = text(request.metadataContext?.runtimeIdentity);
           const parent = bearer ? await execution.actor({ [actorTokenHeader]: bearer }) : undefined;
           if (parent) await execution.registry.resolve(parent);
-          else if (!["platform", "evaluation"].includes(text(request.metadataContext?.service)))
+          else if (!["platform"].includes(text(request.metadataContext?.service)))
             throw new Error("Signed runtime identity required");
           const allowed = [];
           for (const item of output.sessions) {

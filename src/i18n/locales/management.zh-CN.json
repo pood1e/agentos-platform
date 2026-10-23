@@ -6,8 +6,7 @@
     "skills": "Skill",
     "mcp": "MCP",
     "models": "模型接入",
-    "harnesses": "Harness",
-    "evaluation": "测评"
+    "harnesses": "Harness"
   },
   "add": "新增",
   "edit": "编辑",

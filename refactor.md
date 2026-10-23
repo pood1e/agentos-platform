@@ -1,185 +1,186 @@
-# 接入链路标准化重构
+# 维护面收敛重构
 
-状态：实施与验收中。目标：平台 0.26.5、AIOps 1.23.4。基线：平台 0.25.7（`10d8fa5`），AIOps 方案包 1.22.6。
-范围：平台网关、环境网关与连接器之间的传输、认证、凭据和上下文。执行授权、会话隔离与审批语义不变。
+状态：实施中。目标：平台 0.27.0。基线：平台 0.26.5（`40e4bc1`），AIOps 方案包 1.23.4。
+范围：测评移出平台；以组件原生能力替换平台自研的后台协调、机器身份、环境发布与交付校验；收敛上游补丁。执行授权、会话隔离与审批语义不变。
 
 ## 现状
 
 | 环节 | 现状 | 问题 |
 | --- | --- | --- |
-| 平台网关 → 环境网关 | NodePort 明文 HTTP；`apiKeyAuthentication` 校验每身份共享密钥；`x-agentos-engineer`、`x-agentos-execution-kind` 选择路由；用户访问令牌经 `x-agentos-subject-token` 转发 | 密钥与用户令牌以明文跨主机传输；执行身份和执行类型依赖自定义请求头 |
-| Agent → 平台网关 | 所有请求携带与上一跳同值的身份密钥，工具调用另以 Actor JWT 认证；原生控制器的工具发现只有身份密钥 | 同一静态密钥跨两跳复用 |
-| 目标系统凭据 | 每身份静态令牌由部署机生成并写入 Secret；NetBox 读取共用 `mcp-auth`；Kubernetes 服务执行使用静态 ServiceAccount 令牌；Keycloak 客户端密钥经请求头交给连接器换取令牌 | 凭据长期有效；共享账号无法追溯；密钥在调用链上传递 |
-| 用户代办 | Kubernetes 使用 RFC 8693，由共用的 `agentos-obo` 客户端发起交换 | 令牌不体现执行 Agent，归因只存在于平台元数据 |
-| 连接器协议 | JumpServer MCP 使用 HTTP+SSE 传输 | MCP 规范已由 Streamable HTTP 取代该传输 |
-| 治理契约 | 工具分级、身份档案、`approval` 清单为平台契约 | 与 MCP 工具注解分别维护 |
+| 测评 | 候选快照、带前缀的隔离副本、评测 Job 回调、门禁与发布；服务端约 3100 行，另有前端页面与 Python 作业 | 默认关闭且站点未启用；依赖平台内部实现，维护面最大 |
+| 观测 Web | 按 `upstream.json` 的字节偏移替换 Langfuse 打包产物中的 NextAuth 会话函数，访客共享预置账号 | 上游构建变化即导致镜像构建失败；访问不区分用户 |
+| 后台协调 | 审批协调每 2 秒扫描全部任务，完成与错误状态保存在进程内 LRU；续接与角色对齐各自实现重试 | 重启后全量重扫；重试与节流逻辑分散 |
+| 机器身份 | 平台按角色签发静态 API key，写入网关 key ConfigMap 并按角色生成 RemoteMCPServer；平台网关按 7 类 `apiKey.service` 授权 | 长期静态凭据；环境路由已使用 Actor JWT 与发现令牌，平台内路由仍为另一套认证 |
+| 执行授权 | `authorization/` 的 OpenFGA 模型与 `server/authorization/policy.ts` 仅用于测试，运行时由 `executions.ts` 校验委派链 | 两套授权实现并存 |
+| 环境套件 | Ansible 渲染 Jinja2 清单后直接应用；删除身份依赖手写清理任务 | 无版本化制品、回滚与资源回收 |
+| 交付 | `ci/check-chart.py` 以 288 行断言校验渲染结果；每个 PR 手工提升版本；Cloudflare 记录由自写脚本维护 | 断言难以维护；并行开发时版本冲突 |
+| 运行时补丁 | kagent `platform.patch` 2420 行（52 个文件）；Substrate `golden-skills.patch` 5659 行 | 每次上游升级需重新适配；Substrate 补丁主体已进入上游发布 |
+| 依赖 | `d3-dag`、`parse5`、`entities` 无引用 | 无效升级与审计负担 |
 
-0.25.7 已完成：环境网关路由移除 Actor JWT，以及未配置 `userAuth` 时的用户令牌头；连接器通过 W3C Trace Context 与 Baggage 获得会话、任务和单次工具调用标识，agentgateway 按 MCP SEP-414 同步写入 `_meta`。
+## 原则
 
-## 目标架构
-
-```mermaid
-flowchart LR
-    Agent[Agent · microVM] -->|Actor JWT| PG[平台网关]
-    PG -->|HTTP 外部鉴权 · ExtMCP 工具授权| Auth[平台授权服务]
-    Auth -->|RFC 8693 / client credentials| IdP[环境 realm]
-    PG -->|HTTPS · Bearer 环境令牌| EG[环境网关 · MCP 资源服务器]
-    EG -->|RFC 8693 目标受众令牌| OAuth[OAuth 目标]
-    EG -->|每身份有期限令牌| Token[API 令牌目标]
-```
-
-- 跨主机传输使用 TLS，客户端以证书和 SAN 校验环境网关。
-- 每次调用携带环境 realm 签发、受众受限、短期有效的 OAuth 访问令牌。发起人取 `sub`，执行身份取 `azp`。
-- 平台与环境之间不再使用共享静态密钥和自定义身份请求头。
-- 目标系统支持 OAuth 时以令牌交换获取目标凭据；仅支持 API 令牌的目标使用每身份独立、带有效期的令牌。
-- 优先复用 agentgateway、Keycloak、cert-manager 与 openid-client 的原生能力。
+- 平台保留运行、协作、治理、控制台与环境接入，测评移出平台。
+- 优先使用组件原生能力，不新增常驻基础设施服务。
+- 通用改动提交上游，平台补丁随上游版本删除。
 
 ## 设计
 
-### 传输
+### 测评移出平台
 
-- 环境网关 Gateway 使用 HTTPS 监听（Gateway API `protocol: HTTPS`），服务端证书由 cert-manager 签发，SAN 为环境网关地址。
-- 平台网关的环境 Backend 配置 `policies.tls`：`caCertificateRefs` 引用签发 CA，`verifySubjectAltNames` 固定环境网关名称。
-- 移除明文监听；NetworkPolicy 继续限制来源地址。
+删除测评的服务、页面、契约、作业镜像、Chart 资源与部署变量：`server/evaluation`、`shared/evaluation.ts`、`src/features/evaluation`、
+`proto/agentos/evaluation/v1`、`evaluation/`、`charts/agentos/templates/evaluation-*.yaml`、平台网关中 `evaluator`、`evaluation`、`online-judge` 的授权、
+`deploy/vars.yaml` 的 `agentos_evaluation_*`、kagent 的测评监听命名空间，以及 CI 的测评镜像与 wheel 发布。
 
-### 执行身份与环境令牌
+权限目录删除 `CAPABILITY_EVALUATIONS_MANAGE`。案例自动化删除 `/evaluations` 回报入口、`evaluation_token_file` 与 `evaluations.completed` 事实。
+控制台的配置修改直接写入工作空间，与未启用测评时一致。移除前的实现见 `40e4bc1`；平台外的回归测评不在本次范围。
 
-- 身份档案中的每个身份对应环境 realm 的机密客户端 `agentos-<identity>`，启用服务账号与 Standard Token Exchange V2；`catalog` 同样建模为客户端，仅用于工具发现。客户端凭据保存在平台集群 Secret。
-- 平台授权服务通过 agentgateway 原生 `backend.extAuth.http` 获取环境令牌并写入 `Authorization`。该处理覆盖所有上游 HTTP 请求，包括初始化通知、SSE 建连和会话清理；ExtMCP 校验单次工具调用的执行权限。
+### 观测 Web 使用官方镜像
 
-  | 请求 | 获取方式 |
-  | --- | --- |
-  | 用户执行请求 | 以身份客户端为请求方，按 RFC 8693 交换发起人的访问令牌，`audience` 为环境资源标识 |
-  | 服务执行的工具调用（定时任务、案例自动化、测评） | 身份客户端的 client credentials（RFC 6749） |
-  | 控制器发现 | 当前身份或 `catalog` 客户端的 client credentials |
+删除 `runtime/langfuse` 与 `ci/langfuse.gitlab-ci.yml`，Langfuse Web 与 worker 使用同一发布版本，各自固定官方镜像摘要。
 
-- 令牌获取使用平台已有的 openid-client。缓存按发起人、身份与环境隔离并在过期前刷新；执行授权撤销后不再使用缓存。
-- 工具目录 Backend（`platform-services`）接入相同的 HTTP 外部鉴权与 ExtMCP 工具授权。外部鉴权复用官方 `McpRequest` 上下文契约，通过私有 h2c 端口调用。
-- 移除环境网关 API key、`gateway-<identity>` 密钥、`X-Agentos-Engineer` 注入、`x-agentos-execution-kind` 与 `x-agentos-subject-token`。
-- Agent 入口以 Actor JWT 认证全部请求。原生控制器的工具发现改用 Kubernetes 绑定 ServiceAccount 令牌，经 P0 验证后移除入口的身份密钥。
+- 站点提供 OIDC 客户端时启用 Langfuse 通用 OIDC 登录（`AUTH_CUSTOM_*`），关闭用户名密码登录；`LANGFUSE_DEFAULT_ORG_ID/ROLE` 与
+  `LANGFUSE_DEFAULT_PROJECT_ID/ROLE` 把首次登录的用户加入预置组织与项目。
+- 未提供 OIDC 客户端时启用用户名密码登录，使用已初始化的 `LANGFUSE_INIT_USER_*` 运维账号。
 
-### 环境网关
+页面访问需要登录，项目 API Key 与 OTel 采集不变。
 
-- 以 `traffic.jwtAuthentication.mcp` 校验环境令牌，issuer、audience 与 JWKS 来自 OIDC Discovery；按 RFC 9728 发布受保护资源元数据。
-- 路由以路径区分身份：`/mcp/<identity>/<service>`。每条路由的授权规则要求 `jwt.azp` 等于对应身份客户端，工具视图沿用 `mcp.tool.name` 规则。
-- 不再按执行类型拆分路由。OAuth 目标统一交换入站令牌，目标侧身份由令牌 `sub` 决定，即发起用户或身份服务账号。
-- 环境令牌只在环境网关内使用：OAuth 目标的令牌交换会消费该令牌，API 令牌目标在转发前移除。Actor JWT 移除规则保留。
+### 后台协调使用持久任务队列
 
-### 目标系统凭据
+审批协调与续接改为 [pg-boss](https://github.com/timgit/pg-boss) 任务，使用平台执行数据库，不新增服务：
 
-| 类别 | 目标 | 方式 |
+- 读模型变更时按交互与子任务入队，使用 `stately` 队列策略与稳定的 `singletonKey` 收敛待处理任务并约束同一键的并发。
+- 每次启动从 kagent 加载未完成审批及待续接任务，补齐队列；变更处理进度在持久入队后确认，入队失败从未确认进度重放。删除独立的周期性全量扫描。
+- 外部决定未出属于业务等待，使用延迟任务继续检查；调用错误由 pg-boss 退避重试，耗尽后进入死信队列并支持重放。等待时限与任务保留时间覆盖审批周期。
+- 授权复验、准备执行、原生回复与结果回写保持现有顺序。原生回复沿用确定性 messageId；外部审批的创建、准备执行与结果回写按稳定业务引用幂等。
+  在外部操作成功、队列尚未确认时崩溃，重放先核对原生状态及外部审批记录，再继续未完成步骤。
+- pg-boss 管理重试、过期与任务认领；业务副作用的幂等由上述原生消息和审批接口保证。删除进程内 LRU、错误节流与续接重试表。
+- kagent 原生状态仍是唯一事实来源，队列只保存待处理的引用。每次消费重新解析执行绑定与发起人授权，用户任务按原用户离线授权续期后执行 OBO。
+- 续接在 kagent 子 Agent 嵌套 HITL 修复（[kagent #3244](https://github.com/kagent-dev/kagent/issues/3244)）后删除；角色对齐随机器身份迁移删除。
+
+### 机器身份迁移到工作负载身份
+
+平台网关全部路由沿用环境路由已采用的 JWT 认证，删除 `apiKeyAuthentication`：
+
+| 调用方 | 凭据 | 授权依据 |
 | --- | --- | --- |
-| OAuth 资源 | Kubernetes | 交换为 `<environment>-kubernetes` 受众令牌；RBAC 绑定身份服务账号主体，取消静态 ServiceAccount 令牌 |
-| OAuth 资源 | Keycloak Admin API | 交换为 realm 管理受众令牌，权限由 Fine-Grained Admin Permissions V2 决定，用户执行按发起人自身的管理权限执行；Keycloak MCP 直接使用入站令牌，取消客户端密钥转发 |
-| OAuth 资源 | Grafana | 原生 JWT 认证与官方 MCP Authorization 转发，受众为 grafana |
-| API 令牌 | NetBox、JumpServer、Zammad | 每身份独立账号与令牌，取消 NetBox 共享读取账号；使用目标原生有效期，由部署流程定期轮换 |
+| Agent 的模型请求 | Substrate 注入的 Actor JWT | Actor 对应的会话、Agent 模型配置与允许的模型 API |
+| Agent 的协作 MCP 与平台工具请求 | Substrate 注入的 Actor JWT | Actor 对应的会话、Agent 与模板工具绑定 |
+| kagent 控制器工具发现 | Kubernetes 绑定 ServiceAccount 令牌，audience `agentos-mcp-discovery` | 指定控制器 ServiceAccount，仅允许元数据发现方法 |
+| 平台 API 的模型调用（知识嵌入、语音） | Kubernetes 绑定 ServiceAccount 令牌，使用模型入口专用 audience | 指定平台 ServiceAccount 与允许的模型 API |
+| 环境侧案例自动化 | 来源环境 realm 的 client credentials 令牌 | 已登记的 issuer、audience、客户端 `azp` 与服务账号 `sub`，仅允许对应环境的自动化入口 |
 
-API 令牌目标需要在目标侧记录发起人时，连接器 `auth` 以 `oauthTokenExchange` 换取受众为该连接器的令牌，并以 `credentials` 携带目标令牌；连接器按 OIDC Discovery 校验后记录 `sub` 与 `azp`。
+JWT 校验包含 issuer、audience、有效期与调用方主体。Actor JWT 进一步核对当前 Actor UID、会话及执行绑定；发现、模型与自动化令牌按路由和方法分别授权。
+模型请求通过 HTTP 授权校验模型配置和调用范围，MCP 请求通过 ExtMCP 校验工具绑定。Kubernetes 令牌使用投射卷并随轮换重新读取。
 
-### 后台用户执行
+平台工作负载身份用于认证系统调用，用户执行权限由原发起人、执行绑定与委派链共同收窄。后台消费沿用原用户 OBO 和既有权限上限；
+普通退出保留后台执行授权，撤销执行绑定后拒绝后续调用，离线授权失效或账号禁用后刷新被拒绝。未配置浏览器 OIDC 的现有模式保持可用。
 
-登录授权码流程请求 `offline_access`，离线 refresh token 与访问令牌加密保存在服务端。浏览器 Cookie 仅保存用户主体。后台任务按需续期后以原用户执行 OBO；普通退出与短期令牌到期不终止任务。撤销执行绑定、离线授权失效或账号禁用时拒绝后续调用，既有任务权限上限保持不变。PostgreSQL 行锁串行处理同一用户的刷新。
+删除 `machine-identities.ts` 的密钥签发、按角色生成的 RemoteMCPServer 与启动时的绑定对齐，以及 `gateway-keys.yaml` 和机器令牌 Secret。
+每个平台服务只注册一个 RemoteMCPServer，工具调用继续由 ExtMCP 按 Agent 模板的工具绑定逐次授权。
 
-### 连接器协议与上下文
+### 执行授权单轨
 
-- JumpServer MCP 由 HTTP+SSE 切换为 Streamable HTTP，上游 FastAPI-MCP 升级至提供该传输的版本。
-- 关联与去重沿用 W3C Trace Context 与 Baggage；发起人与执行身份以令牌声明为准。
-- RFC 8693 `act` 委派声明在身份提供方稳定支持后启用，agentgateway 的 `actorToken` 已具备对应能力；此前以 `azp` 标识执行身份。
+删除 `authorization/` 的 OpenFGA 模型与模型测试、`server/authorization/policy.ts`、OpenFGA 集成测试、`@openfga/sdk`、`ci/tools.sh` 的 `fga` 与 `openfga`，
+以及 `ci/verify-authorization.sh` 与对应 CI 作业。Keycloak 客户端策略移至 `tests/proofs`。执行授权保留 `executions.ts` 的委派链收窄与撤销；
+逐资源业务 ACL 实施时再引入关系授权服务。
 
-### 治理契约
+### 环境套件发布为 Helm Chart
 
-- 工具分级、身份档案、`approval` 清单与 `ApprovalService` 保持现有语义。MCP 与 A2A 均未定义工具分级与审批流程。
-- 方案包 CI 校验分级与 MCP 工具注解一致：`readOnly`、`managementReadOnly` 中的工具不得声明 `readOnlyHint: false` 或 `destructiveHint: true`。注解只参与一致性检查，访问权限以分级为准，未登记工具仍按写处理。
+`environments/templates` 转为 Helm Chart，随平台版本发布到 OCI 注册表，输入由 `values.schema.json` 校验：
 
-### 契约与配置
+- 目标环境中的环境网关与平台命名空间中的预置接入资源分属两个 release，Helm 负责各自清单内 Kubernetes 资源的增删与回滚。
+- 每个对象具有单一管理方。预置接入资源由 release 管理；控制台创建的接入资源及可编辑的 AgentTemplate 由平台管理，与 release 使用独立对象名。
+  Chart 升级保留平台管理的配置，模板工具绑定的初始化与解绑通过现有平台接口完成。
+- 一次性接管时核对现有 release 清单、所有权元数据与 ownerReferences，移交管理关系，保持资源名称、选择器和引用稳定；验证升级与回退时的资源归属。
+- 移除身份或环境时，先完成模板解绑及执行准入撤销，再通过目标原生 API 撤销身份客户端、权限与 API 令牌，最后由 release 升级或卸载回收 Kubernetes 资源。
+- `retire-platform-identities.yaml` 中的资源删除由 Helm 接管；模板解绑与原生凭据撤销保留为显式生命周期步骤，替代现有的分散清理任务。
+- Ansible 保留身份客户端与令牌交换配置、证书签发、凭据生成与撤销、平台绑定初始化与解绑及 Chart 安装。
+- `ci/check-environments.py` 与 `ci/render-environments.yaml` 由 Chart 测试替代。
+
+### 交付工具链
+
+- 版本：[release-please](https://github.com/googleapis/release-please) 依据 Conventional Commits 维护 `package.json`、各 Chart 版本与变更记录，功能 PR 不修改版本。
+  GitHub 主仓库维护 release PR 与 tag，GitLab 发布流水线核对相同 tag 与提交 SHA。正式版本由指向 release 提交的受保护 tag 触发，其他 main 提交发布开发制品。
+  发布任务按版本串行执行；重试核对已发布清单的提交与摘要，一致时复用，冲突时失败。
+
+  | 制品 | 正式版本示例 | 开发版本示例 |
+  | --- | --- | --- |
+  | npm 契约与 Helm Chart（SemVer） | `0.27.0` | `0.27.0-dev.12.gabcdef123456` |
+  | Python wheel（PEP 440） | `0.27.0` | `0.27.0.dev12+gabcdef123456` |
+
+  开发序号由版本基线后的提交计数确定，同一提交的版本映射保持稳定。映射集中在发布入口，制品清单记录各格式版本、同一提交与摘要，方案包按清单锁定。
+
+- Chart 测试：[helm-unittest](https://github.com/helm-unittest/helm-unittest) 覆盖模板断言与非法 values，跨资源约束使用 [Conftest](https://www.conftest.dev/) 策略，
+  保留 kubeconform；`ci/check-chart.py` 删除。
+- DNS：`deploy/dns_record.py` 改用 `community.general.cloudflare_dns`。
+- 依赖：删除 `d3-dag`、`parse5`、`entities`。
+
+### 上游收敛
+
+- kagent：`platform.patch` 按能力拆分为上游 PR，包括 MemoryService 的身份范围与单条删除、持久化接口的 Actor JWT、Claude 工具白名单与 PreToolUse、
+  首次准备的出站策略。合入并发布后删除对应补丁。
+- Substrate：kagent main 已依赖 kagent-dev/substrate v0.6.0，其中包含 [#2159](https://github.com/agent-substrate/substrate/pull/2159)。随 kagent 下一版本升级并删除该回移；
+  恢复期间放行出站的修复提交上游。
+
+上游收敛独立持续交付，以选定上游发布版本通过站点回归为补丁删除条件。0.27.0 保留仍需本地承载的补丁及续接能力，并记录对应 issue、PR 与验证状态。
+
+## 契约与配置
 
 | 对象 | 变更 |
 | --- | --- |
-| `proto/agentos/governance/v1/governance.proto` 的 `EnvironmentConnection` | 增加 `issuer` 与 `resource`；`resource` 作为环境令牌的 audience |
-| `environment_connectors` | 每个目标声明一种原生 BackendAuth；移除 `userAuth` 与按执行类型拆分的路由 |
-| `global.agentos.identities` | 字段不变；身份客户端由环境身份部署按档案生成 |
-| 站点变量 | 增加环境网关证书与 CA；移除网关密钥目录 |
+| `proto/agentos/evaluation/v1` | 删除 |
+| `proto/agentos/authorization/v1` 的 `Capability` | 删除 `CAPABILITY_EVALUATIONS_MANAGE`，保留编号 |
+| `proto/agentos/automation/v1` 的 `AutomationConfig` | 删除 `evaluation_token_file`，保留编号 |
+| 平台 Chart values | 删除 `evaluation`；机器令牌改为 JWT 认证 |
+| 部署变量 | 删除 `agentos_evaluation_*` 与 `langfuse_web_image_tag`；新增可选的 Langfuse OIDC 客户端变量 |
+| 发布清单 | 关联提交、SemVer 版本、PEP 440 版本与制品摘要 |
+| 方案包 | 删除测评 wheel 固定与测评角色；环境接入改用环境 Chart |
 
-## 改动范围
+## 实施顺序
 
-| 所属 | 路径 | 改动 |
+| 阶段 | 内容 | 验证 |
 | --- | --- | --- |
-| 平台 | `server/authorization/runtime.ts`、环境令牌与传输鉴权模块 | HTTP 外部鉴权写入环境令牌，ExtMCP 校验工具权限，移除执行类型与用户令牌请求头 |
-| 平台 | `proto/agentos/governance/v1/governance.proto` | 环境连接的 issuer 与 resource |
-| 平台 | `environments/templates/gateway.yaml.j2` | HTTPS 监听、证书、MCP 认证与资源元数据；移除 API key 认证与密钥 ConfigMap |
-| 平台 | `environments/templates/backends.yaml.j2` | 路径路由、`azp` 授权、目标令牌交换 |
-| 平台 | `environments/templates/platform-gateway.yaml.j2`、`platform-services.yaml.j2`、`platform-credentials.yaml.j2` | Backend TLS、目录发现接入 ExtMCP、身份客户端凭据 Secret；移除身份密钥与 `X-Agentos-Engineer` |
-| 平台 | `environments/deploy.yaml`、`environments/vars.yaml` | 移除网关密钥生成；证书签发与 CA 下发 |
-| 平台 | `ci/check-environments.py` | 校验 TLS、MCP 认证与路由身份绑定，禁止 API key 认证 |
-| 平台 | `docs/architecture.md`、`docs/execution-authorization.md`、`docs/environments.md`、`docs/extension.md` | 同步新链路 |
-| 方案包 | `environments/connectors.yaml` | 按目标类别重写鉴权 |
-| 方案包 | `environments/identity.yaml` | 按身份档案创建 Keycloak 客户端、令牌交换权限与 audience 映射；Kubernetes 认证配置接受身份服务账号令牌 |
-| 方案包 | `environments/tasks/mcp-identity.yaml`、`environments/templates/mcp-rbac.yaml.j2` | Kubernetes RBAC 绑定身份服务账号主体，取消静态 ServiceAccount 令牌；NetBox、JumpServer、Zammad 每身份令牌的有效期与轮换；移除 NetBox 共享读取账号 |
-| 方案包 | `runtime/keycloak-mcp/http-server.ts` | 使用入站令牌调用 Admin API |
-| 方案包 | `runtime/jumpserver-mcp` | Streamable HTTP |
-| 方案包 | `ci/` | 工具分级与 MCP 注解一致性检查 |
-| 环境 | Keycloak realm、Kubernetes 认证配置、cert-manager | 令牌交换策略、身份服务账号主体、环境网关证书 |
+| 1 | 测评移出、观测 Web 官方镜像、OpenFGA 清理、未使用依赖、DNS 模块 | `npm run verify`、Playwright、Python 测试、Chart 与部署校验 |
+| 2 | release-please 与发布脚本 | release tag 与提交绑定；开发版本的 npm、Chart、wheel 构建与消费；并发发布与重试 |
+| 3 | pg-boss 后台协调 | 启动补偿、入队失败重放、多副本、死信恢复；外部副作用成功后崩溃与结束竞态 |
+| 4 | 工作负载身份 | Actor 模型与 MCP 授权；发现令牌隔离、自动化客户端准入、令牌轮换、OBO 与无 OIDC 部署 |
+| 5 | 环境套件 Chart | 清单对比与严格服务端 dry-run；所有权移交、控制台配置保留、模板解绑与外部凭据回收 |
+| 6 | Chart 测试工具 | `check-chart.py` 断言逐项迁移 |
 
-## 实施与切换
+阶段 1–6 为 0.27.0 的交付范围，各阶段为独立 PR。AIOps 方案包在这六个阶段完成后一次升级。上游收敛按已验证的发布版本独立推进。
 
-### P0 验证
+## 切换
 
-| 验证项 | 通过标准 |
-| --- | --- |
-| Keycloak 令牌交换 | 服务账号令牌可作为 subject token；交换令牌的 `azp` 为请求方身份客户端，audience 收窄至环境资源 |
-| agentgateway MCP 认证 | `traffic.jwtAuthentication.mcp` 与路径路由组合可用，`jwt.azp` 授权生效，环境令牌不进入 API 令牌目标的连接器 |
-| Kubernetes | 身份服务账号令牌经 OIDC 认证，RBAC 按主体授权 |
-| Keycloak Admin API 与 Grafana | 交换令牌可直接调用 Admin API；Grafana JWT 认证及 mcp-grafana 的令牌转发 |
-| JumpServer | 令牌有效期机制；Streamable HTTP 版本与上游兼容 |
-| 原生工具发现 | RemoteMCPServer 发现请求可使用 Kubernetes 绑定 ServiceAccount 令牌 |
+1. 部署观测：官方 Langfuse Web 镜像，按站点配置 OIDC 或账号登录。
+2. 部署平台与方案包新版本。
+3. 一次性移交环境接入资源的 release 清单与所有权，由环境 Chart 接管；通过平台接口完成绑定调整。
+4. 对移除的身份完成模板解绑与原生凭据撤销，验收新身份链路后清理旧机器令牌 Secret 与 key ConfigMap。
 
-未通过的目标归入 API 令牌类别，并在本文记录，不引入兼容层。
-
-### P0 结果
-
-- Keycloak 26.8.1：用户与服务账号的两阶段标准令牌交换均通过；保留 `sub`，`azp` 为执行客户端，目标受众收窄。
-- agentgateway 1.6.0：`traffic.jwtAuthentication.mcp`、RFC 9728 元数据、路径身份授权与 TLS SAN 校验通过。废弃的 `backend.mcp.authentication` 不再使用。
-- Grafana 13.2.4 与官方 MCP 2.0.2：JWT API 认证和 `GRAFANA_FORWARD_HEADERS=Authorization` 透传通过，采用目标令牌交换。
-- JumpServer：PrivateToken 没有有效期，改用原生缓存 Bearer token；FastAPI-MCP 0.4.0 与兼容的 MCP SDK 1.30.0 完成 Streamable HTTP 调用验证。
-- 原生工具发现：client-go 刷新 transport 和 Go MCP SDK 测试通过，凭据限于平台网关地址。
-- 跨集群网关链路：实际绑定 ServiceAccount JWT、目标 OAuth 交换、API 凭据注入、Actor 与环境令牌移除、CA/SAN 错误拒绝均通过。
-- 后台授权：Keycloak 在线会话退出后离线刷新及后续交换通过，禁用用户后续期被拒绝。
-
-### 切换
-
-平台与方案包以同一破坏性版本在一个维护窗口内切换：
-
-1. 部署环境身份：创建身份客户端与令牌交换权限，配置 Kubernetes RBAC，签发每身份 API 令牌。
-2. 签发环境网关证书，向平台集群写入 CA。
-3. 部署环境套件：HTTPS 监听、MCP 认证与路径路由，同一次部署删除 API key 认证与密钥 ConfigMap。
-4. 部署平台与方案包新版本。
-5. 执行验收。
-6. 撤销旧凭据：`gateway-<identity>` 密钥文件与 Secret、Kubernetes 静态令牌、Keycloak MCP 客户端密钥、NetBox 共享读取令牌。
-
-回退时重新部署 0.25.7、1.22.6 及其环境套件，由其部署流程重新生成旧凭据。
+回退时重新部署 0.26.5、AIOps 1.23.4 及其环境套件，同步移交资源所有权，由目标版本部署流程重建所需机器凭据。
 
 ## 验收
 
-- 平台与环境之间不存在明文 HTTP；证书或 SAN 校验失败时拒绝连接。
-- 环境网关拒绝缺失、过期、audience 错误或 `azp` 与路由身份不符的令牌，不存在 API key 入口。
-- Kubernetes 与 Keycloak 的原生审计在用户执行时记录发起人，在服务执行时记录身份服务账号。
-- NetBox、JumpServer、Zammad 的每个身份使用独立且有到期时间的令牌，轮换后旧令牌失效。
-- 连接器只收到目标凭据或目标受众令牌，不含环境令牌、用户平台令牌与 Actor JWT；W3C 上下文保持不变。
-- CI 拒绝工具分级与 MCP 注解冲突的配置。
+- 平台不含测评代码、资源与权限，控制台配置修改直接生效。
+- Langfuse 使用官方镜像：OIDC 站点以 SSO 登录并自动加入项目，其他站点以运维账号登录。
+- 审批协调与续接通过启动补偿、入队失败重放及多副本验证；外部操作成功后崩溃可恢复，业务副作用幂等，死信可重放；独立的周期性全量扫描已删除。
+- 平台网关按 JWT 主体、路由及方法授权；发现令牌调用工具与模型被拒绝，其他环境客户端无法调用自动化入口，Actor 模型与工具请求受配置和执行权限约束。
+- 用户 OBO 保留原发起人及权限上限；只读用户写入被拒绝，普通退出及短期令牌过期后后台任务继续执行，执行撤销与离线授权失效后按上述规则拒绝后续操作；无 OIDC 部署可用。
+- 平台网关的 `apiKeyAuthentication`、退役机器令牌 Secret 与 key ConfigMap 已删除，工作负载令牌轮换后调用正常。
+- 环境接入以 Chart 发布，升级与回退保持单一资源所有权及控制台配置；删除身份或环境后模板引用解除、外部凭据撤销、release 资源回收。
+- 功能 PR 不修改版本；正式版本由 release tag 触发并关联唯一提交；开发制品通过 npm、Helm、Python 安装验证，已发布版本保持不可变。
+- `runtime/` 保留补丁记录对应上游 issue、PR 与验证状态，按已验证发布版本删除；0.27.0 的发布门禁为阶段 1–6。
 
 ## 不在本次范围
 
-- 凭据保管由部署机 `.cache/environments/<environment>/secrets` 迁移至专用密钥服务。
-- 证书绑定令牌（RFC 8705）与 DPoP（RFC 9449）。
-- IETF Transaction Tokens，当前为草案。
-- 逐资源业务授权，见[授权实施计划](docs/authorization-plan.md)。
+- 平台外的回归测评与配置 GitOps。
+- 语音听写与实时通话的转写链路合并，语音为可选组件。
+- 读模型轮询：kagent 未提供全局任务变更流。
+- 凭据保管由部署机迁移至专用密钥服务。
 
 ## 参考
 
-- [RFC 8693：OAuth 2.0 Token Exchange](https://www.rfc-editor.org/rfc/rfc8693.html)
-- [RFC 8707：Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707.html)
-- [RFC 9728：OAuth 2.0 Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728.html)
-- [MCP：授权](https://modelcontextprotocol.io/specification/latest/basic/authorization)、[传输](https://modelcontextprotocol.io/specification/latest/basic/transports)与[工具注解](https://modelcontextprotocol.io/specification/latest/server/tools)
-- [W3C Trace Context](https://www.w3.org/TR/trace-context/)与 [W3C Baggage](https://www.w3.org/TR/baggage/)
-- [Keycloak：Token Exchange](https://www.keycloak.org/securing-apps/token-exchange)
-- [agentgateway：标准 Token Exchange](https://agentgateway.dev/docs/kubernetes/latest/documentation/security/backend-authn/token-exchange/standard/)
+- [pg-boss](https://github.com/timgit/pg-boss)、[队列策略](https://github.com/timgit/pg-boss/blob/master/docs/api/queues.md)与[任务重试及过期](https://github.com/timgit/pg-boss/blob/master/docs/api/jobs.md)
+- [Langfuse：认证与 SSO](https://langfuse.com/self-hosting/security/authentication-and-sso)与[自动授予组织和项目访问](https://langfuse.com/self-hosting/administration/automated-access-provisioning)
+- [release-please](https://github.com/googleapis/release-please)、[helm-unittest](https://github.com/helm-unittest/helm-unittest)、[Conftest](https://www.conftest.dev/)
+- [Python 版本规范（PEP 440）](https://packaging.python.org/en/latest/specifications/version-specifiers/)
+- [community.general.cloudflare_dns](https://docs.ansible.com/ansible/latest/collections/community/general/cloudflare_dns_module.html)

@@ -30,7 +30,6 @@ with (
             "charts",
             "ci",
             "docs",
-            "runtime/langfuse",
             "LICENSE",
         ]
     )

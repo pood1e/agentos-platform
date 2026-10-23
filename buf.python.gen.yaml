@@ -7,11 +7,6 @@ plugins:
     out: gen/python
     include_imports: true
     types:
-      - agentos.evaluation.v1.EvaluationService
-      - agentos.evaluation.v1.EvaluationExecutionService
-      - agentos.evaluation.v1.EvaluationJobInput
-      - agentos.evaluation.v1.EvaluationFeedback
-      - agentos.evaluation.v1.Expectation
       - agentos.automation.v1.CaseRequest
       - agentos.automation.v1.CaseReference
       - agentos.automation.v1.AutomationConfig
