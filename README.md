@@ -43,3 +43,5 @@ docker compose down
 ## 许可证
 
 [Apache-2.0](LICENSE)
+
+<!-- CI approval verification -->
