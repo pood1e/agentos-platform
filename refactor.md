@@ -1,7 +1,7 @@
 # 维护面收敛重构
 
 状态：第一轮已发布并完成站点切换；第二轮为待实施设计。
-已部署基线：平台 0.27.4（`a459104`），AIOps 方案包 1.24.1（`4d4b74d`）。
+已部署基线：平台 0.27.5（`e8daac8`），AIOps 方案包 1.24.2（`cca755a`）。
 
 ## 原则
 
@@ -17,7 +17,7 @@
 | 阶段 | 内容 | PR | 结果 |
 | --- | --- | --- | --- |
 | 1 | 测评移出、Langfuse 官方镜像、OpenFGA 清理、依赖与 DNS 模块整理 | #75 | 已合入并部署 |
-| 2 | release-please 与内网发布 | #78、#84 | 正式 tag 不可变，0.27.4 发布流水线通过 |
+| 2 | release-please 与内网发布 | #78、#84 | 正式 tag 不可变，0.27.5 发布流水线通过 |
 | 3 | pg-boss 持久化审批协调与续接 | #77 | 已合入并部署 |
 | 4 | 平台网关与平台 API 使用工作负载 JWT | #80 | 已切换并清理旧机器令牌 |
 | 5 | 环境网关与平台连接独立 Helm release | #82 | 已完成清单与资源所有权移交 |
@@ -26,7 +26,7 @@
 
 站点采用官方 Langfuse Web/worker 4.62.0 与个人 OIDC 登录，环境和连接分别由独立 Helm release 管理。现有 11 个智能体模板配置已保留。已验证用户退出、访问令牌到期后的后台委派续接、原始发起人 OBO、只读权限上限及执行撤销。
 
-第一轮方案见本文件 `154e1c6` 版本，现行架构与运维入口见 [代码导航](docs/code-navigation.md)。第一轮交付发现的 Actor 身份头、服务级 audience 与原生探针问题已纳入后续发布修复。第二轮的切换验收继续覆盖这些约束。
+第一轮方案见本文件 `154e1c6` 版本，现行架构与运维入口见 [代码导航](docs/code-navigation.md)。后续发布已修复 Actor 身份头、服务级 audience、MCP 发现入口与原生探针。第二轮的切换验收继续覆盖这些约束。
 
 ## 第二轮
 
@@ -79,7 +79,7 @@
 
 ### 网关策略与后置渲染
 
-- 各路由的 issuer、audience 与主体约束由 HTTPRoute/Backend 上的 AgentgatewayPolicy 表达。校验原生策略的继承、覆盖与组合语义后，删除 Gateway 级重复 CEL。
+- 入口的 issuer、audience 与主体约束由 HTTPRoute 上的 traffic 策略表达，连接认证和工具约束按原生支持范围配置 Backend 策略。校验策略的继承、覆盖与组合语义后，删除 Gateway 级重复 CEL。
 - 控制器工具发现经受信平台网关执行；Actor 访问继续使用服务级 origin 与 audience。发现失败与空工具集合分别处理，跨服务令牌、发现身份执行工具及模型身份越权均需拒绝。
 - 上游 Chart 的原生 values 优先承载配置与镜像摘要。Kubernetes 对象补丁通过 Kustomize 作为 Helm post-renderer 执行，按名称、标签和容器名定位。
 - 当前 Substrate 渲染器还修改 `ConfigMap.data["config.yaml"]` 内的 `requestParking`，该字段是字符串中的 YAML，普通资源 patch 不能直接修改其内部结构。先核实所选上游 Chart 是否提供参数，缺失时优先提交上游参数支持；使用结构化 YAML 工具的必要适配保持最小。
@@ -129,6 +129,7 @@
 - [GitHub 受保护分支](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)、[工作流触发](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)、[Commit Status API](https://docs.github.com/en/rest/commits/statuses)
 - [GitLab 外部仓库 CI](https://docs.gitlab.com/ci/ci_cd_for_external_repos/)、[Runner executor](https://docs.gitlab.com/runner/executors/)、[npm](https://docs.gitlab.com/user/packages/npm_registry/) 与 [PyPI](https://docs.gitlab.com/user/packages/pypi_repository/) 注册表
 - [Kubernetes TokenReview](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/)、[ServiceAccount 令牌](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/)
+- [agentgateway 策略作用域与合并](https://agentgateway.dev/docs/kubernetes/latest/documentation/about/policies/target-merge/)、[远程 JWKS](https://agentgateway.dev/docs/kubernetes/latest/documentation/security/jwt/setup/)
 - [JWT 安全实践 RFC 8725](https://www.rfc-editor.org/rfc/rfc8725)、[OAuth 安全实践 RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)、[MCP 工具 annotations](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 - [Helm 3 OCI](https://helm.sh/docs/v3/topics/registries/)、[provenance](https://helm.sh/docs/v3/topics/provenance/)、[Chart.lock 实现](https://github.com/helm/helm/blob/v3.22.0/internal/resolver/resolver.go#L195)、[post-rendering](https://helm.sh/docs/v3/topics/advanced/#post-rendering)
 - [Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)、[Ansible collection 安装](https://docs.ansible.com/ansible/latest/collections_guide/collections_installing.html)、[knip 入口配置](https://knip.dev/reference/configuration)
