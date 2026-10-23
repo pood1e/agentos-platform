@@ -99,7 +99,7 @@ harnesses:
   codex:
     codex: {}
     workload:
-      image: registry.example.com/agentos/codex-harness@sha256:6b6fd47d91d68ccbb7f7e583b361e115730d6f4e8ff7514f56d767c30efbaaf7
+      image: registry.example.com/agentos/codex-harness@sha256:43f1c818e5b02841c8d240a36f7ac78fced22aed739632e9ef5606a8c715c208
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
@@ -107,7 +107,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: registry.example.com/agentos/claude-harness@sha256:c37cba8d50ab2583a5886d51bf89fd5e94f3a06afcd1918b725a563474e8d104
+      image: registry.example.com/agentos/claude-harness@sha256:3bb5879fe96e1d7684b06a63f1b38c15456cb89b14a3b31d8531c7bf0622b01c
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
