@@ -1,0 +1,174 @@
+name: Verify
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.paths.outputs.code }}
+      runtime: ${{ steps.paths.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: paths
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!LICENSE'
+            runtime:
+              - '{runtime/**,third_party/**,ci/**,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '!**/*.md'
+  application:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg18-bookworm@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+        env:
+          POSTGRES_DB: agentos
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: agentos-ci
+        ports: ['5432:5432']
+        options: --health-cmd 'pg_isready -U postgres -d agentos' --health-interval 2s --health-retries 15
+    env:
+      CHANGE_TEST_DATABASE_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+          install_args: node go go:github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-jsonschema
+      - run: npm ci --prefer-offline
+      - run: npm run verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: application
+          path: |
+            build/
+            dist/
+            gen/
+          retention-days: 1
+  e2e:
+    needs: application
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+      options: --ipc=host
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg18-bookworm@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+        env:
+          POSTGRES_DB: agentos
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: agentos-ci
+        options: --health-cmd 'pg_isready -U postgres -d agentos' --health-interval 2s --health-retries 15
+    env:
+      CHANGE_TEST_DATABASE_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: application
+      - run: npm ci --prefer-offline
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: browser-failure-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 1
+  deployment:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      ANSIBLE_CONFIG: deploy/ansible.cfg
+      ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.cache/collections
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+      - run: |
+          uv venv .cache/venv
+          uv pip install --python .cache/venv/bin/python -r deploy/requirements.txt -r ci/python-requirements.txt -r contracts/requirements.txt
+          echo "$PWD/.cache/venv/bin" >> "$GITHUB_PATH"
+      - run: ansible-galaxy collection install -r deploy/requirements.yaml
+      - run: npm ci --prefer-offline
+      - run: |
+          ansible-lint deploy environments
+          ansible-playbook deploy/deploy.yaml --syntax-check
+          ansible-playbook deploy/validate.yaml --syntax-check
+          ansible-playbook environments/deploy.yaml --syntax-check
+          ansible-playbook environments/connect.yaml --syntax-check
+          ci/check-charts.sh
+      - run: |
+          node_modules/.bin/buf generate --template buf.python.gen.yaml
+          ruff check
+          ruff format --check
+          pytest
+          python ci/contracts.py
+          python ci/test-package-chart.py
+          python ci/test-release.py
+  runtime:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [controller, substrate]
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg18-bookworm@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+        env:
+          POSTGRES_DB: agentos
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: agentos-ci
+        ports: ['5432:5432']
+        options: --health-cmd 'pg_isready -U postgres -d agentos' --health-interval 2s --health-retries 15
+    env:
+      CHANGE_TEST_DATABASE_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
+      KAGENT_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
+      SUBSTRATE_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+          install_args: go go:sigs.k8s.io/controller-runtime/tools/setup-envtest
+      - run: echo "KUBEBUILDER_ASSETS=$(setup-envtest use 1.37 -p path)" >> "$GITHUB_ENV"
+        if: matrix.component == 'controller'
+      - run: psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
+      - run: ci/verify-${{ matrix.component }}.sh
+  required:
+    name: Required checks
+    if: always()
+    needs: [changes, application, e2e, deployment, runtime]
+    runs-on: ubuntu-24.04
+    env:
+      RESULTS: ${{ toJSON(needs.*.result) }}
+    steps:
+      - run: |
+          if jq -e 'any(. == "failure" or . == "cancelled")' <<< "$RESULTS"; then
+            exit 1
+          fi

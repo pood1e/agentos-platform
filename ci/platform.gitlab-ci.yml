@@ -17,7 +17,7 @@ verify:
   stage: verify
   script: [npm run verify]
   artifacts:
-    paths: [build/, dist/]
+    paths: [build/, dist/, gen/]
     expire_in: 1 day
 
 e2e:
