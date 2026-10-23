@@ -38,7 +38,14 @@
       check_mode: false
 
     - name: Use the native runtime identity providers
-      ansible.builtin.set_fact: "{{ runtime_discovery.stdout | from_json }}"
+      ansible.builtin.set_fact:
+        platform_discovery_issuer: "{{ native_identity.platform_discovery_issuer }}"
+        platform_discovery_jwks: "{{ native_identity.platform_discovery_jwks }}"
+        platform_actor_issuer: "{{ native_identity.platform_actor_issuer }}"
+        platform_actor_audiences: "{{ native_identity.platform_actor_audiences }}"
+        platform_actor_jwks: "{{ native_identity.platform_actor_jwks }}"
+      vars:
+        native_identity: "{{ runtime_discovery.stdout | from_json }}"
 
     - name: Configure platform environment connections
       kubernetes.core.k8s:
