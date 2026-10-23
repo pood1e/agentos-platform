@@ -1,0 +1,130 @@
+{
+  "environment": {
+    "name": "env-approval",
+    "issuer": "https://identity.example.test/realms/env-approval",
+    "resource": "https://env-approval-mcp.example.test:31000/mcp",
+    "jwksURL": "https://identity.example.test/realms/env-approval/protocol/openid-connect/certs"
+  },
+  "gateway": {
+    "address": "192.0.2.21",
+    "host": "env-approval-mcp.example.test",
+    "nodePort": 31000,
+    "platformCIDR": "192.0.2.10/32"
+  },
+  "toolsets": {
+    "kubernetes": {
+      "readOnly": ["pods_list", "events_list"],
+      "write": ["resources_create_or_update"],
+      "managementReadOnly": ["nodes_list"],
+      "management": ["nodes_drain"]
+    },
+    "tickets": {
+      "readOnly": ["tickets_search"],
+      "write": ["tickets_update"]
+    }
+  },
+  "identities": [
+    {
+      "name": "catalog",
+      "services": {
+        "kubernetes": "read",
+        "tickets": "read"
+      }
+    },
+    {
+      "name": "assistant",
+      "environments": ["env-approval"],
+      "services": {
+        "kubernetes": "read"
+      }
+    },
+    {
+      "name": "coordinator",
+      "services": {
+        "kubernetes": "read",
+        "tickets": "read"
+      }
+    },
+    {
+      "name": "inspection",
+      "services": {
+        "kubernetes": "read"
+      }
+    },
+    {
+      "name": "remediation",
+      "services": {
+        "kubernetes": "manage",
+        "tickets": "operate"
+      }
+    }
+  ],
+  "connectors": {
+    "kubernetes": {
+      "title": "Kubernetes",
+      "targets": [
+        {
+          "host": "kubernetes-mcp.mcp.svc.cluster.local",
+          "port": 8000,
+          "auth": {
+            "oauthTokenExchange": {
+              "url": "https://identity.example.test/realms/<environment>/protocol/openid-connect/token",
+              "grantType": "TokenExchange",
+              "audiences": ["<environment>-kubernetes"],
+              "subjectToken": {
+                "source": {
+                  "header": {
+                    "name": "Authorization",
+                    "prefix": "Bearer "
+                  }
+                },
+                "tokenType": "AccessToken"
+              },
+              "clientAuth": {
+                "clientId": "agentos-<identity>",
+                "method": "ClientSecretBasic",
+                "secretRef": {
+                  "name": "agentos-<identity>",
+                  "key": "client-secret"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tickets": {
+      "title": "Tickets",
+      "targets": [
+        {
+          "host": "tickets-mcp.mcp.svc.cluster.local",
+          "port": 8214,
+          "path": "/mcp",
+          "auth": {
+            "secretRef": {
+              "name": "backend-<identity>",
+              "key": "tickets"
+            },
+            "location": {
+              "header": {
+                "name": "X-Ticket-Token"
+              }
+            }
+          }
+        },
+        {
+          "name": "tickets-write",
+          "access": ["operate", "manage"],
+          "host": "tickets-write-mcp.mcp.svc.cluster.local",
+          "port": 8000,
+          "auth": {
+            "secretRef": {
+              "name": "tickets-api-<identity>",
+              "key": "token"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -34,8 +34,16 @@ chartSchema.properties.automation.properties.sources = {
 };
 writeFileSync("charts/agentos/values.schema.json", `${JSON.stringify(chartSchema, null, 2)}\n`);
 
+await import("./generate-environment-schema.mjs");
+
 execFileSync(
   "node_modules/.bin/biome",
-  ["format", "--write", "charts/agentos/values.schema.json"],
+  [
+    "format",
+    "--write",
+    "charts/agentos/values.schema.json",
+    "charts/agentos-environment/values.schema.json",
+    "charts/agentos-connections/values.schema.json",
+  ],
   { stdio: "ignore" },
 );

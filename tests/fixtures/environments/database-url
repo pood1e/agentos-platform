@@ -1,1 +1,0 @@
-postgresql://changecontrol:test@postgres-rw.database.svc.cluster.local:5432/changecontrol

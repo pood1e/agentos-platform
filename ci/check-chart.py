@@ -55,7 +55,9 @@ with urllib.request.urlopen(url, timeout=60) as response:
 agentgateway = run(helm, 'template', 'schemas', 'oci://cr.agentgateway.dev/charts/agentgateway-crds', '--version', versions['agentgateway_version'])
 with urllib.request.urlopen(f"https://github.com/kubernetes-sigs/gateway-api/releases/download/{versions['gateway_api_version']}/standard-install.yaml", timeout=60) as response:
     gateway = response.read().decode()
-for doc in yaml.safe_load_all('\n---\n'.join([kagent, traefik, agentgateway, gateway])):
+with urllib.request.urlopen(f"https://github.com/cert-manager/cert-manager/releases/download/{versions['cert_manager_version']}/cert-manager.crds.yaml", timeout=60) as response:
+    certificates = response.read().decode()
+for doc in yaml.safe_load_all('\n---\n'.join([kagent, traefik, agentgateway, gateway, certificates])):
     if not doc or doc.get('kind') != 'CustomResourceDefinition':
         continue
     spec = doc['spec']

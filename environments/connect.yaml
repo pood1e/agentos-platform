@@ -1,126 +1,53 @@
-- name: Connect managed environment gateways to the platform
+- name: Publish environment connections
+  ansible.builtin.import_playbook: connections.yaml
+
+- name: Initialize native template bindings
   hosts: environments
-  serial: 1
   connection: local
   gather_facts: false
-  environment:
-    PATH: "{{ ansible_playbook_python | dirname }}:{{ lookup('ansible.builtin.env', 'PATH') }}"
   vars_files: [vars.yaml]
   tasks:
     - name: Use the controller Python environment
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
-    - name: Publish environment resource coordinates
-      ansible.builtin.set_fact:
-        environment_issuer: "{{ environment_issuer }}"
-        gateway_resource: "{{ gateway_resource }}"
-
-    - name: Retire engineer access outside the environment scope
-      ansible.builtin.import_tasks: tasks/retire-platform-identities.yaml
-
-    - name: Configure environment gateway trust
-      ansible.builtin.import_tasks: tasks/platform-trust.yaml
-
-    - name: Discover native runtime identities
-      ansible.builtin.command:
-        argv:
-          - "{{ ansible_playbook_python }}"
-          - "{{ playbook_dir }}/discover-runtime.py"
-          - --kubeconfig
-          - "{{ platform_kubeconfig }}"
-          - --namespace
-          - "{{ agentos_namespace }}"
-          - --release
-          - "{{ platform_release }}"
-      register: runtime_discovery
-      changed_when: false
-      check_mode: false
-
-    - name: Use the native runtime identity providers
-      ansible.builtin.set_fact:
-        platform_discovery_issuer: "{{ native_identity.platform_discovery_issuer }}"
-        platform_discovery_jwks: "{{ native_identity.platform_discovery_jwks }}"
-        platform_actor_issuer: "{{ native_identity.platform_actor_issuer }}"
-        platform_actor_audiences: "{{ native_identity.platform_actor_audiences }}"
-        platform_actor_jwks: "{{ native_identity.platform_actor_jwks }}"
-      vars:
-        native_identity: "{{ runtime_discovery.stdout | from_json }}"
-
-    - name: Configure platform environment connections
-      kubernetes.core.k8s:
+    - name: Read existing engineer registrations
+      kubernetes.core.k8s_info:
         kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-governance.yaml.j2') | from_yaml }}"
-      when: inventory_hostname == groups['environments'][-1]
+        api_version: api.kagent.dev/v1alpha3
+        kind: RemoteMCPServer
+        namespace: "{{ agentos_namespace }}"
+        label_selectors: ["app.kubernetes.io/instance={{ connections_release }}", "agentos.dev/environment={{ environment_name }}"]
+      register: existing_registrations
+      when: existing_engineer_servers is not defined
+
+    - name: Preserve saved tool selections
+      ansible.builtin.set_fact:
+        existing_engineer_servers: "{{ existing_registrations.resources | map(attribute='metadata.name') | list }}"
+      when: existing_engineer_servers is not defined
+
+    - name: Read the managed connection release
+      kubernetes.core.helm_info:
+        kubeconfig: "{{ platform_kubeconfig }}"
+        binary_path: "{{ helm_binary }}"
+        name: "{{ connections_release }}"
+        release_namespace: "{{ agentos_namespace }}"
+      register: installed_connections
       no_log: true
 
-    - name: Read existing environment MCP services
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        api_version: agentgateway.dev/v1alpha1
-        kind: AgentgatewayBackend
-        namespace: "{{ agentos_namespace }}"
-        label_selectors: ["agentos.dev/environment={{ environment_name }}", agentos.dev/project]
-      register: service_resources
-
-    - name: Index existing MCP services
-      ansible.builtin.set_fact:
-        existing_services: "{{ service_resources.resources | map(attribute='metadata.name') | list }}"
-
-    - name: Read existing engineer MCP registrations
+    - name: Wait for managed MCP discovery
       kubernetes.core.k8s_info:
         kubeconfig: "{{ platform_kubeconfig }}"
         api_version: api.kagent.dev/v1alpha3
         kind: RemoteMCPServer
         namespace: "{{ agentos_namespace }}"
-      register: engineer_mcp_resources
-
-    - name: Index existing engineer MCP registrations
-      ansible.builtin.set_fact:
-        existing_engineer_servers: "{{ engineer_mcp_resources.resources | map(attribute='metadata.name') | list }}"
-
-    - name: Configure environment MCP services
-      kubernetes.core.k8s:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ new_services }}"
-      vars:
-        new_services: >-
-          {{ lookup('ansible.builtin.template', 'templates/platform-services.yaml.j2') | from_yaml_all | select('mapping') | list }}
-      when: new_services | length > 0
-
-    - name: Read managed MCP service settings
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        api_version: agentgateway.dev/v1alpha1
-        kind: AgentgatewayBackend
-        namespace: "{{ agentos_namespace }}"
-        label_selectors: ["agentos.dev/environment={{ environment_name }}", agentos.dev/project]
-      register: service_resources
-
-    - name: Configure engineer credential bindings
-      kubernetes.core.k8s:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-gateway.yaml.j2') | from_yaml_all | list }}"
-
-    - name: Register MCP service discovery
-      kubernetes.core.k8s:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-service-consumers.yaml.j2') | from_yaml_all | list }}"
-
-    - name: Wait for engineer MCP discovery
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        api_version: api.kagent.dev/v1alpha3
-        kind: RemoteMCPServer
-        namespace: "{{ agentos_namespace }}"
-        name: "{{ environment_name }}-{{ item.0 }}-{{ item.1.name }}"
+        name: "{{ item.metadata.name }}"
         wait: true
         wait_condition: {type: Accepted, status: 'True'}
         wait_timeout: 300
-      loop: "{{ toolsets.keys() | product(engineer_identities | rejectattr('name', 'equalto', 'catalog')) | list }}"
-      loop_control:
-        label: "{{ item.0 }} / {{ item.1.name }}"
-      when: item.0 in item.1.services
+      loop: "{{ installed_connections.status.manifest | selectattr('kind', 'equalto', 'RemoteMCPServer') | list }}"
+      loop_control: {label: "{{ item.metadata.name }}"}
+      when: inventory_hostname == groups['environments'][-1]
 
     - name: Read preset engineer bindings
       kubernetes.core.k8s_info:

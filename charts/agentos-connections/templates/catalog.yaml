@@ -1,0 +1,81 @@
+{{- range $environment := .Values.environments }}
+{{- range $project, $_ := $environment.toolsets }}
+{{- $name := printf "%s-%s" $environment.name $project }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ $name }}
+  annotations:
+    agentos.dev/system-connection: 'true'
+    agentos.dev/display-name: {{ index $environment.titles $project | default $project | quote }}
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/environment: {{ $environment.name }}
+    agentos.dev/project: {{ $project }}
+    agentos.dev/governance: {{ $environment.governance }}
+spec:
+  mcp:
+    prefixMode: Always
+    targets:
+      - name: {{ $name }}
+        static:
+          host: {{ $environment.gateway.address | quote }}
+          port: {{ $environment.gateway.nodePort }}
+          path: /mcp/catalog/{{ $project }}
+          protocol: StreamableHTTP
+  policies:
+    extAuth:
+      {{- include "agentos-connections.transport" (dict "root" $ "service" $name "environment" $environment.name "identity" "catalog") | nindent 6 }}
+    http: {requestTimeout: 10m}
+    tls:
+      sni: {{ $environment.gateway.host | quote }}
+      caCertificateRefs: [{name: {{ $environment.name }}-gateway-ca, kind: ConfigMap}]
+      verifySubjectAltNames: [{{ $environment.gateway.host | quote }}]
+    mcp:
+      guardrails:
+        {{- include "agentos-connections.processor" (dict "root" $ "environment" $environment.name "identity" "catalog") | nindent 8 }}
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: RemoteMCPServer
+metadata:
+  name: {{ $name }}
+  annotations: {agentos.dev/discovery-auth: kubernetes}
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/environment: {{ $environment.name }}
+spec:
+  description: {{ index $environment.titles $project | default $project | quote }}
+  protocol: STREAMABLE_HTTP
+  url: http://{{ $.Values.platform.release }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080/mcp/{{ $name }}
+  timeout: 10m
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-{{ $name }}
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/mcp-source: {{ $name }}
+spec:
+  parentRefs: [{name: {{ $.Values.platform.release }}-gateway, sectionName: http}]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /mcp/{{ $name }}}}]
+      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}}]
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ $name }}-engineer-auth
+  labels: {{ include "agentos-connections.labels" $ | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ $name }}}
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions: [{{ printf "mcp.tool.name in %s" (toJson ((index $environment.toolsets $project).readOnly | default list)) | quote }}]
+{{- end }}
+{{- end }}

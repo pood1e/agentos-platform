@@ -1,0 +1,63 @@
+suite: environment gateway identity boundary
+values: [values.json]
+release: {name: agentos-environment, namespace: mcp}
+tests:
+  - it: exposes the HTTPS listener with its managed certificate
+    template: gateway.yaml
+    documentSelector: {path: "kind", value: Gateway}
+    asserts:
+      - equal: {path: "spec.listeners[0].protocol", value: HTTPS}
+      - equal: {path: "spec.listeners[0].tls.certificateRefs[0].name", value: mcp-gateway-tls}
+  - it: validates the environment issuer and resource audience
+    template: authentication.yaml
+    documentSelector: {path: "metadata.name", value: gateway-auth}
+    asserts:
+      - equal: {path: "spec.traffic.jwtAuthentication.mode", value: Strict}
+      - equal:
+          path: spec.traffic.jwtAuthentication.providers[0].audiences
+          value: ['https://env-approval-mcp.example.test:31000/mcp']
+      - equal: {path: "spec.frontend.http.maxBufferSize", value: 16Mi}
+      - matchRegex:
+          path: spec.traffic.authorization.policy.matchExpressions[0]
+          pattern: "agentos-catalog"
+  - it: uses the configured gateway SAN
+    template: certificates.yaml
+    documentSelector: {path: "spec.secretName", value: mcp-gateway-tls}
+    asserts:
+      - equal: {path: "spec.dnsNames", value: [env-approval-mcp.example.test]}
+      - equal: {path: "spec.issuerRef.name", value: mcp-ca}
+  - it: rejects a plaintext issuer
+    set: {environment.issuer: 'http://identity.example.test'}
+    asserts:
+      - failedTemplate: {errorPattern: 'issuer.*pattern|issuer.*match|issuer'}
+  - it: requires the catalog discovery identity
+    set: {identities: [{name: inspection, services: {kubernetes: read}}]}
+    asserts:
+      - failedTemplate: {errorPattern: 'catalog|contains|identities'}
+  - it: rejects mixed credential boundaries in one service
+    set:
+      connectors.kubernetes.targets:
+        - {host: first, port: 8000, auth: {secretRef: {name: first, key: token}}}
+        - host: second
+          port: 8000
+          auth:
+            oauthTokenExchange:
+              url: https://identity.example.test/token
+              grantType: TokenExchange
+              audiences: [example]
+              subjectToken: {source: {header: {name: Authorization}}, tokenType: AccessToken}
+              clientAuth: {clientId: example, method: None}
+    asserts:
+      - failedTemplate: {errorPattern: 'credential boundary|clientAuth'}
+  - it: resolves identity placeholders inside native OAuth credentials
+    template: backends.yaml
+    documentSelector:
+      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
+      value: agentos-catalog
+    asserts:
+      - equal:
+          path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.secretRef.name
+          value: agentos-catalog
+      - equal:
+          path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.audiences
+          value: [env-approval-kubernetes]

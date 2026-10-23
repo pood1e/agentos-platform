@@ -1,0 +1,86 @@
+{{- range $identity := .Values.identities }}
+{{- range $project, $tools := $.Values.toolsets }}
+{{- if hasKey $identity.services $project }}
+{{- $access := index $identity.services $project }}
+{{- $read := $tools.readOnly | default list }}
+{{- $write := $tools.write | default list }}
+{{- if eq $access "manage" }}
+{{- $read = concat $read ($tools.managementReadOnly | default list) }}
+{{- $write = concat $write ($tools.management | default list) }}
+{{- end }}
+{{- $allowed := $read }}
+{{- if has $access (list "operate" "manage") }}{{ $allowed = concat $read $write }}{{ end }}
+{{- $connector := index $.Values.connectors $project }}
+{{- if not $connector }}{{ fail (printf "connectors.%s is required" $project) }}{{ end }}
+{{- $targets := list }}
+{{- $oauth := 0 }}
+{{- range $target := $connector.targets }}
+{{- if (hasKey ($target.auth | default dict) "oauthTokenExchange") }}{{ $oauth = add1 $oauth }}{{ end }}
+{{- if or (not (hasKey $target "access")) (has $access $target.access) }}
+{{- $static := pick $target "host" "port" "path" "protocol" }}
+{{- $_ := set $static "protocol" ($target.protocol | default "StreamableHTTP") }}
+{{- with $target.auth }}
+{{- $auth := toRawJson . | replace "<identity>" $identity.name | replace "<environment>" $.Values.environment.name | replace "<issuer>" $.Values.environment.issuer | fromJson }}
+{{- $_ := set $static "policies" (dict "auth" $auth) }}
+{{- end }}
+{{- $targets = append $targets (dict "name" ($target.name | default $project) "static" $static) }}
+{{- end }}
+{{- end }}
+{{- if and (ne (int $oauth) 0) (ne (int $oauth) (len $connector.targets)) }}
+{{- fail (printf "connectors.%s targets must use one credential boundary" $project) }}
+{{- end }}
+{{- if not $targets }}{{ fail (printf "connectors.%s has no targets for %s" $project $identity.name) }}{{ end }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ $project }}-{{ $identity.name }}
+  labels:
+    {{- include "agentos-environment.labels" $ | nindent 4 }}
+    agentos.dev/component: environment-tool
+    agentos.dev/project: {{ $project }}
+spec:
+  mcp:
+    prefixMode: Never
+    sessionRouting: Stateless
+    targets: {{ toYaml $targets | nindent 6 }}
+  policies:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions: [{{ printf "mcp.tool.name in %s" (toJson $allowed) | quote }}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $project }}-{{ $identity.name }}
+  labels: {{ include "agentos-environment.labels" $ | nindent 4 }}
+spec:
+  parentRefs: [{name: mcp-gateway, sectionName: https}]
+  rules:
+    - matches:
+        - path: {type: Exact, value: /mcp/{{ $identity.name }}/{{ $project }}}
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            remove: {{ ternary (list "x-substrate-actor-token") (list "x-substrate-actor-token" "authorization") (gt (int $oauth) 0) | toJson }}
+      backendRefs:
+        - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $project }}-{{ $identity.name }}}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ $project }}-{{ $identity.name }}-identity
+  labels: {{ include "agentos-environment.labels" $ | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: {{ $project }}-{{ $identity.name }}}
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions: ["has(jwt.azp) && jwt.azp == 'agentos-{{ $identity.name }}'"]
+{{- end }}
+{{- end }}
+{{- end }}

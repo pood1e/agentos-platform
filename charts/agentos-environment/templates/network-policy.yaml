@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-ingress
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {agentos.dev/gateway: environment}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: {cidr: {{ .Values.gateway.platformCIDR }}}
+      ports: [{port: 8443, protocol: TCP}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-backends
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {agentos.dev/component: mcp-server}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {agentos.dev/gateway: environment}

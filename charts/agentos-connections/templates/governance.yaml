@@ -1,0 +1,15 @@
+{{- $connections := list -}}
+{{- range .Values.environments -}}
+{{- $connection := dict "environment" (dict "name" .name "governance" (printf "GOVERNANCE_%s" (.governance | upper))) "issuer" .issuer "resource" .resource -}}
+{{- with .approvalUrl -}}{{- $_ := set $connection "approvalUrl" . -}}{{- end -}}
+{{- with .authorization -}}{{- $_ := set $connection "authorization" . -}}{{- end -}}
+{{- $connections = append $connections $connection -}}
+{{- end -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agentos-governance
+  labels: {{ include "agentos-connections.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  connections.json: {{ dict "environments" $connections | toJson | quote }}

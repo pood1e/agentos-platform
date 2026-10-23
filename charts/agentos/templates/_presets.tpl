@@ -19,7 +19,7 @@ Environment tool bindings are appended from global.agentos.identities.
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if or (not $template) (not (lookup $resource.apiVersion $resource.kind $root.Release.Namespace $metadata.name)) }}
+{{- if or (not $template) (and $root.Release.IsInstall (not (lookup $resource.apiVersion $resource.kind $root.Release.Namespace $metadata.name))) }}
 {{- $_ := set $metadata "namespace" $root.Release.Namespace }}
 {{- $_ := set $metadata "labels" (mergeOverwrite ($metadata.labels | default dict) (include "agentos.labels" $root | fromYaml)) }}
 {{- if $template }}

@@ -45,7 +45,7 @@ deployment-check:
     - .cache/venv/bin/ansible-playbook environments/connect.yaml --syntax-check
     - ci/tools.sh
     - .cache/venv/bin/python ci/check-chart.py
-    - .cache/venv/bin/python ci/check-environments.py
+    - ci/check-environment-charts.sh
 
 build-image:
   extends: .build-image

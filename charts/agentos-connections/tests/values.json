@@ -1,0 +1,153 @@
+{
+  "platform": {
+    "actorIssuer": "https://idp.ate-system.svc",
+    "actorJWKS": {
+      "keys": [
+        {
+          "kty": "RSA",
+          "n": "ujUBKO2rce1Iwca_WI_VB_zipwZ6qtshcfCtWjP4R0XxIsz8CQ9yO7dCsHV04iTNDC0qJh9FrFP2oZWBlqQ_teaMdMlrY6fvyWBGsLk3MvnUwGASBSh9GllGrtXZXoL_lwLrZK02A4NtACKJWTTqgVlaEylFVeW2VeEA03QuyC3STv42bcyhoMraE5o2Wy7he4Gem8loFgxvFZoxftW5IDF0prs5xePFEDHs4TvozlyG7qCuWHV39TJcgjVRukrViKKcB0AnQRuB805l064aSCXVBbWICGz2il7iXa7Bh5g_sAjsSgM8xZfiNgQ4McFlTMS6d_SnMMkQHp9kVcGiXw",
+          "e": "AQAB",
+          "alg": "RS256",
+          "use": "sig",
+          "kid": "test-workload"
+        }
+      ]
+    },
+    "kubernetesIssuer": "https://kube.test",
+    "kubernetesJWKS": {
+      "keys": [
+        {
+          "kty": "RSA",
+          "n": "ujUBKO2rce1Iwca_WI_VB_zipwZ6qtshcfCtWjP4R0XxIsz8CQ9yO7dCsHV04iTNDC0qJh9FrFP2oZWBlqQ_teaMdMlrY6fvyWBGsLk3MvnUwGASBSh9GllGrtXZXoL_lwLrZK02A4NtACKJWTTqgVlaEylFVeW2VeEA03QuyC3STv42bcyhoMraE5o2Wy7he4Gem8loFgxvFZoxftW5IDF0prs5xePFEDHs4TvozlyG7qCuWHV39TJcgjVRukrViKKcB0AnQRuB805l064aSCXVBbWICGz2il7iXa7Bh5g_sAjsSgM8xZfiNgQ4McFlTMS6d_SnMMkQHp9kVcGiXw",
+          "e": "AQAB",
+          "alg": "RS256",
+          "use": "sig",
+          "kid": "test-workload"
+        }
+      ]
+    }
+  },
+  "environments": [
+    {
+      "name": "env-approval",
+      "governance": "approval",
+      "issuer": "https://identity.example.test/realms/env-approval",
+      "resource": "https://env-approval-mcp.example.test:31000/mcp",
+      "gateway": {
+        "address": "192.0.2.21",
+        "host": "env-approval-mcp.example.test",
+        "nodePort": 31000,
+        "ca": "-----BEGIN CERTIFICATE-----\nMIIDMjCCAhqgAwIBAgIUUpgreTZtATxmz0tpdjQ4fV5GN+wwDQYJKoZIhvcNAQEL\nBQAwIDEeMBwGA1UEAwwVQWdlbnRPUyB0ZXN0IGlkZW50aXR5MB4XDTI2MTAyMDEz\nMjYyNVoXDTM2MTAxNzEzMjYyNVowIDEeMBwGA1UEAwwVQWdlbnRPUyB0ZXN0IGlk\nZW50aXR5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAujUBKO2rce1I\nwca/WI/VB/zipwZ6qtshcfCtWjP4R0XxIsz8CQ9yO7dCsHV04iTNDC0qJh9FrFP2\noZWBlqQ/teaMdMlrY6fvyWBGsLk3MvnUwGASBSh9GllGrtXZXoL/lwLrZK02A4Nt\nACKJWTTqgVlaEylFVeW2VeEA03QuyC3STv42bcyhoMraE5o2Wy7he4Gem8loFgxv\nFZoxftW5IDF0prs5xePFEDHs4TvozlyG7qCuWHV39TJcgjVRukrViKKcB0AnQRuB\n805l064aSCXVBbWICGz2il7iXa7Bh5g/sAjsSgM8xZfiNgQ4McFlTMS6d/SnMMkQ\nHp9kVcGiXwIDAQABo2QwYjAdBgNVHQ4EFgQUZlWp8Xt5Pf7OW9xY0bbl4Dqlikww\nHwYDVR0jBBgwFoAUZlWp8Xt5Pf7OW9xY0bbl4DqlikwwDwYDVR0TAQH/BAUwAwEB\n/zAPBgNVHREECDAGhwR/AAABMA0GCSqGSIb3DQEBCwUAA4IBAQBX01lAeP47hXjC\n0Je1C0Tle2uPDYHKQA1Azu+WCku0/bXMaR1plMc/xO0zXa9ksRZ3RjXotOYduoYM\n/Mw3Hsw1TS9ghSGkBPQiGnUpF1GFuNEifGZtngFfBK665a3UzxUP+3BQHitVTU1c\nMOcaIlSp4mA79B0xVE8fZNoYJOB6bF/AwE+rjaeMJRhTzpic/J2x2nJSY6O9ddpE\noGtTm4rUOZ6kew6IFB9cCcnPjIVCSrB/JoV6c5tGjeqJ0mSApj6t/gY98bWuPFcr\nhruOO8hg7uV+iIqVK7KBJVQr0dttWQ0t5fY58bmBQCEsQE7oCq2YjvrJVH0IQzcu\nk+uaOv6U\n-----END CERTIFICATE-----\n"
+      },
+      "toolsets": {
+        "kubernetes": {
+          "readOnly": ["pods_list", "events_list"],
+          "write": ["resources_create_or_update"],
+          "managementReadOnly": ["nodes_list"],
+          "management": ["nodes_drain"]
+        },
+        "tickets": {
+          "readOnly": ["tickets_search"],
+          "write": ["tickets_update"]
+        }
+      },
+      "identities": [
+        {
+          "name": "catalog",
+          "services": {
+            "kubernetes": "read",
+            "tickets": "read"
+          }
+        },
+        {
+          "name": "assistant",
+          "environments": ["env-approval"],
+          "services": {
+            "kubernetes": "read"
+          }
+        },
+        {
+          "name": "coordinator",
+          "services": {
+            "kubernetes": "read",
+            "tickets": "read"
+          }
+        },
+        {
+          "name": "inspection",
+          "services": {
+            "kubernetes": "read"
+          }
+        },
+        {
+          "name": "remediation",
+          "services": {
+            "kubernetes": "manage",
+            "tickets": "operate"
+          }
+        }
+      ],
+      "titles": {
+        "kubernetes": "Kubernetes",
+        "tickets": "Tickets"
+      }
+    },
+    {
+      "name": "env-direct",
+      "governance": "direct",
+      "issuer": "https://identity.example.test/realms/env-direct",
+      "resource": "https://env-direct-mcp.example.test:31000/mcp",
+      "gateway": {
+        "address": "192.0.2.22",
+        "host": "env-direct-mcp.example.test",
+        "nodePort": 31000,
+        "ca": "-----BEGIN CERTIFICATE-----\nMIIDMjCCAhqgAwIBAgIUUpgreTZtATxmz0tpdjQ4fV5GN+wwDQYJKoZIhvcNAQEL\nBQAwIDEeMBwGA1UEAwwVQWdlbnRPUyB0ZXN0IGlkZW50aXR5MB4XDTI2MTAyMDEz\nMjYyNVoXDTM2MTAxNzEzMjYyNVowIDEeMBwGA1UEAwwVQWdlbnRPUyB0ZXN0IGlk\nZW50aXR5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAujUBKO2rce1I\nwca/WI/VB/zipwZ6qtshcfCtWjP4R0XxIsz8CQ9yO7dCsHV04iTNDC0qJh9FrFP2\noZWBlqQ/teaMdMlrY6fvyWBGsLk3MvnUwGASBSh9GllGrtXZXoL/lwLrZK02A4Nt\nACKJWTTqgVlaEylFVeW2VeEA03QuyC3STv42bcyhoMraE5o2Wy7he4Gem8loFgxv\nFZoxftW5IDF0prs5xePFEDHs4TvozlyG7qCuWHV39TJcgjVRukrViKKcB0AnQRuB\n805l064aSCXVBbWICGz2il7iXa7Bh5g/sAjsSgM8xZfiNgQ4McFlTMS6d/SnMMkQ\nHp9kVcGiXwIDAQABo2QwYjAdBgNVHQ4EFgQUZlWp8Xt5Pf7OW9xY0bbl4Dqlikww\nHwYDVR0jBBgwFoAUZlWp8Xt5Pf7OW9xY0bbl4DqlikwwDwYDVR0TAQH/BAUwAwEB\n/zAPBgNVHREECDAGhwR/AAABMA0GCSqGSIb3DQEBCwUAA4IBAQBX01lAeP47hXjC\n0Je1C0Tle2uPDYHKQA1Azu+WCku0/bXMaR1plMc/xO0zXa9ksRZ3RjXotOYduoYM\n/Mw3Hsw1TS9ghSGkBPQiGnUpF1GFuNEifGZtngFfBK665a3UzxUP+3BQHitVTU1c\nMOcaIlSp4mA79B0xVE8fZNoYJOB6bF/AwE+rjaeMJRhTzpic/J2x2nJSY6O9ddpE\noGtTm4rUOZ6kew6IFB9cCcnPjIVCSrB/JoV6c5tGjeqJ0mSApj6t/gY98bWuPFcr\nhruOO8hg7uV+iIqVK7KBJVQr0dttWQ0t5fY58bmBQCEsQE7oCq2YjvrJVH0IQzcu\nk+uaOv6U\n-----END CERTIFICATE-----\n"
+      },
+      "toolsets": {
+        "kubernetes": {
+          "readOnly": ["pods_list", "events_list"],
+          "write": ["resources_create_or_update"],
+          "managementReadOnly": ["nodes_list"],
+          "management": ["nodes_drain"]
+        },
+        "tickets": {
+          "readOnly": ["tickets_search"],
+          "write": ["tickets_update"]
+        }
+      },
+      "identities": [
+        {
+          "name": "catalog",
+          "services": {
+            "kubernetes": "read",
+            "tickets": "read"
+          }
+        },
+        {
+          "name": "coordinator",
+          "services": {
+            "kubernetes": "read",
+            "tickets": "read"
+          }
+        },
+        {
+          "name": "inspection",
+          "services": {
+            "kubernetes": "read"
+          }
+        },
+        {
+          "name": "remediation",
+          "services": {
+            "kubernetes": "manage",
+            "tickets": "operate"
+          }
+        }
+      ],
+      "titles": {
+        "kubernetes": "Kubernetes",
+        "tickets": "Tickets"
+      }
+    }
+  ]
+}

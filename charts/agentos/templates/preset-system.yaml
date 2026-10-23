@@ -1,15 +1,1 @@
-{{- range $path, $_ := .Files.Glob "presets/system/*.yaml" }}
-{{- range $raw := splitList "\n---\n" (tpl ($.Files.Get $path) $) }}
-{{- $resource := fromYaml $raw }}
-{{- if eq $resource.kind "AgentTemplate" }}
-{{- $bindings := include "agentos.environmentBindings" (dict "root" $ "engineer" $resource.metadata.name) | fromYamlArray }}
-{{- if $bindings }}
-{{- $_ := set $resource.spec "tools" (concat $resource.spec.tools $bindings) }}
-{{- end }}
-{{- end }}
-{{- $_ := set $resource.metadata "namespace" $.Release.Namespace }}
-{{- $_ := set $resource.metadata "labels" (mergeOverwrite ($resource.metadata.labels | default dict) (include "agentos.labels" $ | fromYaml)) }}
----
-{{ toYaml $resource }}
-{{- end }}
-{{- end }}
+{{ include "agentos.presets" (dict "root" . "files" (.Files.Glob "presets/system/*.yaml")) }}

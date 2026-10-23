@@ -38,7 +38,7 @@
 | `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |
 | `deploy` | 单节点参考部署的 Ansible 剧本、运行时 Helm 值与 post-renderer |
 | `environments` | 环境套件：环境网关、连接器后端、身份映射与平台接入 |
-| `tests/fixtures/environments` | 环境套件的示例清单与变量，供渲染校验使用 |
+| `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台接入的独立 Helm release、原生 Chart 测试 |
 | `third_party` | 上游协议、CRD 与组件来源 |
 
 | 扩展路径 | 职责 |

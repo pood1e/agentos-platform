@@ -1,0 +1,18 @@
+environment:
+  name: ''
+  issuer: ''
+  resource: ''
+  jwksURL: ''
+gateway:
+  address: ''
+  host: ''
+  nodePort: 31000
+  platformCIDR: ''
+  image:
+    registry: cr.agentgateway.dev
+    repository: agentgateway
+    tag: v1.6.0
+    digest: sha256:9d3e6044ddcdc0878b1787f77bd401252b95e22684203fb5e874c4c42d2ed90c
+toolsets: {}
+identities: []
+connectors: {}

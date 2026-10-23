@@ -1,0 +1,40 @@
+{{- range $environment := .Values.environments }}
+{{- range $project, $_ := $environment.toolsets }}
+{{- $name := printf "%s-%s" $environment.name $project }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ $name }}-runtime-auth
+  labels: {{ include "agentos-connections.labels" $ | nindent 4 }}
+spec:
+  targetSelectors:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      matchLabels: {agentos.dev/mcp-source: {{ $name }}}
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      preserveToken: true
+      location:
+        expression: >-
+          'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') :
+          ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '')
+      providers:
+        - issuer: {{ $.Values.platform.actorIssuer | quote }}
+          audiences: [{{ printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name $.Release.Namespace | quote }}]
+          jwks: {inline: {{ $.Values.platform.actorJWKS | toJson | quote }}}
+          validation: {requiredClaims: [sub, exp, aud]}
+        - issuer: {{ $.Values.platform.kubernetesIssuer | quote }}
+          audiences: [agentos-mcp-discovery]
+          jwks: {inline: {{ $.Values.platform.kubernetesJWKS | toJson | quote }}}
+          validation: {requiredClaims: [sub, exp, aud]}
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - >-
+            (request.path != '/mcp/{{ $name }}' && jwt.iss == '{{ $.Values.platform.actorIssuer }}') ||
+            (jwt.iss == '{{ $.Values.platform.kubernetesIssuer }}' && jwt.sub == 'system:serviceaccount:{{ $.Release.Namespace }}:{{ $.Values.platform.controllerServiceAccount }}')
+{{- end }}
+{{- end }}
