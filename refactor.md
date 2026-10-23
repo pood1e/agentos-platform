@@ -71,10 +71,14 @@ flowchart LR
 | --- | --- | --- |
 | OAuth 资源 | Kubernetes | 交换为 `<environment>-kubernetes` 受众令牌；RBAC 绑定身份服务账号主体，取消静态 ServiceAccount 令牌 |
 | OAuth 资源 | Keycloak Admin API | 交换为 realm 管理受众令牌，权限由 Fine-Grained Admin Permissions V2 决定，用户执行按发起人自身的管理权限执行；Keycloak MCP 直接使用入站令牌，取消客户端密钥转发 |
-| 待验证 | Grafana | 原生 JWT 认证接受交换令牌时归入 OAuth 资源，否则按 API 令牌处理 |
+| OAuth 资源 | Grafana | 原生 JWT 认证与官方 MCP Authorization 转发，受众为 grafana |
 | API 令牌 | NetBox、JumpServer、Zammad | 每身份独立账号与令牌，取消 NetBox 共享读取账号；使用目标原生有效期，由部署流程定期轮换 |
 
 API 令牌目标需要在目标侧记录发起人时，连接器 `auth` 以 `oauthTokenExchange` 换取受众为该连接器的令牌，并以 `credentials` 携带目标令牌；连接器按 OIDC Discovery 校验后记录 `sub` 与 `azp`。
+
+### 后台用户执行
+
+登录授权码流程请求 `offline_access`，离线 refresh token 与访问令牌加密保存在服务端。浏览器 Cookie 仅保存用户主体。后台任务按需续期后以原用户执行 OBO；普通退出与短期令牌到期不终止任务。撤销执行绑定、离线授权失效或账号禁用时拒绝后续调用，既有任务权限上限保持不变。PostgreSQL 行锁串行处理同一用户的刷新。
 
 ### 连接器协议与上下文
 
@@ -138,6 +142,8 @@ API 令牌目标需要在目标侧记录发起人时，连接器 `auth` 以 `oau
 - Grafana 13.2.4 与官方 MCP 2.0.2：JWT API 认证和 `GRAFANA_FORWARD_HEADERS=Authorization` 透传通过，采用目标令牌交换。
 - JumpServer：PrivateToken 没有有效期，改用原生缓存 Bearer token；FastAPI-MCP 0.4.0 与兼容的 MCP SDK 1.30.0 完成 Streamable HTTP 调用验证。
 - 原生工具发现：client-go 刷新 transport 和 Go MCP SDK 测试通过，凭据限于平台网关地址。
+- 跨集群网关链路：实际绑定 ServiceAccount JWT、目标 OAuth 交换、API 凭据注入、Actor 与环境令牌移除、CA/SAN 错误拒绝均通过。
+- 后台授权：Keycloak 在线会话退出后离线刷新及后续交换通过，禁用用户后续期被拒绝。
 
 ### 切换
 

@@ -20,4 +20,4 @@ spec:
             backend:
               service:
                 name: {{ include "agentos.name" . }}-console
-                port: {name: {{ if eq .Values.identity.mode "oidc" }}identity{{ else }}http{{ end }}}
+                port: {name: http}

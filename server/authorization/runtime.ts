@@ -3,6 +3,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createRemoteJWKSet } from "jose";
+import type { Configuration } from "openid-client";
 import {
   HeaderMutationSchema,
   McpHeaderSchema,
@@ -20,6 +21,7 @@ import { actorTokenHeader, actorVerifier, runtimeIdentity } from "./actor.js";
 import type { EnvironmentTokens } from "./environment-tokens.js";
 import { executions } from "./executions.js";
 import { mcpAuthorization } from "./mcp.js";
+import { offlineCredentials } from "./offline.js";
 import type { jwtIdentity } from "./oidc.js";
 import { executionStore } from "./store.js";
 
@@ -36,6 +38,7 @@ export async function executionRuntime(
   verify?: ReturnType<typeof jwtIdentity>,
   nativeCreator?: string,
   environmentToken?: EnvironmentTokens,
+  oauth?: Configuration,
 ) {
   const persistent = await executionStore(
     required("AGENTOS_EXECUTION_DATABASE_URL"),
@@ -45,10 +48,12 @@ export async function executionRuntime(
       ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
       : undefined,
   );
+  const background = oauth && verify ? offlineCredentials(persistent, oauth, verify) : undefined;
   const registry = executions(
     persistent,
     verify,
     nativeCreator ? scheduledIdentity(clients, workspace, nativeCreator) : undefined,
+    background?.resolve,
   );
   const workspaces = new Set<string>(
     JSON.parse(process.env.AGENTOS_EXECUTION_WORKSPACES ?? JSON.stringify([workspace])),
@@ -191,6 +196,7 @@ export async function executionRuntime(
   };
   return {
     registry,
+    background,
     actor,
     authenticatedActor,
     resolve,

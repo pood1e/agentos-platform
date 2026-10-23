@@ -54,6 +54,8 @@ export default defineConfig({
             AGENTOS_AUTH_MODE: "oidc",
             AGENTOS_OIDC_ISSUER: issuer,
             AGENTOS_OIDC_CLIENT_ID: "console",
+            AGENTOS_OIDC_CLIENT_SECRET: "test-client-secret",
+            AGENTOS_COOKIE_SECRET: Buffer.alloc(32, 1).toString("base64"),
             AGENTOS_OIDC_AUDIENCE: "console",
             AGENTOS_OIDC_WRITER_ROLE: "writer",
             AGENTOS_ORIGIN: "http://127.0.0.1:8090",

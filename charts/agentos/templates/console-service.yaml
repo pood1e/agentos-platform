@@ -11,8 +11,5 @@ spec:
     app.kubernetes.io/component: console
   ports:
     - {name: http, port: 8080, targetPort: http}
-    {{- if eq .Values.identity.mode "oidc" }}
-    - {name: identity, port: 4180, targetPort: identity}
-    {{- end }}
     - {name: guardrails, port: 9090, targetPort: guardrails}
     - {name: runtime, port: 9091, targetPort: runtime}

@@ -22,6 +22,9 @@ spec:
       policy:
         matchExpressions:
           - >-
+            {{- range .Values.global.agentos.environments }}
+            (has(jwt.sub) && request.path.startsWith('/mcp/{{ .name }}-')) ||
+            {{- end }}
             (has(apiKey.service) && apiKey.service == 'agentos' &&
               request.path.matches('^/v1/(responses|chat/completions|messages|embeddings|models)(/.*)?$')) ||
             (has(apiKey.service) && apiKey.service == 'platform' &&

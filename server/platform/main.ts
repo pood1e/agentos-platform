@@ -3,10 +3,12 @@ import { resolve } from "node:path";
 import { create } from "@bufbuild/protobuf";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
+import { discovery } from "openid-client";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { loadCatalog } from "../../shared/tool-catalog.js";
+import { registerBrowserIdentity } from "../authorization/browser.js";
 import { scopedCollaboration } from "../authorization/context.js";
 import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { relatedExecutions } from "../authorization/executions.js";
@@ -51,14 +53,26 @@ import { machineIdentities } from "./machine-identities.js";
 const config = kagentConfig();
 const authentication = process.env.AGENTOS_AUTH_MODE ?? "none";
 if (!["none", "oidc"].includes(authentication)) throw new Error("Unknown authentication mode");
+const oauth =
+  authentication === "oidc"
+    ? await discovery(
+        new URL(process.env.AGENTOS_OIDC_ISSUER ?? ""),
+        process.env.AGENTOS_OIDC_CLIENT_ID ?? "",
+        process.env.AGENTOS_OIDC_CLIENT_SECRET ?? "",
+      )
+    : undefined;
+if (oauth) oauth.timeout = 10;
 const identity =
   authentication === "oidc"
-    ? await oidcIdentity({
-        issuer: process.env.AGENTOS_OIDC_ISSUER ?? "",
-        audience: process.env.AGENTOS_OIDC_AUDIENCE ?? "",
-        writerRole: process.env.AGENTOS_OIDC_WRITER_ROLE ?? "",
-        origin: process.env.AGENTOS_ORIGIN ?? "",
-      })
+    ? await oidcIdentity(
+        {
+          issuer: process.env.AGENTOS_OIDC_ISSUER ?? "",
+          audience: process.env.AGENTOS_OIDC_AUDIENCE ?? "",
+          writerRole: process.env.AGENTOS_OIDC_WRITER_ROLE ?? "",
+          origin: process.env.AGENTOS_ORIGIN ?? "",
+        },
+        oauth,
+      )
     : undefined;
 const token = process.env.AGENTOS_MCP_TOKEN;
 if (!token) throw new Error("AGENTOS_MCP_TOKEN is required");
@@ -85,7 +99,16 @@ const execution = await executionRuntime(
   identity,
   config.userId,
   environmentToken,
+  oauth,
 );
+if (oauth && execution.background)
+  await registerBrowserIdentity(app, {
+    origin: process.env.AGENTOS_ORIGIN ?? "",
+    client: oauth,
+    key: Buffer.from(process.env.AGENTOS_COOKIE_SECRET ?? "", "base64"),
+    grants: execution.background,
+    executions: execution.registry,
+  });
 const tags = await taskTagStore(
   process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
   config.namespace,
