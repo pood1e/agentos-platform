@@ -51,6 +51,9 @@ for environment in config['environments']:
                 assert exchange['subjectToken']['source']['header']['name'] == 'x-agentos-subject-token'
     user_routes = [doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'HTTPRoute' and doc['metadata']['name'].endswith('-user')]
     assert user_routes and all(route['spec']['rules'][0]['matches'][0]['headers'][1]['value'] == 'user' for route in user_routes)
+    for route in (doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'HTTPRoute'):
+        stripped = ['x-substrate-actor-token'] + ([] if route in user_routes else ['x-agentos-subject-token'])
+        assert route['spec']['rules'][0]['filters'][0]['requestHeaderModifier']['remove'] == stripped, f'{name}: connector credentials'
     bindings = yaml.safe_load((out / f'{name}-initialize-tools.yaml').read_text())
     for item in bindings:
         binding = item['mcp']
