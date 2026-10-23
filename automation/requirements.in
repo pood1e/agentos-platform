@@ -8,3 +8,5 @@ PyJWT[crypto]==2.15.1
 httpx==0.28.1
 httpx2==2.13.1
 protobuf==7.36.2
+
+oauthlib==4.0.0

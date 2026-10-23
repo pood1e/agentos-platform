@@ -88,8 +88,8 @@ describe("native gateway connections", () => {
     expect(native).toMatchObject({
       provider: "Anthropic",
       anthropic: { baseUrl: env.dependencies.gateway.url },
-      apiKeySecret: "agentos-gateway",
-      apiKeySecretKey: "api-key",
+      apiKeySecret: "agentos-model-client",
+      apiKeySecretKey: "placeholder",
     });
     expect(native.openAI).toBeUndefined();
     expect(object((await env.store.get("models", "harness-model")).spec).provider).toBe("OpenAI");
@@ -103,8 +103,8 @@ describe("native gateway connections", () => {
     expect(JSON.stringify(saved)).not.toContain("provider-secret");
     const native = await env.store.get("modelConfigs", "model-smoke");
     expect(object(native.spec)).toMatchObject({
-      apiKeySecret: "agentos-gateway",
-      apiKeySecretKey: "api-key",
+      apiKeySecret: "agentos-model-client",
+      apiKeySecretKey: "placeholder",
       openAI: { baseUrl: `${env.dependencies.gateway.url}/v1` },
     });
     const secret = env.fake.resources.get("secrets", "agentos-model-model-smoke");
@@ -127,7 +127,7 @@ describe("native gateway connections", () => {
       create: true,
     });
     const updated = await client.saveConnection({ connection: first });
-    expect(object(first?.resource?.value?.spec).policies).toBeUndefined();
+    expect(object(object(first?.resource?.value?.spec).policies).auth).toBeUndefined();
     await expect(client.saveConnection({ connection: first })).rejects.toMatchObject({
       code: Code.Aborted,
     });
@@ -159,25 +159,19 @@ describe("native gateway connections", () => {
       create: true,
     });
     const backend = saved?.resource?.value ?? {};
-    expect(object(backend.spec).policies).toBeUndefined();
+    expect(object(object(object(backend.spec).policies).mcp).guardrails).toMatchObject({
+      processors: [{ remote: { failureMode: "FailClosed" } }],
+    });
     expect(object(object(backend.spec).mcp).prefixMode).toBe("Never");
     expect(object(object(backend.spec).mcp).targets).toMatchObject([
       { static: { policies: { http: { requestTimeout: "10m" } } } },
     ]);
-    const policy = await env.store.get("mcpPolicies", "new-mcp-tool-access");
-    expect(object(policy.spec).targetRefs).toEqual([
-      { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: "mcp-new-mcp" },
-    ]);
     const remote = await env.store.get("remoteMCPs", "new-mcp");
-    expect(remote.spec).toMatchObject({
-      url: `${env.dependencies.gateway.url}/mcp/new-mcp`,
-      headersFrom: [
-        {
-          name: "Authorization",
-          valueFrom: { type: "Secret", name: "agentos-gateway", key: "catalog-authorization" },
-        },
-      ],
-    });
+    expect(remote.spec).toMatchObject({ url: `${env.dependencies.gateway.url}/mcp/new-mcp` });
+    expect(object(remote.spec).headersFrom).toBeUndefined();
+    expect(object(object(remote.metadata).annotations)["agentos.dev/discovery-auth"]).toBe(
+      "kubernetes",
+    );
     await client.deleteConnection({
       kind: ConnectionKind.MCP,
       name: "new-mcp",

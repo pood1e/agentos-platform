@@ -1,27 +1,23 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { create } from "@bufbuild/protobuf";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import Fastify, { LogController } from "fastify";
 import { discovery } from "openid-client";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
-import { loadCatalog } from "../../shared/tool-catalog.js";
 import { registerBrowserIdentity } from "../authorization/browser.js";
-import { scopedCollaboration } from "../authorization/context.js";
 import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { relatedExecutions } from "../authorization/executions.js";
-import { discoveryMethods } from "../authorization/mcp.js";
+import { modelAuthorization } from "../authorization/models.js";
 import { registerRuntime } from "../authorization/native.js";
 import { oidcIdentity } from "../authorization/oidc.js";
+import { platformToolAuthorization } from "../authorization/platform-tools.js";
 import { executionRuntime } from "../authorization/runtime.js";
-import { environmentAuthorization } from "../authorization/transport.js";
+import { gatewayAuthorization } from "../authorization/transport.js";
+import { workloadConfiguration, workloadIdentity } from "../authorization/workloads.js";
 import { automationPresets } from "../automation/presets.js";
 import { automationService } from "../automation/service.js";
 import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
-import { roleCommands } from "../console/roles.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
 import { toolBindings } from "../governance/bindings.js";
@@ -29,7 +25,6 @@ import { governanceConfig } from "../governance/config.js";
 import { approvalCoordinator } from "../governance/coordinator.js";
 import { coordinationQueue, startCoordination } from "../jobs/coordination.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
-import { nativeInvocation } from "../kagent/invoke-session.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
 import { resourceStore } from "../management/resources.js";
@@ -42,14 +37,11 @@ import { speechService } from "../speech/service.js";
 import { speechSettingsStore } from "../speech/store.js";
 import { registerTranscription } from "../speech/transcription.js";
 import { taskTagStore } from "../tasks/store.js";
-import { registerTeamSessions } from "../team-sessions/app.js";
 import { continuations } from "../team-sessions/continuation.js";
-import { sessionTools } from "../team-sessions/tools.js";
 import { workspaceContext } from "./access.js";
-import { automationTools } from "./automation.js";
 import { grpcServer } from "./grpc.js";
 import { collaborationGuardrails } from "./guardrails.js";
-import { machineIdentities } from "./machine-identities.js";
+import { registerPlatformMcp } from "./mcp.js";
 
 const config = kagentConfig();
 const authentication = process.env.AGENTOS_AUTH_MODE ?? "none";
@@ -75,8 +67,6 @@ const identity =
         oauth,
       )
     : undefined;
-const token = process.env.AGENTOS_MCP_TOKEN;
-if (!token) throw new Error("AGENTOS_MCP_TOKEN is required");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
 const app = Fastify({
   logger: true,
@@ -118,7 +108,7 @@ const tags = await taskTagStore(
     : undefined,
 );
 const automation = automationPresets(config.namespace, packRoot);
-const catalog = loadCatalog();
+const workloads = workloadIdentity(workloadConfiguration());
 const knowledge = knowledgeConfig(config);
 const speechSettings = speechSettingsStore(
   kubeConfig.makeApiClient(CoreV1Api),
@@ -135,11 +125,6 @@ await registerTranscription(app, speechSettings.load, async (headers) => {
   if (identity) await identity(headers);
 });
 const replaceTemplate = templateWriter(kubeConfig);
-const identities = machineIdentities(
-  kubeConfig,
-  config.namespace,
-  process.env.AGENTOS_RELEASE ?? "agentos",
-);
 const pack = loadPack(packRoot),
   catalogName = process.env.AGENTOS_SKILL_CATALOG ?? "agentos-skills";
 const store = resourceStore(kubeConfig, config.namespace, catalogName);
@@ -151,49 +136,8 @@ const gateway = {
     process.env.AGENTOS_GATEWAY_URL ??
     "http://agentos-mcp-gateway:8080",
   namespace: config.namespace,
-  secret: process.env.AGENTOS_GATEWAY_SECRET ?? "agentos-gateway",
+  secret: `${process.env.AGENTOS_RELEASE ?? "agentos"}-model-client`,
 };
-function services(
-  native = clients,
-  resources = store,
-  replace = replaceTemplate,
-  bind = identities.bind,
-) {
-  return {
-    service: consoleService({
-      sync,
-      clients: native,
-      namespace: config.namespace,
-      access,
-      operations,
-      environmentToken,
-      roleDefaults: roleDefaults(),
-      replaceTemplate: replace,
-      pack,
-      tags,
-      speech,
-      platformTools: bind,
-      executions: execution.registry,
-      entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
-      authorizeTools: execution.authorizeTools,
-    }),
-    management: managementService({
-      clients: native,
-      store: resources,
-      gateway,
-      knowledge,
-      speech: speechSettings,
-    }),
-  };
-}
-const { alignRoles } = roleCommands(
-  clients,
-  config.namespace,
-  access,
-  roleDefaults(),
-  replaceTemplate,
-  identities.bind,
-);
 await registerConsole(app, {
   context: workspaceContext(
     config.namespace,
@@ -202,7 +146,30 @@ await registerConsole(app, {
     process.env.AGENTOS_ORIGIN ?? "",
     execution.registry.remember,
   ),
-  ...services(),
+
+  service: consoleService({
+    sync,
+    clients,
+    namespace: config.namespace,
+    access,
+    operations,
+    environmentToken,
+    roleDefaults: roleDefaults(),
+    replaceTemplate,
+    pack,
+    tags,
+    speech,
+    executions: execution.registry,
+    entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
+    authorizeTools: execution.authorizeTools,
+  }),
+  management: managementService({
+    clients,
+    store,
+    gateway,
+    knowledge,
+    speech: speechSettings,
+  }),
   automation: automationService(
     clients,
     config.namespace,
@@ -214,69 +181,15 @@ await registerConsole(app, {
   staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
   packRoot,
 });
-await registerTeamSessions(
+await registerPlatformMcp(
   app,
-  sessionTools(clients, config.namespace, access, knowledgeService(clients, knowledge)),
-  token,
-  async (role, headers, method, tool) => {
-    if (role === "automation") {
-      const environment = headers["x-agentos-environment"];
-      if (
-        typeof environment !== "string" ||
-        !operations.environments.some((entry) => entry.environment?.name === environment)
-      )
-        throw new Error("Unknown source environment");
-      return {
-        scopes: ["run_case", "observe_case", "cancel_case"],
-        handler: automationTools(
-          clients,
-          sync,
-          config.namespace,
-          environment,
-          nativeInvocation(
-            new URL("/mcp/kagent-collaboration", knowledge.url),
-            process.env.AGENTOS_COLLABORATION_TOKEN ?? knowledge.token,
-            config.userId,
-          ),
-          async (session, cancel, contexts) => {
-            const principal = create(ExecutionIdentitySchema, {
-              subject: `service:automation:${environment}`,
-              write: true,
-              capabilities: [Capability.KNOWLEDGE_MANAGE],
-              credential: { case: "service", value: true },
-            });
-            await execution.registry.bind(session, principal);
-            if (cancel) {
-              await relatedExecutions(
-                execution.registry,
-                clients.sessions,
-                session,
-                contexts ?? [],
-                true,
-              );
-              await execution.registry.revoke(session, principal);
-            }
-          },
-        ),
-      };
-    }
-    if (headers["x-agentos-workspace"] !== config.namespace)
-      throw new Error("Workspace access denied");
-    const scope = await (role === "platform"
-      ? Promise.resolve({ scopes: [...(catalog.servers.get("team-sessions")?.keys() ?? [])] })
-      : identities.authorize(role, clients).then((scopes) => ({ scopes })));
-    if (discoveryMethods.has(method)) return scope;
-    const parent = await execution.actor(headers);
-    await execution.authorizeTools(parent, [tool]);
-    return {
-      ...scope,
-      handler: scopedCollaboration(
-        sessionTools(clients, config.namespace, access, knowledgeService(clients, knowledge)),
-        parent,
-        execution.registry,
-      ),
-    };
-  },
+  config,
+  clients,
+  sync,
+  execution,
+  workloads,
+  access,
+  knowledgeService(clients, knowledge),
 );
 const continueDelegation = continuations(sync, async (contextId, contexts) => {
   const { session: parent } = await clients.sessions.getSession({ sessionId: contextId });
@@ -307,21 +220,34 @@ const jobs = await coordinationQueue(
 );
 const stopCoordination = await startCoordination(sync, jobs, [continueDelegation, approvals]);
 const processor = grpcServer(app, {
-  fallback: environmentAuthorization(execution.authorizeTransport),
+  fallback: gatewayAuthorization(
+    execution.authorizeTransport,
+    modelAuthorization(clients, execution, workloads, config.namespace),
+    workloads,
+  ),
   routes: (router) => {
     const collaboration = collaborationGuardrails(
       new Map([[config.namespace, clients]]),
       execution,
     );
+    const platform = platformToolAuthorization(execution, workloads, access);
     router.service(ExtMcp, {
-      checkRequest: (request, context) =>
-        request.metadataContext?.execution === true
-          ? execution.guardrails.checkRequest(request, context)
-          : collaboration.checkRequest(request, context),
-      checkResponse: (request, context) =>
-        request.metadataContext?.execution === true
-          ? execution.guardrails.checkResponse(request, context)
-          : collaboration.checkResponse(request, context),
+      async checkRequest(request, context) {
+        if (request.metadataContext?.execution === true)
+          return execution.guardrails.checkRequest(request, context);
+        const result = await platform.checkRequest(request, context);
+        if (
+          result.result?.case !== "pass" ||
+          request.metadataContext?.platformService !== "kagent-collaboration"
+        )
+          return result;
+        return collaboration.checkRequest(request, context);
+      },
+      checkResponse(request, context) {
+        return request.metadataContext?.platformService === "kagent-collaboration"
+          ? collaboration.checkResponse(request, context)
+          : platform.checkResponse(request, context);
+      },
     });
   },
 });
@@ -336,20 +262,7 @@ app.addHook("onClose", async () => {
   await tags.close();
 });
 sync.start();
-// Engineer bindings follow the access policy, including after upgrades.
-const align = (): void =>
-  void identities
-    .align(clients, replaceTemplate)
-    .then(() => alignRoles())
-    .then(async (updated) => {
-      await automation.seed(clients);
-      if (updated.length) app.log.info({ updated }, "engineer bindings aligned with access policy");
-    })
-    .catch((error: unknown) => {
-      app.log.warn({ err: error }, "engineer binding alignment failed; retrying");
-      setTimeout(align, 30_000).unref();
-    });
-align();
+await automation.seed(clients);
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => void app.close());
 await Promise.all([
   processor.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), listenConfig().host),

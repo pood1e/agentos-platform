@@ -2,6 +2,7 @@ apiVersion: api.kagent.dev/v1alpha3
 kind: RemoteMCPServer
 metadata:
   name: kagent-collaboration
+  annotations: {agentos.dev/discovery-auth: kubernetes}
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:
@@ -9,6 +10,3 @@ spec:
   description: Invoke independent engineer sessions and collect task results.
   timeout: 10m
   sseReadTimeout: 10m
-  headersFrom:
-    - name: Authorization
-      valueFrom: {type: Secret, name: {{ include "agentos.name" . }}-gateway, key: mcp-authorization}

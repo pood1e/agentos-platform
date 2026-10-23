@@ -115,7 +115,7 @@ all:
 | `skill_repository_credential_file` | 可选，JSON，含只读 Git 仓库的 `Authorization` 请求头，创建 `agentos-skill-repository` |
 | `AGENTOS_CHART_USER`、`AGENTOS_CHART_TOKEN` | 可选，下载私有 Helm 包 |
 
-凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。模型网关、MCP 与运维环境继续使用各自的机器凭据。
+凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。平台模型与 MCP 使用工作负载 JWT；目标系统凭据由运维环境管理。Helm values 以 JSON 文件传入，保留 JWK 的标准字段名。
 
 控制台认证由平台值 `identity.mode` 选择，默认 `none`，直接提供工作空间访问。启用 `oidc` 时配置：
 

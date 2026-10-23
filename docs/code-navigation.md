@@ -43,6 +43,6 @@
 
 | 扩展路径 | 职责 |
 | --- | --- |
-| `server/platform` | 进程入口、人类身份验证、机器权限与协作边界 |
+| `server/platform` | 进程入口、工作负载接线与协作边界 |
 | `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、人工反馈入口 |
 | `deploy/observability` | 官方 Langfuse、Collector 与独立存储 |

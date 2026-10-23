@@ -17,6 +17,7 @@ pack:
   image: ''
 automation:
   enabled: false
+  sources: []
 kagent:
   endpoint: http://kagent-controller:8083
   userId: agentos
@@ -25,6 +26,9 @@ execution:
   databaseCASecret: kagent-postgres-ca
   substrateURL: https://api.ate-system.svc
   actorIssuer: https://idp.ate-system.svc
+  actorJWKS: {keys: []}
+  kubernetesIssuer: ''
+  kubernetesJWKS: {keys: []}
 console:
   resources:
     requests:
@@ -200,10 +204,7 @@ gateway:
               http: {requestTimeout: 10m}
             protocol: StreamableHTTP
       policies:
-        auth:
-          secretRef:
-            name: '{{ include "agentos.name" . }}-mcp'
-            key: token
+        auth: {passthrough: {}}
   - name: kagent-collaboration
     spec:
       mcp:

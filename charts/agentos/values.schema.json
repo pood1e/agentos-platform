@@ -355,6 +355,13 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agentos.authorization.v1.AutomationSource.jsonschema.json"
+          },
+          "maxItems": 32
         }
       },
       "required": ["enabled"]
@@ -436,7 +443,15 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["databaseSecret", "databaseCASecret", "substrateURL", "actorIssuer"],
+      "required": [
+        "databaseSecret",
+        "databaseCASecret",
+        "substrateURL",
+        "actorIssuer",
+        "actorJWKS",
+        "kubernetesIssuer",
+        "kubernetesJWKS"
+      ],
       "properties": {
         "databaseSecret": {
           "type": "string",
@@ -455,6 +470,37 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^https://"
+        },
+        "actorJWKS": {
+          "type": "object",
+          "required": ["keys"],
+          "properties": {
+            "keys": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "kubernetesJWKS": {
+          "type": "object",
+          "required": ["keys"],
+          "properties": {
+            "keys": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "kubernetesIssuer": {
+          "type": "string",
+          "pattern": "^https://",
+          "minLength": 1
         }
       }
     },
@@ -872,6 +918,47 @@
           "required": ["endpoint", "voices"]
         }
       ]
+    },
+    "agentos.authorization.v1.AutomationSource.jsonschema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "An environment's client-credentials identity; human tokens do not match it.",
+      "patternProperties": {
+        "^(client_id)$": {
+          "default": "",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "properties": {
+        "audience": {
+          "default": "",
+          "minLength": 1,
+          "type": "string"
+        },
+        "clientId": {
+          "default": "",
+          "minLength": 1,
+          "type": "string"
+        },
+        "environment": {
+          "default": "",
+          "minLength": 1,
+          "type": "string"
+        },
+        "issuer": {
+          "default": "",
+          "pattern": "^https://.*",
+          "type": "string"
+        },
+        "subject": {
+          "default": "",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "title": "Automation Source",
+      "type": "object"
     }
   }
 }

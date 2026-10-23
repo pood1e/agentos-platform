@@ -15,6 +15,14 @@ metadata:
 spec:
   parentRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" $ }}-gateway, sectionName: http}
-  {{- toYaml .spec | nindent 2 }}
+  {{- $spec := deepCopy .spec }}
+  {{- $policies := $spec.policies | default dict }}
+  {{- $headers := $policies.headers | default dict }}
+  {{- $request := $headers.request | default dict }}
+  {{- $_ := set $request "remove" (append ($request.remove | default list) "x-substrate-actor-token" | uniq) }}
+  {{- $_ := set $headers "request" $request }}
+  {{- $_ := set $policies "headers" $headers }}
+  {{- $_ := set $spec "policies" $policies }}
+  {{- toYaml $spec | nindent 2 }}
 {{- end }}
 {{- end }}

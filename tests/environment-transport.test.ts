@@ -3,7 +3,7 @@ import { create, toJsonString } from "@bufbuild/protobuf";
 import Fastify from "fastify";
 import { expect, it, vi } from "vitest";
 import { McpRequestSchema } from "../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { environmentAuthorization } from "../server/authorization/transport.js";
+import { gatewayAuthorization } from "../server/authorization/transport.js";
 import { grpcServer } from "../server/platform/grpc.js";
 
 it("authenticates transport notifications, event streams and session cleanup over native h2c", async () => {
@@ -11,7 +11,11 @@ it("authenticates transport notifications, event streams and session cleanup ove
   const authorize = vi.fn(async () => "environment-token");
   const server = grpcServer(app, {
     routes: () => {},
-    fallback: environmentAuthorization(authorize),
+    fallback: gatewayAuthorization(authorize, async () => {}, {
+      automation: async () => {
+        throw new Error("not configured");
+      },
+    } as unknown as import("../server/authorization/workloads.js").WorkloadIdentity),
   });
   await server.listen(0, "127.0.0.1");
   const address = server.address();

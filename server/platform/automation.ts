@@ -1,6 +1,6 @@
 import { create, fromJson } from "@bufbuild/protobuf";
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
-import { TaskState } from "../../gen/a2a_pb.js";
+import { MessageSchema, Role, TaskState } from "../../gen/a2a_pb.js";
 import {
   type CaseReference,
   CaseReferenceSchema,
@@ -15,8 +15,8 @@ import requestSchema from "../../gen/schema/agentos.automation.v1.CaseRequest.js
   type: "json",
 };
 import type { KagentClients } from "../kagent/clients.js";
-import type { nativeInvocation } from "../kagent/invoke-session.js";
 import { cancelTree } from "../read-model/cancel.js";
+import { taskOutput } from "../read-model/decode/output.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { busy, outcomeState, taskTree } from "../read-model/tree.js";
 import { messageIdentity } from "../shared/idempotency.js";
@@ -28,7 +28,6 @@ export function automationTools(
   sync: KagentSync,
   workspace: string,
   environment: string,
-  invoke: ReturnType<typeof nativeInvocation>,
   authorize?: (session: Session, cancel?: boolean, contexts?: string[]) => Promise<void>,
 ) {
   const messageId = (ref: CaseReference) =>
@@ -83,18 +82,37 @@ export function automationTools(
         inputSchema: inputSchema(requestSchema),
         annotations: { idempotentHint: true },
       },
-      async (args, context) => {
+      async (args) => {
         const request = fromJson(CaseRequestSchema, args);
         if (validator.validate(CaseRequestSchema, request).kind !== "valid" || !request.case)
           throw new Error("A versioned source case and concise task are required");
         const own = await session(request.case);
-        const response = await invoke(
-          own.id,
-          messageId(request.case),
-          `Environment: ${environment}\nSource case: ${request.case.key}\n${request.message}`,
-          context.mcpReq.signal,
+        const task = await sync.send(
+          `${own.agent?.namespace}/${own.agent?.name}`,
+          create(MessageSchema, {
+            contextId: own.id,
+            messageId: messageId(request.case),
+            role: Role.USER,
+            parts: [
+              {
+                content: {
+                  case: "text",
+                  value: `Environment: ${environment}\nSource case: ${request.case.key}\n${request.message}`,
+                },
+              },
+            ],
+          }),
         );
-        return response;
+        return result(
+          InvokeSessionOutputSchema,
+          create(InvokeSessionOutputSchema, {
+            sessionId: own.id,
+            contextId: task.contextId,
+            taskId: task.id,
+            state: task.status?.state ?? TaskState.WORKING,
+            text: taskOutput(task).answer.slice(0, 4000),
+          }),
+        );
       },
     );
     server.registerTool(

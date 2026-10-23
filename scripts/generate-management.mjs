@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { parse } from "yaml";
 
@@ -18,3 +19,23 @@ writeFileSync("gen/schema/kagent.harness.json", `${JSON.stringify(harnessSchema)
 const chartSchema = JSON.parse(readFileSync("charts/agentos/values.schema.json", "utf8"));
 if (JSON.stringify(chartSchema.$defs.harnessSpec) !== JSON.stringify(harnessSchema))
   throw new Error("Chart harnessSpec must match the pinned native Harness schema");
+
+const automationSource = JSON.parse(
+  readFileSync(
+    "gen/schema/agentos.authorization.v1.AutomationSource.jsonschema.bundle.json",
+    "utf8",
+  ),
+);
+Object.assign(chartSchema.$defs, automationSource.$defs);
+chartSchema.properties.automation.properties.sources = {
+  type: "array",
+  items: { $ref: automationSource.$ref },
+  maxItems: 32,
+};
+writeFileSync("charts/agentos/values.schema.json", `${JSON.stringify(chartSchema, null, 2)}\n`);
+
+execFileSync(
+  "node_modules/.bin/biome",
+  ["format", "--write", "charts/agentos/values.schema.json"],
+  { stdio: "ignore" },
+);

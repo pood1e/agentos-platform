@@ -60,8 +60,7 @@ export function collaborationGuardrails(
               : undefined;
           if (execution) {
             if (parent) await execution.registry.resolve(parent);
-            else if (!["platform"].includes(text(request.metadataContext?.service)))
-              throw new Error("Signed runtime identity required");
+            else throw new Error("Signed runtime identity required");
           }
           const params = object(JSON.parse(new TextDecoder().decode(request.mcpRequest)));
           if (params.name !== "invoke_session" && params.name !== "list_sessions")
@@ -113,8 +112,7 @@ export function collaborationGuardrails(
           const bearer = text(request.metadataContext?.runtimeIdentity);
           const parent = bearer ? await execution.actor({ [actorTokenHeader]: bearer }) : undefined;
           if (parent) await execution.registry.resolve(parent);
-          else if (!["platform"].includes(text(request.metadataContext?.service)))
-            throw new Error("Signed runtime identity required");
+          else throw new Error("Signed runtime identity required");
           const allowed = [];
           for (const item of output.sessions) {
             const { session } = await access.clients.sessions.getSession(

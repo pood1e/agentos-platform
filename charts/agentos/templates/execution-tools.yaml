@@ -9,3 +9,5 @@ data:
     {{- toYaml .Values.global.agentos.toolsets | nindent 4 }}
   platform-tools.yaml: |
     {{- .Files.Get "presets/platform-tools.yaml" | nindent 4 }}
+  workloads.json: |
+    {{- include "agentos.workloadAuth" . | nindent 4 }}

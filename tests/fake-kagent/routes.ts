@@ -188,6 +188,15 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
     },
   });
   router.service(ModelService, {
+    getModelConfig({ ref }) {
+      const value = fake.resources.get("modelconfigs", ref?.name ?? "");
+      return {
+        modelConfig: create(ModelConfigSchema, {
+          ref,
+          resource: { apiVersion: "api.kagent.dev/v1alpha3", kind: "ModelConfig", value },
+        }),
+      };
+    },
     listModelConfigs: () => ({
       modelConfigs: fake.resources.list("modelconfigs").map((value) =>
         create(ModelConfigSchema, {

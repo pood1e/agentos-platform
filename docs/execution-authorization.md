@@ -37,6 +37,20 @@ Substrate 宿主机为每个出站目标注入短期 Actor JWT。平台验证签
 Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根使用 Substrate 的原生 PodCertificate 与 ClusterTrustBundle。
 托管 Harness 的原生客户端与 MCP 编译配置发送 `x-substrate-actor-token` 占位头，宿主替换为签名凭证。自定义 Harness 使用相同的请求头和原生持久化协议。
 
+## 平台工作负载
+
+| 调用方 | 认证 | 准入范围 |
+| --- | --- | --- |
+| Agent | Substrate Actor JWT，按模型与 MCP 入口区分 audience | 当前 Actor、Session、执行授权、模型配置或模板工具绑定 |
+| kagent 控制器 | 绑定 ServiceAccount JWT，audience `agentos-mcp-discovery` | initialize、ping、工具发现等元数据方法 |
+| 平台 API | 绑定 ServiceAccount JWT，audience 为模型入口 | 配置的团队知识嵌入模型与 `/v1/embeddings` |
+| 环境自动化 worker | 已登记环境的 client credentials JWT | 对应环境的案例运行、观察与取消 |
+
+平台模型与协作 MCP 分别使用独立入口 audience。每个平台 MCP 服务只注册一次，ExtMCP 按具体服务及工具校验当前 Agent 的绑定，工具同名不会跨服务授权。
+自动化客户端精确匹配 issuer、audience、azp、服务账号 sub，人工用户令牌或其他环境客户端无法接管该入口。
+
+原生 Harness SDK 使用 ModelConfig 的非空占位值完成客户端初始化，实际授权依赖宿主注入的 Actor JWT；占位值不授予权限。平台 API 从 Kubernetes 投射卷逐次读取轮换后的短期令牌。
+
 ## 环境与方案包边界
 
 每个环境身份对应机密客户端 `agentos-<identity>`。平台在逐调用授权通过后，以 openid-client 获取环境资源受众的短期令牌：用户执行采用 RFC 8693，服务执行与目录发现采用 client credentials。环境网关验证 issuer、audience 与有效期，路径 `/mcp/<identity>/<service>` 的 `azp` 必须对应执行客户端。

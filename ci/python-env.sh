@@ -1,5 +1,9 @@
 #!/bin/sh
-dependency_key=$(printf '%s\n' "$(sha256sum "$@")" "$(python3 --version)" | sha256sum | cut -d ' ' -f 1)
+dependency_key=$({
+  sha256sum "$@"
+  git ls-files -z -- '*requirements*' | xargs -0 sha256sum
+  python3 --version
+} | sha256sum | cut -d ' ' -f 1)
 dependency_root="$AGENTOS_CI_CACHE/python/$dependency_key"
 mkdir -p "$dependency_root"
 (

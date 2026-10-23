@@ -9,6 +9,7 @@ plugins:
     strategy: all
     out: gen/schema
     types:
+      - agentos.authorization.v1.AutomationSource
       - agentos.console.v1.RoleDefinition
       - agentos.management.v1.SearchKnowledgeRequest
       - agentos.console.v1.SpeechTranscription

@@ -101,15 +101,8 @@ spec:
             - {name: AGENTOS_SKILL_ORIGINS, value: 'http://{{ include "agentos.name" . }}-skill-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080'}
             - {name: AGENTOS_EMBEDDING_MODEL, value: {{ .Values.embedding.model | quote }}}
             - {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
-            - name: AGENTOS_GATEWAY_TOKEN
-              valueFrom:
-                secretKeyRef: {name: {{ include "agentos.name" . }}-gateway, key: api-key}
-            - name: AGENTOS_MCP_TOKEN
-              valueFrom:
-                secretKeyRef: {name: {{ include "agentos.name" . }}-mcp, key: token}
-            - name: AGENTOS_COLLABORATION_TOKEN
-              valueFrom:
-                secretKeyRef: {name: {{ include "agentos.name" . }}-gateway, key: mcp-api-key}
+            - {name: AGENTOS_MODEL_TOKEN_FILE, value: /var/run/agentos-model/token}
+            - {name: AGENTOS_WORKLOAD_AUTH_CONFIG, value: /etc/agentos/workloads.json}
           readinessProbe:
             httpGet: {path: /readyz, port: http}
             periodSeconds: 3
@@ -126,6 +119,7 @@ spec:
           volumeMounts:
             - {name: runtime-identity, mountPath: /etc/agentos-runtime, readOnly: true}
             - {name: execution-database, mountPath: /etc/agentos-database, readOnly: true}
+            - {name: model-identity, mountPath: /var/run/agentos-model, readOnly: true}
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             {{- if .Values.global.agentos.environments }}
             - {name: environment-ca, mountPath: /etc/agentos-environments, readOnly: true}
@@ -135,6 +129,13 @@ spec:
             - {name: pack, mountPath: /etc/agentos-pack, readOnly: true}
             {{- end }}
       volumes:
+        - name: model-identity
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace | quote }}
+                  expirationSeconds: 600
+                  path: token
         - name: execution-database
           secret:
             secretName: {{ .Values.execution.databaseCASecret }}

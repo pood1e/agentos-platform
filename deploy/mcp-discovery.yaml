@@ -58,14 +58,6 @@
   retries: 60
   delay: 2
 
-- name: Read engineer collaboration connections
-  kubernetes.core.k8s_info:
-    api_version: api.kagent.dev/v1alpha3
-    kind: RemoteMCPServer
-    namespace: "{{ agentos_namespace }}"
-    label_selectors: [agentos.dev/platform-service]
-  register: platform_mcp_connections
-
 - name: Rediscover the published collaboration contracts
   kubernetes.core.k8s:
     state: patched
@@ -77,4 +69,4 @@
       metadata:
         labels:
           agentos.dev/platform-mcp-revision: "{{ platform_mcp_revision[:16] }}"
-  loop: "{{ ['team-sessions', 'kagent-collaboration'] + (platform_mcp_connections.resources | map(attribute='metadata.name') | list) }}"
+  loop: "{{ ['team-sessions', 'kagent-collaboration'] }}"

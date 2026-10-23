@@ -101,10 +101,28 @@ describe("engineer tool access", () => {
     ).toBe(true);
     expect(access.permitsCall("remediation", ["lab-kubernetes"], "unknown", true)).toBe(false);
     expect(access.permitsCall("remediation", ["unrelated"], "pods_list", true)).toBe(false);
-    expect(access.permitsTool("remediation", write, false)).toBe(false);
-    expect(access.permitsTool("inspection", write, true)).toBe(false);
-    expect(access.permitsTool("inspection", "create_session", false)).toBe(true);
+    expect(
+      access.permitsTool("remediation", "lab-kubernetes-remediation-changes", write, false),
+    ).toBe(false);
+    expect(access.permitsTool("inspection", "lab-kubernetes-inspection", write, true)).toBe(false);
+    expect(access.permitsTool("inspection", "team-sessions", "create_session", false)).toBe(true);
   });
+  it("keeps identical tool names scoped to their own service", () => {
+    const policy = new ToolBindings(
+      parseCatalog("", "reader:\n  readOnly: [get]\nwriter:\n  write: [get]\n"),
+      new Map(),
+    );
+    expect(policy.permitsTool("inspection", "reader", "get", false)).toBe(true);
+    expect(policy.permitsTool("inspection", "writer", "get", false)).toBe(false);
+    expect(policy.permitsTool("inspection", "unknown", "get", true)).toBe(false);
+    expect(
+      policy.selectedTool(
+        create(ToolBindingSchema, { server: "reader", tools: ["reader_get"] }),
+        "get",
+      ),
+    ).toBe(true);
+  });
+
   it("offers only the engineer's own identities and platform servers", () => {
     const permissions = access.requirements("inspection", servers);
     expect(new Set(permissions.map((item) => item.server))).toEqual(

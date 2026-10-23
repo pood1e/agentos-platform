@@ -89,11 +89,22 @@ export async function executionRuntime(
     clients.sessions,
     workspaces,
   );
-  const actor = async (headers: Record<string, string | string[] | undefined>) => {
+  const actor = async (
+    headers: Record<string, string | string[] | undefined>,
+    audience?: string,
+  ) => {
     const bearer = headers[actorTokenHeader];
     if (typeof bearer !== "string" || !/^Bearer [^\s,]+$/.test(bearer))
       throw new Error("Signed runtime identity required");
-    return resolve(bearer.slice(7));
+    const resolver = audience
+      ? runtimeIdentity(
+          actorVerifier(keys, issuer, audience),
+          substrate,
+          clients.sessions,
+          workspaces,
+        )
+      : resolve;
+    return resolver(bearer.slice(7));
   };
   const authenticatedActor = async (headers: Headers) => {
     const bearer = headers.get("authorization");
@@ -116,7 +127,7 @@ export async function executionRuntime(
     );
     if (!agentTemplate)
       throw new ConnectError("Execution template is unavailable", Code.PermissionDenied);
-    return { engineer: agentInfo(agent).role, role: roleDefinition(agentTemplate) };
+    return { engineer: agentInfo(agent).role, role: roleDefinition(agentTemplate), agent };
   };
   const route = async (target: { serviceNames: string[]; metadataContext?: JsonObject }) => {
     const environment = text(target.metadataContext?.environment);
@@ -179,8 +190,11 @@ export async function executionRuntime(
     if (
       tools.some(
         (tool) =>
-          !role.tools.some((binding) => binding.tools.includes(toolBaseName(tool))) ||
-          !bindings.permitsTool(engineer, toolBaseName(tool), context.write),
+          !role.tools.some(
+            (binding) =>
+              bindings.selectedTool(binding, toolBaseName(tool)) &&
+              bindings.permitsTool(engineer, binding.server, toolBaseName(tool), context.write),
+          ),
       )
     )
       throw new ConnectError(
@@ -190,9 +204,11 @@ export async function executionRuntime(
   };
   return {
     registry,
+    issuer,
     background,
     actor,
     authenticatedActor,
+    agentRole,
     resolve,
     guardrails,
     authorizeTransport,
