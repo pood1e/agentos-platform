@@ -36,6 +36,8 @@ for environment in config['environments']:
     assert 'apiKeyAuthentication' not in authentication
     assert authentication['jwtAuthentication']['mode'] == 'Strict'
     assert authentication['jwtAuthentication']['mcp']['resourceMetadata']['resource'].startswith('https://')
+    gateway_auth = next(doc for doc in gateway if doc['kind'] == 'AgentgatewayPolicy' and doc['metadata']['name'] == 'gateway-auth')
+    assert gateway_auth['spec']['frontend']['http']['maxBufferSize'] == '16Mi'
     backends = {doc['metadata']['name']: doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'AgentgatewayBackend'}
     expected = {f'{project}-{item["name"]}' for item in identities for project in toolsets if project in item['services']}
     assert set(backends) == expected, f'{name}: backends follow identities'
@@ -76,6 +78,14 @@ for environment in config['environments']:
     remotes = [doc for doc in load(f'{name}-platform-gateway.yaml') if doc['kind'] == 'RemoteMCPServer']
     assert all('headersFrom' not in doc['spec'] and doc['metadata']['annotations']['agentos.dev/discovery-auth'] == 'kubernetes' for doc in remotes)
     assert all('agentos-mcp-gateway.' in doc['spec']['url'] for doc in remotes)
+    for doc in load(f'{name}-platform-gateway.yaml'):
+        if doc['kind'] == 'HTTPRoute':
+            assert doc['metadata']['labels']['agentos.dev/mcp-source'] == doc['metadata']['ownerReferences'][0]['uid']
+        if doc['kind'] == 'AgentgatewayPolicy' and doc['metadata']['name'].endswith('-runtime-auth'):
+            assert 'targetRefs' not in doc['spec']
+            selector = doc['spec']['targetSelectors'][0]
+            assert selector['kind'] == 'HTTPRoute'
+            assert selector['matchLabels']['agentos.dev/mcp-source'] == doc['metadata']['ownerReferences'][0]['uid']
     text = (out / f'{name}-platform-gateway.yaml').read_text()
     assert all(legacy not in text for legacy in ['x-agentos-engineer', 'x-agentos-execution-kind', 'x-agentos-subject-token', 'apiKey.'])
 
