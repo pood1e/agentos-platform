@@ -1,0 +1,15 @@
+{% set connection = {
+  'name': environment_name, 'governance': environment_governance, 'issuer': environment_issuer, 'resource': gateway_resource,
+  'gateway': {'address': ansible_host, 'host': gateway_server_name, 'nodePort': gateway_node_port | int, 'ca': gateway_certificate.resources[0].data['ca.crt'] | b64decode},
+  'toolsets': toolsets, 'identities': engineer_identities, 'titles': {}
+} %}
+{% for project, connector in environment_connectors.items() %}
+{% set unused = connection.titles.update({project: connector.title | default(project)}) %}
+{% endfor %}
+{% if approval_service_url %}
+{% set unused = connection.update({'approvalUrl': approval_service_url}) %}
+{% if approval_service_authorization_file %}
+{% set unused = connection.update({'authorization': lookup('ansible.builtin.file', approval_service_authorization_file)}) %}
+{% endif %}
+{% endif %}
+{{ connection | to_nice_json }}

@@ -25,11 +25,15 @@ toolsets: >-
 toolset_revision: "{{ (toolsets | to_json | hash('sha256'))[:16] }}"
 environment_governance: "{{ (agentos_config.environments | selectattr('name', 'equalto', environment_name) | first).governance }}"
 engineer_identities: >-
-  {{ (agentos_config.identities | rejectattr('environments', 'defined') | list)
+  {{ [] if environment_state == 'absent' else
+     (agentos_config.identities | rejectattr('environments', 'defined') | list)
      + (agentos_config.identities | selectattr('environments', 'defined')
         | selectattr('environments', 'contains', environment_name) | list) }}
-retired_engineer_identities: >-
-  {{ agentos_config.identities | rejectattr('name', 'in', engineer_identities | map(attribute='name') | list) | list }}
+environment_state: present
+environment_release: agentos-environment
+connections_release: "{{ platform_release }}-connections"
+environment_chart_repository: ""
+environment_chart_version: ""
 agentgateway_version: v1.6.0
 gateway_charts:
   - name: agentgateway

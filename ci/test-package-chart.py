@@ -32,6 +32,10 @@ class PackageChartTest(unittest.TestCase):
             ".release-please-manifest.json",
             "charts/agentos/Chart.yaml",
             "charts/agentos/values.yaml",
+            "charts/agentos-environment/Chart.yaml",
+            "charts/agentos-environment/values.yaml",
+            "charts/agentos-connections/Chart.yaml",
+            "charts/agentos-connections/values.yaml",
             "deploy/vars.yaml",
         ]:
             target = self.workspace / name
@@ -114,6 +118,9 @@ class PackageChartTest(unittest.TestCase):
             )
         for name, digest in self.workers.items():
             self.assertEqual(release["artifacts"][name]["location"], f"{REGISTRY}/{name}@{digest}")
+        for name in ["agentos", "agentos-environment", "agentos-connections"]:
+            self.assertEqual(release["artifacts"][name]["location"], f"oci://{REGISTRY}/charts/{name}")
+            self.assertTrue((self.workspace / f"dist/{name}-{release['version']}.tgz").is_file())
         values = yaml.safe_load(
             (self.workspace / ".cache/release-charts/agentos/values.yaml").read_text()
         )

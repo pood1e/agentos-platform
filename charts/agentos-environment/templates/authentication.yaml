@@ -1,0 +1,68 @@
+{{- $clients := list -}}
+{{- range .Values.identities -}}
+{{- $clients = append $clients (printf "agentos-%s" .name) -}}
+{{- end -}}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: gateway-auth
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: mcp-gateway}
+  frontend:
+    http: {maxBufferSize: 16Mi}
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      preserveToken: true
+      providers:
+        - issuer: {{ .Values.environment.issuer | quote }}
+          audiences: [{{ .Values.environment.resource | quote }}]
+          jwks: {remote: {url: {{ .Values.environment.jwksURL | quote }}}}
+          validation: {requiredClaims: [sub, exp, aud]}
+      mcp:
+        provider: Keycloak
+        resourceMetadata:
+          resource: {{ .Values.environment.resource | quote }}
+          authorization_servers: [{{ .Values.environment.issuer | quote }}]
+          bearer_methods_supported: [header]
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - >-
+            request.path.startsWith('/.well-known/') ||
+            (has(jwt.azp) && jwt.azp in {{ $clients | toJson }})
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: environment-mcp-handshake
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: mcp-gateway}
+  traffic:
+    directResponse:
+      conditional:
+        - condition: >-
+            request.path.startsWith('/mcp/') &&
+            'mcp-method' in request.headers && request.headers['mcp-method'] == 'server/discover'
+          policy:
+            status: 404
+            body: 'Use initialize.'
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-oauth-metadata
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  parentRefs: [{name: mcp-gateway, sectionName: https}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /.well-known/oauth-protected-resource/mcp}
+        - path: {type: PathPrefix, value: /.well-known/oauth-authorization-server/mcp}
+      backendRefs:
+        - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ keys .Values.toolsets | sortAlpha | first }}-catalog}

@@ -1,0 +1,48 @@
+---
+- name: Write environment Helm values
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/environment-values.json.j2') }}"
+    dest: "{{ environment_cache }}/gateway-values.json"
+    mode: "0600"
+  when: environment_state == 'present'
+  no_log: true
+
+- name: Install the managed environment gateway release
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    binary_path: "{{ helm_binary }}"
+    name: "{{ environment_release }}"
+    chart_ref: "{{ environment_chart_repository }}/agentos-environment"
+    chart_version: "{{ environment_chart_version }}"
+    release_namespace: "{{ gateway_namespace }}"
+    reset_values: true
+    history_max: 3
+    values_files: "{{ [environment_cache ~ '/gateway-values.json'] if environment_state == 'present' else omit }}"
+    release_state: "{{ environment_state }}"
+    wait: true
+    timeout: 10m
+  no_log: true
+
+- name: Wait for the gateway certificate
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: cert-manager.io/v1
+    kind: Certificate
+    namespace: "{{ gateway_namespace }}"
+    name: mcp-gateway
+    wait: true
+    wait_condition: { type: Ready, status: "True" }
+    wait_timeout: 180
+  when: environment_state == 'present'
+
+- name: Wait for the environment gateway
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    name: mcp-gateway
+    namespace: "{{ gateway_namespace }}"
+    wait: true
+    wait_condition: { type: Programmed, status: "True" }
+    wait_timeout: 300
+  when: environment_state == 'present'

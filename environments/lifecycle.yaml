@@ -1,0 +1,52 @@
+---
+- name: Prepare managed environment identity changes
+  hosts: environments
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  tasks:
+    - name: Use the controller Python environment
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+    - name: Read the previous environment release
+      kubernetes.core.helm_info:
+        kubeconfig: "{{ kubeconfig }}"
+        binary_path: "{{ helm_binary }}"
+        name: "{{ environment_release }}"
+        release_namespace: "{{ gateway_namespace }}"
+      register: previous_environment_release
+      no_log: true
+
+    - name: Publish previous identity scope
+      ansible.builtin.set_fact:
+        previous_environment_values: "{{ previous_environment_release.status.release_values | default({}) }}"
+        retired_engineer_identities: >-
+          {{ ((previous_environment_release.status.release_values.identities | default([])) + agentos_config.identities)
+             | unique(attribute='name') | rejectattr('name', 'in', engineer_identities | map(attribute='name') | list) | list }}
+      no_log: true
+
+    - name: Read managed platform registrations
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ platform_kubeconfig }}"
+        api_version: api.kagent.dev/v1alpha3
+        kind: RemoteMCPServer
+        namespace: "{{ agentos_namespace }}"
+        label_selectors:
+          - "app.kubernetes.io/instance={{ connections_release }}"
+          - "agentos.dev/environment={{ environment_name }}"
+      register: managed_registrations
+
+    - name: Preserve existing registrations for binding initialization
+      ansible.builtin.set_fact:
+        existing_engineer_servers: "{{ managed_registrations.resources | map(attribute='metadata.name') | list }}"
+
+    - name: Identify retired service bindings
+      ansible.builtin.set_fact:
+        retired_engineer_servers: >-
+          {{ managed_registrations.resources | map(attribute='metadata.name') | list
+             | difference(lookup('ansible.builtin.template', 'templates/connection-servers.json.j2') | from_json) }}
+
+    - name: Remove retired template references
+      ansible.builtin.include_tasks: tasks/unbind.yaml
+      when: retired_engineer_servers | length > 0

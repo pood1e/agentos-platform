@@ -71,7 +71,7 @@ flowchart LR
 | 内嵌 | 目标集群中的独立命名空间 | 同上，与平台同集群 |
 
 平台需要有 KVM 的节点运行 microVM。平台 Chart 包含单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent；
-环境套件包含环境网关、身份路由与凭据模板；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
+环境套件通过 `agentos-environment` 与 `agentos-connections` 两个 Chart 管理环境网关和平台预置接入；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
 平台 API 使用滚动更新，新实例就绪后才移除旧实例；HTTP/2 连接通过 GOAWAY 排空已接收的 RPC。发布脚本在应用更新完成后刷新平台协作工具目录，保持网关与原生工具发现一致。
 浏览器以鉴权心跳判断平台连接，单个资源或观测流失败保留在对应页面。空闲观测流每 15 秒发送心跳，并在 5 分钟后正常轮换；断网恢复时重新订阅，登录失效时重新认证并保留当前 URL。
 案例自动化以镜像随平台发布，在环境侧按需部署，依赖 NATS JetStream 与 Temporal。

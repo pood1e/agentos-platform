@@ -7,8 +7,36 @@
     ".": {
       "release-type": "node",
       "extra-files": [
-        { "type": "yaml", "path": "charts/agentos/Chart.yaml", "jsonpath": "$.version" },
-        { "type": "yaml", "path": "charts/agentos/Chart.yaml", "jsonpath": "$.appVersion" }
+        {
+          "type": "yaml",
+          "path": "charts/agentos/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-environment/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-environment/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-connections/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-connections/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
       ]
     }
   }

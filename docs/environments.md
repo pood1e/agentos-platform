@@ -16,8 +16,10 @@ flowchart LR
 
 | 剧本 | 作用 |
 | --- | --- |
-| `environments/deploy.yaml` | 安装 cert-manager 与 agentgateway，签发网关证书、发布平台 CA，配置环境网关和身份路由 |
-| `environments/connect.yaml` | 登记 `agentos-governance`、服务目录、身份工具视图与原生 RemoteMCPServer，初始化缺失的角色工具绑定 |
+| `environments/deploy.yaml` | 安装固定版本控制器与 `agentos-environment` Chart，发布平台连接 release |
+| `environments/connections.yaml` | 安装 `agentos-connections` Chart，统一管理平台环境 CA、准入配置、服务目录与身份视图 |
+| `environments/connect.yaml` | 等待原生工具发现，初始化新增连接的默认工具绑定 |
+| `environments/lifecycle.yaml` | 对比原 release 的身份与服务范围，先解除退役资源的原生模板引用 |
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 只用于服务工具发现。
 
@@ -98,10 +100,30 @@ agentgateway 按 MCP SEP-414 将 W3C 上下文同步到 MCP `_meta`。Baggage �
 | `platform_kubeconfig` | 平台集群访问配置 |
 | `approval_service_url` | 可选，外部审批 HTTPS Connect 地址 |
 | `registry_config_file` | 可选，镜像拉取凭据 Docker JSON |
+| `environment_chart_repository`、`environment_chart_version` | 平台发布清单锁定的 OCI Chart 仓库与平台版本 |
+| `environment_state` | `present` 或 `absent`，控制所属环境 release 生命周期 |
 
 ```sh
 ANSIBLE_CONFIG=deploy/ansible.cfg .cache/deploy-venv/bin/ansible-playbook environments/deploy.yaml -i <site>/environments.yaml -e @<site>/environments-vars.yaml
 ANSIBLE_CONFIG=deploy/ansible.cfg .cache/deploy-venv/bin/ansible-playbook environments/connect.yaml -i <site>/environments.yaml -e @<site>/environments-vars.yaml
 ```
 
-`connect.yaml` 初始化缺失的服务与预置角色默认绑定，保留控制台中保存的服务配置和角色绑定。原生 RemoteMCPServer 控制器负责工具发现与刷新；发现结果描述可用工具，执行权限由平台、环境网关与目标系统共同校验。
+`connect.yaml` 初始化新增连接的预置角色默认绑定；已有角色的工具选择由平台保存。预置连接使用固定名称与 Helm 所有权，控制台创建的接入资源使用独立名称与平台所有权。原生 RemoteMCPServer 控制器负责工具发现与刷新；发现结果描述可用工具，执行权限由平台、环境网关与目标系统共同校验。
+
+## 资源归属与生命周期
+
+目标环境每套一个 `agentos-environment` release，拥有证书声明、网关、身份路由和网络策略。平台工作空间只有一个 `agentos-connections` release，
+拥有所有预置环境连接及 `agentos-governance`，统一处理环境增删。连接 release 在应用启动前发布 CA 与配置，原生 kagent 与 Substrate 基础设施须已就绪。
+
+Chart 管理对象由 Helm 回收，预置连接在控制台只读。平台创建的连接、可编辑 AgentTemplate 与目标系统的凭据分别由平台、原生 kagent API 与环境管理。
+AgentTemplate 仅在首次安装时初始化并保留，后续升级保留用户编辑与删除。连接资源以稳定的服务名称作为策略选择标签，Helm 对象使用 release 所有权。共享连接 release 使用完整环境 inventory；退役环境以 `environment_state: absent` 显式声明。
+
+身份变更按以下顺序执行：
+
+1. 方案包调用 `lifecycle.yaml`，读取上一版环境 release，并通过原生 AgentTemplate API 解除退役工具绑定；后续执行按当前模板复验。
+2. 环境通过目标系统原生 API 撤销对应 OAuth 客户端、角色、API 令牌及凭据 Secret。
+3. 更新环境 release，再更新平台连接 release；Helm 回收已移除的路由、工具视图、注册和 CA。
+4. 应用值和连接配置同步后，检查原生发现、OBO、角色工具范围与撤销结果。
+
+回退使用已发布 Chart 及完整站点值，Helm 处理其管理资源。原生身份权限与平台模板按目标版本的明确配置恢复。
+一次性接管旧资源时核对 release 清单、Helm 所有权及 ownerReferences，再移交给目标 release。

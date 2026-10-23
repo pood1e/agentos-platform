@@ -1,0 +1,74 @@
+suite: managed connection ownership and authentication
+values:
+- values.json
+release:
+  name: agentos-connections
+  namespace: agentos
+tests:
+- it: keeps presets under the connection release
+  template: catalog.yaml
+  documentSelector:
+    path: spec.mcp.targets[0].name
+    value: env-approval-kubernetes
+  asserts:
+  - equal:
+      path: metadata.annotations["agentos.dev/system-connection"]
+      value: 'true'
+  - equal:
+      path: metadata.labels["app.kubernetes.io/managed-by"]
+      value: Helm
+  - notExists:
+      path: metadata.ownerReferences
+  - equal:
+      path: spec.policies.extAuth.failureMode
+      value: FailClosed
+  - equal:
+      path: spec.policies.extAuth.backendRef.port
+      value: 9090
+  - equal:
+      path: spec.policies.extAuth.http.allowedResponseHeaders
+      value:
+      - authorization
+  - notExists:
+      path: spec.mcp.targets[0].static.policies.extAuth
+- it: limits Actor authentication to this service's audience
+  template: runtime-auth.yaml
+  documentSelector:
+    path: metadata.name
+    value: env-approval-kubernetes-runtime-auth
+  asserts:
+  - equal:
+      path: spec.traffic.jwtAuthentication.providers[0].audiences
+      value:
+      - http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080
+  - equal:
+      path: spec.traffic.jwtAuthentication.providers[1].audiences
+      value:
+      - agentos-mcp-discovery
+  - equal:
+      path: spec.targetSelectors[0].matchLabels["agentos.dev/mcp-source"]
+      value: env-approval-kubernetes
+- it: removes managed connections from the next release when no environments remain
+  set:
+    environments: []
+  asserts:
+  - template: catalog.yaml
+    hasDocuments:
+      count: 0
+  - template: identity-views.yaml
+    hasDocuments:
+      count: 0
+  - template: runtime-auth.yaml
+    hasDocuments:
+      count: 0
+  - template: governance.yaml
+    equal:
+      path: stringData["connections.json"]
+      value: '{"environments":[]}'
+- it: rejects an empty workload trust set
+  set:
+    platform.actorJWKS:
+      keys: []
+  asserts:
+  - failedTemplate:
+      errorPattern: actorJWKS|keys

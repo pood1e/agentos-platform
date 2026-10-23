@@ -1,103 +1,128 @@
+---
+- name: Unbind retiring environment access
+  ansible.builtin.import_playbook: lifecycle.yaml
 - name: Deploy AgentOS access in managed environments
   hosts: environments
   connection: local
   gather_facts: false
   environment:
     PATH: "{{ ansible_playbook_python | dirname }}:{{ lookup('ansible.builtin.env', 'PATH') }}"
-  vars_files: [vars.yaml]
+  vars_files:
+    - vars.yaml
   pre_tasks:
     - name: Use the controller Python environment
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ ansible_playbook_python }}"
-
-    - name: Require a declared environment
-      tags: [always]
+    - name: Require versioned environment chart coordinates
+      tags:
+        - always
       ansible.builtin.assert:
         that:
-          - environment_name in (agentos_config.environments | map(attribute='name'))
-          - "'catalog' in (engineer_identities | map(attribute='name'))"
+          - environment_chart_repository | length > 0
+          - environment_chart_version | length > 0
+        quiet: true
+    - name: Require a declared environment
+      tags:
+        - always
+      ansible.builtin.assert:
+        that:
+          - environment_state == 'absent' or environment_name in (agentos_config.environments | map(attribute='name'))
+          - environment_state == 'absent' or 'catalog' in (engineer_identities | map(attribute='name'))
         fail_msg: The environment must be declared in global.agentos.environments with a catalog identity in scope.
         quiet: true
-
     - name: Publish environment resource coordinates
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.set_fact:
         environment_issuer: "{{ environment_issuer }}"
         gateway_resource: "{{ gateway_resource }}"
         approval_service_url: "{{ approval_service_url }}"
-
     - name: Create private environment state directory
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.file:
         path: "{{ environment_cache }}/secrets"
         state: directory
         mode: "0700"
-
     - name: Require the environment OAuth resource
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.assert:
         that:
           - environment_issuer is match('^https://')
           - gateway_resource is match('^https://')
           - gateway_server_name | length > 0
         quiet: true
-
+      when:
+        - environment_state == 'present'
     - name: Discover the environment identity provider
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.uri:
         url: "{{ environment_issuer }}/.well-known/openid-configuration"
         return_content: true
       register: environment_discovery
       check_mode: false
-
+      when:
+        - environment_state == 'present'
     - name: Verify the environment issuer
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.assert:
         that:
           - environment_discovery.json.issuer == environment_issuer
           - environment_discovery.json.jwks_uri is match('^https://')
         quiet: true
-
+      when:
+        - environment_state == 'present'
     - name: Create gateway chart cache
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.file:
         path: "{{ chart_cache }}"
         state: directory
         mode: "0755"
       when: inventory_hostname == groups['environments'][0]
-
     - name: Fetch pinned gateway charts
-      tags: [always]
+      tags:
+        - always
       kubernetes.core.helm_pull:
         binary_path: "{{ helm_binary }}"
-        chart_ref: "oci://cr.agentgateway.dev/charts/{{ item.name }}"
+        chart_ref: oci://cr.agentgateway.dev/charts/{{ item.name }}
         chart_version: "{{ agentgateway_version }}"
         destination: "{{ chart_cache }}"
       loop: "{{ gateway_charts }}"
-      when: inventory_hostname == groups['environments'][0]
-
+      when:
+        - inventory_hostname == groups['environments'][0]
+        - environment_state == 'present'
     - name: Inspect gateway chart checksums
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.stat:
         path: "{{ chart_cache }}/{{ item.name }}-{{ agentgateway_version }}.tgz"
         checksum_algorithm: sha256
       loop: "{{ gateway_charts }}"
       register: gateway_artifacts
-      when: inventory_hostname == groups['environments'][0]
-
+      when:
+        - inventory_hostname == groups['environments'][0]
+        - environment_state == 'present'
     - name: Verify gateway chart checksums
-      tags: [always]
+      tags:
+        - always
       ansible.builtin.assert:
         that: item.stat.checksum == item.item.checksum
         quiet: true
       loop: "{{ gateway_artifacts.results }}"
       loop_control:
         label: "{{ item.item.name }}"
-      when: inventory_hostname == groups['environments'][0]
-
+      when:
+        - inventory_hostname == groups['environments'][0]
+        - environment_state == 'present'
     - name: Create gateway namespace
-      tags: [always]
+      tags:
+        - always
       kubernetes.core.k8s:
         kubeconfig: "{{ kubeconfig }}"
         definition:
@@ -105,33 +130,44 @@
           kind: Namespace
           metadata:
             name: "{{ gateway_namespace }}"
-            labels: {agentos.dev/environment: "{{ environment_name }}", agentos.dev/governance: "{{ environment_governance }}"}
-
+            labels:
+              agentos.dev/environment: "{{ environment_name }}"
+              agentos.dev/governance: "{{ environment_governance }}"
+      when:
+        - environment_state == 'present'
     - name: Configure image pull credentials
-      tags: [always]
+      tags:
+        - always
       kubernetes.core.k8s:
         kubeconfig: "{{ kubeconfig }}"
         definition:
           apiVersion: v1
           kind: Secret
-          metadata: {name: agentos-registry, namespace: "{{ gateway_namespace }}"}
+          metadata:
+            name: agentos-registry
+            namespace: "{{ gateway_namespace }}"
           type: kubernetes.io/dockerconfigjson
           data:
             .dockerconfigjson: "{{ lookup('ansible.builtin.file', registry_config_file) | b64encode }}"
-      when: registry_config_file | length > 0
+      when:
+        - registry_config_file | length > 0
+        - environment_state == 'present'
       no_log: true
   tasks:
     - name: Configure environment MCP gateway
       ansible.builtin.import_tasks: tasks/gateway.yaml
-      tags: [gateway]
-
-    - name: Connect environment gateway backends
-      ansible.builtin.import_tasks: tasks/backends.yaml
-      tags: [backends]
-
-    - name: Publish platform environment connections
-      kubernetes.core.k8s:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        definition: "{{ lookup('ansible.builtin.template', 'templates/platform-governance.yaml.j2') | from_yaml }}"
-      when: inventory_hostname == groups['environments'][-1]
-      no_log: true
+      tags:
+        - gateway
+      when: environment_state == 'present'
+    - name: Uninstall retired environment resources
+      kubernetes.core.helm:
+        kubeconfig: "{{ kubeconfig }}"
+        binary_path: "{{ helm_binary }}"
+        name: "{{ environment_release }}"
+        release_namespace: "{{ gateway_namespace }}"
+        release_state: absent
+        wait: true
+        timeout: 10m
+      when: environment_state == 'absent'
+- name: Publish platform environment connections
+  ansible.builtin.import_playbook: connections.yaml

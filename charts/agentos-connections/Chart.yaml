@@ -1,0 +1,7 @@
+apiVersion: v2
+name: agentos-connections
+description: AgentOS managed environment connections
+type: application
+version: 0.26.5
+appVersion: 0.26.5
+kubeVersion: '>=1.34.0-0'

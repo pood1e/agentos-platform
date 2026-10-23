@@ -1,0 +1,5 @@
+{{ {
+  'environment': {'name': environment_name, 'issuer': environment_issuer, 'resource': gateway_resource, 'jwksURL': environment_discovery.json.jwks_uri},
+  'gateway': {'address': ansible_host, 'host': gateway_server_name, 'nodePort': gateway_node_port | int, 'platformCIDR': platform_cidr},
+  'toolsets': toolsets, 'identities': engineer_identities, 'connectors': environment_connectors
+} | to_nice_json }}

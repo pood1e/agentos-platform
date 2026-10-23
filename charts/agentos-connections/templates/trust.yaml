@@ -1,0 +1,10 @@
+{{- range .Values.environments }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .name }}-gateway-ca
+  labels: {{ include "agentos-connections.labels" $ | nindent 4 }}
+data:
+  ca.crt: {{ .gateway.ca | quote }}
+{{- end }}

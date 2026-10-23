@@ -1,7 +1,0 @@
-{% macro transport_auth(service, identity) -%}
-{% set discovery = "(has(jwt.iss) && jwt.iss == " + (platform_discovery_issuer | to_json) + " && jwt.sub == " + (('system:serviceaccount:' + agentos_namespace + ':' + native_controller_service_account) | to_json) + ")" %}
-{% set body = "{'serviceNames': [" + (service | to_json) + "], 'metadataContext': {'environment': " + (environment_name | to_json) + ", 'identity': " + (identity | to_json) + ", 'discovery': " + discovery + "}}" %}
-{{ {'backendRef': {'name': platform_release + '-console', 'port': 9090}, 'failureMode': 'FailClosed',
-    'http': {'path': "'/authorize/environment'", 'body': body,
-             'allowedRequestHeaders': ['x-substrate-actor-token'], 'allowedResponseHeaders': ['authorization']}} | to_json }}
-{%- endmacro %}

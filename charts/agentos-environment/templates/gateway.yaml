@@ -1,0 +1,54 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: mcp-gateway
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  image: {{ toYaml .Values.gateway.image | nindent 4 }}
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {memory: 512Mi}
+  logging: {format: json, level: info}
+  service:
+    spec:
+      type: NodePort
+      externalTrafficPolicy: Local
+      ports:
+        - {name: https, port: 8443, targetPort: 8443, nodePort: {{ .Values.gateway.nodePort }}, protocol: TCP}
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels: {agentos.dev/gateway: environment}
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: agentgateway
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mcp-gateway
+  labels:
+    {{- include "agentos-environment.labels" . | nindent 4 }}
+    agentos.dev/environment: {{ .Values.environment.name }}
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef: {group: agentgateway.dev, kind: AgentgatewayParameters, name: mcp-gateway}
+  listeners:
+    - name: https
+      port: 8443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs: [{name: mcp-gateway-tls}]
+      allowedRoutes:
+        namespaces: {from: Same}
