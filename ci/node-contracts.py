@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from versions import versions
+
 root = Path(__file__).resolve().parent.parent
 manifest = json.loads((root / "package.json").read_text())
 target = root / ".cache/node-contracts"
@@ -23,7 +25,7 @@ for name in ("LICENSE", "buf.lock"):
     shutil.copyfile(root / name, target / name)
 package = {
     "name": "@agentos/contracts",
-    "version": manifest["version"],
+    "version": versions().semver,
     "type": "module",
     "license": "Apache-2.0",
     "exports": {"./*": {"types": "./*.d.ts", "default": "./*.js"}},

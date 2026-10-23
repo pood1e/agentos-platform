@@ -1,5 +1,8 @@
 stages: [verify, package, release]
 
+variables:
+  GIT_DEPTH: "0"
+
 include:
   - local: ci/build.gitlab-ci.yml
   - local: ci/runtime.gitlab-ci.yml
@@ -54,21 +57,26 @@ build-image:
 build-contracts:
   extends: .shell
   stage: package
+  resource_group: agentos-contracts-$CI_COMMIT_SHA
   before_script:
     - . ci/shell-env.sh
     - . ci/python-env.sh contracts/requirements.txt
     - npm ci --prefer-offline
   script:
+    - ci/tools.sh helm
     - .cache/venv/bin/python ci/contracts.py
+    - .cache/venv/bin/python ci/test-package-chart.py
+    - .cache/venv/bin/python ci/test-release.py
     - .cache/venv/bin/python ci/publish-contracts.py
   artifacts:
-    paths: [dist/contracts/]
+    paths: [dist/contracts/, gen/python/]
     expire_in: 7 days
 
 release:
   extends: .shell
   stage: release
   needs:
+    - build-contracts
     - build-image
     - build-automation
     - build-voice
@@ -86,6 +94,7 @@ release:
       optional: true
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   resource_group: agentos-release
   before_script:
     - . ci/shell-env.sh
