@@ -5,6 +5,7 @@ variables:
 
 include:
   - local: ci/build.gitlab-ci.yml
+  - local: ci/images.gitlab-ci.yml
   - local: ci/runtime.gitlab-ci.yml
   - local: ci/python.gitlab-ci.yml
 

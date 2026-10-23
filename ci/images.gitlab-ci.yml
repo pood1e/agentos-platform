@@ -1,0 +1,24 @@
+build-ci-tools:
+  extends: .build-image
+  stage: verify
+  needs: []
+  rules:
+    - changes:
+        - mise.toml
+        - mise.lock
+        - ci/images/**/*
+        - ci/*requirements*
+        - deploy/requirements.*
+        - contracts/requirements.txt
+        - automation/requirements.in
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/ci-tools-image
+    AGENTOS_DOCKERFILE_DIR: ci/images
+    AGENTOS_IMAGE_SUFFIX: /ci/tools
+    AGENTOS_BUILD_METADATA: .cache/ci-tools-build-metadata.json
+  before_script:
+    - mkdir -p "$AGENTOS_BUILD_CONTEXT/ci"
+    - tar -cf - mise.toml mise.lock ci/python-requirements.txt ci/requirements.txt deploy/requirements.txt deploy/requirements.yaml contracts/requirements.txt automation/requirements.in | tar -xf - -C "$AGENTOS_BUILD_CONTEXT"
+  artifacts:
+    paths: [.cache/ci-tools-build-metadata.json]
+    expire_in: 7 days

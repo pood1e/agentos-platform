@@ -13,7 +13,7 @@ export { object, text } from "../../../shared/json.js";
 
 import { text } from "../../../shared/json.js";
 
-export function partsText(parts: Part[]): string {
+function partsText(parts: Part[]): string {
   return parts
     .flatMap((part) => (part.content.case === "text" ? [part.content.value] : []))
     .join("\n")

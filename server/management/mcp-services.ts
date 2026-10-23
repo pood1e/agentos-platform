@@ -9,7 +9,7 @@ import type { ResourceStore } from "./resources.js";
 export const credentialProfile = (value: JsonObject) =>
   Boolean(object(meta(value).labels)["agentos.dev/engineer"]);
 
-export function serviceTargets(value: JsonObject) {
+function serviceTargets(value: JsonObject) {
   const targets = object(object(value.spec).mcp).targets;
   return Array.isArray(targets) ? targets.map(object) : [];
 }

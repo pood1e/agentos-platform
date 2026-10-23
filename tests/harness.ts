@@ -40,7 +40,7 @@ export async function until(check: () => boolean | Promise<boolean>, timeout = 3
   }
 }
 
-export const fixtureCatalog = () =>
+const fixtureCatalog = () =>
   parseCatalog(
     readFileSync(new URL("fixtures/pack/toolsets.yaml", import.meta.url), "utf8"),
     readFileSync(new URL("fixtures/execution/platform-tools.yaml", import.meta.url), "utf8"),

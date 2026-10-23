@@ -8,7 +8,7 @@ import { instanceRoutes } from "./routes.js";
 export const activityWidth = 208;
 export const activityHeight = 104;
 
-export function layoutGraph(flow: CollaborationFlow): ElkNode {
+function layoutGraph(flow: CollaborationFlow): ElkNode {
   const connections = bundleConnections(flow.connections);
   const ranks = new Map(flow.activities.map((activity) => [activity.id, activity.rank]));
   const ports = new Map<string, ElkPort[]>();
@@ -118,5 +118,5 @@ export async function collaborationLayout(flow: CollaborationFlow) {
   return projectLayout(flow, await collaborationPositions(flow));
 }
 
-export type CollaborationLayout = Awaited<ReturnType<typeof collaborationLayout>>;
+type CollaborationLayout = Awaited<ReturnType<typeof collaborationLayout>>;
 export type ActivityLayout = CollaborationLayout["activities"][number];

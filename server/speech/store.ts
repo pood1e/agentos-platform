@@ -18,7 +18,7 @@ export interface SpeechSettings {
 }
 export type SpeechSource = () => Promise<SpeechSettings>;
 
-export const speechSettingsView = (settings: SpeechSettings) => ({
+const speechSettingsView = (settings: SpeechSettings) => ({
   configuration: settings.configuration,
   resourceVersion: settings.resourceVersion,
   transcriptionCredentialConfigured: !!settings.transcriptionCredential,

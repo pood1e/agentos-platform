@@ -1,7 +1,7 @@
 import { getViewportForBounds, type Rect } from "@xyflow/react";
 
 export const zoomLimits = { minZoom: 0.01, maxZoom: 2 };
-export const fitPadding = 0.12;
+const fitPadding = 0.12;
 
 export function diagramBounds(canvas: HTMLElement | null, nodes: Rect): Rect {
   const boxes = [

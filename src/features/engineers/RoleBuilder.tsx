@@ -16,7 +16,7 @@ import { ConversationRuntime } from "../chat/ConversationRuntime.js";
 import { useChat } from "../chat/use-chat.js";
 
 /** Builder conversation whose latest prepared role fills the editor form. */
-export function RoleBuilder({ onDraft }: { onDraft: (draft: RoleDefinition) => void }) {
+function RoleBuilder({ onDraft }: { onDraft: (draft: RoleDefinition) => void }) {
   const { t } = useTranslation();
   const [contextId, setContext] = useState("");
   const access = useAccess();

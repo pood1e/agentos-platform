@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "server/jobs/replay.ts",
+    "scripts/*.{ts,mjs}",
+    "tests/proofs/*.ts",
+    "charts/agentos/files/*.mjs",
+    "shared/digest.ts"
+  ],
+  "ignoreDependencies": ["@bufbuild/protoc-gen-es"],
+  "ignoreIssues": {
+    "src/components/ui/**": ["exports", "types"]
+  }
+}

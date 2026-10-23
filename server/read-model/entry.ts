@@ -16,7 +16,7 @@ import {
 import { taskOutput } from "./decode/output.js";
 import { approvals, type Decision, interactions, latestDecision } from "./interactions.js";
 
-export interface UserMessage {
+interface UserMessage {
   id: string;
   text: string;
 }
@@ -45,7 +45,7 @@ export interface TaskEntry {
   decision?: Decision;
 }
 
-export function taskVersion(task: Task): string {
+function taskVersion(task: Task): string {
   return createHash("sha256").update(toBinary(TaskSchema, task)).digest("base64url");
 }
 

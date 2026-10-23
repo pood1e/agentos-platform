@@ -7,7 +7,7 @@ export const knowledgeSegments = (content: string) =>
     offset: entry.index,
   })).filter((entry) => entry.text);
 
-export const knowledgeSentences = (content: string) =>
+const knowledgeSentences = (content: string) =>
   knowledgeSegments(content).map((entry) => entry.text);
 
 export const knowledgeReference = (text: string) =>
