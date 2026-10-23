@@ -46,3 +46,10 @@
 | `server/platform` | 进程入口、工作负载接线与协作边界 |
 | `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、人工反馈入口 |
 | `deploy/observability` | 官方 Langfuse、Collector 与独立存储 |
+
+| 校验入口 | 内容 |
+| --- | --- |
+| `ci/check-charts.sh` | 平台、方案示例与环境 Chart 的统一校验入口 |
+| `charts/*/tests` | helm-unittest 模板、非法配置与资源生命周期用例 |
+| `tests/policies` | Conftest 跨资源、工具绑定、工作负载及原生部署约束 |
+| `tests/deployment` | 后置渲染器的标准库单元测试 |

@@ -44,8 +44,7 @@ deployment-check:
     - .cache/venv/bin/ansible-playbook environments/deploy.yaml --syntax-check
     - .cache/venv/bin/ansible-playbook environments/connect.yaml --syntax-check
     - ci/tools.sh
-    - .cache/venv/bin/python ci/check-chart.py
-    - ci/check-environment-charts.sh
+    - ci/check-charts.sh
 
 build-image:
   extends: .build-image
@@ -56,6 +55,7 @@ build-image:
 
 build-contracts:
   extends: .shell
+  dependencies: []
   stage: package
   resource_group: agentos-contracts-$CI_COMMIT_SHA
   before_script:

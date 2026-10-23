@@ -1,0 +1,76 @@
+suite: console identity and rollout contract
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release:
+  name: agentos
+  namespace: agentos
+templates:
+- '*.yaml'
+tests:
+- it: drains requests before replacing a ready instance
+  asserts:
+  - equal:
+      path: spec.strategy
+      value:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 0
+    template: console-deployment.yaml
+  - equal:
+      path: spec.minReadySeconds
+      value: 5
+    template: console-deployment.yaml
+  - equal:
+      path: spec.template.spec.terminationGracePeriodSeconds
+      value: 60
+    template: console-deployment.yaml
+  - equal:
+      path: spec.template.spec.containers[0].lifecycle.preStop
+      value:
+        sleep:
+          seconds: 5
+    template: console-deployment.yaml
+  - equal:
+      path: spec.template.spec.containers[0].command
+      value:
+      - node
+      - build/server/platform/main.js
+    template: console-deployment.yaml
+  - lengthEqual:
+      path: spec.template.spec.containers
+      count: 1
+    template: console-deployment.yaml
+- it: uses native OIDC and server-side secrets
+  asserts:
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_AUTH_MODE
+        value: oidc
+    template: console-deployment.yaml
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_OIDC_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: agentos-identity
+            key: client-secret
+    template: console-deployment.yaml
+- it: supports the mode without browser OIDC
+  set:
+    identity.mode: none
+  asserts:
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_AUTH_MODE
+        value: none
+    template: console-deployment.yaml
+  - notContains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_OIDC_ISSUER
+        value: https://identity.example.test/realms/operations
+    template: console-deployment.yaml

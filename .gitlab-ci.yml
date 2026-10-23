@@ -1,3 +1,6 @@
+variables:
+  FF_ENABLE_JOB_CLEANUP: "true"
+
 include:
   - local: ci/source-sync.gitlab-ci.yml
     rules:
