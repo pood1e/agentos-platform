@@ -63,6 +63,17 @@ export class TaskIndex {
     this.touch("");
   }
 
+  remove(id: string): void {
+    const entry = this.entries.get(id);
+    if (!entry) return;
+    this.entries.delete(id);
+    this.contexts.get(entry.contextId)?.delete(id);
+    this.byAgent.get(entry.agentId)?.delete(id);
+    for (const messageId of entry.messageIds)
+      if (this.messages.get(messageId) === id) this.messages.delete(messageId);
+    this.touch(id);
+  }
+
   setSession(session: SessionInfo): void {
     const previous = this.sessionInfo.get(session.id);
     if (previous && JSON.stringify(previous) === JSON.stringify(session)) return;

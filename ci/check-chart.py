@@ -108,7 +108,7 @@ def check_bindings(templates, config):
 
 for name, source, overrides, presets, config in [
     ('platform', chart, ['-f', values], system_presets, None),
-    ('alternate', chart, ['-f', values, '--namespace', 'operations'], system_presets, None),
+    ('alternate', chart, ['-f', values, '--namespace', 'operations', '--set-string', 'kagent.userId=operations-owner'], system_presets, None),
     ('evaluation', chart, ['-f', values, '-f', 'tests/fixtures/evaluation-values.yaml'], system_presets, None),
     ('solution', solution, ['--namespace', 'agentos'], system_presets | solution_presets, solution_values),
     ('direct-only', solution, ['--namespace', 'agentos', '--set-json', f'global.agentos.environments={direct_only}'], system_presets | solution_presets,
@@ -152,6 +152,17 @@ for name, source, overrides, presets, config in [
     assert container['lifecycle']['preStop'] == {'sleep': {'seconds': 5}}
     assert container['command'] == ['node', 'build/server/platform/main.js']
     env = {item['name']: item for item in container['env']}
+    owners = {}
+    for policy in [doc for doc in docs if doc['kind'] == 'AgentgatewayPolicy' and 'traffic' in doc['spec']]:
+        headers = policy['spec']['traffic'].get('transformation', {}).get('request', {}).get('set', [])
+        owner = [header['value'] for header in headers if header['name'] == 'x-user-id']
+        if owner:
+            assert len(owner) == 1, f'{name}: duplicate native MCP session owners'
+            owners[policy['metadata']['name']] = json.loads(owner[0])
+    expected_owners = {'kagent-collaboration-tool-access': env['KAGENT_USER_ID']['value']}
+    if name == 'evaluation':
+        expected_owners['evaluation-collaboration-identity'] = env['KAGENT_USER_ID']['value']
+    assert owners == expected_owners, f'{name}: native MCP session owner policy differs'
     mode = 'oidc' if source == chart else 'none'
     assert env['AGENTOS_AUTH_MODE']['value'] == mode
     proxy = [item for item in api['spec']['template']['spec']['containers'] if item['name'] == 'identity']
