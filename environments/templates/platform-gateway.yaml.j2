@@ -63,6 +63,7 @@ kind: HTTPRoute
 metadata:
   name: mcp-{{ profile }}
   namespace: {{ agentos_namespace }}
+  labels: {agentos.dev/mcp-source: '{{ service.metadata.uid }}'}
   ownerReferences: [{{ owner | to_json }}]
 spec:
   parentRefs: [{name: {{ platform_gateway }}, sectionName: http}]
@@ -80,15 +81,10 @@ metadata:
   namespace: {{ agentos_namespace }}
   ownerReferences: [{{ owner | to_json }}]
 spec:
-  targetRefs:
-    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ name }}}
-{% for identity in engineer_identities if identity.name != 'catalog' and project in identity.services %}
-{% set access = identity.services[project] %}
-{% set writes = toolsets[project].write | default([]) + (toolsets[project].management | default([]) if access == 'manage' else []) %}
-{% for view in ['readOnly', 'write'] if view == 'readOnly' or (access in ['operate', 'manage'] and writes) %}
-    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ name }}-{{ identity.name }}{{ '-changes' if view == 'write' else '' }}}
-{% endfor %}
-{% endfor %}
+  targetSelectors:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      matchLabels: {agentos.dev/mcp-source: '{{ service.metadata.uid }}'}
   traffic:
     jwtAuthentication:
       mode: Strict
@@ -119,6 +115,7 @@ kind: HTTPRoute
 metadata:
   name: mcp-{{ name }}
   namespace: {{ agentos_namespace }}
+  labels: {agentos.dev/mcp-source: '{{ service.metadata.uid }}'}
   ownerReferences: [{{ owner | to_json }}]
 spec:
   parentRefs: [{name: {{ platform_gateway }}, sectionName: http}]
