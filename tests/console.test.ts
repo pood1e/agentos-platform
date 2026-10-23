@@ -1,13 +1,15 @@
 import { fileURLToPath } from "node:url";
-import { clone } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
 import { describe, expect, it } from "vitest";
-import { type Task, TaskState } from "../gen/a2a_pb.js";
+import { Role, type Task, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
@@ -146,6 +148,37 @@ describe("console service", () => {
       key: "chat.notReady",
     });
     sync.close();
+  });
+
+  it("loads a newly observed conversation before deciding that it is unavailable", async () => {
+    const { client, fake, sync, index } = await workbench([]);
+    const agent = { namespace: "agentos", name: "assistant" };
+    const session = create(SessionSchema, { id: "newly-observed", agent });
+    const task = create(TaskSchema, {
+      id: "new-task",
+      contextId: session.id,
+      status: { state: TaskState.COMPLETED, timestamp: timestampFromMs(Date.now()) },
+      history: [{ messageId: "new-message", role: Role.USER }],
+      artifacts: [{ parts: [{ content: { case: "text", value: "同步后的回答" } }] }],
+    });
+    fake.load({ sessions: [session], tasks: [task] });
+    expect(index.session(session.id)).toBeUndefined();
+    const controller = new AbortController();
+    try {
+      for await (const { conversation } of client.watchConversation(
+        { agent, contextId: session.id },
+        { signal: controller.signal },
+      )) {
+        expect(conversation?.contextId).toBe(session.id);
+        expect(conversation?.messages.flatMap((message) => message.parts)).toContainEqual(
+          expect.objectContaining({ content: { case: "text", value: "同步后的回答" } }),
+        );
+        break;
+      }
+    } finally {
+      controller.abort();
+      sync.close();
+    }
   });
 
   it("derives tool confirmation requirements when saving", async () => {
