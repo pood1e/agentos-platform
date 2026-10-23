@@ -13,8 +13,7 @@
 {% set route_path = '/mcp/' + name + '/' + identity.name + ('/changes' if view == 'write' else '/readonly') %}
 {% set target = service.spec.mcp.targets[0].static %}
 {% set policies = service.spec.policies | default({}) | combine(target.policies | default({})) %}
-{% set policies = policies | dict2items | rejectattr('key', 'in', ['auth', 'mcp']) | items2dict %}
-{% set policies = policies | combine({'extAuth': transport_auth(name, identity.name) | from_json}) %}
+{% set policies = policies | dict2items | rejectattr('key', 'in', ['auth', 'extAuth', 'mcp']) | items2dict %}
 {% set target = target | combine({'path': '/mcp/' + identity.name + '/' + project}) %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
@@ -31,6 +30,7 @@ spec:
       - name: {{ name }}
         static: {{ target | combine({'policies': policies}) | to_json }}
   policies:
+    extAuth: {{ transport_auth(name, identity.name) }}
     mcp:
       guardrails:
         processors:
