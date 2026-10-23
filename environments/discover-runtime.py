@@ -13,20 +13,23 @@ config.load_kube_config(args.kubeconfig)
 api = client.ApiClient()
 
 
-def get(path):
-    return api.call_api(path, 'GET', response_type='object', auth_settings=['BearerToken'],
-                        _return_http_data_only=True)
+def document(operation, **parameters):
+    with operation(_preload_content=False, **parameters) as response:
+        return json.load(response)
 
 
 deployment = client.AppsV1Api(api).read_namespaced_deployment(f'{args.release}-console', args.namespace)
 variables = {entry.name: entry.value for container in deployment.spec.template.spec.containers
              for entry in container.env or [] if entry.value is not None}
-discovery = get('/.well-known/openid-configuration')
+discovery = document(client.WellKnownApi(api).get_service_account_issuer_open_id_configuration)
 result = {
     'platform_discovery_issuer': discovery['issuer'],
-    'platform_discovery_jwks': get('/openid/v1/jwks'),
+    'platform_discovery_jwks': document(client.OpenidApi(api).get_service_account_issuer_open_id_keyset),
     'platform_actor_issuer': variables['AGENTOS_ACTOR_ISSUER'],
     'platform_actor_audiences': json.loads(variables['AGENTOS_ACTOR_AUDIENCES']),
-    'platform_actor_jwks': get('/api/v1/namespaces/ate-system/services/https:idp:443/proxy/openid/v1/jwks'),
+    'platform_actor_jwks': document(
+        client.CoreV1Api(api).connect_get_namespaced_service_proxy_with_path,
+        name='https:idp:443', namespace='ate-system', path='openid/v1/jwks',
+    ),
 }
 print(json.dumps(result))
