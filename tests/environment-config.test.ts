@@ -9,12 +9,16 @@ import {
 
 describe("environment service boundaries", () => {
   const validator = createValidator();
+  const oauth = {
+    issuer: "https://identity.example/realm",
+    resource: "https://environment.example/mcp",
+  };
   it("models direct execution without an approval portal or credentials", () => {
     const environment = create(EnvironmentSchema, { name: "sim", governance: Governance.DIRECT });
     expect(
       validator.validate(
         EnvironmentConnectionSchema,
-        create(EnvironmentConnectionSchema, { environment }),
+        create(EnvironmentConnectionSchema, { environment, ...oauth }),
       ).kind,
     ).toBe("valid");
   });
@@ -26,7 +30,7 @@ describe("environment service boundaries", () => {
     expect(
       validator.validate(
         EnvironmentConnectionSchema,
-        create(EnvironmentConnectionSchema, { environment }),
+        create(EnvironmentConnectionSchema, { environment, ...oauth }),
       ).kind,
     ).toBe("valid");
     expect(
@@ -34,6 +38,7 @@ describe("environment service boundaries", () => {
         EnvironmentConnectionSchema,
         create(EnvironmentConnectionSchema, {
           environment,
+          ...oauth,
           approvalUrl: "https://decisions.example",
           authorization: "Bearer service-credential",
         }),

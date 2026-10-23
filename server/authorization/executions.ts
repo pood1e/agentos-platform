@@ -18,6 +18,7 @@ export function executions(
   store: ExecutionStore,
   verify?: ReturnType<typeof jwtIdentity>,
   adopt?: (session: Session, messageIds: string[]) => Promise<ExecutionIdentity | undefined>,
+  renew?: (subject: string) => Promise<ExecutionIdentity | undefined>,
 ) {
   const remembered = new LRUCache<string, ExecutionIdentity>({ max: 512, ttl: 60_000 });
   const narrowed = (identity: ExecutionIdentity, ceiling: ExecutionIdentity) => ({
@@ -33,9 +34,14 @@ export function executions(
     if (!force && cached?.credential.value === value.value) return narrowed(identity, cached);
     for (let retry = 0; retry < 4; retry++) {
       const previous = await store.identity(identity.subject);
+      identity = {
+        ...identity,
+        refreshToken: identity.refreshToken || previous?.value.refreshToken || "",
+      };
       if (
         previous?.value.credential.case === value.case &&
         previous.value.credential.value === value.value &&
+        previous.value.refreshToken === identity.refreshToken &&
         previous.value.write === identity.write &&
         JSON.stringify(previous.value.capabilities) === JSON.stringify(identity.capabilities)
       )
@@ -104,7 +110,9 @@ export function executions(
     if (!saved) throw denied();
     const identity =
       saved.credential.case === "accessToken"
-        ? await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
+        ? renew
+          ? await renew(binding.subject)
+          : await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
         : saved.credential.case === "service" &&
             saved.credential.value &&
             !(verify && saved.subject === "console")

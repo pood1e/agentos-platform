@@ -1,3 +1,36 @@
+- name: Install environment certificate management
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    binary_path: "{{ helm_binary }}"
+    name: cert-manager
+    chart_ref: oci://quay.io/jetstack/charts/cert-manager
+    chart_version: "{{ cert_manager_version }}"
+    release_namespace: cert-manager
+    create_namespace: true
+    reset_values: true
+    release_values: {crds: {enabled: true}}
+    wait: true
+    timeout: 10m
+
+- name: Issue environment gateway certificates
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition: "{{ lookup('ansible.builtin.template', 'templates/gateway-certificates.yaml.j2') | from_yaml_all | list }}"
+
+- name: Wait for the gateway certificate
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: cert-manager.io/v1
+    kind: Certificate
+    namespace: "{{ gateway_namespace }}"
+    name: mcp-gateway
+    wait: true
+    wait_condition: {type: Ready, status: 'True'}
+    wait_timeout: 180
+
+- name: Configure environment gateway trust
+  ansible.builtin.import_tasks: platform-trust.yaml
+
 - name: Install environment agentgateway CRDs
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig }}"
@@ -44,29 +77,6 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
     definition: "{{ lookup('ansible.builtin.template', 'templates/gateway.yaml.j2') | from_yaml_all | list }}"
-  no_log: true
-
-- name: Read environment gateway keys
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ kubeconfig }}"
-    api_version: v1
-    kind: ConfigMap
-    namespace: "{{ gateway_namespace }}"
-    name: gateway-keys
-  register: environment_gateway_keys
-  no_log: true
-
-- name: Revoke gateway keys outside the environment scope
-  kubernetes.core.k8s_json_patch:
-    kubeconfig: "{{ kubeconfig }}"
-    api_version: v1
-    kind: ConfigMap
-    namespace: "{{ gateway_namespace }}"
-    name: gateway-keys
-    patch: [{op: remove, path: "/data/{{ item }}"}]
-  loop: >-
-    {{ (environment_gateway_keys.resources | first | default({})).get('data', {}).keys()
-      | difference((engineer_identities | map(attribute='name') | list)) | list }}
   no_log: true
 
 - name: Wait for environment gateway programming

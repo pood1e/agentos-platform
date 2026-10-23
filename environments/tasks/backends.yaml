@@ -4,6 +4,17 @@
     fail_msg: Every service in global.agentos.toolsets requires an entry in environment_connectors.
     quiet: true
 
+- name: Require a consistent credential boundary within each MCP service
+  ansible.builtin.assert:
+    that: oauth_targets | int in [0, environment_connectors[item].targets | length]
+    fail_msg: A service must use OAuth token exchange for every target or API credentials for every target.
+    quiet: true
+  vars:
+    oauth_targets: >-
+      {{ environment_connectors[item].targets | selectattr('auth', 'defined') | map(attribute='auth')
+        | selectattr('oauthTokenExchange', 'defined') | list | length }}
+  loop: "{{ toolsets.keys() | list }}"
+
 - name: Configure engineer MCP routes
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"

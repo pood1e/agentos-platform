@@ -3,6 +3,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createRemoteJWKSet } from "jose";
+import type { Configuration } from "openid-client";
 import {
   HeaderMutationSchema,
   McpHeaderSchema,
@@ -17,13 +18,12 @@ import { agentInfo } from "../read-model/agents.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
 import { actorTokenHeader, actorVerifier, runtimeIdentity } from "./actor.js";
+import type { EnvironmentTokens } from "./environment-tokens.js";
 import { executions } from "./executions.js";
 import { mcpAuthorization } from "./mcp.js";
+import { offlineCredentials } from "./offline.js";
 import type { jwtIdentity } from "./oidc.js";
 import { executionStore } from "./store.js";
-
-export const executionKindHeader = "x-agentos-execution-kind";
-export const subjectTokenHeader = "x-agentos-subject-token";
 
 function required(name: string) {
   const value = process.env[name];
@@ -37,6 +37,8 @@ export async function executionRuntime(
   access: BindingView,
   verify?: ReturnType<typeof jwtIdentity>,
   nativeCreator?: string,
+  environmentToken?: EnvironmentTokens,
+  oauth?: Configuration,
 ) {
   const persistent = await executionStore(
     required("AGENTOS_EXECUTION_DATABASE_URL"),
@@ -46,10 +48,12 @@ export async function executionRuntime(
       ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
       : undefined,
   );
+  const background = oauth && verify ? offlineCredentials(persistent, oauth, verify) : undefined;
   const registry = executions(
     persistent,
     verify,
     nativeCreator ? scheduledIdentity(clients, workspace, nativeCreator) : undefined,
+    background?.resolve,
   );
   const workspaces = new Set<string>(
     JSON.parse(process.env.AGENTOS_EXECUTION_WORKSPACES ?? JSON.stringify([workspace])),
@@ -117,40 +121,42 @@ export async function executionRuntime(
       throw new ConnectError("Execution template is unavailable", Code.PermissionDenied);
     return { engineer: agentInfo(agent).role, role: roleDefinition(agentTemplate) };
   };
+  const route = async (target: { serviceNames: string[]; metadataContext?: JsonObject }) => {
+    const environment = text(target.metadataContext?.environment);
+    const identity = text(target.metadataContext?.identity);
+    const policy = await access();
+    if (!environmentToken || !policy.connection(target.serviceNames, environment, identity))
+      throw new ConnectError("Environment route identity is invalid", Code.PermissionDenied);
+    return { environment, identity, policy, token: environmentToken };
+  };
+  const bearer = (token: string) =>
+    create(HeaderMutationSchema, {
+      set: [
+        create(McpHeaderSchema, {
+          key: "authorization",
+          value: new TextEncoder().encode(`Bearer ${token}`),
+        }),
+      ],
+    });
   const guardrails = mcpAuthorization(
     resolve,
     async (session, tool, target) => {
       const context = await registry.resolve(session);
       const { engineer, role } = await agentRole(session);
-      const policy = await access();
+      const destination = await route(target);
       if (
-        !policy.selectedCall(role.tools, target.serviceNames, tool.name) ||
-        !policy.permitsCall(engineer, target.serviceNames, tool.name, context.write)
+        engineer !== destination.identity ||
+        !destination.policy.selectedCall(role.tools, target.serviceNames, tool.name) ||
+        !destination.policy.permitsCall(engineer, target.serviceNames, tool.name, context.write)
       )
         throw new ConnectError(
           "Tool is outside the user's execution permissions",
           Code.PermissionDenied,
         );
-      const headers = [
-        create(McpHeaderSchema, {
-          key: executionKindHeader,
-          value: new TextEncoder().encode(
-            context.identity.credential.case === "accessToken" ? "user" : "service",
-          ),
-        }),
-      ];
-      if (context.identity.credential.case === "accessToken")
-        headers.push(
-          create(McpHeaderSchema, {
-            key: subjectTokenHeader,
-            value: new TextEncoder().encode(`Bearer ${context.identity.credential.value}`),
-          }),
-        );
       return {
-        headerMutation: create(HeaderMutationSchema, {
-          set: headers,
-          remove: context.identity.credential.case === "accessToken" ? [] : [subjectTokenHeader],
-        }),
+        headerMutation: bearer(
+          await destination.token(destination.environment, engineer, context.identity),
+        ),
         metadata: {
           initiator: context.identity.subject,
           sessionId: session.id,
@@ -158,15 +164,19 @@ export async function executionRuntime(
         } as JsonObject,
       };
     },
-    create(HeaderMutationSchema, {
-      set: [
-        create(McpHeaderSchema, {
-          key: executionKindHeader,
-          value: new TextEncoder().encode("service"),
-        }),
-      ],
-      remove: [subjectTokenHeader],
-    }),
+    async (session, target) => {
+      const destination = await route(target);
+      if (session) {
+        await registry.resolve(session);
+        if ((await agentRole(session)).engineer !== destination.identity)
+          throw new ConnectError("Discovery identity mismatch", Code.PermissionDenied);
+      }
+      return {
+        headerMutation: bearer(
+          await destination.token(destination.environment, destination.identity),
+        ),
+      };
+    },
   );
   const authorizeTools = async (session: Session, tools: string[]) => {
     const context = await registry.resolve(session);
@@ -186,6 +196,7 @@ export async function executionRuntime(
   };
   return {
     registry,
+    background,
     actor,
     authenticatedActor,
     resolve,

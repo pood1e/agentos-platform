@@ -5,7 +5,6 @@ import type { CallToolRequest } from "@modelcontextprotocol/server";
 import {
   AuthorizationError_Code,
   type ExtMcp,
-  type HeaderMutation,
   type McpRequest,
   type McpRequestResult,
   McpRequestResultSchema,
@@ -30,20 +29,27 @@ export function mcpAuthorization(
     tool: CallToolRequest["params"],
     target: Pick<McpRequest, "serviceNames" | "metadataContext">,
   ) => Promise<Pick<McpRequestResult, "headerMutation" | "metadata">> | Promise<void>,
-  discoveryHeaders?: HeaderMutation,
+  discover?: (
+    session: Session | undefined,
+    target: Pick<McpRequest, "serviceNames" | "metadataContext">,
+  ) => Promise<Pick<McpRequestResult, "headerMutation" | "metadata">>,
 ): Required<ServiceImpl<typeof ExtMcp>> {
   return {
     async checkRequest(request) {
       try {
-        if (!discoveryMethods.has(request.method)) {
-          if (request.method !== "tools/call") throw new Error("Unsupported MCP method");
-          const headers = request.headers.filter(
-            (header) => header.key.toLowerCase() === actorTokenHeader,
-          );
-          if (headers.length !== 1) throw new Error("Runtime identity required");
+        const headers = request.headers.filter(
+          (header) => header.key.toLowerCase() === actorTokenHeader,
+        );
+        if (headers.length > 1) throw new Error("One runtime identity required");
+        let session: Session | undefined;
+        if (headers.length) {
           const bearer = new TextDecoder("utf-8", { fatal: true }).decode(headers[0].value);
           if (!/^Bearer [^\s,]+$/.test(bearer)) throw new Error("Runtime identity required");
-          const session = await identity(bearer.slice(7));
+          session = await identity(bearer.slice(7));
+        }
+        if (!discoveryMethods.has(request.method)) {
+          if (request.method !== "tools/call" || !session)
+            throw new Error("Authenticated tool call required");
           const params = CallToolRequestParamsSchema.parse(
             JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(request.mcpRequest)),
           );
@@ -54,10 +60,8 @@ export function mcpAuthorization(
           const response = create(McpRequestResultSchema, { result: { case: "pass", value: {} } });
           return Object.assign(response, authorized);
         }
-        return create(McpRequestResultSchema, {
-          result: { case: "pass", value: {} },
-          headerMutation: discoveryHeaders,
-        });
+        const response = create(McpRequestResultSchema, { result: { case: "pass", value: {} } });
+        return Object.assign(response, await discover?.(session, request));
       } catch {
         return create(McpRequestResultSchema, {
           result: {

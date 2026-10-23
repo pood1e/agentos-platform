@@ -4,9 +4,7 @@
 {% set writes = tools.write | default([]) + (tools.management | default([]) if access == 'manage' else []) %}
 {% set reads = tools.readOnly | default([]) + (tools.managementReadOnly | default([]) if access == 'manage' else []) %}
 {% set allowed = reads + (writes if access in ['operate', 'manage'] else []) %}
-{% set delegated = identity.name != 'catalog' and environment_connectors[project].targets | selectattr('userAuth', 'defined') | list | length > 0 %}
-{% for execution_kind in (['service', 'user'] if delegated else ['service']) %}
-{% set backend = project + '-' + identity.name + ('-user' if execution_kind == 'user' else '') %}
+{% set backend = project + '-' + identity.name %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -17,9 +15,7 @@ metadata:
 spec:
   mcp:
     prefixMode: Never
-{% if delegated %}
     sessionRouting: Stateless
-{% endif %}
     targets:
 {% for target in environment_connectors[project].targets if target.access is not defined or access in target.access %}
       - name: {{ target.name | default(project) }}
@@ -30,10 +26,10 @@ spec:
           path: {{ target.path }}
 {% endif %}
           protocol: {{ target.protocol | default('StreamableHTTP') }}
-{% set authentication = target.userAuth | default(target.auth | default({})) if execution_kind == 'user' else target.auth | default({}) %}
+{% set authentication = target.auth | default({}) %}
 {% if authentication %}
           policies:
-            auth: {{ authentication | to_json | replace('<identity>', identity.name) | replace('<environment>', environment_name) }}
+            auth: {{ authentication | to_json | replace('<identity>', identity.name) | replace('<environment>', environment_name) | replace('<issuer>', environment_issuer) }}
 {% endif %}
 {% endfor %}
   policies:
@@ -48,21 +44,31 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata: {name: {{ backend }}, namespace: {{ gateway_namespace }}}
 spec:
-  parentRefs: [{name: mcp-gateway, sectionName: http}]
+  parentRefs: [{name: mcp-gateway, sectionName: https}]
   rules:
     - matches:
-        - path: {type: PathPrefix, value: /mcp/{{ project }}}
-          headers:
-            - {name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}
-{% if delegated %}
-            - {name: x-agentos-execution-kind, type: Exact, value: {{ execution_kind }}}
-{% endif %}
+        - path: {type: Exact, value: /mcp/{{ identity.name }}/{{ project }}}
       filters:
         - type: RequestHeaderModifier
           requestHeaderModifier:
-            remove: {{ (['x-substrate-actor-token'] + ([] if execution_kind == 'user' else ['x-agentos-subject-token'])) | to_json }}
+{% if environment_connectors[project].targets | selectattr('auth', 'defined') | map(attribute='auth') | selectattr('oauthTokenExchange', 'defined') | list | length == 0 %}
+            remove: [x-substrate-actor-token, authorization]
+{% else %}
+            remove: [x-substrate-actor-token]
+{% endif %}
       backendRefs:
         - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ backend }}}
-{% endfor %}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata: {name: {{ backend }}-identity, namespace: {{ gateway_namespace }}}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: {{ backend }}}
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions: ["has(jwt.azp) && jwt.azp == 'agentos-{{ identity.name }}'"]
 {% endfor %}
 {% endfor %}

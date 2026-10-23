@@ -1,0 +1,15 @@
+- name: Read the environment gateway certificate authority
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    namespace: "{{ gateway_namespace }}"
+    name: mcp-gateway-tls
+  register: gateway_certificate
+  no_log: true
+
+- name: Configure platform trust for the environment gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ platform_kubeconfig }}"
+    definition: "{{ lookup('ansible.builtin.template', 'templates/platform-credentials.yaml.j2') | from_yaml_all | list }}"
+  no_log: true

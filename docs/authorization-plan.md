@@ -31,7 +31,7 @@
 
 | 能力 | 采用方式 | 所属 |
 | --- | --- | --- |
-| 登录与身份 | 可选 OIDC 接入；OAuth2 Proxy 完成浏览器登录，openid-client 与 JOSE 校验受信身份 | 平台 |
+| 登录与身份 | 可选 OIDC 接入；openid-client 完成授权码、PKCE 与离线续期，JOSE 校验受信身份 | 平台 |
 | 资源关系与授权 | OpenFGA 官方 SDK、版本化模型与官方模型测试格式 | 平台 |
 | 授权判定适配 | 受信执行上下文与资源映射调用 OpenFGA，网关接入复用官方鉴权协议 | 平台 |
 | 请求校验、Token Exchange、凭据注入 | agentgateway、Substrate 既有宿主机注入及必要的协议适配 | 平台与运行时 |

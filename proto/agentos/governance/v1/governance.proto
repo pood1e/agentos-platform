@@ -30,11 +30,19 @@ message Environment {
   }];
 }
 
-// Optional external decision service; omitted services use native human decisions.
+// Environment OAuth resource and optional external decision service.
 message EnvironmentConnection {
   Environment environment = 1 [(buf.validate.field).required = true];
   optional string approval_url = 2 [(buf.validate.field).string.uri = true];
   optional string authorization = 3 [(buf.validate.field).string.min_len = 1];
+  string issuer = 4 [(buf.validate.field).string = {
+    uri: true
+    prefix: "https://"
+  }];
+  string resource = 5 [(buf.validate.field).string = {
+    uri: true
+    prefix: "https://"
+  }];
 }
 
 message GovernanceConfig {

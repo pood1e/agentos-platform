@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { createRemoteJWKSet, type JWTVerifyGetKey, jwtVerify } from "jose";
-import { discovery } from "openid-client";
+import { type Configuration, discovery } from "openid-client";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { roleCapabilities } from "../../shared/permissions.js";
 
@@ -40,13 +40,15 @@ export function jwtIdentity(config: OIDCIdentityConfig, keys: JWTVerifyGetKey) {
   };
 }
 
-export async function oidcIdentity(config: OIDCIdentityConfig) {
+export async function oidcIdentity(config: OIDCIdentityConfig, client?: Configuration) {
   if (new URL(config.issuer).protocol !== "https:") throw new Error("OIDC requires HTTPS");
   if (new URL(config.origin).origin !== config.origin)
     throw new Error("A browser origin is required");
   if (!config.audience || !config.writerRole)
     throw new Error("OIDC audience and writer role required");
-  const metadata = (await discovery(new URL(config.issuer), config.audience)).serverMetadata();
+  const metadata = (
+    client ?? (await discovery(new URL(config.issuer), config.audience))
+  ).serverMetadata();
   if (!metadata.jwks_uri || new URL(metadata.jwks_uri).protocol !== "https:")
     throw new Error("OIDC signing keys require HTTPS");
   return jwtIdentity(config, createRemoteJWKSet(new URL(metadata.jwks_uri)));

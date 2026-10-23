@@ -60,12 +60,19 @@ spec:
           ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}, {name: runtime, containerPort: 9091}]
           env:
             {{- include "agentos.executionEnv" . | nindent 12 }}
+            - {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}
             - {name: AGENTOS_AUTH_MODE, value: {{ .Values.identity.mode | quote }}}
             {{- if eq .Values.identity.mode "oidc" }}
             - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" .Values.identity.issuer | quote }}}
             - {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" .Values.identity.clientId | quote }}}
             - {name: AGENTOS_OIDC_AUDIENCE, value: {{ required "identity.audience is required" .Values.identity.audience | quote }}}
             - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" .Values.identity.writerRole | quote }}}
+            - name: AGENTOS_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: client-secret}
+            - name: AGENTOS_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: cookie-secret}
             {{- end }}
             - {name: AGENTOS_ORIGIN, value: {{ printf "https://%s" .Values.ingress.host | quote }}}
             {{- if .Values.evaluation.enabled }}
@@ -133,57 +140,12 @@ spec:
             {{- end }}
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             {{- if .Values.global.agentos.environments }}
+            - {name: environment-ca, mountPath: /etc/agentos-environments, readOnly: true}
             - {name: governance, mountPath: /etc/agentos-governance, readOnly: true}
             {{- end }}
             {{- if .Values.pack.image }}
             - {name: pack, mountPath: /etc/agentos-pack, readOnly: true}
             {{- end }}
-        {{- if eq .Values.identity.mode "oidc" }}
-        - name: identity
-          image: {{ .Values.identity.proxy.image | quote }}
-          args:
-            - --provider=oidc
-            - --oidc-issuer-url={{ .Values.identity.issuer }}
-            - --client-id={{ .Values.identity.clientId }}
-            - --redirect-url=https://{{ .Values.ingress.host }}/auth/callback
-            - --proxy-prefix=/auth
-            - --http-address=0.0.0.0:4180
-            - --upstream=http://127.0.0.1:8080/
-            - --email-domain=*
-            - --insecure-oidc-allow-unverified-email=true
-            - --code-challenge-method=S256
-            - --scope=openid profile email
-            - --pass-access-token=true
-            - --skip-jwt-bearer-tokens=true
-            - --oidc-extra-audience={{ .Values.identity.audience }}
-            - --skip-provider-button=true
-            - --reverse-proxy=true
-            - --cookie-name=__Host-agentos
-            - --cookie-secure=true
-            - --cookie-samesite=lax
-            - --cookie-expire=5m
-            - --cookie-refresh=1m
-            - --request-logging=false
-            - --api-route=^/agentos\.
-          ports: [{name: identity, containerPort: 4180}]
-          env:
-            - name: OAUTH2_PROXY_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: client-secret}
-            - name: OAUTH2_PROXY_COOKIE_SECRET
-              valueFrom:
-                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: cookie-secret}
-          readinessProbe:
-            httpGet: {path: /ready, port: identity}
-            periodSeconds: 3
-          livenessProbe:
-            httpGet: {path: /ping, port: identity}
-            periodSeconds: 20
-          resources:
-            {{- toYaml .Values.identity.proxy.resources | nindent 12 }}
-          securityContext:
-            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
-        {{- end }}
       volumes:
         - name: execution-database
           secret:
@@ -212,6 +174,14 @@ spec:
           emptyDir: {sizeLimit: 64Mi}
       {{- end }}
       {{- if .Values.global.agentos.environments }}
+        - name: environment-ca
+          projected:
+            sources:
+              {{- range .Values.global.agentos.environments }}
+              - configMap:
+                  name: {{ .name }}-gateway-ca
+                  items: [{key: ca.crt, path: {{ printf "%s/ca.crt" .name | quote }}}]
+              {{- end }}
         - name: governance
           secret: {secretName: agentos-governance}
       {{- end }}

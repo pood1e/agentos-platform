@@ -166,10 +166,10 @@ for name, source, overrides, presets, config in [
     mode = 'oidc' if source == chart else 'none'
     assert env['AGENTOS_AUTH_MODE']['value'] == mode
     proxy = [item for item in api['spec']['template']['spec']['containers'] if item['name'] == 'identity']
-    assert bool(proxy) == (mode == 'oidc')
-    if proxy:
-        assert '--skip-jwt-bearer-tokens=true' in proxy[0]['args']
-        assert f"--oidc-extra-audience={env['AGENTOS_OIDC_AUDIENCE']['value']}" in proxy[0]['args']
+    assert not proxy
+    if mode == 'oidc':
+        assert env['AGENTOS_OIDC_CLIENT_SECRET']['valueFrom']['secretKeyRef']['key'] == 'client-secret'
+        assert env['AGENTOS_COOKIE_SECRET']['valueFrom']['secretKeyRef']['key'] == 'cookie-secret'
     if mode == 'none':
         assert 'AGENTOS_OIDC_ISSUER' not in env
     assert urlparse(env['AGENTOS_GATEWAY_URL']['value']).hostname.endswith('.svc.cluster.local')
@@ -182,7 +182,7 @@ for name, source, overrides, presets, config in [
     assert not any('oauth2-proxy' in doc['metadata']['name'] for doc in docs)
     console_ingress = next(doc for doc in docs if doc['kind'] == 'Ingress' and doc['metadata']['name'].endswith('-console'))
     public_port = console_ingress['spec']['rules'][0]['http']['paths'][0]['backend']['service']['port']['name']
-    assert public_port == ('identity' if mode == 'oidc' else 'http')
+    assert public_port == 'http'
     assert 'traefik.ingress.kubernetes.io/router.middlewares' not in console_ingress['metadata'].get('annotations', {})
     assert not any(doc['kind'] == 'Deployment' and doc['metadata']['name'].endswith('-team-sessions') for doc in docs)
     workspace = next(doc for doc in docs if doc['kind'] == 'AgentgatewayBackend' and doc['metadata']['name'] == 'team-sessions')

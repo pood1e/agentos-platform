@@ -29,31 +29,40 @@ toolsets = config['toolsets']
 for environment in config['environments']:
     name, approval = environment['name'], environment['governance'] == 'approval'
     identities = [item for item in config['identities'] if name in item.get('environments', [name])]
-    keys = next(doc for doc in load(f'{name}-gateway.yaml') if doc['kind'] == 'ConfigMap')['data']
-    assert set(keys) == {item['name'] for item in identities}, f'{name}: gateway keys'
+    gateway = load(f'{name}-gateway.yaml')
+    listener = next(doc for doc in gateway if doc['kind'] == 'Gateway')['spec']['listeners'][0]
+    assert listener['protocol'] == 'HTTPS' and listener['tls']['certificateRefs']
+    authentication = next(doc for doc in gateway if doc['kind'] == 'AgentgatewayPolicy' and doc['metadata']['name'] == 'gateway-auth')['spec']['traffic']
+    assert 'apiKeyAuthentication' not in authentication
+    assert authentication['jwtAuthentication']['mode'] == 'Strict'
+    assert authentication['jwtAuthentication']['mcp']['resourceMetadata']['resource'].startswith('https://')
     backends = {doc['metadata']['name']: doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'AgentgatewayBackend'}
     expected = {f'{project}-{item["name"]}' for item in identities for project in toolsets if project in item['services']}
-    expected |= {f'kubernetes-{item["name"]}-user' for item in identities if item['name'] != 'catalog' and 'kubernetes' in item['services']}
     assert set(backends) == expected, f'{name}: backends follow identities'
     for identity in identities:
         for project, access in identity['services'].items():
             tiers = ['readOnly'] + (['write'] if access != 'read' else []) + (['managementReadOnly', 'management'] if access == 'manage' else [])
             allowed = sorted(tool for tier in tiers for tool in toolsets[project].get(tier, []))
             expression = backends[f'{project}-{identity["name"]}']['spec']['policies']['mcp']['authorization']['policy']['matchExpressions'][0]
-            assert sorted(json.loads(expression.removeprefix('mcp.tool.name in '))) == allowed, f'{name}: {project} tools for {identity["name"]}'
-            if project == 'kubernetes' and identity['name'] != 'catalog':
-                delegated = backends[f'{project}-{identity["name"]}-user']['spec']
-                assert delegated['mcp']['sessionRouting'] == 'Stateless'
-                assert backends[f'{project}-{identity["name"]}']['spec']['mcp']['sessionRouting'] == 'Stateless'
-                assert delegated['policies']['mcp']['authorization']['policy']['matchExpressions'][0] == expression
-                exchange = delegated['mcp']['targets'][0]['static']['policies']['auth']['oauthTokenExchange']
+            assert sorted(json.loads(expression.removeprefix('mcp.tool.name in '))) == allowed
+            if project == 'kubernetes':
+                exchange = backends[f'{project}-{identity["name"]}']['spec']['mcp']['targets'][0]['static']['policies']['auth']['oauthTokenExchange']
                 assert exchange['audiences'] == [f'{name}-kubernetes']
-                assert exchange['subjectToken']['source']['header']['name'] == 'x-agentos-subject-token'
-    user_routes = [doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'HTTPRoute' and doc['metadata']['name'].endswith('-user')]
-    assert user_routes and all(route['spec']['rules'][0]['matches'][0]['headers'][1]['value'] == 'user' for route in user_routes)
+                assert exchange['subjectToken']['source']['header']['name'] == 'Authorization'
     for route in (doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'HTTPRoute'):
-        stripped = ['x-substrate-actor-token'] + ([] if route in user_routes else ['x-agentos-subject-token'])
-        assert route['spec']['rules'][0]['filters'][0]['requestHeaderModifier']['remove'] == stripped, f'{name}: connector credentials'
+        assert route['spec']['parentRefs'][0]['sectionName'] == 'https'
+        match = route['spec']['rules'][0]['matches'][0]
+        assert 'headers' not in match and match['path']['type'] == 'Exact'
+        identity = next(item for item in identities if f"/mcp/{item['name']}/" in match['path']['value'])
+        policy = next(doc for doc in load(f'{name}-backends.yaml') if doc['kind'] == 'AgentgatewayPolicy' and doc['metadata']['name'] == route['metadata']['name'] + '-identity')
+        assert policy['spec']['traffic']['authorization']['policy']['matchExpressions'] == [f"has(jwt.azp) && jwt.azp == 'agentos-{identity['name']}'"]
+        assert route['spec']['rules'][0]['filters'][0]['requestHeaderModifier']['remove'] == (['x-substrate-actor-token'] if route['metadata']['name'].startswith('kubernetes-') else ['x-substrate-actor-token', 'authorization'])
+    for backend in (doc for doc in load(f'{name}-platform-services.yaml') if doc['kind'] == 'AgentgatewayBackend'):
+        tls = backend['spec']['policies']['tls']
+        assert tls['caCertificateRefs'] and tls['verifySubjectAltNames'] and not tls.get('insecureSkipVerify')
+        processor = backend['spec']['policies']['mcp']['guardrails']['processors'][0]['remote']
+        assert processor['failureMode'] == 'FailClosed'
+        assert processor['metadata']['identity'] == "'catalog'"
     bindings = yaml.safe_load((out / f'{name}-initialize-tools.yaml').read_text())
     for item in bindings:
         binding = item['mcp']
@@ -64,15 +73,14 @@ for environment in config['environments']:
         assert all(binding['requireApproval'] == (approval and tool.removeprefix(f'{name}-{project}_') in reviewed) for tool in binding['tools']), f'{name}: approval bindings'
     pruned = yaml.safe_load((out / f'{name}-prune-tools.yaml').read_text())
     assert [item['mcp']['server']['name'] for item in pruned] == ['team-sessions'], f'{name}: retired bindings remain'
-    routes = [doc for doc in load(f'{name}-platform-gateway.yaml') if doc['kind'] == 'HTTPRoute' and 'headers' in doc['spec']['rules'][0]['matches'][0]]
-    assert all(route['spec']['rules'][0]['matches'][0]['headers'][0]['name'] == 'x-agentos-engineer' for route in routes)
-    for route in routes:
-        headers = route['spec']['rules'][0]['filters'][0]['requestHeaderModifier']
-        assert headers['set'] == [{'name': 'x-agentos-execution-kind', 'value': 'service'}]
-        assert headers['remove'] == ['x-agentos-subject-token']
+    remotes = [doc for doc in load(f'{name}-platform-gateway.yaml') if doc['kind'] == 'RemoteMCPServer']
+    assert all('headersFrom' not in doc['spec'] and doc['metadata']['annotations']['agentos.dev/discovery-auth'] == 'kubernetes' for doc in remotes)
+    assert all('agentos-mcp-gateway.' in doc['spec']['url'] for doc in remotes)
+    text = (out / f'{name}-platform-gateway.yaml').read_text()
+    assert all(legacy not in text for legacy in ['x-agentos-engineer', 'x-agentos-execution-kind', 'x-agentos-subject-token', 'apiKey.'])
 
 connections = json.loads(load('platform-governance.yaml')[0]['stringData']['connections.json'])['environments']
 assert [(item['environment']['name'], item['environment']['governance']) for item in connections] == [
     ('env-approval', 'GOVERNANCE_APPROVAL'), ('env-direct', 'GOVERNANCE_DIRECT')]
-assert all('approvalUrl' not in item and 'authorization' not in item for item in connections)
+assert all(item['issuer'].startswith('https://') and item['resource'].startswith('https://') and 'authorization' not in item for item in connections)
 print('Environment validation passed')

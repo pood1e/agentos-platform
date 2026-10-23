@@ -6,16 +6,13 @@ kind: RemoteMCPServer
 metadata:
   name: {{ name }}
   namespace: {{ agentos_namespace }}
+  annotations: {agentos.dev/discovery-auth: kubernetes}
   labels: {agentos.dev/environment: {{ environment_name }}, agentos.dev/toolset-revision: '{{ toolset_revision }}'}
   ownerReferences:
     - {apiVersion: agentgateway.dev/v1alpha1, kind: AgentgatewayBackend, name: {{ name }}, uid: {{ service.metadata.uid }}}
 spec:
   description: {{ service.metadata.annotations['agentos.dev/display-name'] | default(name) | to_json }}
   protocol: STREAMABLE_HTTP
-  url: http://{{ name }}-mcp-gateway.{{ agentos_namespace }}.svc.cluster.local:8080/mcp/{{ name }}
+  url: http://{{ platform_release }}-mcp-gateway.{{ agentos_namespace }}.svc.cluster.local:8080/mcp/{{ name }}
   timeout: 10m
-  headersFrom:
-    - name: Authorization
-      valueFrom: {type: Secret, name: {{ environment_name }}-catalog, key: authorization}
-    - {name: X-Agentos-Engineer, value: catalog}
 {% endfor %}

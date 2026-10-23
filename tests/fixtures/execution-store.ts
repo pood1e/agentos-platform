@@ -25,5 +25,12 @@ export function memoryStore(): ExecutionStore {
     identity: (id) => read(identities, id),
     saveBinding: (value, version) => save(bindings, value.sessionId, value, version),
     saveIdentity: (value, version) => save(identities, value.subject, value, version),
+    updateIdentity: async (subject, update) => {
+      const stored = identities.get(subject);
+      if (!stored) return undefined;
+      const next = await update(structuredClone(stored.value));
+      await save(identities, subject, next, stored.version);
+      return next;
+    },
   } as ExecutionStore;
 }

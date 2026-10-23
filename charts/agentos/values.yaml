@@ -66,11 +66,7 @@ identity:
   audience: ''
   writerRole: ''
   secretRef: agentos-identity
-  proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5@sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916
-    resources:
-      requests: {cpu: 50m, memory: 64Mi}
-      limits: {cpu: 500m, memory: 128Mi}
+
 ingress:
   host: ''
   tlsSecret: agentos-ingress
@@ -90,7 +86,7 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: registry.example.com/agentos/standard-harness@sha256:181556e39e675b4c791e3f96aab089526ee2ee1ce98e0dcf0de701d186486fc8
+      image: registry.example.com/agentos/standard-harness@sha256:7080612cd2893c295b13b7aaf429346574556055930bfa2a3aa028d10290af90
     env:
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
@@ -102,7 +98,7 @@ harnesses:
         modelConfigRef: {name: knowledge-embedding}
         ttlDays: 3650
     workload:
-      image: registry.example.com/agentos/standard-harness@sha256:181556e39e675b4c791e3f96aab089526ee2ee1ce98e0dcf0de701d186486fc8
+      image: registry.example.com/agentos/standard-harness@sha256:7080612cd2893c295b13b7aaf429346574556055930bfa2a3aa028d10290af90
     env:
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
@@ -111,7 +107,7 @@ harnesses:
   codex:
     codex: {}
     workload:
-      image: registry.example.com/agentos/codex-harness@sha256:7e404c83ca6211d1b3bcf252bf37d5d6cb91efd185956d9e54a20568237afaec
+      image: registry.example.com/agentos/codex-harness@sha256:6b6fd47d91d68ccbb7f7e583b361e115730d6f4e8ff7514f56d767c30efbaaf7
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
@@ -119,7 +115,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: registry.example.com/agentos/claude-harness@sha256:5e4c011233f94a1f525e3a0654aa10bd3366b2db02b1643434854e2961e15af6
+      image: registry.example.com/agentos/claude-harness@sha256:c37cba8d50ab2583a5886d51bf89fd5e94f3a06afcd1918b725a563474e8d104
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}

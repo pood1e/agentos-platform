@@ -507,7 +507,7 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["issuer", "clientId", "writerRole", "secretRef", "proxy", "mode", "audience"],
+      "required": ["issuer", "clientId", "writerRole", "secretRef", "mode", "audience"],
       "properties": {
         "issuer": {
           "type": "string"
@@ -521,26 +521,6 @@
         "secretRef": {
           "type": "string",
           "minLength": 1
-        },
-        "proxy": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["image", "resources"],
-          "properties": {
-            "image": {
-              "type": "string",
-              "pattern": "@sha256:[0-9a-f]{64}$"
-            },
-            "resources": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": ["string", "number"]
-                }
-              }
-            }
-          }
         },
         "mode": {
           "enum": ["none", "oidc"]

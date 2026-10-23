@@ -21,6 +21,10 @@ export interface ExecutionStore {
   identity(subject: string): Promise<Stored<ExecutionIdentity> | undefined>;
   saveBinding(value: ExecutionBinding, version?: string): Promise<void>;
   saveIdentity(value: ExecutionIdentity, version?: string): Promise<void>;
+  updateIdentity(
+    subject: string,
+    update: (identity: ExecutionIdentity) => Promise<ExecutionIdentity>,
+  ): Promise<ExecutionIdentity | undefined>;
 }
 
 export const conflict = (error: unknown) =>
@@ -118,6 +122,27 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
       save(ExecutionBindingSchema, "execution", value.sessionId, value, version),
     saveIdentity: (value: ExecutionIdentity, version?: string) =>
       save(ExecutionIdentitySchema, "identity", value.subject, value, version),
+    updateIdentity: (subject, update) =>
+      sql.begin(async (transaction) => {
+        const rows = await transaction<{ value: Buffer }[]>`
+          select value from agentos_authorization.objects
+          where workspace=${workspace} and kind='identity' and id=${subject} for update
+        `;
+        if (!rows[0]) return undefined;
+        const current = fromBinary(
+          ExecutionIdentitySchema,
+          open(rows[0].value, "identity", subject),
+        );
+        const identity = await update(current);
+        if (identity.subject !== subject)
+          throw new ConnectError("Execution subject changed", Code.PermissionDenied);
+        if (identity !== current) {
+          const encrypted = seal(toBinary(ExecutionIdentitySchema, identity), "identity", subject);
+          await transaction`update agentos_authorization.objects set value=${encrypted}, version=version+1
+            where workspace=${workspace} and kind='identity' and id=${subject}`;
+        }
+        return identity;
+      }),
     close: () => sql.end({ timeout: 5 }),
   } satisfies ExecutionStore & { close: () => Promise<void> };
 }

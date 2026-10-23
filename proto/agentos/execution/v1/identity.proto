@@ -14,6 +14,7 @@ message ExecutionIdentity {
     bool service = 4;
   }
   repeated agentos.authorization.v1.Capability capabilities = 5;
+  string refresh_token = 6;
 }
 
 message ExecutionBinding {
