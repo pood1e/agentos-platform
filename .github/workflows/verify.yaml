@@ -1,5 +1,8 @@
 name: Verify
 on:
+  push:
+    branches: [main]
+    paths: ['runtime/**', 'third_party/**', 'ci/**', 'mise.toml', 'mise.lock', '.github/workflows/verify.yaml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -30,7 +33,7 @@ jobs:
               - '!**/*.md'
   application:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: github.event_name != 'push' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -104,7 +107,7 @@ jobs:
           retention-days: 1
   deployment:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: github.event_name != 'push' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     env:
       ANSIBLE_CONFIG: deploy/ansible.cfg

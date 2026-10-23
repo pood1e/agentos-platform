@@ -18,7 +18,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `package-check` | 汇总候选镜像，核对运行时摘要与部署固定值，实际打包三个 Chart；功能分支同样执行 |
 | `release` | 所有检查通过后，发布契约和部署包，打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录各制品版本、源提交与摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
 
-GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执行应用、部署、Python、运行时与浏览器检查，`Required checks` 汇总必需结果；纯文档变更跳过无关检查。
+GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执行应用、部署、Python、运行时与浏览器检查，`Required checks` 汇总必需结果；纯文档变更跳过无关检查。运行时变更合入 main 后更新默认分支的 Go 缓存，后续 PR 通过原生缓存复用。
 release-please 使用仓库令牌管理发布 PR，并通过原生 `workflow_dispatch` 在其分支触发相同门禁。
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
