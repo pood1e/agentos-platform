@@ -35,7 +35,7 @@ Python、npm 契约与部署源码包位于 GitLab Generic Package `agentos-plat
 PostgreSQL 使用原生服务容器，npm 与 Go 缓存由 CI 管理。镜像按自身路径使用资源锁，可并行构建；最终发布串行执行且不被新提交取消。
 发布 PR 的版本提交跳过重复的 main 构建，由正式 tag 完成发布。协议生成使用官方 protoc 与 Buf 插件。
 发布时占位符替换为 `$CI_REGISTRY_IMAGE`。运行时镜像更新分两步：运行时作业构建出新摘要后，在 `deploy/vars.yaml` 与
-`charts/agentos/values.yaml` 更新固定摘要；发布作业核对本次构建的摘要与固定值一致。
+`charts/agentos/values.yaml` 更新固定摘要；候选打包核对本次构建的摘要与固定值一致。正式 tag 复用已固定的运行时镜像，构建与根版本绑定的应用和契约制品；运行时检查与编译在源代码或工具链变更的分支检查中完成。
 
 | CI/CD 变量 | 说明 |
 | --- | --- |
