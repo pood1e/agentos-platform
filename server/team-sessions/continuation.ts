@@ -2,7 +2,6 @@
 import { create } from "@bufbuild/protobuf";
 import { type Message, MessageSchema, Role, TaskState } from "../../gen/a2a_pb.js";
 import { CoordinationJobSchema } from "../../gen/agentos/execution/v1/coordination_pb.js";
-import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { Coordinator } from "../jobs/coordination.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
 import { parentTaskKey, resumedTaskKey } from "../read-model/decode/messages.js";
@@ -11,6 +10,7 @@ import type { TaskIndex } from "../read-model/index.js";
 import { terminal } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { foreground, taskTree } from "../read-model/tree.js";
+import { waitingDelegations } from "../read-model/waiting.js";
 import messages from "./messages.json" with { type: "json" };
 
 interface Continuation {
@@ -32,28 +32,6 @@ function stoppedOperation(index: TaskIndex, parent: TaskEntry): boolean {
   return false;
 }
 
-const waiting = (index: TaskIndex, entry: TaskEntry) =>
-  entry.calls.flatMap((call) => {
-    const invocation = call.delegation?.invocation;
-    const childId = invocation?.taskId || index.target(entry, call);
-    if (!childId) return [];
-    if (!invocation && (call.state === ActivityState.FAILED || !call.returned)) return [childId];
-    if (!invocation) return [];
-    if (invocation.state === TaskState.INPUT_REQUIRED) return [invocation.taskId];
-    const child = index.entry(invocation.taskId);
-    const continued =
-      child &&
-      (index.relations().continuations.get(child.id) ?? []).some((id) => {
-        const next = index.entry(id);
-        return (
-          next?.agentId === child.agentId &&
-          next.contextId === child.contextId &&
-          next.resumedTaskId
-        );
-      });
-    return continued ? [invocation.taskId] : [];
-  });
-
 function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
   const { resumed } = index.relations();
   const child = index.entry(childId);
@@ -61,7 +39,7 @@ function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
   const tree = taskTree(index, child.id);
   const active = tree ? foreground(tree) : [];
   if (active.some((entry) => !terminal(entry.state))) return undefined;
-  if (active.some((entry) => waiting(index, entry).some((id) => !resumed.has(id))))
+  if (active.some((entry) => waitingDelegations(index, entry).some((id) => !resumed.has(id))))
     return undefined;
   const decided = active
     .filter((entry) => entry.decision)
@@ -115,7 +93,7 @@ export function continuations(
       return [...ids].flatMap((id) => {
         const parent = index.entry(id);
         if (!parent || !terminal(parent.state) || stoppedOperation(index, parent)) return [];
-        return waiting(index, parent).flatMap((childId) =>
+        return waitingDelegations(index, parent).flatMap((childId) =>
           continuation(index, parent, childId)
             ? [
                 create(CoordinationJobSchema, {

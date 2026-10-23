@@ -3,6 +3,7 @@ import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import type { TaskEntry } from "./entry.js";
 import type { TaskIndex } from "./index.js";
 import { terminal } from "./state.js";
+import { waitingDelegations } from "./waiting.js";
 
 export interface TaskTree {
   root: TaskEntry;
@@ -10,6 +11,7 @@ export interface TaskTree {
   background: Set<string>;
   /** Most recent task of the root agent in the root conversation, including continuations. */
   latest: TaskEntry;
+  pending: boolean;
   /** Last status change anywhere in the operation. */
   updatedAt?: number;
 }
@@ -56,13 +58,20 @@ export function taskTree(index: TaskIndex, rootId: string): TaskTree | undefined
       .sort((a, b) => (b.statusAt ?? 0) - (a.statusAt ?? 0))[0] ?? root;
   const times = entries.flatMap((entry) => entry.statusAt ?? []);
   const updatedAt = times.length ? Math.max(...times) : undefined;
-  return { root, entries, background, latest, updatedAt };
+  const resumed = index.relations().resumed;
+  const pending = entries.some(
+    (entry) =>
+      !background.has(entry.id) && waitingDelegations(index, entry).some((id) => !resumed.has(id)),
+  );
+  return { root, entries, background, latest, updatedAt, pending };
 }
 
 export const foreground = (tree: TaskTree) =>
   tree.entries.filter((entry) => !tree.background.has(entry.id));
 
-export const busy = (tree: TaskTree) => foreground(tree).some((entry) => !terminal(entry.state));
+export const busy = (tree: TaskTree) =>
+  (outcomeState(tree) !== TaskState.CANCELED && tree.pending) ||
+  foreground(tree).some((entry) => !terminal(entry.state));
 
 export const outcomeState = (tree: TaskTree) =>
   foreground(tree).some(
