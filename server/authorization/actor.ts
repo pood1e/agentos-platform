@@ -23,7 +23,7 @@ export function actorVerifier(keys: JWTVerifyGetKey, issuer: string, audience: s
     } catch {
       throw denied();
     }
-    const raw = payload["ate.dev"];
+    const raw = payload["actor.ate.dev"];
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw denied();
     const claims = raw as Record<string, unknown>;
     const { atespace, actorName, actorUID } = claims;

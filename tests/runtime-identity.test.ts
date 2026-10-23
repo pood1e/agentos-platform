@@ -30,7 +30,7 @@ async function fixture() {
       nbf: Math.floor(Date.now() / 1_000) - 300,
       exp: Math.floor(Date.now() / 1_000) + 300,
       jti: randomUUID(),
-      "ate.dev": claims,
+      "actor.ate.dev": claims,
       ...override,
     })
       .setProtectedHeader({ alg: "ES256", kid: "test" })
@@ -45,7 +45,9 @@ it("uses only signed native Actor fields and rejects worker, forged and wrong-au
     await expect(verify(token)).rejects.toThrow("Runtime identity is invalid");
   }
   for (const claim of ["atespace", "actorName", "actorUID"]) {
-    await expect(verify(await sign({ "ate.dev": { ...claims, [claim]: "" } }))).rejects.toThrow();
+    await expect(
+      verify(await sign({ "actor.ate.dev": { ...claims, [claim]: "" } })),
+    ).rejects.toThrow();
   }
   for (const options of [
     { sub: `worker-for-actor/${metadata.atespace}/${metadata.name}`, aud: audience, iss: issuer },
@@ -55,6 +57,13 @@ it("uses only signed native Actor fields and rejects worker, forged and wrong-au
   ]) {
     await expect(verify(await sign(options))).rejects.toThrow("Runtime identity is invalid");
   }
+});
+
+it.each(["ate.dev", "worker-for-actor.ate.dev"])("rejects the %s identity claim", async (claim) => {
+  const { verify, sign, claims } = await fixture();
+  await expect(verify(await sign({ "actor.ate.dev": undefined, [claim]: claims }))).rejects.toThrow(
+    "Runtime identity is invalid",
+  );
 });
 
 it("rejects unknown signers, expired tokens and missing required claims", async () => {
