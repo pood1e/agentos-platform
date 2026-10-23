@@ -95,3 +95,27 @@ deny contains sprintf("%s contains an unresolved credential placeholder", [backe
 	is_string(value)
 	regex.match("<(identity|environment|issuer)>", value)
 }
+
+deny contains sprintf("%s advertises an origin outside its service audience", [remote.metadata.name]) if {
+	some remote in resources
+	remote.kind == "RemoteMCPServer"
+	some backend in resources
+	backend.kind == "AgentgatewayBackend"
+	backend.metadata.name == remote.metadata.name
+	source := backend.spec.mcp.targets[0].name
+	some policy in resources
+	policy.kind == "AgentgatewayPolicy"
+	policy.metadata.name == sprintf("%s-runtime-auth", [source])
+	origin := regex.find_n("^https?://[^/]+", remote.spec.url, 1)[0]
+	not origin in policy.spec.traffic.jwtAuthentication.providers[0].audiences
+}
+
+deny contains sprintf("%s has no service for its scoped MCP origin", [remote.metadata.name]) if {
+	some remote in resources
+	remote.kind == "RemoteMCPServer"
+	some backend in resources
+	backend.kind == "AgentgatewayBackend"
+	backend.metadata.name == remote.metadata.name
+	source := backend.spec.mcp.targets[0].name
+	not has_resource("Service", sprintf("%s-mcp-gateway", [source]))
+}

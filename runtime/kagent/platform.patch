@@ -1286,6 +1286,72 @@ index e528543..c80122a 100644
  		server.Spec.HeadersFrom = nil
  		if err := c.addRemoteMCPServer(cfg, server, tool.Binding.Tools, tool.Binding.RequireApproval, headers); err != nil {
  			return nil, fmt.Errorf("compile %s %q: %w", tool.Binding.Server.Kind, tool.Binding.Server.Name, err)
+diff --git a/go/core/internal/translator/adkconfig/model.go b/go/core/internal/translator/adkconfig/model.go
+index 0118cbe..a655462 100644
+--- a/go/core/internal/translator/adkconfig/model.go
++++ b/go/core/internal/translator/adkconfig/model.go
+@@ -2,6 +2,7 @@ package adkconfig
+ 
+ import (
+ 	"fmt"
++	"maps"
+ 	"slices"
+ 
+ 	"google.golang.org/protobuf/types/known/durationpb"
+@@ -14,6 +15,7 @@ import (
+ 	"github.com/kagent-dev/kagent/go/api/v1alpha3"
+ 	"github.com/kagent-dev/kagent/go/core/internal/translator"
+ 	"github.com/kagent-dev/kagent/go/core/internal/utils"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ )
+ 
+@@ -42,6 +44,10 @@ func resolveModel(resolved *translator.ResolvedModelConfig) (*modelRuntime, erro
+ 	if err != nil {
+ 		return nil, err
+ 	}
++	model.Headers, err = egresspolicy.WithActorIdentity(maps.Clone(model.Headers))
++	if err != nil {
++		return nil, err
++	}
+ 	return &modelRuntime{
+ 		Model: model, Environment: data.EnvVars,
+ 		HasUnsupportedVolumes: len(data.Volumes) > 0 || len(data.VolumeMounts) > 0,
+diff --git a/go/core/internal/translator/adkconfig/model_test.go b/go/core/internal/translator/adkconfig/model_test.go
+index 0838e52..8605255 100644
+--- a/go/core/internal/translator/adkconfig/model_test.go
++++ b/go/core/internal/translator/adkconfig/model_test.go
+@@ -12,9 +12,30 @@ import (
+ 	configv1 "github.com/kagent-dev/kagent/go/api/gen/kagent/config/v1"
+ 	"github.com/kagent-dev/kagent/go/api/v1alpha3"
+ 	"github.com/kagent-dev/kagent/go/core/internal/translator"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ )
+ 
++func TestResolvedModelCarriesHostSignedIdentity(t *testing.T) {
++	for _, headers := range []map[string]string{nil, {"X-Tenant": "team"}} {
++		input := &translator.ResolvedModelConfig{Config: &v1alpha3.ModelConfig{
++			Spec: v1alpha3.ModelConfigSpec{Provider: v1alpha3.ModelProviderOpenAI, Model: "model", DefaultHeaders: headers},
++		}}
++		for range 2 {
++			resolved, err := resolveModel(input)
++			require.NoError(t, err)
++			require.Equal(t, "required", resolved.Model.Headers[egresspolicy.ActorIdentityHeader])
++			require.Equal(t, headers["X-Tenant"], resolved.Model.Headers["X-Tenant"])
++			require.NotContains(t, headers, egresspolicy.ActorIdentityHeader)
++		}
++	}
++	input := &translator.ResolvedModelConfig{Config: &v1alpha3.ModelConfig{
++		Spec: v1alpha3.ModelConfigSpec{Provider: v1alpha3.ModelProviderOpenAI, Model: "model", DefaultHeaders: map[string]string{"X-Substrate-Actor-Token": "forged"}},
++	}}
++	_, err := resolveModel(input)
++	require.ErrorContains(t, err, "actor identity header is reserved")
++}
++
+ func TestBedrockProviderJSONRoundTrip(t *testing.T) {
+ 	for _, raw := range []string{"", "{}", `{"thinking":{"budget_tokens":1024},"large":9007199254740993,"values":[0,false,null,0.25]}`} {
+ 		t.Run(raw, func(t *testing.T) {
 diff --git a/go/core/internal/translator/byo/compiler_test.go b/go/core/internal/translator/byo/compiler_test.go
 index 598b8ff..7b0775b 100644
 --- a/go/core/internal/translator/byo/compiler_test.go
@@ -1880,7 +1946,7 @@ index 6cc9564..8a7b4b7 100644
  		"pgvector/pgvector:pg18-trixie",
  		tcpostgres.WithDatabase("kagent_test"),
 diff --git a/go/harness/claude/config/config.go b/go/harness/claude/config/config.go
-index 684d001..a8fb24d 100644
+index 684d001..cb94b0a 100644
 --- a/go/harness/claude/config/config.go
 +++ b/go/harness/claude/config/config.go
 @@ -18,7 +18,7 @@ import (
@@ -1892,7 +1958,24 @@ index 684d001..a8fb24d 100644
  	// PinnedClaudeVersion is the Claude Code release the image installs. A bump
  	// must recheck the telemetry gate in the driver.
  	PinnedClaudeVersion                 = "2.1.285"
-@@ -77,6 +77,7 @@ type Config struct {
+@@ -35,6 +35,7 @@ const (
+ 	AWSSessionTokenEnvName              = "AWS_SESSION_TOKEN"
+ 	AWSBedrockTokenEnvName              = "AWS_BEARER_TOKEN_BEDROCK"
+ 	AnthropicAPIKeyEnvName              = "ANTHROPIC_API_KEY"
++	AnthropicCustomHeadersEnvName       = "ANTHROPIC_CUSTOM_HEADERS"
+ 	AnthropicBaseURLEnvName             = "ANTHROPIC_BASE_URL"
+ 	VertexProjectEnvName                = "ANTHROPIC_VERTEX_PROJECT_ID"
+ 	VertexRegionEnvName                 = "CLOUD_ML_REGION"
+@@ -52,7 +53,7 @@ func OwnsEnvironment(name string) bool {
+ 	case ClaudeConfigDirEnvName, DisableUpdatesEnvName, MaxRetriesEnvName, GoogleApplicationCredentialsEnvName,
+ 		GoogleCredentialsJSONEnvName, UseBedrockEnvName, UseVertexEnvName, AWSRegionEnvName,
+ 		AWSAccessKeyEnvName, AWSSecretKeyEnvName, AWSSessionTokenEnvName, AWSBedrockTokenEnvName,
+-		AnthropicAPIKeyEnvName, AnthropicBaseURLEnvName, VertexProjectEnvName, VertexRegionEnvName,
++		AnthropicAPIKeyEnvName, AnthropicCustomHeadersEnvName, AnthropicBaseURLEnvName, VertexProjectEnvName, VertexRegionEnvName,
+ 		SandboxEnvName, "CLAUDE_CODE_ENABLE_TELEMETRY",
+ 		"CLAUDE_CODE_ENHANCED_TELEMETRY_BETA", env.OTELTraces.Exporter.Name(), env.OTELMetrics.Exporter.Name(),
+ 		env.OTELLogs.Exporter.Name(), env.OTELLogUserPrompts.Name(), env.OTELLogToolDetails.Name(), env.OTELLogToolContent.Name(),
+@@ -77,6 +78,7 @@ type Config struct {
  	Agents                map[string]Agent       `json:"agents,omitempty"`
  	SkillResources        *agentplugin.Resources `json:"skill_resources,omitempty"`
  	MCPServers            map[string]MCPServer   `json:"mcp_servers,omitempty"`
@@ -1900,7 +1983,7 @@ index 684d001..a8fb24d 100644
  	// RuntimeTelemetry carries the compiler-owned span identity and content
  	// capture policy. It is absent for standalone runs, which fall back to the
  	// environment for service identity and leave capture disabled.
-@@ -94,6 +95,7 @@ type MCPServer struct {
+@@ -94,6 +96,7 @@ type MCPServer struct {
  	URL             string            `json:"url"`
  	Headers         map[string]string `json:"headers,omitempty"`
  	RequireApproval bool              `json:"require_approval,omitempty"`
@@ -1908,7 +1991,7 @@ index 684d001..a8fb24d 100644
  }
  
  // Agent is one compiler-owned local Claude subagent passed through --agents.
-@@ -180,6 +182,11 @@ func (c Config) Validate() error {
+@@ -180,6 +183,11 @@ func (c Config) Validate() error {
  		if strings.TrimSpace(server.URL) == "" {
  			return fmt.Errorf("claude MCP server %q URL is required", name)
  		}
@@ -1921,10 +2004,18 @@ index 684d001..a8fb24d 100644
  			if strings.TrimSpace(header) == "" || strings.TrimSpace(value) == "" {
  				return fmt.Errorf("claude MCP server %q headers require non-empty names and values", name)
 diff --git a/go/harness/claude/config/config_test.go b/go/harness/claude/config/config_test.go
-index 999a770..2f7b99d 100644
+index 999a770..9182407 100644
 --- a/go/harness/claude/config/config_test.go
 +++ b/go/harness/claude/config/config_test.go
-@@ -83,7 +83,7 @@ func TestAgentsJSON(t *testing.T) {
+@@ -12,6 +12,7 @@ import (
+ func TestOwnsEnvironment(t *testing.T) {
+ 	for _, name := range []string{
+ 		AnthropicAPIKeyEnvName,
++		AnthropicCustomHeadersEnvName,
+ 		ClaudeConfigDirEnvName,
+ 		MaxRetriesEnvName,
+ 		"CLAUDE_CODE_ENHANCED_TELEMETRY_BETA",
+@@ -83,7 +84,7 @@ func TestAgentsJSON(t *testing.T) {
  	if raw != want {
  		t.Fatalf("AgentsJSON() = %s, want %s", raw, want)
  	}
@@ -1933,7 +2024,7 @@ index 999a770..2f7b99d 100644
  	if err != nil {
  		t.Fatal(err)
  	}
-@@ -108,7 +108,7 @@ func TestConfigRejectsInvalidAgents(t *testing.T) {
+@@ -108,7 +109,7 @@ func TestConfigRejectsInvalidAgents(t *testing.T) {
  }
  
  func TestParseValidates(t *testing.T) {
@@ -1942,7 +2033,7 @@ index 999a770..2f7b99d 100644
  	cfg, err := Parse([]byte(contents))
  	if err != nil {
  		t.Fatal(err)
-@@ -119,7 +119,7 @@ func TestParseValidates(t *testing.T) {
+@@ -119,7 +120,7 @@ func TestParseValidates(t *testing.T) {
  }
  
  func TestConfigRejectsUnknownFields(t *testing.T) {
@@ -1951,7 +2042,7 @@ index 999a770..2f7b99d 100644
  		t.Fatal("Parse() accepted an unknown field")
  	}
  }
-@@ -131,7 +131,7 @@ func TestConfigRejectsTrailingValue(t *testing.T) {
+@@ -131,7 +132,7 @@ func TestConfigRejectsTrailingValue(t *testing.T) {
  }
  
  func TestConfigRejectsMissingLimits(t *testing.T) {
@@ -1960,7 +2051,7 @@ index 999a770..2f7b99d 100644
  	if err == nil || !strings.Contains(err.Error(), "limits must be positive") {
  		t.Fatalf("Parse() error = %v", err)
  	}
-@@ -166,7 +166,7 @@ func TestConfigValidatesRuntimeTelemetry(t *testing.T) {
+@@ -166,7 +167,7 @@ func TestConfigValidatesRuntimeTelemetry(t *testing.T) {
  // A configuration without the telemetry section stays readable, which keeps
  // standalone harness validation working.
  func TestParseAcceptsConfigWithoutRuntimeTelemetry(t *testing.T) {
@@ -1984,10 +2075,26 @@ index 0000000..5c21320
 +// ValidToolName reports whether a name is a literal Claude permission rule.
 +func ValidToolName(name string) bool { return toolNamePattern.MatchString(name) }
 diff --git a/go/harness/claude/internal/adapter/adapter.go b/go/harness/claude/internal/adapter/adapter.go
-index 73c18a9..3efe77a 100644
+index 73c18a9..ce07fea 100644
 --- a/go/harness/claude/internal/adapter/adapter.go
 +++ b/go/harness/claude/internal/adapter/adapter.go
-@@ -95,14 +95,13 @@ func New(ctx context.Context, input Input) (*driver.ProcessDriver, error) {
+@@ -12,6 +12,7 @@ import (
+ 	"strings"
+ 
+ 	"github.com/kagent-dev/kagent/go/core/pkg/agentplugins"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ 	"github.com/kagent-dev/kagent/go/harness/claude/config"
+ 	"github.com/kagent-dev/kagent/go/harness/claude/internal/driver"
+@@ -79,6 +80,7 @@ func New(ctx context.Context, input Input) (*driver.ProcessDriver, error) {
+ 		pluginDirs = append([]string{skillRoot}, materialized.ClaudeFormatPluginRoots()...)
+ 	}
+ 	environment := setEnvironment(input.Environment, config.ClaudeConfigDirEnvName, claudeDir)
++	environment = setEnvironment(environment, config.AnthropicCustomHeadersEnvName, egresspolicy.ActorIdentityHeader+": required")
+ 	// The native runtime inherits the compiled identity through the standard
+ 	// resource variable, so no user-supplied marker is required.
+ 	environment, awaitTelemetry := nativeTelemetryEnvironment(tracing.ResourceEnvironment(otel.Environment(environment, cfg.RuntimeTelemetry.ExporterConfig()), cfg.RuntimeTelemetry.ChildResource()), cfg.RuntimeTelemetry)
+@@ -95,14 +97,13 @@ func New(ctx context.Context, input Input) (*driver.ProcessDriver, error) {
  	if err != nil {
  		return nil, err
  	}
@@ -2003,7 +2110,7 @@ index 73c18a9..3efe77a 100644
  	if err != nil {
  		return nil, fmt.Errorf("start Claude approval broker: %w", err)
  	}
-@@ -139,21 +138,12 @@ func New(ctx context.Context, input Input) (*driver.ProcessDriver, error) {
+@@ -139,21 +140,12 @@ func New(ctx context.Context, input Input) (*driver.ProcessDriver, error) {
  		StrictVersion: cfg.StrictVersion, Workspace: input.Workspace, Model: cfg.Model,
  		AppendSystemPrompt: cfg.AppendSystemPrompt, AgentsJSON: agentsJSON, MCPConfigPath: mcpConfigPath,
  		SettingsPath: settingsPath, PermissionPromptTool: permissionPromptTool, ApprovalBroker: approvalBroker,
@@ -2027,10 +2134,18 @@ index 73c18a9..3efe77a 100644
  	// The compiler injects the Secret value as JSON, while Google ADC expects a
  	// file path. Keep the credential in ephemeral Actor storage rather than the
 diff --git a/go/harness/claude/internal/adapter/adapter_test.go b/go/harness/claude/internal/adapter/adapter_test.go
-index 834a44c..3184e2d 100644
+index 834a44c..77aeed0 100644
 --- a/go/harness/claude/internal/adapter/adapter_test.go
 +++ b/go/harness/claude/internal/adapter/adapter_test.go
-@@ -22,7 +22,7 @@ func TestNewMaterializesDurableDirectories(t *testing.T) {
+@@ -11,6 +11,7 @@ import (
+ 	"testing"
+ 
+ 	"github.com/kagent-dev/kagent/go/api/agentplugin"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ 	"github.com/kagent-dev/kagent/go/harness/claude/config"
+ 	"github.com/kagent-dev/kagent/go/harness/runtime"
+@@ -22,7 +23,7 @@ func TestNewMaterializesDurableDirectories(t *testing.T) {
  	ephemeralDir := filepath.Join(t.TempDir(), "credentials")
  	workspace := filepath.Join(durableDir, "workspace")
  	runner, err := New(context.Background(), Input{
@@ -2039,6 +2154,40 @@ index 834a44c..3184e2d 100644
  		Workspace:  workspace,
  		DurableDir: durableDir, EphemeralDir: ephemeralDir,
  		Environment: []string{"PATH=/bin", "CLAUDE_CONFIG_DIR=/wrong", "DISABLE_UPDATES=0"},
+@@ -85,6 +86,33 @@ func TestNativeProcessRetriesAreOptIn(t *testing.T) {
+ 	}
+ }
+ 
++func TestNativeModelRequestsCarryWorkloadIdentity(t *testing.T) {
++	dir := t.TempDir()
++	executable := filepath.Join(dir, "claude")
++	script := fmt.Sprintf("#!/bin/sh\n[ \"$ANTHROPIC_CUSTOM_HEADERS\" = '%s: required' ] || exit 42\necho %s\n", egresspolicy.ActorIdentityHeader, config.PinnedClaudeVersion)
++	if err := os.WriteFile(executable, []byte(script), 0o700); err != nil {
++		t.Fatal(err)
++	}
++	cfg := config.Production("claude-test", "help")
++	cfg.ClaudeExecutable = executable
++	raw, err := json.Marshal(cfg)
++	if err != nil {
++		t.Fatal(err)
++	}
++	runner, err := New(t.Context(), Input{
++		ConfigJSON: raw, Workspace: filepath.Join(dir, "workspace"),
++		DurableDir: filepath.Join(dir, "data"), EphemeralDir: filepath.Join(dir, "ephemeral"),
++		Environment: []string{config.AnthropicCustomHeadersEnvName + "=forged"},
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	t.Cleanup(func() { _ = runner.Close() })
++	if err := runner.Validate(t.Context()); err != nil {
++		t.Fatalf("native process did not receive the workload identity header: %v", err)
++	}
++}
++
+ func TestNewMaterializesSkillsAndMCPConfig(t *testing.T) {
+ 	durableDir := filepath.Join(t.TempDir(), "data")
+ 	claudeDir := filepath.Join(durableDir, "claude")
 diff --git a/go/harness/claude/internal/driver/approval.go b/go/harness/claude/internal/driver/approval.go
 index 6e6e456..b7d2b32 100644
 --- a/go/harness/claude/internal/driver/approval.go
@@ -2346,6 +2495,64 @@ index 0000000..384d6ed
 +		})
 +	}
 +}
+diff --git a/go/harness/codex/internal/adapter/adapter.go b/go/harness/codex/internal/adapter/adapter.go
+index 2c41884..b357c35 100644
+--- a/go/harness/codex/internal/adapter/adapter.go
++++ b/go/harness/codex/internal/adapter/adapter.go
+@@ -12,6 +12,7 @@ import (
+ 	"github.com/pelletier/go-toml/v2"
+ 
+ 	"github.com/kagent-dev/kagent/go/core/pkg/agentplugins"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ 	"github.com/kagent-dev/kagent/go/harness/codex/config"
+ 	"github.com/kagent-dev/kagent/go/harness/codex/internal/driver"
+@@ -163,10 +164,11 @@ type nativeOTLPHTTP struct {
+ }
+ 
+ type nativeModelProvider struct {
+-	Name    string `toml:"name"`
+-	WireAPI string `toml:"wire_api"`
+-	EnvKey  string `toml:"env_key"`
+-	BaseURL string `toml:"base_url,omitempty"`
++	Name        string            `toml:"name"`
++	WireAPI     string            `toml:"wire_api"`
++	EnvKey      string            `toml:"env_key"`
++	BaseURL     string            `toml:"base_url,omitempty"`
++	HTTPHeaders map[string]string `toml:"http_headers,omitempty"`
+ 	// TODO: REMOVE these test-only retry budgets once upstream denial handling permits
+ 	// bounded native retries. Alpha3 fixes DNS search fallback, not native backoff:
+ 	// https://github.com/agent-substrate/substrate/issues/2663
+@@ -210,6 +212,7 @@ func renderConfig(cfg config.Config, codexHome string, disableRetries bool) ([]b
+ 	if cfg.Provider.Name == "openai" {
+ 		provider := nativeModelProvider{
+ 			Name: "OpenAI", WireAPI: "responses", EnvKey: "OPENAI_API_KEY", BaseURL: cfg.Provider.BaseURL,
++			HTTPHeaders: map[string]string{egresspolicy.ActorIdentityHeader: "required"},
+ 		}
+ 		if disableRetries {
+ 			provider.RequestMaxRetries = new(uint(0))
+diff --git a/go/harness/codex/internal/adapter/adapter_test.go b/go/harness/codex/internal/adapter/adapter_test.go
+index bea8ee8..1b8c73a 100644
+--- a/go/harness/codex/internal/adapter/adapter_test.go
++++ b/go/harness/codex/internal/adapter/adapter_test.go
+@@ -15,6 +15,7 @@ import (
+ 
+ 	"github.com/pelletier/go-toml/v2"
+ 
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ 	"github.com/kagent-dev/kagent/go/harness/codex/config"
+ 	"github.com/kagent-dev/kagent/go/pkg/tracing"
+@@ -70,6 +71,9 @@ func TestNewMaterializesCompilerOwnedConfiguration(t *testing.T) {
+ 	if native.ModelProvider != "kagent-openai" || provider.WireAPI != "responses" || provider.EnvKey != "OPENAI_API_KEY" || provider.BaseURL != cfg.Provider.BaseURL {
+ 		t.Fatalf("generated provider configuration = %#v, provider name = %q", provider, native.ModelProvider)
+ 	}
++	if provider.HTTPHeaders[egresspolicy.ActorIdentityHeader] != "required" {
++		t.Fatalf("provider workload identity header = %q", provider.HTTPHeaders[egresspolicy.ActorIdentityHeader])
++	}
+ 	if !native.Features.DefaultModeRequestUserInput {
+ 		t.Fatal("generated Codex configuration does not enable request_user_input in default mode")
+ 	}
 diff --git a/proto/kagent/runtime/v1/memory.proto b/proto/kagent/runtime/v1/memory.proto
 index 0651311..9448346 100644
 --- a/proto/kagent/runtime/v1/memory.proto

@@ -61,6 +61,17 @@ Langfuse Web 与 worker 使用同一版本的官方镜像，各自按摘要固�
 关闭用户名密码登录，并将首次登录的用户以 VIEWER 加入预置组织和项目。客户端回调为
 `https://<langfuse_domain>/api/auth/callback/custom`，密钥文件保存在站点私有目录。
 
+身份提供方返回 Langfuse 账号表未支持的扩展字段时，使用官方 `AUTH_IGNORE_ACCOUNT_FIELDS` 配置过滤。例如 Keycloak：
+
+```yaml
+langfuse_values:
+  langfuse:
+    web:
+      additionalEnv:
+        - name: AUTH_IGNORE_ACCOUNT_FIELDS
+          value: refresh_expires_in,not-before-policy
+```
+
 ## 方案 Harness
 
 平台发布通用 Harness 基础镜像与原生运行协议。方案包可继承基础镜像构建自己的运行镜像，由方案 CI 发布并在 Chart 中固定摘要。方案包通过 `agentos.harnesses` 声明原生 Harness，`defaultHarness` 指定系统助手与新建智能体的默认运行配置；各智能体通过 `spec.harnessRef.name` 独立选择。
@@ -202,12 +213,8 @@ Helm 首次创建 `<release>-speech` Secret，后续升级保留模型管理页�
 
 `--tags observability` 管理独立的 Langfuse 与 OpenTelemetry Collector。站点传入 `langfuse_enabled: true`、
 `langfuse_namespace`、`langfuse_domain` 和 `langfuse_admin_email`；镜像与 Chart 版本固定在 `deploy/vars.yaml`。
-Web 使用[共享会话镜像](../runtime/langfuse/README.md)，访问者直接使用预置运维账号的组织和项目权限，页面和内部 RPC 免登录。
-项目 API Key、采集身份与数据加密密钥继续保留。镜像拉取凭据从平台命名空间同步到观测命名空间。
-
-从 OIDC 部署升级时，删除站点变量 `langfuse_oidc_secret_file` 及 `langfuse_values.langfuse.auth.providers`，
-并删除 `additionalEnv` 中的 `AUTH_KEYCLOAK_ALLOW_ACCOUNT_LINKING`。站点覆盖值中的 `langfuse.web.image`
-使用新镜像及摘要；成功升级后清理旧的 `langfuse-oidc` Secret。
+Web 与 worker 使用官方镜像。访问者通过[观测登录](#观测登录)配置的账号或 OIDC 身份进入组织和项目。
+项目 API Key、采集身份与数据加密密钥独立保留。
 
 Chart 校验使用 `ci/check-charts.sh`：helm-unittest 覆盖模板与非法值，Conftest 覆盖跨资源、权限及部署配置约束，kubeconform 使用固定上游 CRD 验证。后置渲染器通过标准库 unittest 验证资源边界。
 GitLab Runner 启用原生作业目录清理；契约构建仅使用源码，不下载无关运行时二进制制品。

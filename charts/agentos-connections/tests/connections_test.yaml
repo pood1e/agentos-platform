@@ -61,6 +61,9 @@ tests:
   - template: runtime-auth.yaml
     hasDocuments:
       count: 0
+  - template: services.yaml
+    hasDocuments:
+      count: 0
   - template: governance.yaml
     equal:
       path: stringData["connections.json"]
@@ -72,3 +75,24 @@ tests:
   asserts:
   - failedTemplate:
       errorPattern: actorJWKS|keys
+- it: advertises the catalog origin covered by its Actor audience
+  template: catalog.yaml
+  documentSelector:
+    path: spec.url
+    value: http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080/mcp/env-approval-kubernetes
+  asserts:
+  - equal: {path: metadata.name, value: env-approval-kubernetes}
+- it: advertises the identity origin covered by its Actor audience
+  template: identity-views.yaml
+  documentSelector:
+    path: spec.url
+    value: http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080/mcp/env-approval-kubernetes/inspection/readonly
+  asserts:
+  - equal: {path: metadata.name, value: env-approval-kubernetes-inspection}
+- it: routes each service origin through the platform gateway
+  template: services.yaml
+  documentSelector: {path: metadata.name, value: env-approval-kubernetes-mcp-gateway}
+  asserts:
+  - equal:
+      path: spec.selector["gateway.networking.k8s.io/gateway-name"]
+      value: agentos-gateway

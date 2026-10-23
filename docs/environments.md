@@ -29,6 +29,8 @@ flowchart LR
 
 原生控制器通过 `agentos.dev/discovery-auth: kubernetes` 的 RemoteMCPServer 使用可刷新绑定 ServiceAccount 凭据，只向配置的平台网关地址发送。平台验证签发者、受众和控制器 ServiceAccount 主体。Agent 的握手、发现和调用验证 Actor JWT，工具调用额外校验执行绑定、权限上限和已选工具。
 
+每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。Substrate 按请求目标 origin 签发 Actor JWT；RemoteMCPServer 地址、Service 与网关策略的 audience 必须一致。
+
 ## 连接器契约
 
 | 内容 | 约定 |
@@ -127,3 +129,5 @@ AgentTemplate 仅在首次安装时初始化并保留，后续升级保留用户
 
 回退使用已发布 Chart 及完整站点值，Helm 处理其管理资源。原生身份权限与平台模板按目标版本的明确配置恢复。
 一次性接管旧资源时核对 release 清单、Helm 所有权及 ownerReferences，再移交给目标 release。
+从旧应用 release 移出可编辑 AgentTemplate 前，先在存量对象及上一版 release 清单中设置 `helm.sh/resource-policy: keep`，再升级 release 并移交平台管理。
+切换前后核对模板配置及执行加密密钥摘要，保持现有会话和离线授权可用。
