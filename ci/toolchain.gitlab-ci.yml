@@ -40,7 +40,7 @@ variables:
 
 .agentos-postgres:
   services:
-    - name: pgvector/pgvector:0.8.1-pg18-bookworm@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+    - name: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
       alias: postgres
   variables:
     POSTGRES_DB: agentos
