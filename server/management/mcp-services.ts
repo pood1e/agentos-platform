@@ -64,14 +64,21 @@ export async function refreshCredentialProfiles(store: ResourceStore, service: J
     const targets = serviceTargets(profile);
     const target = targets.find((item) => item.name === name);
     if (!target) continue;
-    const authentication = object(object(object(target.static).policies).auth);
+    const existing = object(target.static);
+    const authentication = object(object(existing.policies).auth);
     const configuration = object(source.static);
+    const policies = {
+      ...object(object(service.spec).policies),
+      ...object(configuration.policies),
+    };
+    delete policies.auth;
+    delete policies.mcp;
     const configurationWithIdentity = {
       ...configuration,
+      ...(object(meta(profile).labels)["agentos.dev/environment"] ? { path: existing.path } : {}),
       policies: {
-        ...object(object(service.spec).policies),
-        ...object(configuration.policies),
-        auth: authentication,
+        ...policies,
+        ...(Object.keys(authentication).length ? { auth: authentication } : {}),
       },
     };
     if (isDeepStrictEqual(target.static, configurationWithIdentity)) continue;

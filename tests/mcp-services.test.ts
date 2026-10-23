@@ -68,6 +68,49 @@ beforeEach(async () => {
 afterEach(async () => env.close());
 
 describe("MCP services and credential bindings", () => {
+  it("preserves managed discovery, identity paths and authorization while updating shared transport", async () => {
+    for (const name of [service, profile]) {
+      const backend = await env.store.get("mcps", name);
+      object(object(backend.metadata).labels)["agentos.dev/environment"] = "lab";
+      const target = object((object(object(backend.spec).mcp).targets as JsonObject[])[0]);
+      object(target.static).path = `/mcp/${name === service ? "catalog" : "inspection"}/grafana`;
+      delete object(target.static).policies;
+      object(backend.spec).policies =
+        name === service
+          ? { tls: { sni: "environment.example" }, mcp: { guardrails: { catalog: true } } }
+          : { mcp: { guardrails: { identity: "inspection" } } };
+      await env.store.save("mcps", backend, false);
+    }
+    const remote: JsonObject = {
+      apiVersion: "api.kagent.dev/v1alpha3",
+      kind: "RemoteMCPServer",
+      metadata: { name: service, annotations: { "agentos.dev/discovery-auth": "kubernetes" } },
+      spec: { protocol: "STREAMABLE_HTTP", url: `http://platform/mcp/${service}` },
+    };
+    await env.store.save("remoteMCPs", remote, true);
+    const before = await env.store.get("remoteMCPs", service);
+    const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
+    const connection = connections.find(
+      (item) => object(item.resource?.value?.metadata).name === service,
+    );
+    const targets = object(object(connection?.resource?.value?.spec).mcp).targets as JsonObject[];
+    object(targets[0].static).host = "new-environment.example";
+    await client.saveConnection({ connection });
+    expect(await env.store.get("remoteMCPs", service)).toEqual(before);
+    const updated = await env.store.get("mcps", profile);
+    const target = object((object(object(updated.spec).mcp).targets as JsonObject[])[0]);
+    expect(target.static).toMatchObject({
+      host: "new-environment.example",
+      path: "/mcp/inspection/grafana",
+      policies: { tls: { sni: "environment.example" } },
+    });
+    expect(object(object(target.static).policies).auth).toBeUndefined();
+    expect(object(object(target.static).policies).mcp).toBeUndefined();
+    expect(object(updated.spec).policies).toEqual({
+      mcp: { guardrails: { identity: "inspection" } },
+    });
+  });
+
   it("lists built-in services with discovered tools while protecting their configuration", async () => {
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
     const builtins = connections.filter((item) => item.systemManaged);
