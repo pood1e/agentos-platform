@@ -48,7 +48,7 @@
 ### 合并检查与 CI 环境
 
 - GitHub main 通过分支保护要求检查通过后合并，功能 PR 与 release PR 使用同一组门禁。GitHub Actions 承担可公开复现的检查；依赖内网注册表的构建和发布由 GitLab 承担。
-- release-please 使用仓库 `GITHUB_TOKEN` 创建发布 PR，再通过原生 `workflow_dispatch` 在发布分支执行检查，避免新增 App 或长期凭据。门禁校验检查结果对应实际发布 PR 的提交。
+- release-please 使用仓库 `GITHUB_TOKEN` 创建发布 PR；原生工作流审批 API 自动启动受信发布分支的 PR 检查。审批作业校验同仓库、GitHub Actions 发起者与 release-please 分支，并仅持有 Actions 写权限。检查运行于 PR 合并提交。
 - GitLab 的外部仓库 CI 集成和拉取镜像受版本与订阅限制，保留现有源码同步任务。外部服务可通过 GitHub Commit Status API 回写结果，这与 GitLab Premium 集成是不同能力。
 - 校验作业改用容器 executor，在实施 PR 中依据现有 Runner 资源固定 Docker 或 Kubernetes 选型。每个作业使用独立工作目录，PostgreSQL 18/pgvector 以服务容器运行。
 - Node、Python、Go、envtest、浏览器、Helm、Conftest、kubeconform、protoc 与 buf 固定到有摘要的 CI 镜像。GitHub 检查所需镜像和依赖可在其执行环境访问；随后删除宿主机工具安装器与 PostgreSQL 启停脚本。
