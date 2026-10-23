@@ -84,13 +84,13 @@ url = "https://github.com/protocolbuffers/protobuf/releases/download/v36.2/proto
 url_api = "https://api.github.com/repos/protocolbuffers/protobuf/releases/assets/570742434"
 
 [[tools.python]]
-version = "3.15.0"
+version = "3.14.9"
 backend = "core:python"
-specifiers = ["3.15.0"]
+specifiers = ["3.14.9"]
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:d8982167b0b96b660a688f2b8f1e47e49d7c50da17029a07d3ac5fd418514c63"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261020/cpython-3.15.0+20261020-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:561e91c1cadf30e84aec94d1917384ae3267e5f3e6e135e51fd1578bb19f4064"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.14.9+20261021-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.uv]]

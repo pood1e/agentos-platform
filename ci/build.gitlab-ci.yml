@@ -2,7 +2,7 @@
   stage: package
   retry:
     max: 2
-    when: [runner_system_failure, script_failure]
+    when: [runner_system_failure]
   tags: [$AGENTOS_BUILDKIT_RUNNER]
   image:
     name: $AGENTOS_BUILDKIT_IMAGE

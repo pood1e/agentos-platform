@@ -18,7 +18,7 @@ COPY ci/ ci/
 COPY deploy/requirements.txt deploy/requirements.yaml deploy/
 COPY contracts/requirements.txt contracts/
 COPY automation/requirements.in automation/
-RUN uv venv /opt/agentos-ci/venv --python 3.15.0 \
+RUN uv venv /opt/agentos-ci/venv --python "$(mise which python)" \
     && uv pip install --python /opt/agentos-ci/venv/bin/python \
        -r ci/python-requirements.txt -r deploy/requirements.txt -r contracts/requirements.txt \
     && ansible-galaxy collection install -r deploy/requirements.yaml -p /opt/agentos-ci/collections \
