@@ -9,7 +9,8 @@
 controller-verify:
   extends: .go-verify
   rules: &controller-rules
-    - changes:
+    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: &controller-paths
         - runtime/kagent/**/*
         - runtime/harness-toolbox/**/*
         - runtime/substrate/**/*
@@ -22,6 +23,10 @@ controller-verify:
         - ci/runtime.gitlab-ci.yml
         - ci/build.gitlab-ci.yml
         - ci/build-image.sh
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        compare_to: refs/heads/main
+        paths: *controller-paths
   script: [ci/with-postgres.sh ci/verify-controller.sh]
   artifacts:
     paths: [.cache/controller-image/, .cache/claude-image/, .cache/standard-image/, .cache/codex-image/]
@@ -30,7 +35,8 @@ controller-verify:
 substrate-verify:
   extends: .go-verify
   rules: &substrate-rules
-    - changes:
+    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: &substrate-paths
         - runtime/substrate/**/*
         - third_party/substrate/ateapi.proto
         - ci/verify-substrate.sh
@@ -40,6 +46,10 @@ substrate-verify:
         - ci/runtime.gitlab-ci.yml
         - ci/build.gitlab-ci.yml
         - ci/build-image.sh
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        compare_to: refs/heads/main
+        paths: *substrate-paths
   script: [ci/with-postgres.sh ci/verify-substrate.sh]
   artifacts:
     paths: [.cache/substrate-image/]
