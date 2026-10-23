@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.5](https://github.com/pood1e/agentos-platform/compare/v0.27.4...v0.27.5) (2026-10-23)
+
+
+### Bug Fixes
+
+* restore discovery for service-scoped MCP endpoints ([#95](https://github.com/pood1e/agentos-platform/issues/95)) ([81b8350](https://github.com/pood1e/agentos-platform/commit/81b835083ed82a44e3a96561f42ca275142df582))
+
 ## [0.27.4](https://github.com/pood1e/agentos-platform/compare/v0.27.3...v0.27.4) (2026-10-23)
 
 
