@@ -1,0 +1,19 @@
+{{- range $environment := .Values.environments }}
+{{- range $project, $_ := $environment.toolsets }}
+{{- $name := printf "%s-%s" $environment.name $project }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-mcp-gateway
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/environment: {{ $environment.name }}
+    agentos.dev/mcp-source: {{ $name }}
+spec:
+  selector:
+    gateway.networking.k8s.io/gateway-name: {{ $.Values.platform.release }}-gateway
+  ports:
+    - {name: http, port: 8080, targetPort: 8080, protocol: TCP}
+{{- end }}
+{{- end }}

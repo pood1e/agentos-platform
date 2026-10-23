@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.27.4](https://github.com/pood1e/agentos-platform/compare/v0.27.3...v0.27.4) (2026-10-23)
+
+
+### Bug Fixes
+
+* identify the singleton native egress policy in proofs ([#94](https://github.com/pood1e/agentos-platform/issues/94)) ([899685c](https://github.com/pood1e/agentos-platform/commit/899685c38742660649b96bc2f7c391c93b5e4ff4))
+* pin runtime images with model workload identity ([#92](https://github.com/pood1e/agentos-platform/issues/92)) ([80381bf](https://github.com/pood1e/agentos-platform/commit/80381bff6f52301d5018e91214488295e1061575))
+
+## [0.27.3](https://github.com/pood1e/agentos-platform/compare/v0.27.2...v0.27.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* bind MCP origins and model requests to Actor identity ([#89](https://github.com/pood1e/agentos-platform/issues/89)) ([9999a38](https://github.com/pood1e/agentos-platform/commit/9999a383addfe68a5248693309d125b81741d0ac))
+
+## [0.27.2](https://github.com/pood1e/agentos-platform/compare/v0.27.1...v0.27.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* validate templated OAuth issuer endpoints before environment rendering ([#87](https://github.com/pood1e/agentos-platform/issues/87)) ([ee3a985](https://github.com/pood1e/agentos-platform/commit/ee3a9853bc1361a5e25aa2537c8f62c207dc39e6))
+
 ## [0.27.1](https://github.com/pood1e/agentos-platform/compare/v0.27.0...v0.27.1) (2026-10-23)
 
 

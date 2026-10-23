@@ -74,7 +74,7 @@ console.log(JSON.stringify({ createdSession: session.id }));
 let failure: unknown;
 try {
   const actor = { atespace: workspace, name: `session-${session.id}` };
-  const policy = await substrate.getActorEgressPolicy({ actor });
+  const policy = await substrate.getActorEgressPolicy({ actor, name: "default" });
   let found = false;
   for (const rule of policy.rules) {
     const target = destination.protocol === "https:" ? rule.https : rule.http;

@@ -64,7 +64,7 @@ metadata:
 spec:
   description: {{ printf "%s; %s" (index $environment.titles $project | default $project) $identity.name | quote }}
   protocol: STREAMABLE_HTTP
-  url: http://{{ $.Values.platform.release }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080{{ $path }}
+  url: http://{{ $name }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080{{ $path }}
   timeout: 10m
 ---
 apiVersion: gateway.networking.k8s.io/v1
