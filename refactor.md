@@ -1,6 +1,6 @@
 # 接入链路标准化重构
 
-状态：实施与验收中。目标：平台 0.26.0、AIOps 1.23.0。基线：平台 0.25.7（`10d8fa5`），AIOps 方案包 1.22.6。
+状态：实施与验收中。目标：平台 0.26.3、AIOps 1.23.3。基线：平台 0.25.7（`10d8fa5`），AIOps 方案包 1.22.6。
 范围：平台网关、环境网关与连接器之间的传输、认证、凭据和上下文。执行授权、会话隔离与审批语义不变。
 
 ## 现状
@@ -21,7 +21,7 @@
 ```mermaid
 flowchart LR
     Agent[Agent · microVM] -->|Actor JWT| PG[平台网关]
-    PG -->|ExtMCP 授权| Auth[平台授权服务]
+    PG -->|HTTP 外部鉴权 · ExtMCP 工具授权| Auth[平台授权服务]
     Auth -->|RFC 8693 / client credentials| IdP[环境 realm]
     PG -->|HTTPS · Bearer 环境令牌| EG[环境网关 · MCP 资源服务器]
     EG -->|RFC 8693 目标受众令牌| OAuth[OAuth 目标]
@@ -45,16 +45,16 @@ flowchart LR
 ### 执行身份与环境令牌
 
 - 身份档案中的每个身份对应环境 realm 的机密客户端 `agentos-<identity>`，启用服务账号与 Standard Token Exchange V2；`catalog` 同样建模为客户端，仅用于工具发现。客户端凭据保存在平台集群 Secret。
-- 平台授权服务在 ExtMCP 处理中获取环境令牌并写入 `Authorization`：
+- 平台授权服务通过 agentgateway 原生 `backend.extAuth.http` 获取环境令牌并写入 `Authorization`。该处理覆盖所有上游 HTTP 请求，包括初始化通知、SSE 建连和会话清理；ExtMCP 校验单次工具调用的执行权限。
 
   | 请求 | 获取方式 |
   | --- | --- |
-  | 用户执行的工具调用 | 以身份客户端为请求方，按 RFC 8693 交换发起人的访问令牌，`audience` 为环境资源标识 |
+  | 用户执行请求 | 以身份客户端为请求方，按 RFC 8693 交换发起人的访问令牌，`audience` 为环境资源标识 |
   | 服务执行的工具调用（定时任务、案例自动化、测评） | 身份客户端的 client credentials（RFC 6749） |
-  | 握手与发现 | 当前身份或 `catalog` 客户端的 client credentials |
+  | 控制器发现 | 当前身份或 `catalog` 客户端的 client credentials |
 
 - 令牌获取使用平台已有的 openid-client。缓存按发起人、身份与环境隔离并在过期前刷新；执行授权撤销后不再使用缓存。
-- 工具目录 Backend（`platform-services`）接入同一 ExtMCP 处理器。
+- 工具目录 Backend（`platform-services`）接入相同的 HTTP 外部鉴权与 ExtMCP 工具授权。外部鉴权复用官方 `McpRequest` 上下文契约，通过私有 h2c 端口调用。
 - 移除环境网关 API key、`gateway-<identity>` 密钥、`X-Agentos-Engineer` 注入、`x-agentos-execution-kind` 与 `x-agentos-subject-token`。
 - Agent 入口以 Actor JWT 认证全部请求。原生控制器的工具发现改用 Kubernetes 绑定 ServiceAccount 令牌，经 P0 验证后移除入口的身份密钥。
 
@@ -104,7 +104,7 @@ API 令牌目标需要在目标侧记录发起人时，连接器 `auth` 以 `oau
 
 | 所属 | 路径 | 改动 |
 | --- | --- | --- |
-| 平台 | `server/authorization/runtime.ts`、新增环境令牌模块 | ExtMCP 写入环境令牌，移除执行类型与用户令牌请求头 |
+| 平台 | `server/authorization/runtime.ts`、环境令牌与传输鉴权模块 | HTTP 外部鉴权写入环境令牌，ExtMCP 校验工具权限，移除执行类型与用户令牌请求头 |
 | 平台 | `proto/agentos/governance/v1/governance.proto` | 环境连接的 issuer 与 resource |
 | 平台 | `environments/templates/gateway.yaml.j2` | HTTPS 监听、证书、MCP 认证与资源元数据；移除 API key 认证与密钥 ConfigMap |
 | 平台 | `environments/templates/backends.yaml.j2` | 路径路由、`azp` 授权、目标令牌交换 |

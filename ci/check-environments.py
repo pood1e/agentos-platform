@@ -60,6 +60,10 @@ for environment in config['environments']:
         assert policy['spec']['traffic']['authorization']['policy']['matchExpressions'] == [f"has(jwt.azp) && jwt.azp == 'agentos-{identity['name']}'"]
         assert route['spec']['rules'][0]['filters'][0]['requestHeaderModifier']['remove'] == (['x-substrate-actor-token'] if route['metadata']['name'].startswith('kubernetes-') else ['x-substrate-actor-token', 'authorization'])
     for backend in (doc for doc in load(f'{name}-platform-services.yaml') if doc['kind'] == 'AgentgatewayBackend'):
+        transport = backend['spec']['policies']['extAuth']
+        assert transport['failureMode'] == 'FailClosed'
+        assert transport['backendRef']['port'] == 9090
+        assert transport['http']['allowedResponseHeaders'] == ['authorization']
         tls = backend['spec']['policies']['tls']
         assert tls['caCertificateRefs'] and tls['verifySubjectAltNames'] and not tls.get('insecureSkipVerify')
         processor = backend['spec']['policies']['mcp']['guardrails']['processors'][0]['remote']

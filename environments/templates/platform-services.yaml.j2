@@ -1,3 +1,4 @@
+{% from 'transport-auth.yaml.j2' import transport_auth with context %}
 {% for project in toolsets %}
 {% set name = environment_name + '-' + project %}
 {% if name not in existing_services %}
@@ -22,6 +23,7 @@ spec:
           path: /mcp/catalog/{{ project }}
           protocol: StreamableHTTP
   policies:
+    extAuth: {{ transport_auth(name, 'catalog') }}
     http: {requestTimeout: 10m}
     tls:
       sni: {{ gateway_server_name | to_json }}

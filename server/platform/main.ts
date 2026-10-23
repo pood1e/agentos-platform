@@ -16,6 +16,7 @@ import { discoveryMethods } from "../authorization/mcp.js";
 import { registerRuntime } from "../authorization/native.js";
 import { oidcIdentity } from "../authorization/oidc.js";
 import { executionRuntime } from "../authorization/runtime.js";
+import { environmentAuthorization } from "../authorization/transport.js";
 import { automationPresets } from "../automation/presets.js";
 import { automationService } from "../automation/service.js";
 import { registerConsole } from "../console/app.js";
@@ -332,6 +333,7 @@ const stopOperations = approvalCoordinator(
   environmentToken,
 );
 const processor = grpcServer(app, {
+  fallback: environmentAuthorization(execution.authorizeTransport),
   routes: (router) => {
     const collaboration = collaborationGuardrails(evaluation.workspaces, execution);
     router.service(ExtMcp, {

@@ -1,3 +1,4 @@
+{% from 'transport-auth.yaml.j2' import transport_auth with context %}
 {% for service in service_resources.resources if service.metadata.labels['agentos.dev/project'] in toolsets %}
 {% set name = service.metadata.name %}
 {% set project = service.metadata.labels['agentos.dev/project'] %}
@@ -13,6 +14,7 @@
 {% set target = service.spec.mcp.targets[0].static %}
 {% set policies = service.spec.policies | default({}) | combine(target.policies | default({})) %}
 {% set policies = policies | dict2items | rejectattr('key', 'in', ['auth', 'mcp']) | items2dict %}
+{% set policies = policies | combine({'extAuth': transport_auth(name, identity.name) | from_json}) %}
 {% set target = target | combine({'path': '/mcp/' + identity.name + '/' + project}) %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
