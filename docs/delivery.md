@@ -12,8 +12,17 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `python-verify` | 生成 Python 契约；ruff 检查与格式校验；案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |
 | `build-*` | rootless BuildKit 构建 console、kagent controller、Substrate、Harness 与案例自动化镜像，推送到 `$CI_REGISTRY_IMAGE` |
-| `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按 Git 提交固定；wheel 版本取 `package.json` |
-| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录案例自动化镜像摘要；正式版本仅由受保护的版本 tag 发布 |
+| `build-contracts` | 发布 Python protobuf wheel、部署源码包及 SHA-256 清单，按版本与源提交固定；版本统一由 `ci/versions.py` 映射 |
+| `release` | 打包带镜像摘要的平台 Chart，发布到 OCI 注册表，`dist/release.json` 记录各制品版本、源提交与摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
+
+GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
+合并发布 PR 后生成版本 tag，GitLab 的 `GitHub source sync` 定时流水线从内网同步 main 与 tag；GitLab 核对 tag、源提交和版本一致性后构建。
+同步使用项目专用部署密钥，存于受保护的文件变量 `AGENTOS_SOURCE_MIRROR_KEY`，主机公钥存于 `AGENTOS_SOURCE_MIRROR_HOST_KEYS`；两者限定 `source-sync` 环境。同步只做快进更新，拒绝覆盖已有版本 tag；GitLab 原生推送触发对应构建流水线。
+
+开发版本从固定的 `bootstrap-sha` 计数，与提交摘要组成 npm/Chart 的 SemVer 和 Python 的 PEP 440 版本，同一提交重复构建保持一致。
+Python、npm 契约与部署源码包位于 GitLab Generic Package `agentos-platform/<version>`；发布清单位于 `agentos-release/<version>/release.json`。
+清单使用 `agentos.distribution.v1.ReleaseManifest`，包含源提交、两种格式的版本和各制品地址、SHA-256 摘要。
+发布任务串行执行；重试复用一致的文件和 Chart，版本或摘要冲突直接失败。Chart 归档按源提交时间规范化，打包不会修改仓库中的值。
 
 仓库内的镜像以摘要固定、注册表用占位符：Chart 值使用 `registry.example.com/agentos`，部署变量使用 `agentos_image_registry`。
 协议生成使用本地官方工具：Protobuf 36.2 与 Buf JSON Schema 插件 0.6.0，由 `ci/tools.sh` 安装固定版本。

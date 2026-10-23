@@ -108,7 +108,7 @@ JWT 校验包含 issuer、audience、有效期与调用方主体。Actor JWT 进
   | npm 契约与 Helm Chart（SemVer） | `0.27.0` | `0.27.0-dev.12.gabcdef123456` |
   | Python wheel（PEP 440） | `0.27.0` | `0.27.0.dev12+gabcdef123456` |
 
-  开发序号由版本基线后的提交计数确定，同一提交的版本映射保持稳定。映射集中在发布入口，制品清单记录各格式版本、同一提交与摘要，方案包按清单锁定。
+  开发序号由固定 `bootstrap-sha` 基线后的提交计数确定，同一提交的版本映射保持稳定。映射集中在发布入口，制品清单记录各格式版本、同一提交与摘要，方案包按清单锁定。
 
 - Chart 测试：[helm-unittest](https://github.com/helm-unittest/helm-unittest) 覆盖模板断言与非法 values，跨资源约束使用 [Conftest](https://www.conftest.dev/) 策略，
   保留 kubeconform；`ci/check-chart.py` 删除。
@@ -135,6 +135,11 @@ JWT 校验包含 issuer、audience、有效期与调用方主体。Actor JWT 进
 | 部署变量 | 删除 `agentos_evaluation_*` 与 `langfuse_web_image_tag`；新增可选的 Langfuse OIDC 客户端变量 |
 | 发布清单 | 关联提交、SemVer 版本、PEP 440 版本与制品摘要 |
 | 方案包 | 删除测评 wheel 固定与测评角色；环境接入改用环境 Chart |
+
+## 进度
+
+- 阶段 1：PR #75。371 项 PostgreSQL 测试、88 项浏览器测试、13 项 Python 测试及部署校验通过。
+- 阶段 2：实施中。发布清单与双版本映射已接入，验证开发制品消费与不可变发布。
 
 ## 实施顺序
 
