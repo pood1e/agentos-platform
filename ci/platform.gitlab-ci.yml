@@ -62,10 +62,9 @@ build-contracts:
     paths: [dist/contracts/, gen/python/, gen/authorization.json]
     expire_in: 7 days
 
-release:
+package-check:
   extends: .agentos-ci
-  stage: release
-  interruptible: false
+  stage: package
   needs:
     - build-contracts
     - build-image
@@ -91,6 +90,16 @@ release:
       optional: true
     - job: build-substrate-microvm
       optional: true
+  script: [python ci/package-chart.py]
+  artifacts:
+    paths: [.cache/*-metadata.json, dist/, gen/]
+    expire_in: 1 day
+
+release:
+  extends: .agentos-ci
+  stage: release
+  interruptible: false
+  needs: [package-check]
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
