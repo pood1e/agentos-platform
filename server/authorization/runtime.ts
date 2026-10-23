@@ -1,13 +1,10 @@
 import { readFileSync } from "node:fs";
-import { create, type JsonObject } from "@bufbuild/protobuf";
+import type { JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createRemoteJWKSet } from "jose";
 import type { Configuration } from "openid-client";
-import {
-  HeaderMutationSchema,
-  McpHeaderSchema,
-} from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
+import type { McpRequest } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { Control } from "../../gen/ateapi_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { scheduledIdentity } from "../automation/identity.js";
@@ -129,15 +126,19 @@ export async function executionRuntime(
       throw new ConnectError("Environment route identity is invalid", Code.PermissionDenied);
     return { environment, identity, policy, token: environmentToken };
   };
-  const bearer = (token: string) =>
-    create(HeaderMutationSchema, {
-      set: [
-        create(McpHeaderSchema, {
-          key: "authorization",
-          value: new TextEncoder().encode(`Bearer ${token}`),
-        }),
-      ],
-    });
+  const authorizeTransport = async (target: McpRequest, proof?: string) => {
+    const destination = await route(target);
+    if (proof) {
+      const session = await actor({ [actorTokenHeader]: proof });
+      const context = await registry.resolve(session);
+      if ((await agentRole(session)).engineer !== destination.identity)
+        throw new ConnectError("Execution identity mismatch", Code.PermissionDenied);
+      return destination.token(destination.environment, destination.identity, context.identity);
+    }
+    if (target.metadataContext?.discovery !== true)
+      throw new ConnectError("Runtime identity required", Code.PermissionDenied);
+    return destination.token(destination.environment, destination.identity);
+  };
   const guardrails = mcpAuthorization(
     resolve,
     async (session, tool, target) => {
@@ -154,9 +155,6 @@ export async function executionRuntime(
           Code.PermissionDenied,
         );
       return {
-        headerMutation: bearer(
-          await destination.token(destination.environment, engineer, context.identity),
-        ),
         metadata: {
           initiator: context.identity.subject,
           sessionId: session.id,
@@ -171,11 +169,7 @@ export async function executionRuntime(
         if ((await agentRole(session)).engineer !== destination.identity)
           throw new ConnectError("Discovery identity mismatch", Code.PermissionDenied);
       }
-      return {
-        headerMutation: bearer(
-          await destination.token(destination.environment, destination.identity),
-        ),
-      };
+      return {};
     },
   );
   const authorizeTools = async (session: Session, tools: string[]) => {
@@ -201,6 +195,7 @@ export async function executionRuntime(
     authenticatedActor,
     resolve,
     guardrails,
+    authorizeTransport,
     authorizeTools,
     close: persistent.close,
   };
