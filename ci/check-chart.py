@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -13,6 +14,8 @@ import jinja2
 import yaml
 
 subprocess.run([sys.executable, 'ci/test-package-chart.py'], check=True)
+controller_release = re.search(r'org.opencontainers.image.version="([^"]+)"', Path('runtime/kagent/Dockerfile').read_text()).group(1)
+
 
 os.umask(0o077)
 cache = Path('.cache/chart-check')
@@ -43,6 +46,7 @@ def render(path):
     return templates.from_string(Path(path).read_text()).render(context)
 
 
+assert yaml.safe_load(render('deploy/values/kagent.yaml.j2'))['config']['harnessImages']['release'] == controller_release
 subprocess.run([helm, 'dependency', 'build', solution, '--skip-refresh'], check=True)
 subprocess.run([helm, 'lint', chart, '-f', values, '--strict'], check=True)
 subprocess.run([helm, 'lint', solution, '--strict'], check=True)
