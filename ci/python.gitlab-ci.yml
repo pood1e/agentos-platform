@@ -1,16 +1,11 @@
 python-verify:
-  extends: .shell
+  extends: .agentos-node
   stage: verify
-  before_script:
-    - . ci/shell-env.sh
-    - . ci/python-env.sh ci/python-requirements.txt
-    - npm ci --prefer-offline
   script:
-    - ci/tools.sh protoc
     - node_modules/.bin/buf generate --template buf.python.gen.yaml
-    - .cache/venv/bin/ruff check
-    - .cache/venv/bin/ruff format --check
-    - .cache/venv/bin/pytest
+    - ruff check
+    - ruff format --check
+    - pytest
 
 .build-python-image:
   extends: .build-image
@@ -18,7 +13,6 @@ python-verify:
   before_script:
     - mkdir -p "$AGENTOS_BUILD_CONTEXT"
     - cp -R "$AGENTOS_DOCKERFILE_DIR/." dist/contracts/*.whl "$AGENTOS_BUILD_CONTEXT/"
-
 
 build-automation:
   extends: .build-python-image
@@ -31,25 +25,8 @@ build-automation:
     paths: [.cache/automation-build-metadata.json]
     expire_in: 7 days
 
-voice-verify:
-  extends: .shell
-  stage: package
-  tags: [$AGENTOS_NATIVE_RUNNER]
-  needs: [python-verify, build-contracts]
-  before_script:
-    - unset AGENTOS_CI_ENVIRONMENT
-    - . ci/shell-env.sh
-    - . ci/python-env.sh ci/voice-tools-requirements.txt
-    - . ci/voice-env.sh
-  script:
-    - .cache/venv/bin/uv pip install --python .cache/voice-venv/bin/python --no-deps dist/contracts/agentos_contracts-*.whl
-    - .cache/voice-venv/bin/ruff check voice
-    - .cache/voice-venv/bin/ruff format --check voice
-    - .cache/voice-venv/bin/pytest -o 'pythonpath=voice' voice/tests
-
 build-voice:
   extends: .build-python-image
-  needs: [voice-verify, build-contracts]
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/voice-image
     AGENTOS_DOCKERFILE_DIR: voice
@@ -58,3 +35,20 @@ build-voice:
   artifacts:
     paths: [.cache/voice-build-metadata.json]
     expire_in: 7 days
+
+voice-verify:
+  extends: .agentos-ci
+  stage: package
+  needs: [build-voice]
+  image:
+    name: $CI_REGISTRY_IMAGE/voice:$CI_COMMIT_SHA
+    entrypoint: [""]
+    docker:
+      user: "0"
+  before_script:
+    - python -m venv --system-site-packages .cache/voice-venv
+    - .cache/voice-venv/bin/pip install -r ci/voice-test-requirements.txt
+  script:
+    - .cache/voice-venv/bin/ruff check voice
+    - .cache/voice-venv/bin/ruff format --check voice
+    - .cache/voice-venv/bin/pytest -o 'pythonpath=voice' voice/tests

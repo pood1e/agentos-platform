@@ -16,7 +16,7 @@ export const executionKey = Buffer.alloc(32, 1).toString("base64");
 
 export async function fixtureExecutions() {
   const uri = process.env.CHANGE_TEST_DATABASE_URL;
-  if (!uri) throw new Error("Browser tests require ci/with-postgres.sh");
+  if (!uri) throw new Error("Browser tests require CHANGE_TEST_DATABASE_URL");
   const store = await executionStore(uri, Buffer.from(executionKey, "base64"), "agentos");
   const sql = postgres(uri, { max: 1 });
   await (await taskTagStore(uri, "agentos")).close();

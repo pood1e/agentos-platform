@@ -1,5 +1,8 @@
 stages: [verify, package, release]
 
+default:
+  interruptible: true
+
 variables:
   GIT_DEPTH: "0"
 
@@ -9,78 +12,73 @@ include:
   - local: ci/runtime.gitlab-ci.yml
   - local: ci/python.gitlab-ci.yml
 
-.shell:
-  tags: [$AGENTOS_SHELL_RUNNER]
-  before_script:
-    - . ci/shell-env.sh
-
 verify:
-  extends: .shell
+  extends: [.agentos-node, .agentos-postgres]
   stage: verify
-  before_script:
-    - . ci/shell-env.sh
-    - npm ci --prefer-offline
+  script: [npm run verify]
+  artifacts:
+    paths: [build/, dist/]
+    expire_in: 1 day
+
+e2e:
+  extends: [.agentos-node, .agentos-postgres]
+  stage: verify
+  needs: [verify]
+  parallel: 3
   script:
-    - ci/with-postgres.sh npm run verify
-    - ci/with-postgres.sh npm run test:e2e
+    - npm run test:e2e -- --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL
   artifacts:
     when: always
+    paths: [test-results/, playwright-report/]
     expire_in: 1 day
-    paths: [build/, dist/, test-results/, playwright-report/]
-
 
 deployment-check:
-  extends: .shell
+  extends: .agentos-ci
   stage: verify
   variables:
     ANSIBLE_CONFIG: deploy/ansible.cfg
     ANSIBLE_DEPRECATION_WARNINGS: "false"
-  before_script:
-    - . ci/shell-env.sh
-    - . ci/python-env.sh deploy/requirements.txt deploy/requirements.yaml
   script:
-    - .cache/venv/bin/ansible-lint deploy environments
-    - .cache/venv/bin/ansible-playbook deploy/deploy.yaml --syntax-check
-    - .cache/venv/bin/ansible-playbook deploy/validate.yaml --syntax-check
-    - .cache/venv/bin/ansible-playbook environments/deploy.yaml --syntax-check
-    - .cache/venv/bin/ansible-playbook environments/connect.yaml --syntax-check
-    - ci/tools.sh
+    - ansible-lint deploy environments
+    - ansible-playbook deploy/deploy.yaml --syntax-check
+    - ansible-playbook deploy/validate.yaml --syntax-check
+    - ansible-playbook environments/deploy.yaml --syntax-check
+    - ansible-playbook environments/connect.yaml --syntax-check
     - ci/check-charts.sh
 
 build-image:
   extends: .build-image
-  needs:
-    - verify
-    - job: deployment-check
-      artifacts: false
+  needs: [verify]
 
 build-contracts:
-  extends: .shell
-  dependencies: []
+  extends: .agentos-node
   stage: package
-  resource_group: agentos-contracts-$CI_COMMIT_SHA
-  before_script:
-    - . ci/shell-env.sh
-    - . ci/python-env.sh contracts/requirements.txt
-    - npm ci --prefer-offline
+  needs: []
   script:
-    - ci/tools.sh helm
-    - .cache/venv/bin/python ci/contracts.py
-    - .cache/venv/bin/python ci/test-package-chart.py
-    - .cache/venv/bin/python ci/test-release.py
-    - .cache/venv/bin/python ci/publish-contracts.py
+    - python ci/contracts.py
+    - python ci/test-package-chart.py
+    - python ci/test-release.py
   artifacts:
-    paths: [dist/contracts/, gen/python/]
+    paths: [dist/contracts/, gen/python/, gen/authorization.json]
     expire_in: 7 days
 
 release:
-  extends: .shell
+  extends: .agentos-ci
   stage: release
+  interruptible: false
   needs:
     - build-contracts
     - build-image
     - build-automation
     - build-voice
+    - job: verify
+      artifacts: false
+    - job: e2e
+      artifacts: false
+    - job: deployment-check
+      artifacts: false
+    - job: voice-verify
+      artifacts: false
     - job: build-controller
       optional: true
     - job: build-claude-harness
@@ -97,11 +95,9 @@ release:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   resource_group: agentos-release
-  before_script:
-    - . ci/shell-env.sh
-    - . ci/python-env.sh ci/requirements.txt
-    - ci/tools.sh
-  script: [.cache/venv/bin/python ci/publish-chart.py]
+  script:
+    - python ci/publish-contracts.py
+    - python ci/publish-chart.py
   artifacts:
     paths: [dist/release.json]
     expire_in: 30 days

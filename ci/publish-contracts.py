@@ -32,6 +32,8 @@ with (
                 "ci",
                 "docs",
                 "LICENSE",
+                "mise.toml",
+                "mise.lock",
             ]
         )
     )

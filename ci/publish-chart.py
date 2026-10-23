@@ -14,7 +14,7 @@ subprocess.run([sys.executable, "ci/package-chart.py"], check=True)
 content = Path("dist/release.json").read_bytes()
 release = json.loads(content)
 registry = Registry("agentos-release", release["version"])
-helm = ".cache/bin/helm"
+helm = "helm"
 try:
     previous = registry.get("release.json")
     if previous is not None and previous != content:

@@ -1,7 +1,6 @@
 .go-verify:
-  extends: .shell
+  extends: [.agentos-go, .agentos-postgres]
   stage: verify
-  tags: [$AGENTOS_COMPILER_RUNNER]
   retry:
     max: 2
     when: [runner_system_failure]
@@ -18,8 +17,8 @@ controller-verify:
         - third_party/substrate/ateapi.proto
         - ci/verify-controller.sh
         - ci/prepare-substrate.sh
-        - ci/shell-env.sh
-        - ci/with-postgres.sh
+        - ci/toolchain.gitlab-ci.yml
+        - mise.*
         - ci/runtime.gitlab-ci.yml
         - ci/build.gitlab-ci.yml
         - ci/build-image.sh
@@ -27,7 +26,9 @@ controller-verify:
       changes:
         compare_to: refs/heads/main
         paths: *controller-paths
-  script: [ci/with-postgres.sh ci/verify-controller.sh]
+  script:
+    - psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
+    - ci/verify-controller.sh
   artifacts:
     paths: [.cache/controller-image/, .cache/claude-image/, .cache/standard-image/, .cache/codex-image/]
     expire_in: 1 day
@@ -41,8 +42,8 @@ substrate-verify:
         - third_party/substrate/ateapi.proto
         - ci/verify-substrate.sh
         - ci/prepare-substrate.sh
-        - ci/shell-env.sh
-        - ci/with-postgres.sh
+        - ci/toolchain.gitlab-ci.yml
+        - mise.*
         - ci/runtime.gitlab-ci.yml
         - ci/build.gitlab-ci.yml
         - ci/build-image.sh
@@ -50,7 +51,9 @@ substrate-verify:
       changes:
         compare_to: refs/heads/main
         paths: *substrate-paths
-  script: [ci/with-postgres.sh ci/verify-substrate.sh]
+  script:
+    - psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
+    - ci/verify-substrate.sh
   artifacts:
     paths: [.cache/substrate-image/]
     expire_in: 1 day

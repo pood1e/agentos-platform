@@ -41,10 +41,8 @@ class PackageChartTest(unittest.TestCase):
             target = self.workspace / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
-        (self.workspace / ".cache/bin").mkdir(parents=True)
+        (self.workspace / ".cache").mkdir()
         (self.workspace / "dist").mkdir()
-        helm = self.workspace / ".cache/bin/helm"
-        helm.symlink_to((ROOT / ".cache/bin/helm").resolve())
         subprocess.run(["git", "init", "-q"], cwd=self.workspace, check=True)
         subprocess.run(
             ["git", "-c", "user.name=Test", "-c", "user.email=test@example.test", "add", "."],

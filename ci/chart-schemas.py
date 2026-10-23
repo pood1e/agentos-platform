@@ -26,7 +26,7 @@ def chart(name, reference, version):
         path.write_text(
             subprocess.check_output(
                 [
-                    ".cache/bin/helm",
+                    "helm",
                     "template",
                     "schemas",
                     reference,
