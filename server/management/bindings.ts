@@ -60,6 +60,7 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
     );
   }
   async function bindMCP(parent: JsonObject) {
+    if (object(meta(parent).labels)["agentos.dev/environment"]) return;
     const name = text(meta(parent).name);
     const previous = await optional(store, "remoteMCPs", name);
     await child(
