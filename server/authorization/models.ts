@@ -46,14 +46,17 @@ export function modelAuthorization(
       const selected = await model(
         isEmbedding ? await embedding(session) : (role.modelConfig?.name ?? ""),
       );
-      const protocol =
-        selected.provider === "Anthropic"
-          ? ["/v1/messages", "/v1/messages/count_tokens"]
-          : ["/v1/responses", "/v1/responses/compact", "/v1/chat/completions"];
+      const generation = [
+        "/v1/messages",
+        "/v1/messages/count_tokens",
+        "/v1/responses",
+        "/v1/responses/compact",
+        "/v1/chat/completions",
+      ];
       if (
         request.method !== "POST" ||
         text(selected.model) !== request.model ||
-        (!isEmbedding && !protocol.includes(request.path))
+        (!isEmbedding && !generation.includes(request.path))
       )
         throw new Error("Model API is outside the Agent configuration");
     } else {

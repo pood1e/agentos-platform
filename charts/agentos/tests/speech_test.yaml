@@ -1,0 +1,243 @@
+suite: optional ASR and TTS configuration
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release:
+  name: agentos
+  namespace: agentos
+templates:
+- '*.yaml'
+tests:
+- it: renders ASR=False, TTS=False, credentials=False
+  set:
+    speech:
+      transcription: {}
+      synthesis: {}
+      secretRef: ''
+  asserts:
+  - template: speech-settings.yaml
+    equal:
+      path: data["configuration.json"]
+      value: '{}'
+      decodeBase64: true
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_SPEECH_SECRET
+        value: agentos-speech
+  - template: speech-settings.yaml
+    notExists:
+      path: data["credentials-secret"]
+- it: renders ASR=True, TTS=False, credentials=True
+  set:
+    speech:
+      transcription: &id002
+        endpoint: &id001
+          baseUrl: https://speech.example.test/v1
+        model: multilingual-asr
+        languageCodes: &id004
+        - zh
+        - en
+        - ar
+        protocol: PROTOCOL_WHISPERLIVEKIT
+      synthesis: {}
+      secretRef: speech-credentials
+  asserts:
+  - template: speech-settings.yaml
+    equal:
+      path: data["configuration.json"]
+      value: '{"transcription":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"languageCodes":["zh","en","ar"],"model":"multilingual-asr","protocol":"PROTOCOL_WHISPERLIVEKIT"}}'
+      decodeBase64: true
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_SPEECH_SECRET
+        value: agentos-speech
+  - template: speech-settings.yaml
+    equal:
+      path: data["credentials-secret"]
+      value: speech-credentials
+      decodeBase64: true
+- it: renders ASR=False, TTS=True, credentials=True
+  set:
+    speech:
+      transcription: {}
+      synthesis: &id003
+        endpoint: *id001
+        protocol: PROTOCOL_NEMO
+        voices: &id005
+        - languageCode: zh
+          model: tts-zh
+          voice: default
+        - languageCode: en
+          model: tts-en
+          voice: default
+        - languageCode: ar
+          model: tts-ar
+          voice: default
+      secretRef: speech-credentials
+  asserts:
+  - template: speech-settings.yaml
+    equal:
+      path: data["configuration.json"]
+      value: '{"synthesis":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"protocol":"PROTOCOL_NEMO","voices":[{"languageCode":"zh","model":"tts-zh","voice":"default"},{"languageCode":"en","model":"tts-en","voice":"default"},{"languageCode":"ar","model":"tts-ar","voice":"default"}]}}'
+      decodeBase64: true
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_SPEECH_SECRET
+        value: agentos-speech
+  - template: speech-settings.yaml
+    equal:
+      path: data["credentials-secret"]
+      value: speech-credentials
+      decodeBase64: true
+- it: renders ASR=True, TTS=True, credentials=True
+  set:
+    speech:
+      transcription: *id002
+      synthesis: *id003
+      secretRef: speech-credentials
+  asserts:
+  - template: speech-settings.yaml
+    equal:
+      path: data["configuration.json"]
+      value: '{"synthesis":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"protocol":"PROTOCOL_NEMO","voices":[{"languageCode":"zh","model":"tts-zh","voice":"default"},{"languageCode":"en","model":"tts-en","voice":"default"},{"languageCode":"ar","model":"tts-ar","voice":"default"}]},"transcription":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"languageCodes":["zh","en","ar"],"model":"multilingual-asr","protocol":"PROTOCOL_WHISPERLIVEKIT"}}'
+      decodeBase64: true
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_SPEECH_SECRET
+        value: agentos-speech
+  - template: speech-settings.yaml
+    equal:
+      path: data["credentials-secret"]
+      value: speech-credentials
+      decodeBase64: true
+- it: renders ASR=True, TTS=True, credentials=False
+  set:
+    speech:
+      transcription: *id002
+      synthesis: *id003
+      secretRef: ''
+  asserts:
+  - template: speech-settings.yaml
+    equal:
+      path: data["configuration.json"]
+      value: '{"synthesis":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"protocol":"PROTOCOL_NEMO","voices":[{"languageCode":"zh","model":"tts-zh","voice":"default"},{"languageCode":"en","model":"tts-en","voice":"default"},{"languageCode":"ar","model":"tts-ar","voice":"default"}]},"transcription":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"languageCodes":["zh","en","ar"],"model":"multilingual-asr","protocol":"PROTOCOL_WHISPERLIVEKIT"}}'
+      decodeBase64: true
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_SPEECH_SECRET
+        value: agentos-speech
+  - template: speech-settings.yaml
+    notExists:
+      path: data["credentials-secret"]
+- it: rejects invalid speech 5
+  set:
+    speech:
+      transcription:
+        endpoint: *id001
+        model: multilingual-asr
+        languageCodes: *id004
+        protocol: unknown
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 6
+  set:
+    speech:
+      synthesis:
+        endpoint: *id001
+        protocol: unknown
+        voices: *id005
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 7
+  set:
+    speech:
+      transcription:
+        endpoint: *id001
+        model: multilingual-asr
+        languageCodes:
+        - zh
+        - zh
+        protocol: PROTOCOL_WHISPERLIVEKIT
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 8
+  set:
+    speech:
+      transcription:
+        endpoint: *id001
+        model: multilingual-asr
+        languageCodes:
+        - zh-CN
+        protocol: PROTOCOL_WHISPERLIVEKIT
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 9
+  set:
+    speech:
+      transcription:
+        model: asr
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 10
+  set:
+    speech:
+      synthesis:
+        endpoint: *id001
+        voices: []
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 11
+  set:
+    speech:
+      transcription:
+        endpoint:
+          baseUrl: https://speech.example.test/v1
+          apiKey: inline
+        model: multilingual-asr
+        languageCodes: *id004
+        protocol: PROTOCOL_WHISPERLIVEKIT
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 12
+  set:
+    speech:
+      transcription:
+        endpoint:
+          baseUrl: file:///tmp/speech
+        model: multilingual-asr
+        languageCodes: *id004
+        protocol: PROTOCOL_WHISPERLIVEKIT
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 13
+  set:
+    speech:
+      synthesis:
+        endpoint: *id001
+        protocol: PROTOCOL_NEMO
+        voices:
+        - languageCode: zh
+          model: tts
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 14
+  set:
+    speech:
+      voice: removed
+  asserts:
+  - failedTemplate: {}
+- it: rejects invalid speech 15
+  set:
+    speech:
+      unknown: true
+  asserts:
+  - failedTemplate: {}

@@ -37,6 +37,8 @@ it("checks the Actor audience, execution binding, current model and API for ever
   });
   try {
     await authorize(request, headers);
+    await authorize({ ...request, path: "/v1/messages" }, headers);
+    await authorize({ ...request, path: "/v1/messages/count_tokens" }, headers);
     expect(actor).toHaveBeenLastCalledWith(headers, trust.modelAudience);
     await expect(authorize({ ...request, model: "other-model" }, headers)).rejects.toThrow();
     await expect(authorize({ ...request, path: "/v1/files" }, headers)).rejects.toThrow();

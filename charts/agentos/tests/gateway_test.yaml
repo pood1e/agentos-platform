@@ -1,0 +1,72 @@
+suite: platform gateway workload authentication
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release:
+  name: agentos
+  namespace: agentos
+tests:
+- it: uses a public SDK placeholder while authorization comes from Actor JWTs
+  template: model-client.yaml
+  asserts:
+  - equal:
+      path: stringData.placeholder
+      value: actor-jwt-required
+- it: registers one shared collaboration service with bound SA discovery
+  template: team-sessions-mcp.yaml
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: spec.timeout
+      value: 10m
+  - notExists:
+      path: spec.headersFrom
+  - equal:
+      path: metadata.annotations["agentos.dev/discovery-auth"]
+      value: kubernetes
+- it: registers one native session service with bound SA discovery
+  template: collaboration-mcp.yaml
+  asserts:
+  - hasDocuments:
+      count: 1
+  - notExists:
+      path: spec.headersFrom
+  - equal:
+      path: metadata.annotations["agentos.dev/discovery-auth"]
+      value: kubernetes
+- it: keeps model and MCP transport audiences separate
+  template: gateway-auth.yaml
+  asserts:
+  - equal:
+      path: spec.frontend.http.maxBufferSize
+      value: 16Mi
+  - notExists:
+      path: spec.traffic.apiKeyAuthentication
+  - contains:
+      path: spec.traffic.jwtAuthentication.providers[0].audiences
+      content: http://agentos-gateway.agentos.svc.cluster.local:8080
+  - contains:
+      path: spec.traffic.jwtAuthentication.providers[0].audiences
+      content: http://agentos-mcp-gateway.agentos.svc.cluster.local:8080
+- it: authenticates automation before MCP initialization and on upstream transport
+  set:
+    automation.enabled: true
+  template: automation.yaml
+  documentSelector:
+    path: kind
+    value: AgentgatewayBackend
+  asserts:
+  - equal:
+      path: spec.policies.extAuth.failureMode
+      value: FailClosed
+  - equal:
+      path: spec.policies.extAuth.http.path
+      value: '''/authorize/automation'''
+- it: consumes model transport credentials before injecting provider credentials
+  template: gateway-auth.yaml
+  asserts:
+  - equal:
+      path: spec.traffic.extAuth.conditional[0].policy.http.allowedResponseHeaders
+      value:
+      - authorization
+      - x-substrate-actor-token

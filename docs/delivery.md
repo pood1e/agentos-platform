@@ -208,3 +208,6 @@ Web 使用[共享会话镜像](../runtime/langfuse/README.md)，访问者直接�
 从 OIDC 部署升级时，删除站点变量 `langfuse_oidc_secret_file` 及 `langfuse_values.langfuse.auth.providers`，
 并删除 `additionalEnv` 中的 `AUTH_KEYCLOAK_ALLOW_ACCOUNT_LINKING`。站点覆盖值中的 `langfuse.web.image`
 使用新镜像及摘要；成功升级后清理旧的 `langfuse-oidc` Secret。
+
+Chart 校验使用 `ci/check-charts.sh`：helm-unittest 覆盖模板与非法值，Conftest 覆盖跨资源、权限及部署配置约束，kubeconform 使用固定上游 CRD 验证。后置渲染器通过标准库 unittest 验证资源边界。
+GitLab Runner 启用原生作业目录清理；契约构建仅使用源码，不下载无关运行时二进制制品。

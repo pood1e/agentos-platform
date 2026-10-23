@@ -1,0 +1,47 @@
+suite: reject obsolete and invalid platform values
+values:
+- ../../../tests/fixtures/chart-values.yaml
+templates:
+- '*.yaml'
+tests:
+- it: rejects image.digest
+  set:
+    image.digest: latest
+  asserts:
+  - failedTemplate: {}
+- it: rejects pack.image
+  set:
+    pack.image: latest
+  asserts:
+  - failedTemplate: {}
+- it: rejects managedEnvironments
+  set:
+    managedEnvironments:
+    - env
+  asserts:
+  - failedTemplate: {}
+- it: rejects gateway.skillRepository.host
+  set:
+    gateway.skillRepository.host: git.example.test
+  asserts:
+  - failedTemplate: {}
+- it: rejects evaluation.enabled
+  set:
+    evaluation.enabled: true
+  asserts:
+  - failedTemplate: {}
+- it: rejects evaluation.unrecognized
+  set:
+    evaluation.unrecognized: true
+  asserts:
+  - failedTemplate: {}
+- it: rejects authorization.jwksUrl
+  set:
+    authorization.jwksUrl: https://id.example.test
+  asserts:
+  - failedTemplate: {}
+- it: rejects oauth2-proxy.extraArgs.provider
+  set:
+    oauth2-proxy.extraArgs.provider: oidc
+  asserts:
+  - failedTemplate: {}

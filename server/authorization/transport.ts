@@ -51,7 +51,11 @@ export function gatewayAuthorization(
           });
         }
         if (request.url === "/authorize/model")
-          response.writeHead(200, { "cache-control": "no-store" });
+          response.writeHead(200, {
+            authorization: "",
+            [actorTokenHeader]: "",
+            "cache-control": "no-store",
+          });
       }
     } catch {
       response.writeHead(403, { "cache-control": "no-store" });
