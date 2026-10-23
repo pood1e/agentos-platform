@@ -61,3 +61,24 @@ tests:
       - equal:
           path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.audiences
           value: [env-approval-kubernetes]
+  - it: resolves the issuer placeholder before sending native OAuth configuration
+    template: backends.yaml
+    documentSelector:
+      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
+      value: agentos-catalog
+    asserts:
+      - equal:
+          path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.url
+          value: https://identity.example.test/realms/env-approval/protocol/openid-connect/token
+  - it: rejects malformed issuer placeholders
+    set:
+      connectors.kubernetes.targets:
+        - host: kubernetes-mcp
+          port: 8000
+          auth:
+            oauthTokenExchange:
+              url: <issuer>?token=invalid
+              grantType: TokenExchange
+              clientAuth: {clientId: agentos-catalog, method: None}
+    asserts:
+      - failedTemplate: {errorPattern: 'url|anyOf|pattern'}

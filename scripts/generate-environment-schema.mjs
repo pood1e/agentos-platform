@@ -5,6 +5,10 @@ const root = read("charts/agentos/values.schema.json");
 const shared = root.properties.global.properties.agentos.properties;
 const spec = read("gen/schema/agentgateway.mcp.json");
 const target = spec.properties.mcp.properties.targets.items.properties.static.properties;
+const authentication = structuredClone(target.policies.properties.auth);
+const tokenURL = authentication.properties.oauthTokenExchange.properties.url;
+tokenURL.anyOf = [{ pattern: tokenURL.pattern }, { pattern: "^<issuer>(/[^?#]*)?$" }];
+delete tokenURL.pattern;
 const object = (properties, required = Object.keys(properties)) => ({
   type: "object",
   additionalProperties: false,
@@ -55,7 +59,7 @@ const environment = object({
               port: target.port,
               path: target.path,
               protocol: target.protocol,
-              auth: target.policies.properties.auth,
+              auth: authentication,
             },
             ["host", "port"],
           ),
