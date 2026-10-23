@@ -1,14 +1,11 @@
-"""Mirror public release sources from inside the build network using the current job token."""
+"""Mirror public release sources from inside the build network using a project-scoped deploy key."""
 
-import json
-import os
 import re
 import subprocess
 import tempfile
-import urllib.parse
-import urllib.request
 
 SOURCE = "https://github.com/pood1e/agentos-platform.git"
+TARGET = "git@gitlab.dev.supranett.com:aiops/agentos-platform.git"
 
 
 def git(*args, cwd=None):
@@ -27,7 +24,7 @@ def refs(remote):
 
 
 source = refs(SOURCE)
-target = refs(os.environ["CI_REPOSITORY_URL"])
+target = refs(TARGET)
 changed = [ref for ref, sha in source.items() if target.get(ref) != sha]
 for ref in changed:
     if ref.startswith("refs/tags/") and ref in target:
@@ -38,27 +35,11 @@ else:
     with tempfile.TemporaryDirectory(prefix="agentos-source-") as directory:
         git("init", "--bare", directory)
         git("fetch", "--no-tags", SOURCE, *[f"{ref}:{ref}" for ref in changed], cwd=directory)
-        revisions = {ref: git("rev-parse", f"{ref}^{{commit}}", cwd=directory) for ref in changed}
         git(
             "push",
             "--atomic",
-            os.environ["CI_REPOSITORY_URL"],
+            TARGET,
             *[f"{ref}:{ref}" for ref in changed],
             cwd=directory,
         )
-    # Job-token pushes deliberately do not start CI. Trigger one pipeline for each new ref.
-    for ref, revision in revisions.items():
-        body = urllib.parse.urlencode(
-            {
-                "token": os.environ["CI_JOB_TOKEN"],
-                "ref": ref.removeprefix("refs/heads/").removeprefix("refs/tags/"),
-            }
-        ).encode()
-        url = (
-            f"{os.environ['CI_API_V4_URL']}/projects/{os.environ['CI_PROJECT_ID']}/trigger/pipeline"
-        )
-        with urllib.request.urlopen(urllib.request.Request(url, data=body), timeout=30) as response:
-            pipeline = json.load(response)
-        if pipeline["sha"] != revision:
-            raise ValueError("Triggered pipeline revision differs from the mirrored source")
-        print("Synchronized", ref, revision, "pipeline", pipeline["id"])
+    print("Synchronized", ", ".join(changed))

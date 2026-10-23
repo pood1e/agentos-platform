@@ -17,7 +17,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
 合并发布 PR 后生成版本 tag，GitLab 的 `GitHub source sync` 定时流水线从内网同步 main 与 tag；GitLab 核对 tag、源提交和版本一致性后构建。
-同步使用当次 CI_JOB_TOKEN，并启用项目的 Job Token 仓库推送权限；同步只做快进更新，拒绝覆盖已有版本 tag。Job Token 推送后显式触发对应引用的构建流水线，核对触发后的提交 SHA。
+同步使用项目专用部署密钥，存于受保护的文件变量 `AGENTOS_SOURCE_MIRROR_KEY`，主机公钥存于 `AGENTOS_SOURCE_MIRROR_HOST_KEYS`；两者限定 `source-sync` 环境。同步只做快进更新，拒绝覆盖已有版本 tag；GitLab 原生推送触发对应构建流水线。
 
 开发版本从固定的 `bootstrap-sha` 计数，与提交摘要组成 npm/Chart 的 SemVer 和 Python 的 PEP 440 版本，同一提交重复构建保持一致。
 Python、npm 契约与部署源码包位于 GitLab Generic Package `agentos-platform/<version>`；发布清单位于 `agentos-release/<version>/release.json`。
