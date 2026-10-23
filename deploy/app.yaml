@@ -57,6 +57,27 @@
       changed_when: false
       no_log: true
 
+    - name: Discover native workload signing keys
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_python_interpreter }}"
+          - "{{ playbook_dir }}/runtime/discover-trust.py"
+          - --kubeconfig
+          - "{{ kubeconfig_path }}"
+      register: workload_discovery
+      changed_when: false
+      check_mode: false
+
+    - name: Write application Helm values
+      ansible.builtin.copy:
+        content: >-
+          {{ (app_values | combine({'execution': workload_discovery.stdout | from_json}, recursive=true)
+              if app_chart == 'agentos' else
+              app_values | combine({'agentos': {'execution': workload_discovery.stdout | from_json}}, recursive=true)) | to_nice_json }}
+        dest: "{{ playbook_dir }}/../.cache/application-values.json"
+        mode: "0600"
+      no_log: true
+
     - name: Deploy application chart
       kubernetes.core.helm:
         name: "{{ app_release_name }}"
@@ -70,7 +91,7 @@
         history_max: 3
         wait: true
         timeout: 20m
-        release_values: "{{ app_values }}"
+        values_files: ["{{ playbook_dir }}/../.cache/application-values.json"]
       environment:
         HELM_DIFF_USE_UPGRADE_DRY_RUN: "true"
 

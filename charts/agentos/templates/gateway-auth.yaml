@@ -1,3 +1,4 @@
+{{- $trust := include "agentos.workloadAuth" . | fromJson -}}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -7,39 +8,58 @@ metadata:
 spec:
   targetRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" . }}-gateway}
+  frontend:
+    http: {maxBufferSize: 16Mi}
   traffic:
-    apiKeyAuthentication:
+    jwtAuthentication:
       mode: Permissive
+      preserveToken: true
       location:
         expression: >-
-          ('authorization' in request.headers && request.headers['authorization'].startsWith('Bearer ')) ?
-          request.headers['authorization'].replace('Bearer ', '') :
-          (request.path.startsWith('/v1/messages') && 'x-api-key' in request.headers ? request.headers['x-api-key'] : '')
-      configMapSelector:
-        matchLabels: {agentos.dev/gateway-keys: {{ include "agentos.name" . }}}
+          request.path == '/mcp/automation' ? '' :
+          ('x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') :
+          ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : ''))
+      providers:
+        - issuer: {{ .Values.execution.actorIssuer | quote }}
+          audiences: {{ include "agentos.actorAudiences" . }}
+          jwks: {inline: {{ .Values.execution.actorJWKS | toJson | quote }}}
+          validation: {requiredClaims: [sub, exp, aud]}
+        - issuer: {{ .Values.execution.kubernetesIssuer | quote }}
+          audiences: [agentos-mcp-discovery, {{ $trust.modelAudience | quote }}]
+          jwks: {inline: {{ .Values.execution.kubernetesJWKS | toJson | quote }}}
+          validation: {requiredClaims: [sub, exp, aud]}
     authorization:
       action: Require
       policy:
         matchExpressions:
           - >-
-            {{- range .Values.global.agentos.environments }}
-            (has(jwt.sub) && request.path.startsWith('/mcp/{{ .name }}-')) ||
+            {{- if .Values.automation.enabled }}
+            request.path == '/mcp/automation' ||
             {{- end }}
-            (has(apiKey.service) && apiKey.service == 'agentos' &&
-              request.path.matches('^/v1/(responses|chat/completions|messages|embeddings|models)(/.*)?$')) ||
-            (has(apiKey.service) && apiKey.service == 'platform' &&
-              apiKey.workspace == '{{ .Release.Namespace }}' && request.path in ['/mcp/team-sessions', '/mcp/kagent-collaboration']) ||
-            (has(apiKey.service) && apiKey.service == 'engineer' &&
-              apiKey.workspace == '{{ .Release.Namespace }}' &&
-              has(apiKey.tools) && apiKey.tools.exists(server, request.path == '/mcp/' + server)) ||
-            (has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '{{ .Release.Namespace }}' &&
-              request.path.startsWith('/mcp/')
-              {{- range .Values.global.agentos.environments }} && !request.path.startsWith('/mcp/{{ .name }}-'){{- end }})
-            {{- if .Values.automation.enabled }} ||
-            (has(apiKey.service) && apiKey.service == 'automation' &&
-              apiKey.workspace == '{{ .Release.Namespace }}' && has(apiKey.environment) &&
-              request.path == '/mcp/automation')
-            {{- end }}
-    headerModifiers:
-      request:
-        remove: [authorization, x-api-key]
+            (has(jwt.iss) && jwt.iss == '{{ .Values.execution.actorIssuer }}' && (
+              (request.path.startsWith('/v1/') && (jwt.aud == '{{ $trust.modelAudience }}' || '{{ $trust.modelAudience }}' in jwt.aud)) ||
+              (request.path.startsWith('/mcp/') {{ range .Values.global.agentos.environments }}&& !request.path.startsWith('/mcp/{{ .name }}-') {{ end }}&& (jwt.aud == '{{ $trust.mcpAudience }}' || '{{ $trust.mcpAudience }}' in jwt.aud))
+              {{- range .Values.global.agentos.environments }}{{- $environment := .name }}
+              {{- range $project, $_ := $.Values.global.agentos.toolsets }} ||
+              (request.path.startsWith('/mcp/{{ $environment }}-{{ $project }}') && (jwt.aud == 'http://{{ $environment }}-{{ $project }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080' || 'http://{{ $environment }}-{{ $project }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080' in jwt.aud))
+              {{- end }}{{- end }}
+            )) ||
+            (has(jwt.iss) && jwt.iss == '{{ .Values.execution.kubernetesIssuer }}' && (
+              (jwt.sub == '{{ $trust.controllerSubject }}' && 'agentos-mcp-discovery' in jwt.aud && request.path.startsWith('/mcp/')) ||
+              (jwt.sub == '{{ $trust.platformSubject }}' && '{{ $trust.modelAudience }}' in jwt.aud && request.path.startsWith('/v1/'))
+            ))
+    extAuth:
+      conditional:
+        {{- if .Values.automation.enabled }}
+        - condition: "request.path == '/mcp/automation'"
+          policy:
+            {{- include "agentos.automationAuthorization" . | nindent 12 }}
+        {{- end }}
+        - condition: "request.path.startsWith('/v1/')"
+          policy:
+            backendRef: {name: {{ include "agentos.name" . }}-console, port: 9090}
+            failureMode: FailClosed
+            http:
+              path: "'/authorize/model'"
+              body: "{'path': request.path, 'method': request.method, 'model': request.method == 'POST' ? json(request.body).model : ''}"
+              allowedRequestHeaders: [x-substrate-actor-token, authorization]

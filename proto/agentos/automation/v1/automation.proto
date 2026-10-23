@@ -19,7 +19,8 @@ message AutomationConfig {
   string temporal_namespace = 10;
   string task_queue = 11;
   string platform_url = 12;
-  string platform_token_file = 13;
+  reserved 13;
+  reserved "platform_token_file";
   reserved 14;
   reserved "evaluation_token_file";
   // Human feedback and metrics accept OIDC tokens of this issuer and audience.
@@ -31,6 +32,14 @@ message AutomationConfig {
   // Bounded metrics RPC of the business event API; requests carry the caller's token.
   string metrics_url = 19;
   CaseTrigger trigger = 20;
+  OAuthClient platform_oauth = 21;
+}
+
+// Client credentials are owned and issued by the source environment.
+message OAuthClient {
+  string token_endpoint = 1;
+  string client_id = 2;
+  string client_secret_file = 3;
 }
 
 // Solution-pack definition of how source events open cases and brief the target Agent.

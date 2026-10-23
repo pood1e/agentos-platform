@@ -1,6 +1,4 @@
 """Validate the platform chart, an example solution chart and the deployment post-renderers."""
-import base64
-import hashlib
 import json
 import os
 import re
@@ -125,15 +123,12 @@ for name, source, overrides, presets, config in [
     for policy in [doc for doc in docs if doc['kind'] == 'AgentgatewayPolicy' and 'traffic' in doc['spec']]:
         targets = policy['spec'].get('targetRefs', []) + policy['spec'].get('targetSelectors', [])
         assert all(target['kind'] in {'Gateway', 'HTTPRoute', 'GRPCRoute', 'ListenerSet', 'InferencePool'} for target in targets), f'{name}: traffic policy targets an unsupported resource'
-    gateway_secret = next(doc for doc in docs if doc['kind'] == 'Secret' and doc['metadata']['name'] == 'agentos-gateway')
-    token = base64.b64decode(gateway_secret['data']['api-key'])
-    keys = next(doc for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'agentos-gateway-keys')
-    expected_hash = 'sha256:' + hashlib.sha256(token).hexdigest()
-    assert any(json.loads(value)['keyHash'] == expected_hash for value in keys['data'].values()), 'Gateway key hash does not match the client credential'
     remotes = [doc for doc in docs if doc['kind'] == 'RemoteMCPServer']
     assert all('agentos-mcp-gateway.' in item['spec']['url'] for item in remotes)
     assert all(urlparse(item['spec']['url']).hostname.endswith('.svc.cluster.local') for item in remotes)
-    assert all(item['spec']['headersFrom'][0]['valueFrom']['name'] == 'agentos-gateway' for item in remotes)
+    assert all(item['metadata']['annotations']['agentos.dev/discovery-auth'] == 'kubernetes' for item in remotes)
+    assert all('headersFrom' not in item['spec'] for item in remotes)
+    assert 'apiKeyAuthentication' not in manifest
     assert all(item['spec']['timeout'] == '10m' for item in remotes)
     for backend in [doc for doc in docs if doc['kind'] == 'AgentgatewayBackend' and 'mcp' in doc['spec']]:
         assert all(target['static']['policies']['http']['requestTimeout'] == '10m' for target in backend['spec']['mcp']['targets'])
@@ -175,8 +170,8 @@ for name, source, overrides, presets, config in [
     assert urlparse(env['AGENTOS_GATEWAY_URL']['value']).hostname.endswith('.svc.cluster.local')
     assert urlparse(env['AGENTOS_MCP_GATEWAY_URL']['value']).hostname.endswith('.svc.cluster.local')
     assert all(urlparse(origin).hostname.endswith('.svc.cluster.local') for origin in json.loads(env['AGENTOS_ACTOR_AUDIENCES']['value']))
-    assert env['AGENTOS_GATEWAY_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'api-key'
-    assert env['AGENTOS_MCP_TOKEN']['valueFrom']['secretKeyRef']['key'] == 'token'
+    assert 'AGENTOS_GATEWAY_TOKEN' not in env and 'AGENTOS_MCP_TOKEN' not in env
+    assert env['AGENTOS_MODEL_TOKEN_FILE']['value'] == '/var/run/agentos-model/token'
     assert 'AGENTOS_AUTH_CONFIG' not in env
     assert not any(doc['kind'] == 'Middleware' for doc in docs)
     assert not any('oauth2-proxy' in doc['metadata']['name'] for doc in docs)

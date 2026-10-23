@@ -35,7 +35,7 @@ export async function managementEnvironment() {
       mcpUrl: url,
       namespace: "agentos",
       name: "agentos-gateway",
-      secret: "agentos-gateway",
+      secret: "agentos-model-client",
     },
     knowledge: {
       url: `${url}/v1`,

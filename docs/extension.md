@@ -156,5 +156,7 @@ Harness 列表、选择器与编辑器共用运行时图标。kagent 沿用仓�
 重试以确定性 messageId 幂等；超过 `timeoutSeconds` 取消前台任务并升级。`resolvedStates` 记为来源已恢复，其余状态只登记。
 事实发布为 `<namespace>.cases.updated`、`<namespace>.findings.proposed`、`<namespace>.findings.escalated`与 `<namespace>.feedback.recorded`，源为 `/<namespace>/<environment>`。
 
-worker 以平台 Chart `automation.enabled` 生成的环境凭据调用 `/mcp/automation`。`/feedback` 与 `/metrics`
+worker 以环境提供的 client credentials 令牌调用 `/mcp/automation`，平台通过 `automation.enabled` 启用入口。`/feedback` 与 `/metrics`
 只接受配置的 OIDC 签发者与受众、`roleClaim` 中含 `feedbackRole` 的人员令牌，签名密钥经 OpenID Connect 发现获取。
+
+自动化 worker 的 `platform_oauth` 指定令牌端点、客户端 ID 和客户端密钥文件；每次连接读取当前密钥并由 OAuthLib 获取 client credentials 令牌。平台 Chart 的 `automation.sources` 登记该客户端的环境、issuer、audience、clientId 和 subject。案例调用直接使用原生 A2A 并复用确定性 messageId。

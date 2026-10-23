@@ -19,44 +19,16 @@ readOnlyRootFilesystem: true
 capabilities: {drop: [ALL]}
 {{- end -}}
 
-{{- define "agentos.gatewayToken" -}}
-{{- if not (hasKey . "_gatewayToken") -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-gateway" (include "agentos.name" .)) -}}
-{{- $token := randAlphaNum 64 -}}
-{{- if $secret }}{{- $token = index $secret.data "api-key" | b64dec -}}{{- end -}}
-{{- $_ := set . "_gatewayToken" $token -}}
+{{- define "agentos.actorAudiences" -}}
+{{- $audiences := list (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-console.%s.svc.cluster.local:9091" (include "agentos.name" .) .Release.Namespace) -}}
+{{- range .Values.global.agentos.environments -}}
+{{- $environment := .name -}}
+{{- range $service, $_ := $.Values.global.agentos.toolsets -}}
+{{- $audiences = append $audiences (printf "http://%s-%s-mcp-gateway.%s.svc.cluster.local:8080" $environment $service $.Release.Namespace) -}}
 {{- end -}}
-{{- index . "_gatewayToken" -}}
 {{- end -}}
-
-{{- define "agentos.collaborationToken" -}}
-{{- if not (hasKey . "_collaborationToken") -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-gateway" (include "agentos.name" .)) -}}
-{{- $token := randAlphaNum 64 -}}
-{{- if and $secret (hasKey $secret.data "mcp-api-key") }}{{- $token = index $secret.data "mcp-api-key" | b64dec -}}{{- end -}}
-{{- $_ := set . "_collaborationToken" $token -}}
+{{- $audiences | toJson -}}
 {{- end -}}
-{{- index . "_collaborationToken" -}}
-{{- end -}}
-
-{{- define "agentos.catalogToken" -}}
-{{- if not (hasKey . "_catalogToken") -}}
-{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-gateway" (include "agentos.name" .)) -}}
-{{- $token := randAlphaNum 64 -}}
-{{- if and $secret (hasKey $secret.data "catalog-api-key") }}{{- $token = index $secret.data "catalog-api-key" | b64dec -}}{{- end -}}
-{{- $_ := set . "_catalogToken" $token -}}
-{{- end -}}
-{{- index . "_catalogToken" -}}
-{{- end -}}
-
-{{- define "agentos.nativeToken" -}}
-{{- $root := .root -}}
-{{- if not (hasKey $root "_nativeTokens") }}{{- $_ := set $root "_nativeTokens" dict -}}{{- end -}}
-{{- if not (hasKey $root._nativeTokens .name) -}}
-{{- $secret := lookup "v1" "Secret" $root.Release.Namespace .name -}}
-{{- $token := randAlphaNum 64 -}}
-{{- if $secret }}{{- $token = required "Native credential is missing api-key" (index $secret.data "api-key" | b64dec) -}}{{- end -}}
-{{- $_ := set $root._nativeTokens .name $token -}}
-{{- end -}}
-{{- index $root._nativeTokens .name -}}
+{{- define "agentos.workloadAuth" -}}
+{{- dict "kubernetesIssuer" .Values.execution.kubernetesIssuer "kubernetesJwks" .Values.execution.kubernetesJWKS "controllerSubject" (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) "platformSubject" (printf "system:serviceaccount:%s:%s-console" .Release.Namespace (include "agentos.name" .)) "modelAudience" (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "mcpAudience" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "automationSources" .Values.automation.sources | toJson -}}
 {{- end -}}

@@ -25,14 +25,9 @@ async function run(handler: ReturnType<typeof automationTools>, args: object) {
 it("reuses one native context per source case and isolates identical case keys in different environments", async () => {
   const { clients, sync } = environment();
   const create = vi.spyOn(clients.sessions, "createSession");
-  const invoke = vi.fn(
-    async (_session: string, _message: string, _text: string, _signal?: AbortSignal) => ({
-      content: [],
-      structuredContent: { state: "TASK_STATE_COMPLETED" },
-    }),
-  );
-  const first = automationTools(clients, sync, "agentos", "first", invoke);
-  const second = automationTools(clients, sync, "agentos", "second", invoke);
+  const invoke = vi.spyOn(sync, "send");
+  const first = automationTools(clients, sync, "agentos", "first");
+  const second = automationTools(clients, sync, "agentos", "second");
   const request = {
     case: {
       key: "alerts/incident",
@@ -51,19 +46,19 @@ it("reuses one native context per source case and isolates identical case keys i
     create.mock.calls[0]?.[0].requestId,
     expect.not.stringMatching(create.mock.calls[0]?.[0].requestId ?? ""),
   ]);
-  expect(invoke.mock.calls[0]?.[0]).toBe(invoke.mock.calls[1]?.[0]);
-  expect(invoke.mock.calls[0]?.[1]).toBe(invoke.mock.calls[1]?.[1]);
-  expect(invoke.mock.calls[2]?.[1]).not.toBe(invoke.mock.calls[0]?.[1]);
-  expect(invoke.mock.calls[3]?.[0]).not.toBe(invoke.mock.calls[0]?.[0]);
-  expect(invoke.mock.calls[3]?.[2]).toContain("Environment: second");
+  expect(invoke.mock.calls[0]?.[1].contextId).toBe(invoke.mock.calls[1]?.[1].contextId);
+  expect(invoke.mock.calls[0]?.[1].messageId).toBe(invoke.mock.calls[1]?.[1].messageId);
+  expect(invoke.mock.calls[2]?.[1].messageId).not.toBe(invoke.mock.calls[0]?.[1].messageId);
+  expect(invoke.mock.calls[3]?.[1].contextId).not.toBe(invoke.mock.calls[0]?.[1].contextId);
+  expect(JSON.stringify(invoke.mock.calls[3]?.[1])).toContain("Environment: second");
   sync.close();
 });
 
 it("rejects caller-selected sessions, destinations and environments before native creation", async () => {
   const { clients, sync } = environment();
   const create = vi.spyOn(clients.sessions, "createSession");
-  const invoke = vi.fn(async () => ({ content: [] }));
-  const handler = automationTools(clients, sync, "agentos", "owned", invoke);
+  const invoke = vi.spyOn(sync, "send");
+  const handler = automationTools(clients, sync, "agentos", "owned");
   const request = {
     case: { key: "incident", version: "1", agent: { namespace: "agentos", name: "inspection" } },
     message: "Inspect this incident.",

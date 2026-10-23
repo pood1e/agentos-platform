@@ -16,7 +16,6 @@ REQUIRED = [
     "temporal_namespace",
     "task_queue",
     "platform_url",
-    "platform_token_file",
 ]
 NAMESPACE = re.compile(r"[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*")
 
@@ -26,6 +25,11 @@ def load_config():
     for field in REQUIRED:
         if not getattr(config, field):
             raise ValueError(f"Missing automation configuration: {field}")
+    oauth = config.platform_oauth
+    if not (
+        oauth.token_endpoint.startswith("https://") and oauth.client_id and oauth.client_secret_file
+    ):
+        raise ValueError("Platform access requires source-environment OAuth client credentials")
     if bool(config.nats_user) != bool(config.nats_password_file):
         raise ValueError("NATS user and password file are configured together")
     if config.oidc_issuer and not (

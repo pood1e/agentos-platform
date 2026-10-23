@@ -44,7 +44,6 @@ export interface ConsoleDependencies {
   pack: Pack;
   tags: TaskTagStore;
   speech?: ReturnType<typeof speechService>;
-  platformTools?: Parameters<typeof roleCommands>[5];
   executions?: Executions;
   entryAgent?: string;
   authorizeTools?: (
@@ -70,7 +69,6 @@ export function consoleService({
   pack,
   tags,
   speech = speechService(),
-  platformTools,
   executions,
   entryAgent = "assistant",
   authorizeTools,
@@ -79,14 +77,7 @@ export function consoleService({
   const history = executionHistory(index, executions);
   const taskTags = taskTagCommands(clients, tags, executions);
   const messages = messageCommands(sync, clients, operations, executions, authorizeTools);
-  const roles = roleCommands(
-    clients,
-    namespace,
-    access,
-    roleDefaults,
-    replaceTemplate,
-    platformTools,
-  );
+  const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate);
   const tickets = approvalReferences(sync, operations);
   const canOperate = async (contextId: string, subject: string) => {
     if (!executions) return true;

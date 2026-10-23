@@ -44,7 +44,7 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
           provider: anthropic ? "Anthropic" : "OpenAI",
           model: actual,
           apiKeySecret: gateway.secret,
-          apiKeySecretKey: "api-key",
+          apiKeySecretKey: "placeholder",
           ...(anthropic
             ? { anthropic: { ...object(previous.anthropic), baseUrl: gateway.url } }
             : {
@@ -62,42 +62,6 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
   async function bindMCP(parent: JsonObject) {
     if (object(meta(parent).labels)["agentos.dev/environment"]) return;
     const name = text(meta(parent).name);
-    const previous = await optional(store, "remoteMCPs", name);
-    await child(
-      "mcpPolicies",
-      {
-        apiVersion: "agentgateway.dev/v1alpha1",
-        kind: "AgentgatewayPolicy",
-        metadata: { name: `${name}-tool-access` },
-        spec: {
-          targetRefs: [
-            { group: "gateway.networking.k8s.io", kind: "HTTPRoute", name: `mcp-${name}` },
-          ],
-          backend: {
-            mcp: {
-              authorization: {
-                action: "Require",
-                policy: {
-                  matchExpressions: [
-                    `(has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '${gateway.namespace}') || (has(apiKey.tools) && '${name}' in apiKey.tools && mcp.tool.name in apiKey.tools['${name}'])`,
-                  ],
-                },
-              },
-            },
-          },
-          traffic: {
-            transformation: {
-              request: {
-                set: [
-                  { name: "x-agentos-role", value: "has(apiKey.engineer) ? apiKey.engineer : ''" },
-                ],
-              },
-            },
-          },
-        },
-      },
-      parent,
-    );
     await child(
       "routes",
       {
@@ -121,18 +85,12 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
       {
         apiVersion: "api.kagent.dev/v1alpha3",
         kind: "RemoteMCPServer",
-        metadata: { name },
+        metadata: { name, annotations: { "agentos.dev/discovery-auth": "kubernetes" } },
         spec: {
           description: text(object(meta(parent).annotations)["agentos.dev/description"]) || name,
           protocol: "STREAMABLE_HTTP",
-          url: text(object(previous?.spec).url) || `${gateway.mcpUrl}/mcp/${name}`,
+          url: `${gateway.mcpUrl}/mcp/${name}`,
           timeout: "10m",
-          headersFrom: [
-            {
-              name: "Authorization",
-              valueFrom: { type: "Secret", name: gateway.secret, key: "catalog-authorization" },
-            },
-          ],
         },
       },
       parent,

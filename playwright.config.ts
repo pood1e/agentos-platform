@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
 import { executionKey } from "./tests/fixtures/executions.js";
@@ -6,6 +7,8 @@ import { identityIssuer, testToken } from "./tests/fixtures/identity.js";
 const kagent = { port: "8093", control: "8094" };
 const issuer = identityIssuer;
 const token = testToken;
+mkdirSync(".cache", { recursive: true });
+writeFileSync(".cache/model-token", "test-gateway-token", { mode: 0o600 });
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -60,10 +63,10 @@ export default defineConfig({
             AGENTOS_OIDC_WRITER_ROLE: "writer",
             AGENTOS_ORIGIN: "http://127.0.0.1:8090",
             NODE_EXTRA_CA_CERTS: resolve("tests/fixtures/identity/tls.crt"),
-            AGENTOS_MCP_TOKEN: "playwright-team-token",
+            AGENTOS_WORKLOAD_AUTH_CONFIG: resolve("tests/fixtures/identity/workloads.json"),
+            AGENTOS_MODEL_TOKEN_FILE: resolve(".cache/model-token"),
             KAGENT_URL: `http://127.0.0.1:${kagent.port}`,
             AGENTOS_GATEWAY_URL: `http://127.0.0.1:${kagent.control}`,
-            AGENTOS_GATEWAY_TOKEN: "test-gateway-token",
             AGENTOS_PACK_DIR: "tests/fixtures/pack",
             AGENTOS_TOOLSETS: "tests/fixtures/pack/toolsets.yaml",
             AGENTOS_PLATFORM_TOOLS: "tests/fixtures/execution/platform-tools.yaml",

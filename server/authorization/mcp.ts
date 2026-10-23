@@ -31,7 +31,7 @@ export function mcpAuthorization(
   ) => Promise<Pick<McpRequestResult, "headerMutation" | "metadata">> | Promise<void>,
   discover?: (
     session: Session | undefined,
-    target: Pick<McpRequest, "serviceNames" | "metadataContext">,
+    target: McpRequest,
   ) => Promise<Pick<McpRequestResult, "headerMutation" | "metadata">>,
 ): Required<ServiceImpl<typeof ExtMcp>> {
   return {

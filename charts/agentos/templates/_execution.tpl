@@ -1,11 +1,5 @@
 {{- define "agentos.executionEnv" -}}
-{{- $audiences := list (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-console.%s.svc.cluster.local:9091" (include "agentos.name" .) .Release.Namespace) -}}
-{{- range .Values.global.agentos.environments -}}
-{{- $environment := .name -}}
-{{- range $service, $_ := $.Values.global.agentos.toolsets -}}
-{{- $audiences = append $audiences (printf "http://%s-%s-mcp-gateway.%s.svc.cluster.local:8080" $environment $service $.Release.Namespace) -}}
-{{- end -}}
-{{- end -}}
+{{- $audiences := include "agentos.actorAudiences" . | fromJsonArray -}}
 - name: AGENTOS_EXECUTION_DATABASE_URL
   valueFrom:
     secretKeyRef: {name: {{ .Values.execution.databaseSecret }}, key: connectionString}
@@ -22,4 +16,14 @@
   value: {{ list .Release.Namespace | toJson | quote }}
 - name: AGENTOS_ACTOR_AUDIENCES
   value: {{ $audiences | toJson | quote }}
+{{- end -}}
+
+{{- define "agentos.automationAuthorization" -}}
+backendRef: {name: {{ include "agentos.name" . }}-console, port: 9090}
+failureMode: FailClosed
+http:
+  path: "'/authorize/automation'"
+  body: "{}"
+  allowedRequestHeaders: [authorization]
+  allowedResponseHeaders: [authorization]
 {{- end -}}

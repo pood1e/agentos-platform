@@ -1,4 +1,3 @@
-import { isDeepStrictEqual } from "node:util";
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
@@ -42,10 +41,6 @@ export function roleCommands(
   access: BindingView,
   defaults: RoleDefaults,
   replaceTemplate: TemplateWriter,
-  platformTools: (
-    role: string,
-    tools: RoleDefinition["tools"],
-  ) => Promise<RoleDefinition["tools"]> = async (_role, tools) => tools,
 ) {
   async function catalog() {
     const [templates, tools, models] = await Promise.all([
@@ -101,7 +96,7 @@ export function roleCommands(
         current.servers,
       );
     }
-    return { ...role, tools: await platformTools(role.name, tools) };
+    return { ...role, tools };
   }
 
   async function configuration() {
@@ -232,38 +227,5 @@ export function roleCommands(
   }
 
   /** Aligns every engineer's bindings with the current execution requirements. */
-  async function alignRoles(): Promise<string[]> {
-    const [{ templates, servers }, view] = await Promise.all([catalog(), access()]);
-    const updated: string[] = [];
-    for (const template of templates) {
-      const role = roleDefinition(template);
-      const tools = view.bindings(role.name, role.tools, servers, false) ?? [];
-      if (isDeepStrictEqual(tools, role.tools)) continue;
-      const value = template.resource?.value ?? {};
-      try {
-        await replaceTemplate(
-          create(AgentTemplateSchema, {
-            ref: template.ref,
-            resource: {
-              apiVersion,
-              kind: "AgentTemplate",
-              value: {
-                ...value,
-                spec: templateSpec(
-                  { ...role, tools: await platformTools(role.name, tools) },
-                  object(value.spec),
-                ),
-              },
-            },
-          }),
-        );
-      } catch (error) {
-        throw saveFailed(error);
-      }
-      updated.push(role.name);
-    }
-    return updated;
-  }
-
-  return { configuration, explain, createRole, updateRole, alignRoles };
+  return { configuration, explain, createRole, updateRole };
 }

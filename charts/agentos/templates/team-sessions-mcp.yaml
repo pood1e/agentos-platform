@@ -2,6 +2,7 @@ apiVersion: api.kagent.dev/v1alpha3
 kind: RemoteMCPServer
 metadata:
   name: team-sessions
+  annotations: {agentos.dev/discovery-auth: kubernetes}
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
     agentos.dev/service-revision: {{ .Values.image.digest | trimPrefix "sha256:" | trunc 16 | quote }}
@@ -9,9 +10,3 @@ spec:
   url: http://{{ include "agentos.name" . }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080/mcp/team-sessions
   description: Discover engineers, delegate work and prepare engineer configurations.
   timeout: 10m
-  headersFrom:
-    - name: Authorization
-      valueFrom:
-        type: Secret
-        name: {{ include "agentos.name" . }}-gateway
-        key: mcp-authorization

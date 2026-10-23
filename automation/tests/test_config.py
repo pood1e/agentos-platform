@@ -20,6 +20,9 @@ TRIGGER = {
 
 def load(tmp_path, monkeypatch, change=lambda value: None):
     value = AutomationConfig(**{field: f"{field}-value" for field in REQUIRED})
+    value.platform_oauth.token_endpoint = "https://id.example.test/token"
+    value.platform_oauth.client_id = "case-worker"
+    value.platform_oauth.client_secret_file = "/run/identity/client-secret"
     ParseDict(TRIGGER, value.trigger)
     value.trigger.agent.name = "analyst"
     change(value)

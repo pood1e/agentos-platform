@@ -7,12 +7,14 @@ import {
   type SaveConnectionRequest,
 } from "../../gen/agentos/management/v1/management_pb.js";
 import { ModelConfigSchema } from "../../gen/kagent/api/v1/models_pb.js";
+import { actorTokenHeader } from "../authorization/actor.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { pageOf } from "../read-model/page.js";
 import { conflict, invalid, precondition } from "../shared/errors.js";
 import { connectionBindings } from "./bindings.js";
 import { credentialReferences } from "./credential-references.js";
+import { mcpGuardrails } from "./mcp-authorization.js";
 import { credentialProfile, refreshCredentialProfiles, serviceBindings } from "./mcp-services.js";
 import { type GatewayConfig, meta, optional, resource } from "./native.js";
 
@@ -199,6 +201,25 @@ export function connectionCommands(
       spec.mcp = mcp;
     }
     const policies = { ...object(spec.policies) };
+    if (kind === ConnectionKind.MCP)
+      policies.mcp = { ...object(policies.mcp), guardrails: mcpGuardrails(gateway, name) };
+    else {
+      const headers = object(policies.headers),
+        requestHeaders = object(headers.request);
+      policies.headers = {
+        ...headers,
+        request: {
+          ...requestHeaders,
+          remove: [
+            ...new Set([
+              ...(Array.isArray(requestHeaders.remove) ? requestHeaders.remove : []),
+              actorTokenHeader,
+            ]),
+          ],
+        },
+      };
+    }
+
     if (object(policies.auth).key !== undefined)
       throw invalid("management.secretReferenceRequired");
     const credentialName = `agentos-${kind === ConnectionKind.MODEL ? "model" : "mcp"}-${name}`;

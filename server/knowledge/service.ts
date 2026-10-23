@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import OpenAI from "openai";
+import OpenAI, { type ClientOptions } from "openai";
 import type {
   MemoryServiceListRequest,
   SessionMemoryInput,
@@ -12,7 +12,7 @@ import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 
 export interface KnowledgeConfig {
   url: string;
-  token: string;
+  token: NonNullable<ClientOptions["apiKey"]>;
   model: string;
   scope: Pick<MemoryServiceListRequest, "agentName"> &
     Pick<SessionMemoryInput, "ttlDays"> &

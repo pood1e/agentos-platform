@@ -3,7 +3,6 @@ import { CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
 import { type ToolBinding, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { ToolRequirementSchema } from "../../gen/agentos/console/v1/tool_pb.js";
 import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
-import { platformProfile } from "../../shared/platform-tools.js";
 import { loadCatalog, requiresApproval, type ToolCatalog } from "../../shared/tool-catalog.js";
 import { object, text } from "../read-model/decode/messages.js";
 
@@ -79,8 +78,6 @@ export class ToolBindings {
   }
 
   usable(engineer: string, server: string) {
-    const profile = platformProfile(server);
-    if (profile) return profile.role === engineer;
     const target = this.targets.get(server);
     return !target || (!target.catalog && target.engineer === engineer);
   }
@@ -124,28 +121,23 @@ export class ToolBindings {
     );
   }
 
-  permitsTool(engineer: string, tool: string, write: boolean) {
-    if (
-      this.permitsCall(
-        engineer,
-        [...this.targets.values()].map((target) => target.service),
-        tool,
-        write,
-      )
-    )
-      return true;
-    for (const [server, tools] of this.catalog.servers) {
-      if (
-        (server === "team-sessions" && ["create_session", "dispatch_session"].includes(tool)) ||
-        (server === "kagent-collaboration" && tool === "invoke_session")
-      )
-        return true;
-      const tier =
-        tools.get(tool) ??
-        tools.get(tool.startsWith(`${server}_`) ? tool.slice(server.length + 1) : "");
-      if (tier === "read" || (write && tier === "write")) return true;
-    }
-    return false;
+  selectedTool(binding: ToolBinding, tool: string) {
+    const service = this.targets.get(binding.server)?.service ?? binding.server;
+    const name = tool.startsWith(`${service}_`) ? tool.slice(service.length + 1) : tool;
+    return binding.tools.some((selected) => selected === name || selected === `${service}_${name}`);
+  }
+
+  permitsTool(engineer: string, server: string, tool: string, write: boolean) {
+    const target = this.targets.get(server);
+    if (target)
+      return (
+        !target.catalog &&
+        target.engineer === engineer &&
+        this.permitsCall(engineer, [target.service], tool, write)
+      );
+    const name = tool.startsWith(`${server}_`) ? tool.slice(server.length + 1) : tool;
+    const tier = this.catalog.servers.get(server)?.get(name);
+    return tier === "read" || (write && tier === "write");
   }
 
   requiresApproval(server: string, tool: string) {

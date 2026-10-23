@@ -7,7 +7,7 @@ metadata:
 spec:
   provider: OpenAI
   model: {{ .Values.embedding.model | quote }}
-  apiKeySecret: {{ include "agentos.name" . }}-gateway
-  apiKeySecretKey: api-key
+  apiKeySecret: {{ include "agentos.name" . }}-model-client
+  apiKeySecretKey: placeholder
   openAI:
     baseUrl: http://{{ include "agentos.name" . }}-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080/v1

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package agentos.authorization.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// Trusted runtime issuers and exact workload subjects for one deployment.
+message WorkloadAuthentication {
+  string kubernetes_issuer = 1;
+  google.protobuf.Struct kubernetes_jwks = 2;
+  string controller_subject = 3;
+  string platform_subject = 4;
+  string model_audience = 5;
+  string mcp_audience = 6;
+  repeated AutomationSource automation_sources = 7;
+}
+
+// An environment's client-credentials identity; human tokens do not match it.
+message AutomationSource {
+  string environment = 1 [(buf.validate.field).string.min_len = 1];
+  string issuer = 2 [(buf.validate.field).string = {
+    uri: true
+    prefix: "https://"
+  }];
+  string audience = 3 [(buf.validate.field).string.min_len = 1];
+  string client_id = 4 [(buf.validate.field).string.min_len = 1];
+  string subject = 5 [(buf.validate.field).string.min_len = 1];
+}
+
+// Gateway-provided HTTP context, separate from the MCP authorization protocol.
+message ModelAuthorization {
+  string path = 1;
+  string method = 2;
+  string model = 3;
+}
