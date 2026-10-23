@@ -3,42 +3,47 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  workflow_run:
-    workflows: [Verify]
-    types: [completed]
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  actions: write
 concurrency:
   group: release
   cancel-in-progress: false
 jobs:
   release:
-    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-  approve-release-checks:
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'action_required' &&
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.actor.login == 'github-actions[bot]' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      startsWith(github.event.workflow_run.head_branch, 'release-please--branches--main--')
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: write
-    steps:
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
         with:
           script: |
-            await github.rest.actions.approveWorkflowRun({
-              ...context.repo,
-              run_id: context.payload.workflow_run.id,
-            });
+            const {number} = JSON.parse(process.env.RELEASE_PR);
+            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: number});
+            if (pr.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}` ||
+                pr.user.login !== 'github-actions[bot]' ||
+                !pr.head.ref.startsWith('release-please--branches--main--')) {
+              throw new Error('Release pull request origin does not match');
+            }
+            for (let attempt = 0; attempt < 20; attempt++) {
+              const {data} = await github.rest.actions.listWorkflowRuns({
+                ...context.repo, workflow_id: 'verify.yaml',
+                event: 'pull_request', head_sha: pr.head.sha, per_page: 10,
+              });
+              const run = data.workflow_runs[0];
+              if (run?.conclusion === 'action_required') {
+                await github.rest.actions.approveWorkflowRun({...context.repo, run_id: run.id});
+                core.info(`Started pull request checks for ${pr.head.sha}`);
+                return;
+              }
+              if (run?.status === 'in_progress' || run?.status === 'completed') return;
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            throw new Error('Release pull request checks were not created');
