@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { expect, it } from "vitest";
+import { expect, it as test } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import {
@@ -14,11 +14,14 @@ import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { approvalCoordinator } from "../server/governance/coordinator.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { ingest } from "../server/read-model/entry.js";
+import { startJobs } from "./fixtures/coordination.js";
 import { environment, silent, until } from "./harness.js";
+
+const it = test.skipIf(!process.env.CHANGE_TEST_DATABASE_URL);
 
 async function setup(
   provider: Partial<ServiceImpl<typeof ApprovalService>>,
-  authorize?: Parameters<typeof approvalCoordinator>[3],
+  authorize?: Parameters<typeof approvalCoordinator>[2],
 ) {
   const server = createServer(
     connectNodeAdapter({ routes: (router) => router.service(ApprovalService, provider) }),
@@ -66,12 +69,14 @@ async function setup(
       { environment: { name: "publishing" }, approvalUrl: `http://127.0.0.1:${address.port}` },
     ],
   });
-  const stop = approvalCoordinator(env.sync, config, silent, authorize);
+  const stop = await startJobs(env.sync, silent, [
+    approvalCoordinator(env.sync, config, authorize),
+  ]);
   return {
     ...env,
     task,
     close: async () => {
-      stop();
+      await stop();
       env.sync.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },
@@ -213,6 +218,37 @@ it("rechecks execution permissions after an external approval and before prepara
     expect(preparations).toBe(0);
     expect(hitlPayload(env.fake.received[0])).toMatchObject({
       value: { approvals: [{ approved: false }] },
+    });
+  } finally {
+    await env.close();
+  }
+});
+
+it("recovers a preparation whose external commit succeeded before its response was lost", async () => {
+  let committed = false,
+    commits = 0,
+    attempts = 0;
+  const env = await setup({
+    getApproval: () => ({
+      approval: create(ApprovalSchema, { id: "review", state: ActivityState.SUCCEEDED }),
+    }),
+    prepareApproval: () => {
+      attempts++;
+      if (!committed) {
+        committed = true;
+        commits++;
+        throw new ConnectError("Response lost after commit", Code.Unavailable);
+      }
+      return { approval: create(ApprovalSchema, { id: "review", state: ActivityState.SUCCEEDED }) };
+    },
+    recordApprovalResult: () => ({}),
+  });
+  try {
+    await until(() => env.fake.received.length === 1, 8_000);
+    expect(commits).toBe(1);
+    expect(attempts).toBe(2);
+    expect(hitlPayload(env.fake.received[0])).toMatchObject({
+      value: { approvals: [{ approved: true }] },
     });
   } finally {
     await env.close();

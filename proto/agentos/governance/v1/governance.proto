@@ -75,6 +75,7 @@ message Approval {
 }
 
 service ApprovalService {
+  // Creation, preparation and recording are idempotent by ApprovalReference.
   rpc ReviewApproval(ReviewApprovalRequest) returns (ReviewApprovalResponse);
   rpc GetApproval(GetApprovalRequest) returns (GetApprovalResponse);
   rpc PrepareApproval(PrepareApprovalRequest) returns (PrepareApprovalResponse);

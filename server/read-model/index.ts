@@ -1,6 +1,7 @@
 import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { type AgentInfo, type SessionInfo, systemRoles } from "./agents.js";
 import type { CallEntry } from "./calls.js";
+import { Checkpoints } from "./checkpoints.js";
 import type { TaskEntry } from "./entry.js";
 
 export type ChangeListener = (changed: ReadonlySet<string>) => void;
@@ -32,6 +33,10 @@ export class TaskIndex {
   private changed = new Set<string>();
   private cache?: Relations;
   private revisionCount = 0;
+  private checkpoints = new Checkpoints();
+
+  onCheckpoint = this.checkpoints.subscribe.bind(this.checkpoints);
+  checkpoint = this.checkpoints.commit.bind(this.checkpoints);
 
   get revision() {
     return this.revisionCount;
@@ -143,6 +148,7 @@ export class TaskIndex {
   }
 
   private touch(id: string) {
+    this.checkpoints.touch(id);
     this.changed.add(id);
     this.cache = undefined;
     this.revisionCount++;

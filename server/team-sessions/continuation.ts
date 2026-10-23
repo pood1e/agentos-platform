@@ -1,8 +1,8 @@
 // Delete once kagent dedicated subagents propagate nested HITL decisions to the caller.
 import { create } from "@bufbuild/protobuf";
-import type { FastifyBaseLogger } from "fastify";
 import { type Message, MessageSchema, Role, TaskState } from "../../gen/a2a_pb.js";
-import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
+import { CoordinationJobSchema } from "../../gen/agentos/execution/v1/coordination_pb.js";
+import type { Coordinator } from "../jobs/coordination.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
 import { parentTaskKey, resumedTaskKey } from "../read-model/decode/messages.js";
 import type { TaskEntry } from "../read-model/entry.js";
@@ -10,6 +10,7 @@ import type { TaskIndex } from "../read-model/index.js";
 import { terminal } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { foreground, taskTree } from "../read-model/tree.js";
+import { waitingDelegations } from "../read-model/waiting.js";
 import messages from "./messages.json" with { type: "json" };
 
 interface Continuation {
@@ -31,28 +32,6 @@ function stoppedOperation(index: TaskIndex, parent: TaskEntry): boolean {
   return false;
 }
 
-const waiting = (index: TaskIndex, entry: TaskEntry) =>
-  entry.calls.flatMap((call) => {
-    const invocation = call.delegation?.invocation;
-    const childId = invocation?.taskId || index.target(entry, call);
-    if (!childId) return [];
-    if (!invocation && (call.state === ActivityState.FAILED || !call.returned)) return [childId];
-    if (!invocation) return [];
-    if (invocation.state === TaskState.INPUT_REQUIRED) return [invocation.taskId];
-    const child = index.entry(invocation.taskId);
-    const continued =
-      child &&
-      (index.relations().continuations.get(child.id) ?? []).some((id) => {
-        const next = index.entry(id);
-        return (
-          next?.agentId === child.agentId &&
-          next.contextId === child.contextId &&
-          next.resumedTaskId
-        );
-      });
-    return continued ? [invocation.taskId] : [];
-  });
-
 function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
   const { resumed } = index.relations();
   const child = index.entry(childId);
@@ -60,7 +39,7 @@ function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
   const tree = taskTree(index, child.id);
   const active = tree ? foreground(tree) : [];
   if (active.some((entry) => !terminal(entry.state))) return undefined;
-  if (active.some((entry) => waiting(index, entry).some((id) => !resumed.has(id))))
+  if (active.some((entry) => waitingDelegations(index, entry).some((id) => !resumed.has(id))))
     return undefined;
   const decided = active
     .filter((entry) => entry.decision)
@@ -96,71 +75,50 @@ function continuation(index: TaskIndex, parent: TaskEntry, childId: string) {
   } satisfies Continuation;
 }
 
-/**
- * Returns a child's result to the calling session after its human decision.
- * Deterministic message IDs make a resend idempotent in kagent.
- */
-export function startContinuations(
+/** Returns nested HITL outcomes using kagent's idempotent message identity. */
+export function continuations(
   sync: KagentSync,
-  log: FastifyBaseLogger,
   authorize?: (parentContext: string, contexts: string[]) => Promise<void>,
-): () => void {
+): Coordinator {
   const index = sync.index;
-  const sending = new Set<string>();
-  const retries = new Map<string, { attempts: number; after: number }>();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let stopped = false;
-  const schedule = () => {
-    clearTimeout(timer);
-    const due = [...retries].filter(([id]) => !sending.has(id)).map(([, retry]) => retry.after);
-    if (!stopped && due.length) timer = setTimeout(run, Math.max(0, Math.min(...due) - Date.now()));
-  };
-  const run = () => {
-    if (stopped) return;
-    const waitingIds = new Set<string>();
-    for (const parent of index.all()) {
-      if (!terminal(parent.state) || stoppedOperation(index, parent)) continue;
-      for (const childId of waiting(index, parent)) {
-        const next = continuation(index, parent, childId);
-        waitingIds.add(childId);
-        if (!next) {
-          retries.delete(childId);
-          continue;
-        }
-        const retry = retries.get(childId);
-        if (sending.has(childId) || (retry && retry.after > Date.now())) continue;
-        sending.add(childId);
-        Promise.resolve()
-          .then(async () => {
-            await authorize?.(
-              parent.contextId,
-              (taskTree(index, childId)?.entries ?? []).map((entry) => entry.contextId),
-            );
-            if (!stopped) await sync.send(next.tenant, next.message);
-          })
-          .then(() => retries.delete(childId))
-          .catch((error: unknown) => {
-            const attempts = (retry?.attempts ?? 0) + 1;
-            retries.set(childId, {
-              attempts,
-              after: Date.now() + Math.min(5_000 * 2 ** attempts, 300_000),
-            });
-            log.warn({ err: error, taskId: childId }, "Delegation continuation failed");
-          })
-          .finally(() => {
-            sending.delete(childId);
-            schedule();
-          });
+  return {
+    name: "continuations",
+    select(changed) {
+      const ids = new Set(changed);
+      const parents = index.relations().causalParents;
+      for (const id of ids) {
+        const parent = parents.get(id);
+        if (parent) ids.add(parent);
       }
-    }
-    for (const id of retries.keys()) if (!waitingIds.has(id)) retries.delete(id);
-    schedule();
-  };
-  run();
-  const unsubscribe = index.onChange(run);
-  return () => {
-    stopped = true;
-    clearTimeout(timer);
-    unsubscribe();
+      return [...ids].flatMap((id) => {
+        const parent = index.entry(id);
+        if (!parent || !terminal(parent.state) || stoppedOperation(index, parent)) return [];
+        return waitingDelegations(index, parent).flatMap((childId) =>
+          continuation(index, parent, childId)
+            ? [
+                create(CoordinationJobSchema, {
+                  taskId: parent.id,
+                  work: { case: "childId", value: childId },
+                }),
+              ]
+            : [],
+        );
+      });
+    },
+    async run(reference) {
+      const parent = index.entry(reference.taskId);
+      if (!parent || reference.work.case !== "childId" || stoppedOperation(index, parent)) return;
+      const next = continuation(index, parent, reference.work.value);
+      if (!next) return;
+      await authorize?.(
+        parent.contextId,
+        (taskTree(index, reference.work.value)?.entries ?? []).map((entry) => entry.contextId),
+      );
+      // Authorization and native lifecycle are checked again after an offline grant refresh.
+      if (stoppedOperation(index, parent) || !continuation(index, parent, reference.work.value))
+        return;
+      await sync.send(next.tenant, next.message);
+      return;
+    },
   };
 }

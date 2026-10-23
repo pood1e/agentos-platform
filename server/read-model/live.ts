@@ -118,6 +118,7 @@ export class LiveTasks {
     this.reload.delete(task.id);
     this.retries.delete(task.id);
     this.index.upsert(ingest(task, tenant));
+    await this.index.checkpoint();
     this.index.flush();
     this.streams.get(task.id)?.abort();
     this.streams.set(task.id, controller);
@@ -166,6 +167,7 @@ export class LiveTasks {
         if (task.id !== id) throw new Error("A2A stream changed task identity");
         this.running.set(id, task);
         this.index.upsert(ingest(task, tenant));
+        await this.index.checkpoint();
         this.index.flush();
         if (settled(task.status?.state)) break;
       }

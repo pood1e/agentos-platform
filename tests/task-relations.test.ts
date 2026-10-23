@@ -5,9 +5,23 @@ import { DelegationKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { listTasks, taskDetail } from "../server/read-model/views/task.js";
+import { decidedTasks } from "./fake-kagent/scenario.js";
 import { fixtureIndex, fixtureIds as ids } from "./fixtures/kagent.js";
+import { environment } from "./harness.js";
 
 describe("operation ownership", () => {
+  it("keeps a completed worker's caller active until its native continuation arrives", async () => {
+    const { sync, index } = environment(decidedTasks());
+    await sync.refresh();
+    try {
+      const detail = taskDetail(index, ids.approvalRoot);
+      expect(detail?.summary?.state).toBe(ActivityState.WORKING);
+      expect(detail?.completedAt).toBeUndefined();
+    } finally {
+      sync.close();
+    }
+  });
+
   it("preserves a failed native continuation in the DAG", () => {
     const index = fixtureIndex();
     const root = index.entry(ids.chatRoot);
