@@ -1,0 +1,106 @@
+stages: [verify, package, release]
+
+variables:
+  GIT_DEPTH: "0"
+
+include:
+  - local: ci/build.gitlab-ci.yml
+  - local: ci/runtime.gitlab-ci.yml
+  - local: ci/python.gitlab-ci.yml
+
+.shell:
+  tags: [$AGENTOS_SHELL_RUNNER]
+  before_script:
+    - . ci/shell-env.sh
+
+verify:
+  extends: .shell
+  stage: verify
+  before_script:
+    - . ci/shell-env.sh
+    - npm ci --prefer-offline
+  script:
+    - ci/with-postgres.sh npm run verify
+    - ci/with-postgres.sh npm run test:e2e
+  artifacts:
+    when: always
+    expire_in: 1 day
+    paths: [build/, dist/, test-results/, playwright-report/]
+
+
+deployment-check:
+  extends: .shell
+  stage: verify
+  variables:
+    ANSIBLE_CONFIG: deploy/ansible.cfg
+    ANSIBLE_DEPRECATION_WARNINGS: "false"
+  before_script:
+    - . ci/shell-env.sh
+    - . ci/python-env.sh deploy/requirements.txt deploy/requirements.yaml
+  script:
+    - .cache/venv/bin/ansible-lint deploy environments
+    - .cache/venv/bin/ansible-playbook deploy/deploy.yaml --syntax-check
+    - .cache/venv/bin/ansible-playbook deploy/validate.yaml --syntax-check
+    - .cache/venv/bin/ansible-playbook environments/deploy.yaml --syntax-check
+    - .cache/venv/bin/ansible-playbook environments/connect.yaml --syntax-check
+    - ci/tools.sh
+    - .cache/venv/bin/python ci/check-chart.py
+    - .cache/venv/bin/python ci/check-environments.py
+
+build-image:
+  extends: .build-image
+  needs:
+    - verify
+    - job: deployment-check
+      artifacts: false
+
+build-contracts:
+  extends: .shell
+  stage: package
+  resource_group: agentos-contracts-$CI_COMMIT_SHA
+  before_script:
+    - . ci/shell-env.sh
+    - . ci/python-env.sh contracts/requirements.txt
+    - npm ci --prefer-offline
+  script:
+    - ci/tools.sh helm
+    - .cache/venv/bin/python ci/contracts.py
+    - .cache/venv/bin/python ci/test-package-chart.py
+    - .cache/venv/bin/python ci/test-release.py
+    - .cache/venv/bin/python ci/publish-contracts.py
+  artifacts:
+    paths: [dist/contracts/, gen/python/]
+    expire_in: 7 days
+
+release:
+  extends: .shell
+  stage: release
+  needs:
+    - build-contracts
+    - build-image
+    - build-automation
+    - build-voice
+    - job: build-controller
+      optional: true
+    - job: build-claude-harness
+      optional: true
+    - job: build-standard-harness
+      optional: true
+    - job: build-codex-harness
+      optional: true
+    - job: build-substrate-api
+      optional: true
+    - job: build-substrate-microvm
+      optional: true
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  resource_group: agentos-release
+  before_script:
+    - . ci/shell-env.sh
+    - . ci/python-env.sh ci/requirements.txt
+    - ci/tools.sh
+  script: [.cache/venv/bin/python ci/publish-chart.py]
+  artifacts:
+    paths: [dist/release.json]
+    expire_in: 30 days
