@@ -83,6 +83,11 @@ for environment in config['environments']:
     assert all('headersFrom' not in doc['spec'] and doc['metadata']['annotations']['agentos.dev/discovery-auth'] == 'kubernetes' for doc in remotes)
     assert all('agentos-mcp-gateway.' in doc['spec']['url'] for doc in remotes)
     for doc in load(f'{name}-platform-gateway.yaml'):
+        if doc['kind'] == 'AgentgatewayBackend':
+            transport = doc['spec']['policies']['extAuth']
+            assert transport['failureMode'] == 'FailClosed'
+            assert transport['http']['allowedResponseHeaders'] == ['authorization']
+            assert 'extAuth' not in doc['spec']['mcp']['targets'][0]['static']['policies']
         if doc['kind'] == 'HTTPRoute':
             assert doc['metadata']['labels']['agentos.dev/mcp-source'] == doc['metadata']['ownerReferences'][0]['uid']
         if doc['kind'] == 'AgentgatewayPolicy' and doc['metadata']['name'].endswith('-runtime-auth'):
