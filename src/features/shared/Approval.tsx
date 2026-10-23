@@ -1,11 +1,9 @@
-import { useMutation } from "@connectrpc/connect-query";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
@@ -17,17 +15,19 @@ import { Status } from "../status/Status.js";
 import { ExternalApprovals } from "./ExternalApprovals.js";
 import { Markdown } from "./Markdown.js";
 import { ToolIcon } from "./ToolIcon.js";
+import { useInteractionResponse } from "./use-interaction-response.js";
 import { useToolText } from "./use-tool-text.js";
 
 function decisionLabel(interaction: Interaction) {
   const approval = interaction.kind === InteractionKind.APPROVAL;
   if (awaiting(interaction.state)) return approval ? "approval.pending" : "activity.awaitingInput";
+  if (interaction.state === ActivityState.CANCELED) return "activity.canceled";
   if (!approval) return "approval.answered";
   return interaction.state === ActivityState.REJECTED ? "approval.rejected" : "approval.approved";
 }
 
 export function Approval({
-  interaction,
+  interaction: observed,
   record,
   operate,
 }: {
@@ -38,14 +38,22 @@ export function Approval({
   const { t } = useTranslation();
   const access = useAccess();
   const toolText = useToolText();
-  const [answers, setAnswers] = useState<string[][]>(interaction.questions.map(() => []));
-  const respond = useMutation(ConsoleService.method.respondInteraction);
+  const response = useInteractionResponse(observed);
+  const { interaction, submit } = response;
+  const submitted = response.request?.decision;
+  const [answers, setAnswers] = useState<string[][]>(() =>
+    submitted?.case === "answer"
+      ? submitted.value.answers.map((answer) => answer.values)
+      : interaction.questions.map(() => []),
+  );
+  const selections =
+    response.sending && submitted?.case === "answer"
+      ? submitted.value.answers.map((answer) => answer.values)
+      : answers;
   const pending = awaiting(interaction.state);
   const approval = interaction.kind === InteractionKind.APPROVAL;
-  const locked = !operate || !access.data || !pending || respond.isPending || respond.isSuccess;
+  const locked = !operate || !access.data || !pending || response.sending;
   const recorded = (index: number) => interaction.answers[index]?.values ?? [];
-  const submit = (decision: Parameters<typeof respond.mutate>[0]["decision"]) =>
-    respond.mutate({ taskId: interaction.taskId, requestId: interaction.requestId, decision });
   return (
     <section className="space-y-4" data-testid="approval-detail">
       <div className="flex items-center gap-2">
@@ -98,15 +106,17 @@ export function Approval({
         interaction.questions.map((question, index) => (
           <fieldset key={`${interaction.id}:${question.question}`} className="space-y-2">
             <legend className="mb-2 text-sm">{question.question}</legend>
-            {question.choices.length ? (
+            {!pending ? (
+              <p className="text-sm whitespace-pre-wrap wrap-anywhere">
+                {recorded(index).join("\n") || "—"}
+              </p>
+            ) : question.choices.length ? (
               question.choices.map((choice) => (
                 <label key={choice} className="flex items-center gap-2 text-sm">
                   <input
                     type={question.multiple ? "checkbox" : "radio"}
                     name={`${interaction.id}-${index}`}
-                    checked={
-                      (pending ? answers[index] : recorded(index))?.includes(choice) ?? false
-                    }
+                    checked={selections[index]?.includes(choice) ?? false}
                     disabled={locked}
                     onChange={(event) =>
                       setAnswers((previous) =>
@@ -130,7 +140,7 @@ export function Approval({
                 aria-label={question.question}
                 placeholder={t("approval.answerPlaceholder")}
                 disabled={locked}
-                value={(pending ? answers[index] : recorded(index))?.[0] ?? ""}
+                value={selections[index]?.[0] ?? ""}
                 onChange={(event) =>
                   setAnswers((previous) =>
                     previous.map((answer, position) =>
@@ -143,9 +153,11 @@ export function Approval({
           </fieldset>
         ))
       )}
-      {respond.isError && (
+      {response.error && (
         <Alert variant="destructive">
-          <AlertDescription>{t(errorKey(respond.error, "approval.submitFailed"))}</AlertDescription>
+          <AlertDescription>
+            {t(errorKey(response.error, "approval.submitFailed"))}
+          </AlertDescription>
         </Alert>
       )}
       {pending && operate && access.data && (
@@ -198,7 +210,7 @@ export function Approval({
                 })
               }
             >
-              {respond.isPending && <LoaderCircle className="animate-spin" />}
+              {response.sending && <LoaderCircle className="animate-spin" />}
               {t("approval.submitAnswer")}
             </Button>
           )}
