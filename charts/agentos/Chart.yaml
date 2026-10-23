@@ -4,6 +4,6 @@ description: >-
   AgentOS platform on kagent - console, collaboration service, gateway resources
   and team runtime
 type: application
-version: 0.28.0
-appVersion: 0.28.0
+version: 0.28.1
+appVersion: 0.28.1
 kubeVersion: '>=1.34.0-0'

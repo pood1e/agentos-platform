@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/pood1e/agentos-platform/compare/v0.28.0...v0.28.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **ci:** start release checks directly after creating the pull request ([#100](https://github.com/pood1e/agentos-platform/issues/100)) ([d916f5f](https://github.com/pood1e/agentos-platform/commit/d916f5f01f69959c68e1171b1e4ffa494977687b))
+
 ## [0.28.0](https://github.com/pood1e/agentos-platform/compare/v0.27.5...v0.28.0) (2026-10-23)
 
 
