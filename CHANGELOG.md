@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.2](https://github.com/pood1e/agentos-platform/compare/v0.27.1...v0.27.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* validate templated OAuth issuer endpoints before environment rendering ([#87](https://github.com/pood1e/agentos-platform/issues/87)) ([ee3a985](https://github.com/pood1e/agentos-platform/commit/ee3a9853bc1361a5e25aa2537c8f62c207dc39e6))
+
 ## [0.27.1](https://github.com/pood1e/agentos-platform/compare/v0.27.0...v0.27.1) (2026-10-23)
 
 
