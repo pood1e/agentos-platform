@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { knowledgeConfig } from "../server/knowledge/config.js";
 import { knowledgeService } from "../server/knowledge/service.js";
 import { parentTaskKey, resumedTaskKey } from "../server/read-model/decode/messages.js";
-import { startContinuations } from "../server/team-sessions/continuation.js";
 import { sessionTools } from "../server/team-sessions/tools.js";
 import { decidedTasks } from "./fake-kagent/scenario.js";
+import { startContinuations } from "./fixtures/coordination.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment, silent, testBindings, until } from "./harness.js";
 import { managementEnvironment } from "./management-harness.js";
@@ -26,48 +26,47 @@ async function mcp(handler: ReturnType<typeof sessionTools>, method: string, par
 }
 
 describe("team sessions", () => {
-  it("returns a decided child result to the waiting coordinator exactly once", async () => {
-    const { fake, sync, index } = environment(decidedTasks());
-    await sync.refresh();
-    const stop = startContinuations(sync, silent);
-    await until(() => fake.received.length === 1);
-    const [message] = fake.received;
-    expect(message?.messageId).toMatch(new RegExp(`^resume-${ids.approved}-`));
-    expect(message?.contextId).toBe(index.entry(ids.approvalRoot)?.contextId);
-    expect(message?.metadata).toMatchObject({
-      [parentTaskKey]: ids.approvalRoot,
-      [resumedTaskKey]: ids.approved,
-    });
-    await sync.refresh();
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(fake.received.filter((item) => item.metadata?.[resumedTaskKey])).toHaveLength(1);
-    stop();
-    sync.close();
-  });
-
-  it("retries a failed continuation without waiting for another index event", async () => {
-    vi.useFakeTimers();
-    const { sync } = environment(decidedTasks());
-    let stop = () => {};
-    try {
+  it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
+    "returns a decided child result to the waiting coordinator exactly once",
+    async () => {
+      const { fake, sync, index } = environment(decidedTasks());
       await sync.refresh();
-      const send = vi
-        .spyOn(sync, "send")
-        .mockRejectedValueOnce(new Error("temporarily unavailable"));
-      stop = startContinuations(sync, silent);
-      await vi.advanceTimersByTimeAsync(0);
-      expect(send).toHaveBeenCalledTimes(1);
-      await vi.advanceTimersByTimeAsync(9_999);
-      expect(send).toHaveBeenCalledTimes(1);
-      await vi.advanceTimersByTimeAsync(201);
-      expect(send).toHaveBeenCalledTimes(2);
-      expect(send.mock.calls[0]?.[1].messageId).toBe(send.mock.calls[1]?.[1].messageId);
-    } finally {
-      stop();
+      const stop = await startContinuations(sync, silent);
+      await until(() => fake.received.length === 1);
+      const [message] = fake.received;
+      expect(message?.messageId).toMatch(new RegExp(`^resume-${ids.approved}-`));
+      expect(message?.contextId).toBe(index.entry(ids.approvalRoot)?.contextId);
+      expect(message?.metadata).toMatchObject({
+        [parentTaskKey]: ids.approvalRoot,
+        [resumedTaskKey]: ids.approved,
+      });
+      await sync.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(fake.received.filter((item) => item.metadata?.[resumedTaskKey])).toHaveLength(1);
+      await stop();
       sync.close();
-      vi.useRealTimers();
-    }
-  });
+    },
+  );
+
+  it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
+    "retries a failed continuation without waiting for another index event",
+    async () => {
+      const { sync } = environment(decidedTasks());
+      let stop = async () => {};
+      try {
+        await sync.refresh();
+        const send = vi
+          .spyOn(sync, "send")
+          .mockRejectedValueOnce(new Error("temporarily unavailable"));
+        stop = await startContinuations(sync, silent);
+        await until(() => send.mock.calls.length === 2, 8_000);
+        expect(send.mock.calls[0]?.[1].messageId).toBe(send.mock.calls[1]?.[1].messageId);
+      } finally {
+        await stop();
+        sync.close();
+      }
+    },
+  );
 
   it("offers discovery and normalizes drafted approvals", async () => {
     const { clients, fake } = environment();

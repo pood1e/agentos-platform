@@ -27,6 +27,7 @@ import { templateWriter } from "../console/template-writer.js";
 import { toolBindings } from "../governance/bindings.js";
 import { governanceConfig } from "../governance/config.js";
 import { approvalCoordinator } from "../governance/coordinator.js";
+import { coordinationQueue, startCoordination } from "../jobs/coordination.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
 import { nativeInvocation } from "../kagent/invoke-session.js";
 import { knowledgeConfig } from "../knowledge/config.js";
@@ -42,7 +43,7 @@ import { speechSettingsStore } from "../speech/store.js";
 import { registerTranscription } from "../speech/transcription.js";
 import { taskTagStore } from "../tasks/store.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
-import { startContinuations } from "../team-sessions/continuation.js";
+import { continuations } from "../team-sessions/continuation.js";
 import { sessionTools } from "../team-sessions/tools.js";
 import { workspaceContext } from "./access.js";
 import { automationTools } from "./automation.js";
@@ -277,15 +278,14 @@ await registerTeamSessions(
     };
   },
 );
-const stopContinuations = startContinuations(sync, app.log, async (contextId, contexts) => {
+const continueDelegation = continuations(sync, async (contextId, contexts) => {
   const { session: parent } = await clients.sessions.getSession({ sessionId: contextId });
   if (!parent) throw new Error("Execution session is unavailable");
   await relatedExecutions(execution.registry, clients.sessions, parent, contexts);
 });
-const stopOperations = approvalCoordinator(
+const approvals = approvalCoordinator(
   sync,
   operations,
-  app.log,
   async (contextId, tools) => {
     const { session } = await clients.sessions.getSession(
       { sessionId: contextId },
@@ -296,6 +296,16 @@ const stopOperations = approvalCoordinator(
   },
   environmentToken,
 );
+await sync.refresh();
+const jobs = await coordinationQueue(
+  process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
+  config.namespace,
+  app.log,
+  process.env.AGENTOS_EXECUTION_DATABASE_CA
+    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
+    : undefined,
+);
+const stopCoordination = await startCoordination(sync, jobs, [continueDelegation, approvals]);
 const processor = grpcServer(app, {
   fallback: environmentAuthorization(execution.authorizeTransport),
   routes: (router) => {
@@ -319,8 +329,8 @@ const runtimeProcessor = grpcServer(app, {
   routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
 });
 app.addHook("onClose", async () => {
-  stopContinuations();
-  stopOperations();
+  await stopCoordination();
+  await jobs.boss.stop({ graceful: true, timeout: 40_000 });
   sync.close();
   await execution.close();
   await tags.close();

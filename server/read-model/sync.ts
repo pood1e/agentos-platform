@@ -70,10 +70,15 @@ export class KagentSync {
     this.index.setAgents(agents.map((agent) => agentInfo(agent, templates)));
     for (const agent of agents) this.tenants.add(agentKey(agent.ref));
     if (!this.sessionsLoaded) await this.loadSessions();
-    await pool([...this.tenants], 4, (tenant) => this.syncTenant(tenant));
+    const watermarks = new Map<string, number>();
+    await pool([...this.tenants], 4, async (tenant) => {
+      watermarks.set(tenant, await this.syncTenant(tenant));
+    });
     await this.tasks.reloadInterrupted();
     await this.discoverSessions();
     this.tasks.follow();
+    await this.index.checkpoint();
+    for (const [tenant, watermark] of watermarks) this.watermarks.set(tenant, watermark);
     this.lastSuccess = Date.now();
     this.index.flush();
   }
@@ -138,7 +143,7 @@ export class KagentSync {
       },
     );
     await pool(changed, 4, (task) => this.tasks.reloadTask(task.id, tenant));
-    this.watermarks.set(tenant, watermark ?? 0);
+    return watermark ?? 0;
   }
 
   /** Session metadata names conversations and reveals agents that left the namespace list. */

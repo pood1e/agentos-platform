@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { expect, it, vi } from "vitest";
+import { expect, it as test, vi } from "vitest";
 import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { InvokeSessionOutputSchema } from "../gen/agentos/kagent/v1/wire_pb.js";
@@ -7,10 +7,12 @@ import { cancelTree } from "../server/read-model/cancel.js";
 import { resumedTaskKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskTree } from "../server/read-model/tree.js";
-import { startContinuations } from "../server/team-sessions/continuation.js";
 import { decidedTasks, pendingApprovalTasks } from "./fake-kagent/scenario.js";
+import { startContinuations } from "./fixtures/coordination.js";
 import { fixtureIds } from "./fixtures/kagent.js";
 import { environment, silent, until } from "./harness.js";
+
+const it = test.skipIf(!process.env.CHANGE_TEST_DATABASE_URL);
 
 it.each(["approval", "transport failure"])(
   "returns a nested %s outcome to the chat entry point exactly once",
@@ -84,10 +86,11 @@ it.each(["approval", "transport failure"])(
         ],
       });
       index.upsert(ingest(task, tenant));
+      await index.checkpoint();
       index.flush();
       return task;
     });
-    let stop = startContinuations(sync, silent);
+    let stop = await startContinuations(sync, silent);
     try {
       await until(() => send.mock.calls.length >= 2);
       expect(send.mock.calls.map(([, message]) => message.metadata?.[resumedTaskKey])).toEqual([
@@ -95,11 +98,11 @@ it.each(["approval", "transport failure"])(
         parent.id,
       ]);
       expect(send.mock.calls[1]?.[1].contextId).toBe(fixtureIds.chatContext);
-      stop();
-      stop = startContinuations(sync, silent);
+      await stop();
+      stop = await startContinuations(sync, silent);
       expect(send).toHaveBeenCalledTimes(2);
     } finally {
-      stop();
+      await stop();
       sync.close();
     }
   },
@@ -128,13 +131,13 @@ it.each(["canceled", "rejected", "canceled ancestor"])(
       });
     }
     const send = vi.spyOn(sync, "send");
-    const stop = startContinuations(sync, silent);
+    const stop = await startContinuations(sync, silent);
     try {
       index.flush();
       await new Promise((resolve) => setTimeout(resolve, 30));
       expect(send).not.toHaveBeenCalled();
     } finally {
-      stop();
+      await stop();
       sync.close();
     }
   },
@@ -164,13 +167,13 @@ it("allows a new request in a session whose earlier operation was canceled", asy
     index.upsert(ingest(task, tenant));
     return task;
   });
-  const stop = startContinuations(sync, silent);
+  const stop = await startContinuations(sync, silent);
   try {
     await until(() => send.mock.calls.length > 0);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0]?.[1].contextId).toBe(parent.contextId);
   } finally {
-    stop();
+    await stop();
     sync.close();
   }
 });
@@ -179,7 +182,7 @@ it("does not restart a completed caller after its pending foreground worker is c
   const { sync, index, clients } = environment(pendingApprovalTasks());
   await sync.refresh();
   const send = vi.spyOn(sync, "send");
-  const stop = startContinuations(sync, silent);
+  const stop = await startContinuations(sync, silent);
   try {
     const tree = taskTree(index, fixtureIds.approvalRoot);
     if (!tree) throw new Error("missing operation");
@@ -189,7 +192,7 @@ it("does not restart a completed caller after its pending foreground worker is c
     expect(index.entry(fixtureIds.approvalRoot)?.state).toBe(TaskState.COMPLETED);
     expect(index.entry(fixtureIds.approved)?.state).toBe(TaskState.CANCELED);
   } finally {
-    stop();
+    await stop();
     sync.close();
   }
 });
@@ -199,7 +202,7 @@ it("does not resume through runtime-controlled task links when the execution roo
   await sync.refresh();
   let checks = 0;
   const send = vi.spyOn(sync, "send");
-  const stop = startContinuations(sync, silent, async (_parent, contexts) => {
+  const stop = await startContinuations(sync, silent, async (_parent, contexts) => {
     checks++;
     expect(contexts.length).toBeGreaterThan(0);
     throw new Error("Different execution root");
@@ -210,7 +213,7 @@ it("does not resume through runtime-controlled task links when the execution roo
     index.flush();
     expect(send).not.toHaveBeenCalled();
   } finally {
-    stop();
+    await stop();
     sync.close();
   }
 });

@@ -10,6 +10,7 @@
 | `proto/agentos/automation/v1` | 自动化 RPC、方案预置、案例 MCP 入参、worker 配置与案例事实；定时任务复用 kagent 官方协议 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/console` | 控制台服务：Connect RPC、静态资源、方案包加载、角色模板读写 |
+| `server/jobs` | pg-boss 协调队列、消费注册与死信重放 |
 | `server/read-model` | kagent 任务与事件的读模型：会话、调用、交互、协作画布 |
 | `server/authorization` | 执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
 | `server/automation` | 原生定时任务的工作空间授权、方案预置与只读执行身份绑定 |

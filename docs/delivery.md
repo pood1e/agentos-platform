@@ -40,6 +40,20 @@ Python、npm 契约与部署源码包位于 GitLab Generic Package `agentos-plat
 | `AGENTOS_CI_CACHE` | 可选，工具与 Python 环境缓存目录，默认 `~/.cache/agentos` |
 | `AGENTOS_REGISTRY_MIRROR` | 可选，BuildKit 使用的 Docker Hub 镜像源 |
 
+## 后台协调
+
+平台在执行数据库的 `agentos_jobs` schema 使用 pg-boss，队列按工作空间隔离。审批与续接采用 `stately` 策略和稳定业务键，
+调用错误退避重试 12 次后进入 `<namespace>.failed`，记录保留 90 天；外部决定未出使用延迟任务继续等待。
+
+排查提供方故障或恢复授权后，在平台容器内先检查死信，再按原生引用重放：
+
+```sh
+node build/server/jobs/replay.js
+node build/server/jobs/replay.js --execute <dead-letter-job-id>
+```
+
+未指定 ID 时每次最多处理 100 条；每次消费仍从原生状态解析执行身份与授权，已取消的执行不会恢复。
+
 ## 观测登录
 
 Langfuse Web 与 worker 使用同一版本的官方镜像，各自按摘要固定。默认使用初始化的运维账号登录。
