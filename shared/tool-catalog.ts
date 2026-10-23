@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 
-export type Tier = "read" | "write" | "unknown";
+type Tier = "read" | "write" | "unknown";
 
 interface TierLists {
   readOnly?: string[];

@@ -5,7 +5,7 @@ import {
 } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { type ToolServer, ToolServerSchema } from "../../gen/kagent/api/v1/tools_pb.js";
 
-export const namespace = "agentos";
+const namespace = "agentos";
 
 const server = (name: string, tools: string[]) =>
   create(ToolServerSchema, {

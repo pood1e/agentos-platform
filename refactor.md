@@ -1,7 +1,7 @@
 # 维护面收敛重构
 
-状态：第一轮已发布并完成站点切换；第二轮为待实施设计。
-已部署基线：平台 0.27.5（`e8daac8`），AIOps 方案包 1.24.2（`cca755a`）。
+状态：第一轮已发布；第二轮首批已实现依赖清理、合并门禁、容器 CI 与 TokenReview，后续阶段保留在下表。
+第一轮交付基线：平台 0.27.5（`e8daac8`），AIOps 方案包 1.24.2（`cca755a`）。
 
 ## 原则
 
@@ -34,12 +34,12 @@
 
 | 环节 | 当前维护面 | 目标 |
 | --- | --- | --- |
-| 合并检查 | GitHub main 未启用分支保护；主要检查在合并后的 GitLab 执行 | 功能 PR 与发布 PR 在合并前通过相同门禁 |
-| CI 环境 | shell executor 在宿主机启动 PostgreSQL、安装工具和虚拟环境 | 容器隔离作业，固定工具镜像，原生服务容器与缓存 |
+| 合并检查 | GitHub main 已要求合并前检查；内网制品在 GitLab 构建与校验 | 功能 PR 与发布 PR 在合并前通过相同门禁 |
+| CI 环境 | Docker executor、mise 固定镜像、独立 PostgreSQL 服务与三路浏览器分片 | 容器隔离作业，固定工具镜像，原生服务容器与缓存 |
 | 工具访问规则 | Helm、Ansible、运行时与 Rego 分别推导工具分类和绑定 | 单一静态访问计划，保留独立的权限不变量校验 |
 | values 契约 | 手写 schema、脚本拼接 schema 与运行时 proto 转换并存 | 平台字段从 proto 生成，第三方字段复用原生 schema |
 | 制品交付 | generic package、自定义发布清单与下载器 | 标准注册表与包管理器，保留来源、版本和完整性校验 |
-| 密钥轮换 | 部署时内联 Actor 与 Kubernetes JWKS | 原生远程 JWKS 与 TokenReview，覆盖轮换和撤销 |
+| 密钥轮换 | 平台工作负载已采用 TokenReview，网关仍使用内联 JWKS | 原生远程 JWKS 与 TokenReview，覆盖轮换和撤销 |
 | 模型授权 | 每次请求包含多次 kagent/Substrate RPC 与执行绑定查询 | 减少配置重复查询，保留实时身份与撤销校验；收益由测量确认 |
 | 网关策略 | Gateway 级 CEL 拼接较多路由条件 | 路由或 Backend 级原生策略，验证组合后的有效权限 |
 | 后置渲染 | Python 修改上游 Kubernetes 对象及内嵌配置 | 上游 values 优先，资源补丁采用 Kustomize |
@@ -48,7 +48,7 @@
 ### 合并检查与 CI 环境
 
 - GitHub main 通过分支保护要求检查通过后合并，功能 PR 与 release PR 使用同一组门禁。GitHub Actions 承担可公开复现的检查；依赖内网注册表的构建和发布由 GitLab 承担。
-- release-please 使用权限限定到本仓库的 GitHub App installation token 创建发布 PR，使检查自动运行。当前 GitHub 文档中，`GITHUB_TOKEN` 创建的 PR 检查可能进入待批准状态，门禁接入同时验收此触发链路。
+- release-please 使用仓库 `GITHUB_TOKEN` 创建发布 PR，再通过原生 `workflow_dispatch` 在发布分支执行检查，避免新增 App 或长期凭据。门禁校验检查结果对应实际发布 PR 的提交。
 - GitLab 的外部仓库 CI 集成和拉取镜像受版本与订阅限制，保留现有源码同步任务。外部服务可通过 GitHub Commit Status API 回写结果，这与 GitLab Premium 集成是不同能力。
 - 校验作业改用容器 executor，在实施 PR 中依据现有 Runner 资源固定 Docker 或 Kubernetes 选型。每个作业使用独立工作目录，PostgreSQL 18/pgvector 以服务容器运行。
 - Node、Python、Go、envtest、浏览器、Helm、Conftest、kubeconform、protoc 与 buf 固定到有摘要的 CI 镜像。GitHub 检查所需镜像和依赖可在其执行环境访问；随后删除宿主机工具安装器与 PostgreSQL 启停脚本。
@@ -103,7 +103,7 @@
 
 ### 实施顺序与验收
 
-阶段编号沿用上一版，执行顺序先建立合并门禁与隔离环境。
+阶段编号沿用上一版。首批交付涵盖阶段 8 的入口、依赖与文档整理、阶段 9、10，以及阶段 11 的 TokenReview。队列轮询测量、远程 JWKS、授权查询收敛和后续阶段待实施。
 
 | 顺序 | 阶段 | 内容 | 验收 |
 | --- | --- | --- | --- |
@@ -116,7 +116,7 @@
 | 7 | 14 | 标准注册表交付 | 从锁定制品完成干净安装与升级，篡改或错版本制品被拒绝 |
 | 独立推进 | 7 | 上游收敛 | 记录 issue、PR、包含修复的发布版本与回归结果 |
 
-每个阶段独立 PR，保留执行授权、用户会话隔离、审批与后台续接语义。新链路验收包含用户退出及令牌到期后继续执行、只读用户写入拒绝、执行撤销及身份提供方授权撤销的生效边界和现有智能体配置保留。
+阶段可按同一可验证切换单元合并交付，保留执行授权、用户会话隔离、审批与后台续接语义。新链路验收包含用户退出及令牌到期后继续执行、只读用户写入拒绝、执行撤销及身份提供方授权撤销的生效边界和现有智能体配置保留。
 
 ## 范围
 

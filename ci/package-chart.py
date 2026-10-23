@@ -78,7 +78,7 @@ for source in sorted(Path("charts").iterdir()):
     (target / "Chart.yaml").write_text(yaml.safe_dump(metadata, sort_keys=False))
     if source == chart:
         (target / "values.yaml").write_text(yaml.safe_dump(values, sort_keys=False))
-    subprocess.run([".cache/bin/helm", "package", str(target), "--destination", "dist"], check=True)
+    subprocess.run(["helm", "package", str(target), "--destination", "dist"], check=True)
     archive = Path(f"dist/{source.name}-{version.semver}.tgz")
     original = tarfile.open(archive)
     members = [

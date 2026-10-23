@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:https";
 import { getCACertificates, setDefaultCACertificates } from "node:tls";
 import { fromJsonString } from "@bufbuild/protobuf";
+import type { AuthenticationV1Api } from "@kubernetes/client-node";
 import { importPKCS8, SignJWT } from "jose";
-import { afterAll, expect, it } from "vitest";
+import { afterAll, expect, it, vi } from "vitest";
 import { WorkloadAuthenticationSchema } from "../gen/agentos/authorization/v1/workload_pb.js";
 import { workloadIdentity } from "../server/authorization/workloads.js";
 
@@ -26,43 +27,53 @@ async function token(issuer: string, audience: string, subject: string, claims =
   return `Bearer ${await new SignJWT(claims).setProtectedHeader({ alg: "RS256" }).setIssuer(issuer).setAudience(audience).setSubject(subject).setIssuedAt().setExpirationTime("5m").sign(signing)}`;
 }
 
-it("binds Kubernetes discovery and model tokens to distinct subjects, audiences and methods", async () => {
-  const trust = config(),
-    identity = workloadIdentity(trust);
-  const controller = {
-    authorization: await token(
-      trust.kubernetesIssuer,
-      "agentos-mcp-discovery",
-      trust.controllerSubject,
-    ),
-  };
-  const platform = {
-    authorization: await token(trust.kubernetesIssuer, trust.modelAudience, trust.platformSubject),
-  };
+it("delegates projected credentials to TokenReview with exact audiences and subjects on every request", async () => {
+  const trust = config();
+  const review = vi.fn<AuthenticationV1Api["createTokenReview"]>(async ({ body }) => {
+    const controller = body.spec?.token === "controller";
+    const valid = controller || body.spec?.token === "platform";
+    const audience = controller ? "agentos-mcp-discovery" : trust.modelAudience;
+    return {
+      spec: body.spec,
+      status: {
+        authenticated: valid,
+        audiences: body.spec?.audiences?.includes(audience) ? [audience] : [],
+        user: { username: controller ? trust.controllerSubject : trust.platformSubject },
+      },
+    };
+  });
+  const identity = workloadIdentity(trust, { createTokenReview: review });
+  const controller = { authorization: "Bearer controller" };
+  const platform = { authorization: "Bearer platform" };
   await identity.controller(controller, "tools/list");
   await identity.model(platform);
   await expect(identity.controller(controller, "tools/call")).rejects.toThrow();
   await expect(identity.model(controller)).rejects.toThrow();
   await expect(identity.controller(platform, "tools/list")).rejects.toThrow();
-  for (const headers of [
-    {},
-    { authorization: "Bearer forged" },
-    {
-      authorization: await token(
-        "https://other.test",
-        "agentos-mcp-discovery",
-        trust.controllerSubject,
-      ),
-    },
-    {
-      authorization: await token(
-        trust.kubernetesIssuer,
-        "agentos-mcp-discovery",
-        "system:serviceaccount:other:kagent-controller",
-      ),
-    },
-  ])
+  for (const headers of [{}, { authorization: "Bearer forged" }])
     await expect(identity.controller(headers, "tools/list")).rejects.toThrow();
+  for (const status of [
+    undefined,
+    { authenticated: false },
+    { authenticated: true, audiences: [] },
+    { authenticated: true, audiences: ["other"] },
+    {
+      authenticated: true,
+      audiences: ["agentos-mcp-discovery"],
+      user: { username: "system:serviceaccount:other:kagent-controller" },
+    },
+  ]) {
+    review.mockResolvedValueOnce({ spec: { token: "controller" }, status });
+    await expect(identity.controller(controller, "tools/list")).rejects.toThrow();
+  }
+  await identity.controller(controller, "tools/list");
+  review.mockResolvedValueOnce({
+    spec: { token: "controller" },
+    status: { authenticated: false, error: "Bound Pod was deleted" },
+  });
+  await expect(identity.controller(controller, "tools/list")).rejects.toThrow();
+  review.mockRejectedValueOnce(new Error("Kubernetes unavailable"));
+  await expect(identity.model(platform)).rejects.toThrow("Kubernetes unavailable");
 });
 
 it("validates the registered environment issuer, audience, client and service-account subject", async () => {
@@ -88,7 +99,9 @@ it("validates the registered environment issuer, audience, client and service-ac
     clientId: "case-worker",
     subject: "service-account-123",
   });
-  const identity = workloadIdentity(trust);
+  const identity = workloadIdentity(trust, {
+    createTokenReview: vi.fn<AuthenticationV1Api["createTokenReview"]>(),
+  });
   try {
     const authorized = await token(issuer, "agentos-automation", "service-account-123", {
       azp: "case-worker",

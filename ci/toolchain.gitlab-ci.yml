@@ -1,0 +1,55 @@
+variables:
+  AGENTOS_CI_RUNNER: agentos-container
+  AGENTOS_GO_RUNNER: agentos-compiler
+  AGENTOS_VOICE_RUNNER: agentos-avx2
+  FF_USE_FASTZIP: "true"
+  CACHE_COMPRESSION_LEVEL: fastest
+
+.agentos-ci:
+  image: registry.dev-supranett.space/aiops/agentos-platform/ci/tools@sha256:8c2bcb286ba1577fb577bdb4b305859e179b039cb7e647a1127c1c5c3363d988
+  tags: [$AGENTOS_CI_RUNNER]
+  before_script: [mkdir -p .cache]
+
+.agentos-node:
+  extends: .agentos-ci
+  variables:
+    NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
+  cache:
+    key:
+      files: [package-lock.json]
+      prefix: npm
+    paths: [.npm/]
+  before_script:
+    - mkdir -p .cache
+    - npm ci --prefer-offline
+
+.agentos-go:
+  extends: .agentos-ci
+  tags: [$AGENTOS_GO_RUNNER]
+  variables:
+    GOENV: "off"
+    GOTOOLCHAIN: local
+    GOMODCACHE: $CI_PROJECT_DIR/.cache/go-mod
+    GOCACHE: $CI_PROJECT_DIR/.cache/go-build
+    GOMEMLIMIT: 4GiB
+    GOLANGCI_LINT_CACHE: $CI_PROJECT_DIR/.cache/golangci-lint
+  cache:
+    key:
+      files: [mise.lock]
+      prefix: $CI_JOB_NAME
+    paths: [.cache/go-mod/, .cache/go-build/, .cache/golangci-lint/]
+
+.agentos-postgres:
+  services:
+    - name: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
+      alias: postgres
+  variables:
+    POSTGRES_DB: agentos
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: agentos-ci
+    PGHOST: postgres
+    PGUSER: postgres
+    PGPASSWORD: agentos-ci
+    CHANGE_TEST_DATABASE_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable
+    KAGENT_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable
+    SUBSTRATE_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable

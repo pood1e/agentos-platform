@@ -201,8 +201,9 @@ export function consoleService({
       chatTarget(namespace, entryAgent, request.agent, identity);
       return listConversations(await history(identity), request.agent, request);
     },
-    watchConversation(request, context) {
-      return watch(sync, WatchConversationResponseSchema, context.signal, async () => {
+    async *watchConversation(request, context) {
+      if (request.contextId && !index.session(request.contextId)) await sync.refresh();
+      yield* watch(sync, WatchConversationResponseSchema, context.signal, async () => {
         const identity = context.values.get(requestIdentity);
         chatTarget(namespace, entryAgent, request.agent, identity);
         const visible = await history(identity);

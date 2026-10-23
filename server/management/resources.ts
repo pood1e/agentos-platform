@@ -9,7 +9,7 @@ import {
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 
-export const resourceKinds = {
+const resourceKinds = {
   models: ["agentgateway.dev", "v1alpha1", "agentgatewaymodels"],
   mcps: ["agentgateway.dev", "v1alpha1", "agentgatewaybackends"],
   mcpPolicies: ["agentgateway.dev", "v1alpha1", "agentgatewaypolicies"],

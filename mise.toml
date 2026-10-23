@@ -1,0 +1,19 @@
+[tools]
+node = "24.21.0"
+go = "1.27.3"
+python = "3.14.9"
+uv = "0.12.18"
+helm = "3.22.1"
+conftest = "0.71.1"
+kubeconform = "0.8.0"
+protoc = "36.2"
+"go:github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-jsonschema" = "v0.6.0"
+"go:sigs.k8s.io/controller-runtime/tools/setup-envtest" = "v0.25.3-0.20261012174806-32759fab3119"
+
+[tools."github:helm-unittest/helm-unittest"]
+version = "1.2.1"
+asset_pattern = "helm-unittest-linux-amd64-*.tgz"
+rename_exe = "helm-unittest"
+
+[settings]
+lockfile = true

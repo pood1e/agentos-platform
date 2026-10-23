@@ -10,7 +10,7 @@ import {
   ExecutionIdentitySchema,
 } from "../../gen/agentos/execution/v1/identity_pb.js";
 
-export interface Stored<T> {
+interface Stored<T> {
   value: T;
   version: string;
 }

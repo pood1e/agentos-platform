@@ -28,5 +28,3 @@ export function toolRequirements(permissions: ToolRequirement[] | undefined) {
   );
   return (server: string, tool: string) => decisions.get(key(server, tool));
 }
-
-export type AccessLookup = ReturnType<typeof toolRequirements>;

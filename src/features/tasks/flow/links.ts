@@ -2,7 +2,7 @@ import { DelegationKind, type TaskDetail } from "../../../../gen/agentos/console
 import { ActivityState } from "../../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../../../lib/format.js";
 
-export type LinkKind = "invoke" | "background" | "handoff" | "resume" | "approval" | "review";
+type LinkKind = "invoke" | "background" | "handoff" | "resume" | "approval" | "review";
 
 /** One observed hand-over between participants, in milliseconds. */
 export interface Link {
