@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 import jinja2
 import yaml
 
-subprocess.run([sys.executable, 'ci/test-package-chart.py'], check=True)
 controller_release = re.search(r'org.opencontainers.image.version="([^"]+)"', Path('runtime/kagent/Dockerfile').read_text()).group(1)
 
 

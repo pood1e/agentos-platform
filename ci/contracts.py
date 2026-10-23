@@ -1,17 +1,20 @@
 """Package generated Python contracts at the platform release version."""
 
-import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from versions import versions
+
 root = Path(__file__).resolve().parent.parent
-version = json.loads((root / "package.json").read_text())["version"]
+version = versions().python
+shutil.rmtree(root / "dist/contracts", ignore_errors=True)
 epoch = subprocess.check_output(
     ["git", "show", "-s", "--format=%ct", "HEAD"], cwd=root, text=True
 ).strip()
+subprocess.run([sys.executable, str(root / "ci/node-contracts.py")], cwd=root, check=True)
 subprocess.run([str(root / "ci/tools.sh"), "protoc"], cwd=root, check=True)
 subprocess.run(
     [str(root / "node_modules/.bin/buf"), "generate", "--template", "buf.python.gen.yaml"],
@@ -52,4 +55,3 @@ def wheel(name, project, sources, requirements=""):
 
 
 wheel("contracts", root / "contracts/pyproject.toml", {".": root / "gen/python"})
-subprocess.run([sys.executable, str(root / "ci/node-contracts.py")], cwd=root, check=True)

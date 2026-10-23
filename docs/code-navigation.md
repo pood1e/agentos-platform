@@ -2,6 +2,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
+| `proto/agentos/distribution/v1` | 发布清单：源提交、版本与制品摘要 |
 | `proto/agentos/execution/v1` | 通用执行状态、任务运行与工具调用 |
 | `proto/agentos/console/v1` | 控制台 RPC：会话、任务、角色、工具、方案包展示（`pack.proto`） |
 | `proto/agentos/management/v1` | 管理 RPC：连接、模型、Harness、Skill、知识 |
