@@ -6,7 +6,7 @@ import KeycloakAdminClient from "@keycloak/keycloak-admin-client";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import { Configuration, genericGrantRequest, refreshTokenGrant } from "openid-client";
 import { Agent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
-import policy from "../../authorization/keycloak/realm-policy.json" with { type: "json" };
+import policy from "./keycloak-policy.json" with { type: "json" };
 
 const baseUrl = process.env.PROOF_KEYCLOAK_URL;
 const passwordFile = process.env.PROOF_KEYCLOAK_ADMIN_PASSWORD_FILE;

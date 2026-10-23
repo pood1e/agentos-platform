@@ -10,9 +10,9 @@ import "kagent/api/v1/agent_templates.proto";
 import "kagent/api/v1/agents.proto";
 import "kagent/api/v1/common.proto";
 import "kagent/api/v1/harnesses.proto";
-import "kagent/runtime/v1/memory.proto";
 import "kagent/api/v1/models.proto";
 import "kagent/api/v1/tools.proto";
+import "kagent/runtime/v1/memory.proto";
 
 service ManagementService {
   rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse) {

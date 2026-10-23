@@ -32,12 +32,14 @@ agentgateway_version: v1.6.0
 helm_diff_version: v3.15.11
 gateway_api_version: v1.6.1
 langfuse_enabled: false
-agentos_evaluation_enabled: false
 langfuse_namespace: agentos-observability
-agentos_evaluation_namespace: agentos-evaluation
 langfuse_chart_version: 2.1.4
 langfuse_version: 4.62.0
-langfuse_web_image_tag: 4.62.0@sha256:d346dc8343774d18a721d9a1bea7efcbdd60979edee5b1ea1f20aea9746dfca0
+langfuse_web_image_digest: sha256:b40241743c639226a4bcba90e8a4d7bcb3335bd9947f84034c99dd85e60580a2
+langfuse_worker_image_digest: sha256:050653ef8847a09cb9c264896f832a90550fbc0cf3367ac0a1f5bf6de6f23b19
+langfuse_oidc_issuer: ""
+langfuse_oidc_client_id: ""
+langfuse_oidc_client_secret_file: ""
 clickhouse_operator_version: 0.0.8
 langfuse_issuer_name: letsencrypt
 otel_collector_chart_version: 0.176.0

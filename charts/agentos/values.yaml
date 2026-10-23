@@ -17,18 +17,6 @@ pack:
   image: ''
 automation:
   enabled: false
-evaluation:
-  enabled: false
-  namespace: ''
-  kagentURL: ''
-  langfuseURL: ''
-  langfuseNamespace: ''
-  langfuseSecret: langfuse-project
-  feedbackURL: ''
-  feedbackSecret: evaluation-feedback
-  baseline: {}
-  judge:
-    spec: {}
 kagent:
   endpoint: http://kagent-controller:8083
   userId: agentos

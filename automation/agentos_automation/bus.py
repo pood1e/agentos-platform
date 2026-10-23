@@ -10,7 +10,6 @@ from agentos.automation.v1.automation_pb2 import (
 from cloudevents.core.bindings.http import HTTPMessage, from_http_event, to_structured_event
 from cloudevents.core.exceptions import CloudEventValidationError
 from cloudevents.core.v1.event import CloudEvent
-from google.protobuf.json_format import MessageToDict
 
 
 def identity(*parts):
@@ -87,13 +86,3 @@ class EventBus:
         data = to_structured_event(event).body
         await self.js.publish(kind, data, headers={"Nats-Msg-Id": identifier}, timeout=15)
         return identifier
-
-    async def evaluation(self, feedback):
-        feedback.report.feedback_synchronized = True
-        await self.publish(
-            "evaluations.completed",
-            feedback.candidate_id,
-            feedback.report.completed_at.ToNanoseconds(),
-            MessageToDict(feedback),
-        )
-        return feedback.candidate_id

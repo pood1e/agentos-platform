@@ -2,7 +2,6 @@ import { type DescMethod, isMessage } from "@bufbuild/protobuf";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { EvaluationService } from "../../gen/agentos/evaluation/v1/evaluation_pb.js";
 import {
   ConnectionKind,
   DeleteConnectionRequestSchema,
@@ -27,8 +26,6 @@ const requirements = new Map<string, Capability>([
   [key(ManagementService.method.clearKnowledge), Capability.KNOWLEDGE_MANAGE],
   [key(ManagementService.method.saveHarness), Capability.HARNESSES_MANAGE],
   [key(ManagementService.method.deleteHarness), Capability.HARNESSES_MANAGE],
-  [key(EvaluationService.method.runEvaluation), Capability.EVALUATIONS_MANAGE],
-  [key(EvaluationService.method.publishCandidate), Capability.EVALUATIONS_MANAGE],
 ]);
 
 /** Unknown mutations fail closed; connection permissions follow the authoritative kind. */

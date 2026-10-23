@@ -11,7 +11,6 @@ const pages = new Map([
   [Capability.KNOWLEDGE_MANAGE, "/engineers/knowledge"],
   [Capability.MODELS_MANAGE, "/engineers/models"],
   [Capability.HARNESSES_MANAGE, "/engineers/harnesses"],
-  [Capability.EVALUATIONS_MANAGE, "/engineers/evaluation"],
 ]);
 
 for (const capability of allCapabilities) {
@@ -23,24 +22,12 @@ for (const capability of allCapabilities) {
     await resetKagent(request);
     const token = await identityToken([capabilityRole(capability)], `manager-${capability}`);
     await context.setExtraHTTPHeaders({ authorization: `Bearer ${token}` });
-    if (capability === Capability.EVALUATIONS_MANAGE)
-      await page.route("**/agentos.evaluation.v1.EvaluationService/ListCandidates", (route) =>
-        route.fulfill({ json: { candidates: [] } }),
-      );
     await page.goto(pages.get(capability) ?? "/chat");
     await expect(page.getByRole("link", { name: "系统任务", exact: true })).toBeVisible();
     if (pages.has(capability)) await expect(page.getByTestId("advanced")).toBeVisible();
     else await expect(page.getByTestId("advanced")).toHaveCount(0);
-    for (const [required, path] of pages) {
-      const link = page.locator(`nav a[href="${path}"]`);
-      if (required !== Capability.EVALUATIONS_MANAGE || required === capability)
-        await expect(link).toBeVisible();
-      else await expect(link).toHaveCount(0);
-    }
-    if (capability !== Capability.EVALUATIONS_MANAGE) {
-      await page.goto("/engineers/evaluation");
-      await expect(page).toHaveURL(/\/chat$/);
-    }
+    for (const path of pages.values())
+      await expect(page.locator(`nav a[href="${path}"]`)).toBeVisible();
     await page.goto("/engineers/skills");
     if (capability === Capability.SKILLS_MANAGE)
       await expect(page.getByRole("button", { name: "新增", exact: true })).toBeVisible();

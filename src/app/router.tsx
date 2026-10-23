@@ -34,13 +34,6 @@ export const router = createBrowserRouter([
         element: <AdvancedLayout />,
         children: [
           {
-            path: "evaluation",
-            lazy: async () => ({
-              Component: (await import("../features/evaluation/EvaluationsPage.js"))
-                .EvaluationsPage,
-            }),
-          },
-          {
             index: true,
             lazy: async () => ({
               Component: (await import("../features/engineers/EngineersPage.js")).EngineersPage,

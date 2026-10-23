@@ -8,8 +8,8 @@ import { Activity, LoaderCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, useNavigate } from "react-router";
-import { Toaster, toast } from "sonner";
+import { Outlet } from "react-router";
+import { Toaster } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAccess } from "../lib/access.js";
 import { useOutage } from "../lib/connection.js";
@@ -32,22 +32,7 @@ export function Layout({ children }: { children?: ReactNode }) {
     () => addStaticKeyToTransport(transport, scope),
     [transport, scope],
   );
-  const navigate = useNavigate(),
-    { resolvedTheme } = useTheme();
-  useEffect(() => {
-    const created = (event: Event) =>
-      toast.info(t("evaluation.created"), {
-        action: {
-          label: t("evaluation.review"),
-          onClick: () =>
-            navigate(
-              `/engineers/evaluation?candidate=${encodeURIComponent((event as CustomEvent<string>).detail)}`,
-            ),
-        },
-      });
-    window.addEventListener("agentos:candidate", created);
-    return () => window.removeEventListener("agentos:candidate", created);
-  }, [navigate, t]);
+  const { resolvedTheme } = useTheme();
   useEffect(() => {
     applyPackLocales(pack);
     document.title = pack.title || "AgentOS";

@@ -208,7 +208,6 @@
           runtime/access-policies.py
           {{ agentos_namespace | quote }} {{ app_release_name | quote }}
           {{ ('check' if ansible_check_mode else 'apply') | quote }}
-          {% if agentos_evaluation_enabled %}{{ agentos_evaluation_namespace | quote }}{% endif %}
         executable: /usr/bin/python3
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml

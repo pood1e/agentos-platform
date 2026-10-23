@@ -40,14 +40,6 @@ spec:
               apiKey.workspace == '{{ .Release.Namespace }}' && has(apiKey.environment) &&
               request.path == '/mcp/automation')
             {{- end }}
-            {{- if .Values.evaluation.enabled }} ||
-            (has(apiKey.service) && apiKey.service == 'evaluator' &&
-              apiKey.workspace == '{{ .Values.evaluation.namespace }}' && has(apiKey.candidate) &&
-              request.path in ['/agentos.evaluation.v1.EvaluationExecutionService/Execute', '/agentos.evaluation.v1.EvaluationExecutionService/Complete']) ||
-            (has(apiKey.service) && apiKey.service == 'evaluation' &&
-              apiKey.workspace == '{{ .Values.evaluation.namespace }}' && has(apiKey.candidate) &&
-              request.path in ['/mcp/team-sessions', '/mcp/evaluation-collaboration'])
-            {{- end }}
     headerModifiers:
       request:
         remove: [authorization, x-api-key]

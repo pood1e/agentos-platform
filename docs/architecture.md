@@ -38,8 +38,7 @@ flowchart LR
 | 底座 | agentgateway | 上游 v1.6.0 官方 Chart | 平台网关与环境网关：模型接入、MCP 汇聚、身份映射、读写视图、ExtMCP |
 | 平台服务 | console | 本仓库 | 聊天、任务协作画布、工具调用与审批状态，团队、Skill、知识、连接、Harness 与环境管理 |
 | 平台服务 | team-sessions | 本仓库 | 协作 MCP：委派、续接、知识检索、角色起草；可选外部审批协调 |
-| 平台服务 | 测评作业 | 本仓库 | 按冻结基线在隔离副本中比较候选与已发布配置，评分写入 Langfuse 原生实验 |
-| 环境侧 | 案例自动化 | 本仓库 | 把源 CloudEvents 映射为版本化案例，以 Temporal 工作流交指定 Agent 处理；发布案例事实，受理人工反馈与测评回报 |
+| 环境侧 | 案例自动化 | 本仓库 | 把源 CloudEvents 映射为版本化案例，以 Temporal 工作流交指定 Agent 处理；发布案例事实，受理人工反馈 |
 | 平台资源 | 嵌入模型 | Ollama 与 EmbeddingGemma | 团队知识的 768 维向量 |
 | 存储 | CNPG PostgreSQL、S3 | 上游 | kagent 与 Substrate 状态、记忆向量、Actor 快照 |
 
@@ -70,7 +69,7 @@ flowchart LR
 环境套件包含环境网关、身份路由与凭据模板；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
 平台 API 使用滚动更新，新实例就绪后才移除旧实例；HTTP/2 连接通过 GOAWAY 排空已接收的 RPC。发布脚本在应用更新完成后刷新平台协作工具目录，保持网关与原生工具发现一致。
 浏览器以鉴权心跳判断平台连接，单个资源或观测流失败保留在对应页面。空闲观测流每 15 秒发送心跳，并在 5 分钟后正常轮换；断网恢复时重新订阅，登录失效时重新认证并保留当前 URL。
-测评作业与案例自动化以镜像随平台发布：前者由平台 API 在测评命名空间以 Job 运行，后者在环境侧按需部署，依赖 NATS JetStream 与 Temporal。
+案例自动化以镜像随平台发布，在环境侧按需部署，依赖 NATS JetStream 与 Temporal。
 
 ## 安全边界
 
@@ -82,17 +81,13 @@ flowchart LR
 
 执行身份、会话隔离、运行时入口和环境 OBO 接线见[执行授权](execution-authorization.md)；逐资源业务授权的后续范围见[实施计划](authorization-plan.md)。
 
-## 观测与测评
+## 观测
 
-Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。Web 以预置运维账号共享会话，采集使用项目 API Key。部署入口为 `deploy/observability.yaml`。
-
-测评契约定义于 `proto/agentos/evaluation/v1`。候选快照、Job、分数完整性与回归检查使用原生 Kubernetes 持久化；配置编辑先经过原有命令校验，再形成候选资源。
-测评作业读取固定版本的 Langfuse 数据集，按重复次数执行已发布与候选配置；基线规则按名称选择内置或方案包注册的评分器，逐例分数写入原生实验，报告经平台回报所属环境。
-控制台按规则展示双方均值与差值，判定仍要求每个用例、每轮评分满足门槛与退化上限；单例错误与双方追踪链接随报告展示，追踪地址由 Langfuse 官方 SDK 生成。
+Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。Web 使用官方镜像，站点可配置通用 OIDC 登录并自动加入项目，未配置时使用初始化的运维账号登录；采集使用项目 API Key。部署入口为 `deploy/observability.yaml`。
 
 案例自动化按方案包的 `CaseTrigger` 映射源事件并选择原生 Agent：同一案例复用原生会话与确定性 messageId，超时取消并升级，事实类型的命名空间由方案包决定。
 聊天使用 assistant-ui，A2A 委派关联的任务在聊天右侧展示协作、MCP 服务调用和时间线；`/chat/:contextId?task=<taskId>` 可定位聊天及执行详情。消息按原始 A2A 顺序投影为带稳定 ID 的内容片段，保留过程说明、并行工具调用和最终答复的交错顺序；工具结果按调用 ID 更新原卡片。过程与草稿映射为 reasoning，完成后的最终答复映射为 text；官方朗读动作仅获取最终答复，再经 remark 转为可朗读文本。系统任务位于 `/system-tasks/:scheduleId?`，所有具有平台管理能力的管理员共享定义和执行历史，普通用户不可读取；执行详情通过 `/system-tasks?task=<taskId>` 在系统任务页内展开，复用聊天的执行详情组件。定时任务复用 kagent `ScheduledRunService` 持久化、调度和记录运行历史；配置维护和手动触发要求 `tasks.manage`。
 每次定时运行通过原生执行记录核对会话、创建者和 Agent 后绑定独立只读服务主体；首次任务落盘前使用消息 ID 查找原生执行记录，ID 本身不授予权限。
 聊天与协作创建请求的幂等键分别按发起人和父会话派生，重试保持稳定，并与系统任务的创建空间隔离。
 方案预置只在首次接入时创建，用户编辑和删除状态由 kagent 保留。事件入口的启用状态来自平台配置，来源环境负责投递与 worker 运行。
-评分器与触发器契约见[扩展契约](extension.md#测评)。环境侧部署接线由[目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。
+触发器契约见[扩展契约](extension.md#案例自动化)。环境侧部署接线由[目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。

@@ -11,7 +11,8 @@ enum Capability {
   CAPABILITY_KNOWLEDGE_MANAGE = 4;
   CAPABILITY_MODELS_MANAGE = 5;
   CAPABILITY_HARNESSES_MANAGE = 6;
-  CAPABILITY_EVALUATIONS_MANAGE = 7;
+  reserved 7;
+  reserved "CAPABILITY_EVALUATIONS_MANAGE";
   // Manage shared automation definitions and task metadata. Personal tasks remain private.
   CAPABILITY_TASKS_MANAGE = 8;
 }

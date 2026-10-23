@@ -40,20 +40,20 @@ it("rejects cross-workspace invocation and native task methods outside the expos
   expect((await guard.checkRequest(request)).result.case).toBe("pass");
 });
 
-it("filters both structured and readable session results using the verified workspace and candidate scope", async () => {
+it("filters both structured and readable session results using the verified workspace", async () => {
   const { clients } = environment();
   const guard = createClient(
     ExtMcp,
     createRouterTransport((router) =>
-      router.service(ExtMcp, collaborationGuardrails(new Map([["evaluation", clients]]))),
+      router.service(ExtMcp, collaborationGuardrails(new Map([["agentos", clients]]))),
     ),
   );
   const result = {
     content: [{ type: "text", text: "unfiltered foreign sessions" }],
     structuredContent: {
       sessions: [
-        { id: "owned", agent: "evaluation/candidate-1-engineer", state: "ready" },
-        { id: "other", agent: "evaluation/candidate-2-engineer", state: "ready" },
+        { id: "owned", agent: "agentos/engineer", state: "ready" },
+        { id: "other", agent: "other/engineer", state: "ready" },
         { id: "foreign", agent: "production/engineer", state: "ready" },
       ],
       next_page_token: "opaque-native-cursor",
@@ -63,8 +63,7 @@ it("filters both structured and readable session results using the verified work
     create(McpResponseSchema, {
       method: "tools/call",
       metadataContext: {
-        workspace: "evaluation",
-        agentPrefix: "candidate-1-",
+        workspace: "agentos",
         toolName: "list_sessions",
       },
       mcpResponse: new TextEncoder().encode(JSON.stringify(result)),

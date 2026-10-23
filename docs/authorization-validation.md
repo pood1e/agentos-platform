@@ -36,7 +36,7 @@ JWKS 服务复用原生签名池，私钥只由原生签发组件持有。接收
 | 运行时补丁 | 七个补丁可依次应用至固定上游提交；Actor 身份注入按协议、主机与端口限制 audience，保留现有凭据规则 |
 | 契约 | 官方 Substrate proto 生成 TypeScript 与 Python；Python wheel 包含 ateapi_pb2，Node 包包含对应契约 |
 
-自动化入口为 `tests/proofs`，模型与 SDK 测试进入 CI。真实环境验证使用独立测试资源，身份提供方测试 realm 在结束后删除。
+原生链路验证入口为 `tests/proofs`。早期 OpenFGA 实验的模型与 SDK 已随 0.27.0 清理，历史实现在 `40e4bc1`；它们未进入平台运行链路。真实环境验证使用独立测试资源，身份提供方测试 realm 在结束后删除。
 本次验证的临时工作负载与会话已清理，宿主机网关恢复原部署版本，站点健康检查通过。
 
 ## AIOps 环境的 GitLab 与 OBO 实践
@@ -62,7 +62,7 @@ Chart 验证覆盖两种认证模式；无 OIDC 模式不创建登录代理、�
 
 - 运行资源复用原生 Session、Actor、A2A Task 与生命周期 API。Actor JWT 表示工作负载身份；Session.creator 只表示创建者，当前发起者来自执行授权绑定。
 - 信任边界位于平台 API、原生入口、ExtMCP 与目标 API。工具模型只能提出资源请求，授权服务从原生状态与持久关联解析主体和执行。
-- 平台 OpenFGA 使用独立 store 和固定模型。Substrate 内嵌 OpenFGA 继续管理原生基础设施权限，其原生 AccessPolicy 模型与平台业务模型分别维护。
+- 平台使用应用角色与执行委派链授权。Substrate 的原生 AccessPolicy 管理基础设施权限，逐资源业务 ACL 属于后续范围。
 - 用户 scope 通过明确客户端 scope 和原生角色映射收窄。Keycloak 标准交换依赖同一 realm；跨 realm 或外部提供方的生产连接需要独立用户授权与身份关联验收。
 - NetBox 首批采用服务身份桥接。实际账号的只读权限提供目标上限，业务资源过滤与用户许可由 AIOps 接线并在内容进入模型前执行。
 - 浏览器登录使用 openid-client 授权码与 PKCE；离线授权加密持久化，退出后按需续期，执行绑定与权限上限独立校验，原生执行历史继续由 kagent 保存。

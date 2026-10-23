@@ -3,6 +3,9 @@
     that:
       - langfuse_domain | default('') | length > 0
       - langfuse_admin_email | default('') | length > 0
+      - (langfuse_oidc_issuer | length > 0) == (langfuse_oidc_client_id | length > 0)
+      - (langfuse_oidc_issuer | length > 0) == (langfuse_oidc_client_secret_file | length > 0)
+      - langfuse_oidc_issuer | length == 0 or langfuse_oidc_issuer is match('^https://')
 
 - name: Ensure observability namespace
   kubernetes.core.k8s:
@@ -14,23 +17,16 @@
 - name: Configure observability ingress
   ansible.builtin.import_tasks: ingress.yaml
 
-- name: Discover platform image pull credentials
-  kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Secret
-    name: agentos-registry
-    namespace: "{{ agentos_namespace }}"
-  register: langfuse_registry
-  no_log: true
-
-- name: Configure Langfuse image pull credentials
+- name: Configure Langfuse OIDC credentials
   kubernetes.core.k8s:
     definition:
       apiVersion: v1
       kind: Secret
-      metadata: {name: agentos-registry, namespace: "{{ langfuse_namespace }}"}
-      type: kubernetes.io/dockerconfigjson
-      data: "{{ langfuse_registry.resources[0].data }}"
+      metadata: {name: langfuse-oidc, namespace: "{{ langfuse_namespace }}"}
+      type: Opaque
+      stringData:
+        client-secret: "{{ lookup('ansible.builtin.file', langfuse_oidc_client_secret_file) | trim }}"
+  when: langfuse_oidc_issuer | length > 0
   no_log: true
   diff: false
 
@@ -170,6 +166,7 @@
     name: langfuse-oidc
     namespace: "{{ langfuse_namespace }}"
     state: absent
+  when: langfuse_oidc_issuer | length == 0
   no_log: true
   diff: false
 

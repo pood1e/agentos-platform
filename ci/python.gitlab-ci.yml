@@ -19,16 +19,6 @@ python-verify:
     - mkdir -p "$AGENTOS_BUILD_CONTEXT"
     - cp -R "$AGENTOS_DOCKERFILE_DIR/." dist/contracts/*.whl "$AGENTOS_BUILD_CONTEXT/"
 
-build-evaluator:
-  extends: .build-python-image
-  variables:
-    AGENTOS_BUILD_CONTEXT: .cache/evaluator-image
-    AGENTOS_DOCKERFILE_DIR: evaluation
-    AGENTOS_IMAGE_SUFFIX: /evaluator
-    AGENTOS_BUILD_METADATA: .cache/evaluator-build-metadata.json
-  artifacts:
-    paths: [.cache/evaluator-build-metadata.json]
-    expire_in: 7 days
 
 build-automation:
   extends: .build-python-image

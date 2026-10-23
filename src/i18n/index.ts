@@ -4,8 +4,6 @@ import { initReactI18next } from "react-i18next";
 import enAutomation from "./locales/automation.en.json";
 import zhAutomation from "./locales/automation.zh-CN.json";
 import en from "./locales/en.json";
-import enEvaluation from "./locales/evaluation.en.json";
-import zhEvaluation from "./locales/evaluation.zh-CN.json";
 import enManagement from "./locales/management.en.json";
 import zhManagement from "./locales/management.zh-CN.json";
 import enTools from "./locales/tools.en.json";
@@ -21,7 +19,6 @@ void i18n
         translation: {
           ...zh,
           management: zhManagement,
-          evaluation: zhEvaluation,
           automation: zhAutomation,
         },
         tools: zhTools,
@@ -30,7 +27,6 @@ void i18n
         translation: {
           ...en,
           management: enManagement,
-          evaluation: enEvaluation,
           automation: enAutomation,
         },
         tools: enTools,

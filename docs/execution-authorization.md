@@ -12,10 +12,9 @@
 | `agentos-knowledge-manage` | 团队知识的新增、删除、清空与 Agent 写入 |
 | `agentos-models-manage` | 模型连接及其凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
-| `agentos-evaluations-manage` | 运行测评与发起发布 |
 | `agentos-tasks-manage` | 系统任务的定时配置、手动触发和共享标签 |
 
-角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。认证用户可浏览智能体、Skill、MCP、模型接入、Harness 和团队知识的列表与详情，并检索团队知识。平台依据 proto 定义的 `Capability` 校验管理 RPC；浏览器使用相同能力控制新增、修改、删除和运行配置。测评入口与系统任务保留管理角色限制。测评发布同时校验测评权限和候选涉及的全部资源权限。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
+角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。认证用户可浏览智能体、Skill、MCP、模型接入、Harness 和团队知识的列表与详情，并检索团队知识。平台依据 proto 定义的 `Capability` 校验管理 RPC；浏览器使用相同能力控制新增、修改、删除和运行配置。系统任务使用管理角色限制。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
 
 应用角色授予配置管理能力；目标系统仍执行自身授权。平台管理角色保留用户私聊归属边界。
 

@@ -1,9 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   Blocks,
   BookOpen,
   BrainCircuit,
-  ClipboardCheck,
   Cpu,
   MessageCircle,
   Play,
@@ -14,10 +12,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/access";
-import { evaluationClient } from "@/lib/console";
-import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import { can, isAdministrator } from "../../shared/permissions.js";
-import { canViewManagementPage } from "../lib/permissions.js";
+import { isAdministrator } from "../../shared/permissions.js";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
@@ -27,11 +22,6 @@ const sections = [
     path: "/engineers/knowledge",
     label: "management.tabs.knowledge",
     icon: BrainCircuit,
-  },
-  {
-    path: "/engineers/evaluation",
-    label: "management.tabs.evaluation",
-    icon: ClipboardCheck,
   },
 ];
 const settings = [
@@ -44,13 +34,6 @@ const settings = [
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const access = useAccess();
-  const evaluation = useQuery({
-    queryKey: ["evaluation"],
-    queryFn: ({ signal }) => evaluationClient.listCandidates({}, { signal }),
-    enabled: can(access.data, Capability.EVALUATIONS_MANAGE),
-    staleTime: 60_000,
-    retry: false,
-  });
   const links = (items: typeof settings) =>
     items.map(({ path, label, icon: Icon }) => (
       <Button
@@ -67,7 +50,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
     ));
   const permitted = (item: (typeof settings)[number]) => {
     if (item.path === "/system-tasks") return isAdministrator(access.data);
-    return canViewManagementPage(item.path, access.data);
+    return !!access.data;
   };
   const visibleSettings = settings.filter(permitted);
   return (
@@ -75,12 +58,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       aria-label={t("navigation.main")}
       className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3"
     >
-      {links(
-        sections.filter(
-          (item) =>
-            permitted(item) && (item.path !== "/engineers/evaluation" || evaluation.isSuccess),
-        ),
-      )}
+      {links(sections.filter(permitted))}
       {!!visibleSettings.length && (
         <>
           <p className="mb-1 mt-6 px-3 text-xs font-medium text-muted-foreground">
