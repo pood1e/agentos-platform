@@ -11,25 +11,50 @@
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
+    - name: Publish environment resource coordinates
+      ansible.builtin.set_fact:
+        environment_issuer: "{{ environment_issuer }}"
+        gateway_resource: "{{ gateway_resource }}"
+
     - name: Retire engineer access outside the environment scope
       ansible.builtin.import_tasks: tasks/retire-platform-identities.yaml
 
-    - name: Load engineer gateway credentials
-      ansible.builtin.set_fact:
-        gateway_credentials: >-
-          {{ gateway_credentials | default({}) | combine({item.name:
-            lookup('ansible.builtin.file', environment_cache + '/secrets/gateway-' + item.name)}) }}
-      loop: "{{ engineer_identities }}"
+    - name: Read the environment gateway certificate authority
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig }}"
+        api_version: v1
+        kind: Secret
+        namespace: "{{ gateway_namespace }}"
+        name: mcp-gateway-tls
+      register: gateway_certificate
       no_log: true
+
+    - name: Discover native runtime identities
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - "{{ playbook_dir }}/discover-runtime.py"
+          - --kubeconfig
+          - "{{ platform_kubeconfig }}"
+          - --namespace
+          - "{{ agentos_namespace }}"
+          - --release
+          - "{{ platform_release }}"
+      register: runtime_discovery
+      changed_when: false
+      check_mode: false
+
+    - name: Use the native runtime identity providers
+      ansible.builtin.set_fact: "{{ runtime_discovery.stdout | from_json }}"
 
     - name: Configure platform environment connections
       kubernetes.core.k8s:
         kubeconfig: "{{ platform_kubeconfig }}"
         definition: "{{ lookup('ansible.builtin.template', 'templates/platform-governance.yaml.j2') | from_yaml }}"
-      when: inventory_hostname == groups['environments'][0]
+      when: inventory_hostname == groups['environments'][-1]
       no_log: true
 
-    - name: Install gateway credentials in the platform
+    - name: Configure platform trust for the environment gateway
       kubernetes.core.k8s:
         kubeconfig: "{{ platform_kubeconfig }}"
         definition: "{{ lookup('ansible.builtin.template', 'templates/platform-credentials.yaml.j2') | from_yaml_all | list }}"
@@ -60,7 +85,7 @@
       ansible.builtin.set_fact:
         existing_engineer_servers: "{{ engineer_mcp_resources.resources | map(attribute='metadata.name') | list }}"
 
-    - name: Initialize environment MCP services
+    - name: Configure environment MCP services
       kubernetes.core.k8s:
         kubeconfig: "{{ platform_kubeconfig }}"
         definition: "{{ new_services }}"

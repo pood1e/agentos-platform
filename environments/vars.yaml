@@ -10,7 +10,11 @@ environment_cache: "{{ playbook_dir }}/../.cache/environments/{{ environment_nam
 kubeconfig: "{{ environment_kubeconfig | default(environment_cache ~ '/kubeconfig.yaml') }}"
 gateway_namespace: mcp
 gateway_node_port: 31000
-gateway_rules: []
+environment_issuer: ""
+gateway_server_name: "{{ environment_name }}-mcp.{{ environment_domain }}"
+gateway_resource: "https://{{ gateway_server_name }}:{{ gateway_node_port }}/mcp"
+cert_manager_version: v1.21.2
+native_controller_service_account: kagent-controller
 approval_service_url: ""
 approval_service_authorization_file: ""
 registry_config_file: ""

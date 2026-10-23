@@ -33,6 +33,7 @@ import type { TemplateWriter } from "./template-writer.js";
 import { watch } from "./watch.js";
 
 export interface ConsoleDependencies {
+  environmentToken?: import("../authorization/environment-tokens.js").EnvironmentTokens;
   sync: KagentSync;
   clients: KagentClients;
   namespace: string;
@@ -63,6 +64,7 @@ export function consoleService({
   namespace,
   access,
   operations,
+  environmentToken,
   roleDefaults,
   replaceTemplate,
   pack,
@@ -251,9 +253,16 @@ export function consoleService({
       ready();
       if (!(await history(context.values.get(requestIdentity))).entry(request.taskId))
         throw notFound("task.notFound");
-      return approvals(sync, operations, request.taskId, request.requestId, {
-        signal: context.signal,
-      });
+      return approvals(
+        sync,
+        operations,
+        request.taskId,
+        request.requestId,
+        {
+          signal: context.signal,
+        },
+        environmentToken,
+      );
     },
   };
 }

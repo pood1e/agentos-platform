@@ -2,16 +2,6 @@
 {% set name = service.metadata.name %}
 {% set project = service.metadata.labels['agentos.dev/project'] %}
 {% set owner = {'apiVersion': 'agentgateway.dev/v1alpha1', 'kind': 'AgentgatewayBackend', 'name': name, 'uid': service.metadata.uid} %}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ name }}-mcp-gateway
-  namespace: {{ agentos_namespace }}
-  ownerReferences: [{{ owner | to_json }}]
-spec:
-  selector: {gateway.networking.k8s.io/gateway-name: {{ platform_gateway }}}
-  ports: [{name: http, port: 8080, targetPort: 8080, protocol: TCP}]
 {% for identity in engineer_identities if identity.name != 'catalog' and project in identity.services %}
 {% set access = identity.services[project] %}
 {% set writes = toolsets[project].write | default([]) + (toolsets[project].management | default([]) if access == 'manage' else []) %}
@@ -19,10 +9,11 @@ spec:
 {% for view in ['readOnly', 'write'] if view == 'readOnly' or (access in ['operate', 'manage'] and writes) %}
 {% set selected_tools = reads if view == 'readOnly' else writes %}
 {% set profile = name + '-' + identity.name + ('-changes' if view == 'write' else '') %}
-{% set route_path = '/mcp/' + name + ('/changes' if view == 'write' else '/readonly') %}
-{% set authentication = {'secretRef': {'name': environment_name + '-' + identity.name, 'key': 'gateway'}, 'credentials': [{'secretRef': {'name': environment_name + '-' + identity.name, 'key': 'engineer'}, 'location': {'header': {'name': 'X-Agentos-Engineer'}}}]} %}
+{% set route_path = '/mcp/' + name + '/' + identity.name + ('/changes' if view == 'write' else '/readonly') %}
 {% set target = service.spec.mcp.targets[0].static %}
-{% set policies = service.spec.policies | default({}) | combine(target.policies | default({})) | combine({'auth': authentication}) %}
+{% set policies = service.spec.policies | default({}) | combine(target.policies | default({})) %}
+{% set policies = policies | dict2items | rejectattr('key', 'in', ['auth', 'mcp']) | items2dict %}
+{% set target = target | combine({'path': '/mcp/' + identity.name + '/' + project}) %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -46,7 +37,7 @@ spec:
               backendRef: {name: {{ platform_release }}-console, port: 9090}
               failureMode: FailClosed
               allowedRequestHeaders: [x-substrate-actor-token]
-              metadata: {execution: 'true'}
+              metadata: {execution: 'true', environment: "'{{ environment_name }}'", identity: "'{{ identity.name }}'"}
       authorization:
         action: Require
         policy:
@@ -58,17 +49,14 @@ kind: RemoteMCPServer
 metadata:
   name: {{ profile }}
   namespace: {{ agentos_namespace }}
+  annotations: {agentos.dev/discovery-auth: kubernetes}
   labels: {agentos.dev/environment: {{ environment_name }}, agentos.dev/engineer: {{ identity.name }}, agentos.dev/toolset-revision: '{{ toolset_revision }}'}
   ownerReferences: [{{ owner | to_json }}]
 spec:
   description: {{ (service.metadata.annotations['agentos.dev/display-name'] | default(name) + '; ' + identity.name) | to_json }}
   protocol: STREAMABLE_HTTP
-  url: http://{{ name }}-mcp-gateway.{{ agentos_namespace }}.svc.cluster.local:8080{{ route_path }}
+  url: http://{{ platform_release }}-mcp-gateway.{{ agentos_namespace }}.svc.cluster.local:8080{{ route_path }}
   timeout: 10m
-  headersFrom:
-    - name: Authorization
-      valueFrom: {type: Secret, name: {{ environment_name }}-{{ identity.name }}, key: authorization}
-    - {name: X-Agentos-Engineer, value: {{ identity.name }}}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -81,15 +69,50 @@ spec:
   rules:
     - matches:
         - path: {type: PathPrefix, value: {{ route_path }}}
-          headers: [{name: x-agentos-engineer, type: Exact, value: {{ identity.name }}}]
-      filters:
-        - type: RequestHeaderModifier
-          requestHeaderModifier:
-            set: [{name: x-agentos-execution-kind, value: service}]
-            remove: [x-agentos-subject-token]
       backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ profile }}}]
 {% endfor %}
 {% endfor %}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ name }}-runtime-auth
+  namespace: {{ agentos_namespace }}
+  ownerReferences: [{{ owner | to_json }}]
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ name }}}
+{% for identity in engineer_identities if identity.name != 'catalog' and project in identity.services %}
+{% set access = identity.services[project] %}
+{% set writes = toolsets[project].write | default([]) + (toolsets[project].management | default([]) if access == 'manage' else []) %}
+{% for view in ['readOnly', 'write'] if view == 'readOnly' or (access in ['operate', 'manage'] and writes) %}
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ name }}-{{ identity.name }}{{ '-changes' if view == 'write' else '' }}}
+{% endfor %}
+{% endfor %}
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      preserveToken: true
+      location:
+        expression: >-
+          'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') :
+          ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '')
+      providers:
+        - issuer: {{ platform_actor_issuer | to_json }}
+          audiences: {{ platform_actor_audiences | to_json }}
+          jwks: {inline: {{ platform_actor_jwks | to_json | to_json }}}
+          validation: {requiredClaims: [sub, exp, aud]}
+        - issuer: {{ platform_discovery_issuer | to_json }}
+          audiences: [agentos-mcp-discovery]
+          jwks: {inline: {{ platform_discovery_jwks | to_json | to_json }}}
+          validation: {requiredClaims: [sub, exp, aud]}
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - >-
+            (request.path != '/mcp/{{ name }}' && jwt.iss == '{{ platform_actor_issuer }}') ||
+            (jwt.iss == '{{ platform_discovery_issuer }}' && jwt.sub == 'system:serviceaccount:{{ agentos_namespace }}:{{ native_controller_service_account }}')
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -112,14 +135,6 @@ metadata:
 spec:
   targetRefs:
     - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-{{ name }}}
-  traffic:
-    authorization:
-      action: Require
-      policy:
-        matchExpressions:
-          - >-
-            apiKey.environment == '{{ environment_name }}' && apiKey.engineer == 'catalog' &&
-            'x-agentos-engineer' in request.headers && request.headers['x-agentos-engineer'] == 'catalog'
   backend:
     mcp:
       authorization:

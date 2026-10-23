@@ -1,6 +1,5 @@
 {% for project in toolsets %}
 {% set name = environment_name + '-' + project %}
-{% if name not in existing_services %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -19,15 +18,21 @@ spec:
         static:
           host: {{ ansible_host }}
           port: {{ gateway_node_port }}
-          path: /mcp/{{ project }}
+          path: /mcp/catalog/{{ project }}
           protocol: StreamableHTTP
   policies:
     http: {requestTimeout: 10m}
-    auth:
-      secretRef: {name: {{ environment_name }}-catalog, key: gateway}
-      credentials:
-        - secretRef: {name: {{ environment_name }}-catalog, key: engineer}
-          location:
-            header: {name: X-Agentos-Engineer}
-{% endif %}
+    tls:
+      sni: {{ gateway_server_name | to_json }}
+      caCertificateRefs: [{name: {{ environment_name }}-gateway-ca, kind: ConfigMap}]
+      verifySubjectAltNames: [{{ gateway_server_name | to_json }}]
+    mcp:
+      guardrails:
+        processors:
+          - methods: {'*': Full}
+            remote:
+              backendRef: {name: {{ platform_release }}-console, port: 9090}
+              failureMode: FailClosed
+              allowedRequestHeaders: [x-substrate-actor-token]
+              metadata: {execution: 'true', environment: "'{{ environment_name }}'", identity: "'catalog'"}
 {% endfor %}

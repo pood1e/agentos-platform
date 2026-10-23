@@ -60,6 +60,7 @@ spec:
           ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}, {name: runtime, containerPort: 9091}]
           env:
             {{- include "agentos.executionEnv" . | nindent 12 }}
+            - {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}
             - {name: AGENTOS_AUTH_MODE, value: {{ .Values.identity.mode | quote }}}
             {{- if eq .Values.identity.mode "oidc" }}
             - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" .Values.identity.issuer | quote }}}
@@ -133,6 +134,7 @@ spec:
             {{- end }}
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             {{- if .Values.global.agentos.environments }}
+            - {name: environment-ca, mountPath: /etc/agentos-environments, readOnly: true}
             - {name: governance, mountPath: /etc/agentos-governance, readOnly: true}
             {{- end }}
             {{- if .Values.pack.image }}
@@ -212,6 +214,14 @@ spec:
           emptyDir: {sizeLimit: 64Mi}
       {{- end }}
       {{- if .Values.global.agentos.environments }}
+        - name: environment-ca
+          projected:
+            sources:
+              {{- range .Values.global.agentos.environments }}
+              - configMap:
+                  name: {{ .name }}-gateway-ca
+                  items: [{key: ca.crt, path: {{ printf "%s/ca.crt" .name | quote }}}]
+              {{- end }}
         - name: governance
           secret: {secretName: agentos-governance}
       {{- end }}

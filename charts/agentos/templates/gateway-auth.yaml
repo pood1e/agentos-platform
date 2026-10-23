@@ -9,7 +9,7 @@ spec:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" . }}-gateway}
   traffic:
     apiKeyAuthentication:
-      mode: Strict
+      mode: Permissive
       location:
         expression: >-
           ('authorization' in request.headers && request.headers['authorization'].startsWith('Bearer ')) ?
@@ -31,11 +31,7 @@ spec:
               has(apiKey.tools) && apiKey.tools.exists(server, request.path == '/mcp/' + server)) ||
             (has(apiKey.service) && apiKey.service == 'catalog' && apiKey.workspace == '{{ .Release.Namespace }}' &&
               request.path.startsWith('/mcp/')
-              {{- range .Values.global.agentos.environments }} && !request.path.startsWith('/mcp/{{ .name }}-'){{- end }}) ||
-            (has(apiKey.environment) &&
-              has(apiKey.engineer) && 'x-agentos-engineer' in request.headers &&
-              apiKey.engineer == request.headers['x-agentos-engineer'] &&
-              request.path.startsWith('/mcp/' + apiKey.environment + '-'))
+              {{- range .Values.global.agentos.environments }} && !request.path.startsWith('/mcp/{{ .name }}-'){{- end }})
             {{- if .Values.automation.enabled }} ||
             (has(apiKey.service) && apiKey.service == 'automation' &&
               apiKey.workspace == '{{ .Release.Namespace }}' && has(apiKey.environment) &&

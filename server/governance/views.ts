@@ -1,6 +1,7 @@
 import type { CallOptions } from "@connectrpc/connect";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
+import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { notFound } from "../shared/errors.js";
 import { approvalClient, approvalEnvironment } from "./client.js";
@@ -11,6 +12,7 @@ export async function approvals(
   taskId: string,
   requestId: string,
   options?: CallOptions,
+  token?: EnvironmentTokens,
 ) {
   const entry = sync.index.entry(taskId);
   const interaction = entry?.interactions.find((item) => item.requestId === requestId);
@@ -21,7 +23,7 @@ export async function approvals(
       if (!connection?.approvalUrl) return undefined;
       try {
         return (
-          await approvalClient(connection).getApproval(
+          await approvalClient(connection, token).getApproval(
             { reference: { taskId, toolId: tool.id } },
             options,
           )

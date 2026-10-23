@@ -16,7 +16,7 @@ spec:
       type: NodePort
       externalTrafficPolicy: Local
       ports:
-        - {name: http, port: 8080, targetPort: 8080, nodePort: {{ gateway_node_port }}, protocol: TCP}
+        - {name: https, port: 8443, targetPort: 8443, nodePort: {{ gateway_node_port }}, protocol: TCP}
   deployment:
     spec:
       replicas: 1
@@ -45,22 +45,14 @@ spec:
   infrastructure:
     parametersRef: {group: agentgateway.dev, kind: AgentgatewayParameters, name: mcp-gateway}
   listeners:
-    - name: http
-      port: 8080
-      protocol: HTTP
+    - name: https
+      port: 8443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs: [{name: mcp-gateway-tls}]
       allowedRoutes:
         namespaces: {from: Same}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: gateway-keys
-  namespace: {{ gateway_namespace }}
-  labels: {agentos.dev/gateway-keys: environment}
-data:
-{% for identity in engineer_identities %}
-  {{ identity.name }}: {{ {'keyHash': 'sha256:' + (gateway_credentials[identity.name] | hash('sha256')), 'metadata': {'engineer': identity.name, 'services': identity.services | dict2items | selectattr('key', 'in', toolsets.keys() | list) | items2dict, 'environment': environment_name}} | to_json | to_json }}
-{% endfor %}
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -69,19 +61,27 @@ spec:
   targetRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: mcp-gateway}
   traffic:
-    apiKeyAuthentication:
+    jwtAuthentication:
       mode: Strict
-      configMapSelector:
-        matchLabels: {agentos.dev/gateway-keys: environment}
+      preserveToken: true
+      providers:
+        - issuer: {{ environment_issuer | to_json }}
+          audiences: [{{ gateway_resource | to_json }}]
+          jwks: {remote: {url: {{ environment_discovery.json.jwks_uri | to_json }}}}
+          validation: {requiredClaims: [sub, exp, aud]}
+      mcp:
+        provider: Keycloak
+        resourceMetadata:
+          resource: {{ gateway_resource | to_json }}
+          authorization_servers: [{{ environment_issuer | to_json }}]
+          bearer_methods_supported: [header]
     authorization:
       action: Require
       policy:
         matchExpressions:
           - >-
-{% for rule in gateway_rules %}
-            ({{ rule }}) ||
-{% endfor %}
-            (request.path.startsWith('/mcp/') && 'x-agentos-engineer' in request.headers && apiKey.engineer == request.headers['x-agentos-engineer'])
+            request.path.startsWith('/.well-known/') ||
+            (has(jwt.azp) && jwt.azp in {{ engineer_identities | map(attribute='name') | map('regex_replace', '^', 'agentos-') | list | to_json }})
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -99,6 +99,18 @@ spec:
             status: 404
             body: 'Use initialize.'
 ---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: mcp-oauth-metadata, namespace: {{ gateway_namespace }}}
+spec:
+  parentRefs: [{name: mcp-gateway, sectionName: https}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /.well-known/oauth-protected-resource/mcp}
+        - path: {type: PathPrefix, value: /.well-known/oauth-authorization-server/mcp}
+      backendRefs:
+        - {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ toolsets.keys() | first }}-catalog}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: {name: gateway-ingress, namespace: {{ gateway_namespace }}}
@@ -109,7 +121,7 @@ spec:
   ingress:
     - from:
         - ipBlock: {cidr: {{ platform_cidr }}}
-      ports: [{port: 8080, protocol: TCP}]
+      ports: [{port: 8443, protocol: TCP}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

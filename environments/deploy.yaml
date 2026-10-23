@@ -27,14 +27,30 @@
         state: directory
         mode: "0700"
 
-    - name: Load persistent gateway credentials
+    - name: Require the environment OAuth resource
       tags: [always]
-      ansible.builtin.set_fact:
-        gateway_credentials: >-
-          {{ gateway_credentials | default({}) | combine({item: lookup('ansible.builtin.password',
-            environment_cache + '/secrets/gateway-' + item, length=64, chars=['ascii_letters', 'digits'])}) }}
-      loop: "{{ engineer_identities | map(attribute='name') | list }}"
-      no_log: true
+      ansible.builtin.assert:
+        that:
+          - environment_issuer is match('^https://')
+          - gateway_resource is match('^https://')
+          - gateway_server_name | length > 0
+        quiet: true
+
+    - name: Discover the environment identity provider
+      tags: [always]
+      ansible.builtin.uri:
+        url: "{{ environment_issuer }}/.well-known/openid-configuration"
+        return_content: true
+      register: environment_discovery
+      check_mode: false
+
+    - name: Verify the environment issuer
+      tags: [always]
+      ansible.builtin.assert:
+        that:
+          - environment_discovery.json.issuer == environment_issuer
+          - environment_discovery.json.jwks_uri is match('^https://')
+        quiet: true
 
     - name: Create gateway chart cache
       tags: [always]

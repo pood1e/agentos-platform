@@ -8,6 +8,7 @@ import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js"
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { loadCatalog } from "../../shared/tool-catalog.js";
 import { scopedCollaboration } from "../authorization/context.js";
+import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { relatedExecutions } from "../authorization/executions.js";
 import { discoveryMethods } from "../authorization/mcp.js";
 import { registerRuntime } from "../authorization/native.js";
@@ -72,12 +73,18 @@ const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log)
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const access = toolBindings(kubeConfig, config.namespace);
+const operations = governanceConfig();
+const environmentToken = environmentTokens(
+  operations,
+  environmentCredentials(kubeConfig, config.namespace),
+);
 const execution = await executionRuntime(
   clients,
   config.namespace,
   access,
   identity,
   config.userId,
+  environmentToken,
 );
 const tags = await taskTagStore(
   process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
@@ -86,7 +93,6 @@ const tags = await taskTagStore(
     ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
     : undefined,
 );
-const operations = governanceConfig();
 const automation = automationPresets(config.namespace, packRoot);
 const catalog = loadCatalog();
 const knowledge = knowledgeConfig(config);
@@ -136,6 +142,7 @@ function services(
       namespace: config.namespace,
       access,
       operations,
+      environmentToken,
       roleDefaults: roleDefaults(),
       replaceTemplate: replace,
       pack,
@@ -287,14 +294,20 @@ const stopContinuations = startContinuations(sync, app.log, async (contextId, co
   if (!parent) throw new Error("Execution session is unavailable");
   await relatedExecutions(execution.registry, clients.sessions, parent, contexts);
 });
-const stopOperations = approvalCoordinator(sync, operations, app.log, async (contextId, tools) => {
-  const { session } = await clients.sessions.getSession(
-    { sessionId: contextId },
-    { timeoutMs: 5_000 },
-  );
-  if (!session) throw new Error("Execution session is unavailable");
-  await execution.authorizeTools(session, tools);
-});
+const stopOperations = approvalCoordinator(
+  sync,
+  operations,
+  app.log,
+  async (contextId, tools) => {
+    const { session } = await clients.sessions.getSession(
+      { sessionId: contextId },
+      { timeoutMs: 5_000 },
+    );
+    if (!session) throw new Error("Execution session is unavailable");
+    await execution.authorizeTools(session, tools);
+  },
+  environmentToken,
+);
 const processor = grpcServer(app, {
   routes: (router) => {
     const collaboration = collaborationGuardrails(evaluation.workspaces, execution);

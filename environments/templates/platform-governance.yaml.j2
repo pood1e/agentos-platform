@@ -3,7 +3,7 @@
 {% set settings = hostvars[target] %}
 {% set governance = (agentos_config.environments | selectattr('name', 'equalto', settings.environment_name) | first).governance %}
 {% set environment = {'name': settings.environment_name, 'governance': 'GOVERNANCE_' + governance | upper} %}
-{% set connection = {'environment': environment} %}
+{% set connection = {'environment': environment, 'issuer': settings.environment_issuer, 'resource': settings.gateway_resource} %}
 {% if settings.approval_service_url | default('') %}
 {% set connection = connection | combine({'approvalUrl': settings.approval_service_url}) %}
 {% if settings.approval_service_authorization_file | default('') %}

@@ -871,6 +871,148 @@ index ee3ada8..4b8882f 100644
 +	store.err = database.ErrNotFound
 +	require.True(t, serviceerrors.IsCode(service.DeleteEntry(ctx, input.AgentName, "foreign"), serviceerrors.CodeNotFound))
 +}
+diff --git a/go/core/internal/service/tool/discovery_auth.go b/go/core/internal/service/tool/discovery_auth.go
+new file mode 100644
+index 0000000..4eaa2b4
+--- /dev/null
++++ b/go/core/internal/service/tool/discovery_auth.go
+@@ -0,0 +1,40 @@
++package tool
++
++import (
++	"fmt"
++	"net/http"
++	"net/url"
++	"os"
++	"strings"
++
++	"k8s.io/client-go/transport"
++
++	"github.com/kagent-dev/kagent/go/api/v1alpha3"
++)
++
++// Projected credentials are restricted to the operator-configured platform origin.
++func discoveryHTTPClient(server *v1alpha3.RemoteMCPServer, base *http.Client) (*http.Client, error) {
++	if server.Annotations["agentos.dev/discovery-auth"] != "kubernetes" {
++		return base, nil
++	}
++	origin, err := url.Parse(os.Getenv("KAGENT_MCP_DISCOVERY_URL"))
++	if err != nil || origin.Host == "" {
++		return nil, fmt.Errorf("MCP discovery origin is unavailable")
++	}
++	target, err := url.Parse(server.Spec.URL)
++	if err != nil || target.User != nil || target.Scheme != origin.Scheme || target.Host != origin.Host || !strings.HasPrefix(target.Path, "/mcp/") {
++		return nil, fmt.Errorf("MCP discovery target is outside the platform origin")
++	}
++	tokenFile := os.Getenv("KAGENT_MCP_DISCOVERY_TOKEN_FILE")
++	if tokenFile == "" {
++		return nil, fmt.Errorf("MCP discovery token file is unavailable")
++	}
++	roundTripper, err := transport.NewBearerAuthWithRefreshRoundTripper("", tokenFile, base.Transport)
++	if err != nil {
++		return nil, fmt.Errorf("load MCP discovery token: %w", err)
++	}
++	result := *base
++	result.Transport = roundTripper
++	result.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
++	return &result, nil
++}
+diff --git a/go/core/internal/service/tool/discovery_auth_test.go b/go/core/internal/service/tool/discovery_auth_test.go
+new file mode 100644
+index 0000000..9038cce
+--- /dev/null
++++ b/go/core/internal/service/tool/discovery_auth_test.go
+@@ -0,0 +1,73 @@
++package tool
++
++import (
++	"context"
++	"net/http"
++	"net/http/httptest"
++	"os"
++	"path/filepath"
++	"testing"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
++	"k8s.io/apimachinery/pkg/types"
++
++	"github.com/kagent-dev/kagent/go/api/v1alpha3"
++)
++
++func TestProjectedDiscoveryCredential(t *testing.T) {
++	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "discovery", Version: "1"}, nil)
++	mcp.AddTool(mcpServer, &mcp.Tool{Name: "read"}, func(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, struct{}, error) {
++		return nil, struct{}{}, nil
++	})
++	handler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server { return mcpServer }, &mcp.StreamableHTTPOptions{Stateless: true})
++	token := "first-bound-token"
++	hits := 0
++	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		if got := r.Header.Get("Authorization"); got != "Bearer "+token {
++			t.Errorf("discovery authorization = %q, want current projected token", got)
++			w.WriteHeader(http.StatusUnauthorized)
++			return
++		}
++		hits++
++		handler.ServeHTTP(w, r)
++	}))
++	defer httpServer.Close()
++	path := filepath.Join(t.TempDir(), "token")
++	t.Setenv("KAGENT_MCP_DISCOVERY_URL", httpServer.URL)
++	t.Setenv("KAGENT_MCP_DISCOVERY_TOKEN_FILE", path)
++	remote := &v1alpha3.RemoteMCPServer{
++		ObjectMeta: metav1.ObjectMeta{Name: "remote", Namespace: "team", Annotations: map[string]string{"agentos.dev/discovery-auth": "kubernetes"}},
++		Spec:       v1alpha3.RemoteMCPServerSpec{URL: httpServer.URL + "/mcp/catalog", Protocol: v1alpha3.RemoteMCPServerProtocolStreamableHttp},
++	}
++	client := NewRuntimeMCPClient(toolTestKube(t, remote))
++	for _, value := range []string{"first-bound-token", "rotated-bound-token"} {
++		token = value
++		if err := os.WriteFile(path, []byte(token), 0600); err != nil {
++			t.Fatal(err)
++		}
++		tools, err := client.ListTools(t.Context(), MCPServerRef{Ref: types.NamespacedName{Namespace: "team", Name: "remote"}})
++		if err != nil || len(tools) != 1 || tools[0].Name != "read" {
++			t.Fatalf("discovery = %v, %v", tools, err)
++		}
++	}
++	if hits < 2 {
++		t.Fatal("MCP SDK did not complete discovery")
++	}
++}
++
++func TestDiscoveryCredentialOrigin(t *testing.T) {
++	t.Setenv("KAGENT_MCP_DISCOVERY_URL", "http://platform:8080")
++	base := newMCPAppsHTTPClient(nil)
++	remote := &v1alpha3.RemoteMCPServer{Spec: v1alpha3.RemoteMCPServerSpec{URL: "https://external.example/mcp"}}
++	if got, err := discoveryHTTPClient(remote, base); err != nil || got != base {
++		t.Fatal("external MCP authentication was changed")
++	}
++	remote.Annotations = map[string]string{"agentos.dev/discovery-auth": "kubernetes"}
++	for _, target := range []string{"https://external.example/mcp", "http://platform:8080/untrusted", "http://platform:8080@external.example/mcp"} {
++		remote.Spec.URL = target
++		if _, err := discoveryHTTPClient(remote, base); err == nil {
++			t.Errorf("accepted credential target %q", target)
++		}
++	}
++}
+diff --git a/go/core/internal/service/tool/mcp.go b/go/core/internal/service/tool/mcp.go
+index 20490de..7176f23 100644
+--- a/go/core/internal/service/tool/mcp.go
++++ b/go/core/internal/service/tool/mcp.go
+@@ -138,7 +138,11 @@ func (c *RuntimeMCPClient) connect(ctx context.Context, ref MCPServerRef) (*mcp.
+ 		return nil, nil, fmt.Errorf("failed to resolve RemoteMCPServer headers: %w", err)
+ 	}
+ 
+-	httpClient := newMCPAppsHTTPClient(headers)
++	httpClient, err := discoveryHTTPClient(server, newMCPAppsHTTPClient(headers))
++	if err != nil {
++		cancel()
++		return nil, nil, err
++	}
+ 	var transport mcp.Transport
+ 	switch server.Spec.Protocol {
+ 	case v1alpha3.RemoteMCPServerProtocolSse:
 diff --git a/go/core/internal/substrate/actor_template.go b/go/core/internal/substrate/actor_template.go
 index c6aca14..da43679 100644
 --- a/go/core/internal/substrate/actor_template.go

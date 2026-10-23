@@ -19,14 +19,14 @@ go mod edit -replace=go.ate.dev/substrate=../../substrate-source
 make setup-envtest GOTOOLCHAIN=go1.27.3 LOCALBIN="$tools_dir"
 export KUBEBUILDER_ASSETS
 KUBEBUILDER_ASSETS=$(make -s envtest-path GOTOOLCHAIN=go1.27.3 LOCALBIN="$tools_dir")
-go test -race -count=1 ./core/internal/database ./core/pkg/migrations ./core/internal/service/memory ./core/internal/grpcserver ./core/internal/a2agateway ./core/internal/translator/adkconfig ./core/internal/substrate ./core/internal/translator ./core/internal/utils
+go test -race -count=1 ./core/internal/database ./core/pkg/migrations ./core/internal/service/memory ./core/internal/service/tool ./core/internal/grpcserver ./core/internal/a2agateway ./core/internal/translator/adkconfig ./core/internal/substrate ./core/internal/translator ./core/internal/utils
 go test -race -count=1 ./core/internal/translator/claude ./core/internal/translator/codex ./harness/claude/... ./harness/codex/... ./adk/pkg/controllerclient ./adk/pkg/taskstore
 go test -race -count=1 ./core/internal/controller -run '^TestStatusForPairPublishesCompilationWarnings$'
 make lint AWK=awk GOTOOLCHAIN=go1.27.3 \
   LOCALBIN="$tools_dir/golangci-v2.14.0" GOLANGCI_LINT_VERSION=v2.14.0
 mkdir -p "$task_root/.cache/controller-image"
 CGO_ENABLED=0 go build -trimpath -buildvcs=false \
-  -ldflags '-s -w -X github.com/kagent-dev/kagent/go/core/internal/version.Version=1.0.0-alpha17-agentos.1 -X github.com/kagent-dev/kagent/go/core/internal/version.GitCommit=8392184232e9c78196433a34b1fd3b33db5fcb97 -X github.com/kagent-dev/kagent/go/core/internal/version.SubstrateVersion=0.6.0-alpha3' \
+  -ldflags '-s -w -X github.com/kagent-dev/kagent/go/core/internal/version.Version=1.0.0-alpha17-agentos.2 -X github.com/kagent-dev/kagent/go/core/internal/version.GitCommit=8392184232e9c78196433a34b1fd3b33db5fcb97 -X github.com/kagent-dev/kagent/go/core/internal/version.SubstrateVersion=0.6.0-alpha3' \
   -o "$task_root/.cache/controller-image/kagent-controller" ./core/cmd/controller
 mkdir -p "$task_root/.cache/claude-image"
 cp "$task_root/runtime/harness-toolbox/install.sh" "$task_root/.cache/claude-image/install.sh"

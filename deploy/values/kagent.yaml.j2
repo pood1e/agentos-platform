@@ -33,6 +33,19 @@ config:
     controlPlaneUrl: "http://{{ app_release_name }}-console.{{ agentos_namespace }}.svc.cluster.local:9091"
   telemetry: *telemetry
 controller:
+  env:
+    - {name: KAGENT_MCP_DISCOVERY_URL, value: "http://{{ app_release_name }}-mcp-gateway.{{ agentos_namespace }}.svc.cluster.local:8080"}
+    - {name: KAGENT_MCP_DISCOVERY_TOKEN_FILE, value: /var/run/kagent-mcp/token}
+  volumes:
+    - name: mcp-discovery
+      projected:
+        sources:
+          - serviceAccountToken:
+              path: token
+              audience: agentos-mcp-discovery
+              expirationSeconds: 3600
+  volumeMounts:
+    - {name: mcp-discovery, mountPath: /var/run/kagent-mcp, readOnly: true}
   imagePullSecrets: [{name: agentos-registry}]
   substrateClientCertificate:
     enabled: true

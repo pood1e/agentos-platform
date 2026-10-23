@@ -1,0 +1,33 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata: {name: mcp-root, namespace: {{ gateway_namespace }}}
+spec: {selfSigned: {}}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: mcp-ca, namespace: {{ gateway_namespace }}}
+spec:
+  isCA: true
+  commonName: {{ environment_name }}-mcp-ca
+  secretName: mcp-ca
+  duration: 87600h
+  renewBefore: 8760h
+  privateKey: {algorithm: ECDSA, size: 256}
+  issuerRef: {name: mcp-root, kind: Issuer}
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata: {name: mcp-ca, namespace: {{ gateway_namespace }}}
+spec: {ca: {secretName: mcp-ca}}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: mcp-gateway, namespace: {{ gateway_namespace }}}
+spec:
+  secretName: mcp-gateway-tls
+  dnsNames: [{{ gateway_server_name | to_json }}]
+  ipAddresses: [{{ ansible_host | to_json }}]
+  duration: 2160h
+  renewBefore: 720h
+  privateKey: {algorithm: ECDSA, size: 256}
+  issuerRef: {name: mcp-ca, kind: Issuer}

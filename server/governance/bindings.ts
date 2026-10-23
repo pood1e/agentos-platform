@@ -64,6 +64,20 @@ export class ToolBindings {
     private targets: Map<string, Target>,
   ) {}
 
+  connection(services: string[], environment: string, identity: string) {
+    return (
+      services.length > 0 &&
+      services.every((service) =>
+        [...this.targets.values()].some(
+          (target) =>
+            target.service === service &&
+            target.environment === environment &&
+            (identity === "catalog" ? target.catalog : target.engineer === identity),
+        ),
+      )
+    );
+  }
+
   usable(engineer: string, server: string) {
     const profile = platformProfile(server);
     if (profile) return profile.role === engineer;

@@ -11,6 +11,7 @@ import {
   type GovernanceConfig,
 } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { HitlToolSchema, ToolApprovalResponseSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import { pool } from "../kagent/clients.js";
 import { hitlReply } from "../read-model/decode/hitl.js";
 import { object } from "../read-model/decode/messages.js";
@@ -27,6 +28,7 @@ export function approvalCoordinator(
   config: GovernanceConfig,
   log: FastifyBaseLogger,
   authorize?: (contextId: string, tools: string[]) => Promise<void>,
+  token?: EnvironmentTokens,
 ) {
   const completed = new LRUCache<string, boolean>({ max: 5000 });
   const errors = new LRUCache<string, number>({ max: 1000 });
@@ -113,7 +115,7 @@ export function approvalCoordinator(
             let waiting = false;
             for (const { tool, connection } of targets) {
               if (!connection) continue;
-              const client = approvalClient(connection);
+              const client = approvalClient(connection, token);
               const reference = { taskId: entry.id, toolId: tool.id };
               if (!awaiting(interaction.state)) {
                 const call = run.calls.find((item) => item.id === tool.callId);

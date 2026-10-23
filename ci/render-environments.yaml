@@ -6,15 +6,17 @@
   vars:
     out: "{{ playbook_dir }}/../.cache/environment-check"
     templates: "{{ playbook_dir }}/../environments/templates"
-    gateway_credentials: >-
-      {{ dict((engineer_identities | map(attribute='name') | list)
-        | zip((engineer_identities | map(attribute='name') | list) | map('regex_replace', '^', 'key-'))) }}
     existing_services: []
     existing_engineer_servers: []
   tasks:
     - name: Use the controller Python environment
       ansible.builtin.set_fact:
         ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+    - name: Publish environment resource coordinates
+      ansible.builtin.set_fact:
+        environment_issuer: "{{ environment_issuer }}"
+        gateway_resource: "{{ gateway_resource }}"
 
     - name: Create output directories
       ansible.builtin.file:
