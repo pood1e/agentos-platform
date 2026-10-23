@@ -137,12 +137,7 @@ export class KagentSync {
         }
       },
     );
-    await pool(changed, 4, async (task) =>
-      this.tasks.store(
-        await this.clients.a2a.getTask({ tenant, id: task.id }, this.options()),
-        tenant,
-      ),
-    );
+    await pool(changed, 4, (task) => this.tasks.reloadTask(task.id, tenant));
     this.watermarks.set(tenant, watermark ?? 0);
   }
 

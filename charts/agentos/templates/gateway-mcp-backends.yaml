@@ -34,4 +34,8 @@ spec:
           - {name: x-agentos-workspace, value: "has(apiKey.workspace) ? apiKey.workspace : ''"}
           - {name: x-agentos-candidate, value: "has(apiKey.candidate) ? apiKey.candidate : ''"}
           - {name: x-agentos-variant, value: "has(apiKey.variant) ? apiKey.variant : ''"}
+{{- if eq .name "kagent-collaboration" }}
+          - name: x-user-id
+            value: {{ $.Values.kagent.userId | toJson | quote }}
+{{- end }}
 {{- end }}

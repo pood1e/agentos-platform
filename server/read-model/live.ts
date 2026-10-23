@@ -1,4 +1,5 @@
 import { toBinary } from "@bufbuild/protobuf";
+import { Code, ConnectError } from "@connectrpc/connect";
 import type { FastifyBaseLogger } from "fastify";
 import { LRUCache } from "lru-cache";
 import {
@@ -77,12 +78,13 @@ export class LiveTasks {
     await pool(due, 4, async (id) => {
       const entry = this.index.entry(id);
       if (!entry) return void this.reload.delete(id);
-      const task = await this.clients.a2a.getTask(
-        { tenant: entry.agentId, id },
-        { ...rpc, signal: this.lifetime },
-      );
-      this.store(task, entry.agentId);
+      await this.reloadTask(id, entry.agentId);
     });
+  }
+
+  async reloadTask(id: string, tenant: string): Promise<void> {
+    const task = await this.fetch(id, tenant);
+    if (task) this.store(task, tenant);
   }
 
   follow() {
@@ -131,12 +133,24 @@ export class LiveTasks {
     if (!entry) return undefined;
     const cached = this.details.get(id);
     if (cached?.version === entry.version) return cached.task;
-    const task = await this.clients.a2a.getTask(
-      { tenant: entry.agentId, id },
-      { ...rpc, signal: this.lifetime },
-    );
-    this.details.set(id, { version: entry.version, task });
+    const task = await this.fetch(id, entry.agentId);
+    if (task) this.details.set(id, { version: entry.version, task });
     return task;
+  }
+
+  private async fetch(id: string, tenant: string): Promise<Task | undefined> {
+    try {
+      return await this.clients.a2a.getTask({ tenant, id }, { ...rpc, signal: this.lifetime });
+    } catch (error) {
+      if (!(error instanceof ConnectError) || error.code !== Code.NotFound) throw error;
+      this.streams.get(id)?.abort();
+      this.running.delete(id);
+      this.reload.delete(id);
+      this.retries.delete(id);
+      this.details.delete(id);
+      this.index.remove(id);
+      return undefined;
+    }
   }
 
   private async consume(

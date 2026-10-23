@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it, vi } from "vitest";
 import { MessageSchema, Role, StreamResponseSchema, TaskState } from "../gen/a2a_pb.js";
 import { object } from "../server/read-model/decode/messages.js";
@@ -145,6 +146,69 @@ describe("kagent synchronization", () => {
     expect(fake.listed.every((call) => call.incremental)).toBe(true);
     expect(fake.fetched).toEqual([ids.inspection]);
     expect(index.entry(ids.inspection)?.state).toBe(TaskState.FAILED);
+  });
+
+  it.each([Code.NotFound, Code.Unavailable])(
+    "handles an interrupted task reload with RPC status %s",
+    async (code) => {
+      const { fake, sync, clients, index } = environment();
+      const contextId = fake.task(ids.inspection).contextId;
+      fake.update(fake.task(ids.inspection), TaskState.WORKING);
+      const subscribe = vi
+        .spyOn(clients.a2a, "subscribeToTask")
+        .mockImplementationOnce(async function* () {
+          yield* [];
+          throw new Error("interrupted");
+        });
+      let clock: ReturnType<typeof vi.spyOn> | undefined;
+      try {
+        await sync.refresh();
+        await until(() => subscribe.mock.results[0]?.type === "return");
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        if (code === Code.NotFound) fake.tasks.delete(ids.inspection);
+        vi.spyOn(clients.a2a, "getTask").mockRejectedValueOnce(
+          new ConnectError("task unavailable", code),
+        );
+        clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 2_000);
+        if (code === Code.NotFound) {
+          await sync.refresh();
+          expect(index.entry(ids.inspection)).toBeUndefined();
+          expect(index.contextEntries(contextId)).toEqual([]);
+        } else {
+          await expect(sync.refresh()).rejects.toMatchObject({ code: Code.Unavailable });
+          expect(index.entry(ids.inspection)).toBeDefined();
+        }
+        await sync.refresh();
+        expect(sync.healthy()).toBe(true);
+        expect(subscribe).toHaveBeenCalledTimes(code === Code.NotFound ? 1 : 2);
+      } finally {
+        clock?.mockRestore();
+        sync.close();
+      }
+    },
+  );
+
+  it("removes a task deleted between incremental listing and loading its payload", async () => {
+    const { fake, sync, clients, index } = environment();
+    try {
+      await sync.refresh();
+      const entry = index.entry(ids.inspection);
+      expect(entry).toBeDefined();
+      fake.update(fake.task(ids.inspection), TaskState.FAILED);
+      vi.spyOn(clients.a2a, "getTask").mockImplementationOnce(async () => {
+        fake.tasks.delete(ids.inspection);
+        throw new ConnectError("task deleted", Code.NotFound);
+      });
+      await sync.refresh();
+      expect(sync.healthy()).toBe(true);
+      expect(index.entry(ids.inspection)).toBeUndefined();
+      expect(index.agentEntries("agentos/inspection").map((task) => task.id)).not.toContain(
+        ids.inspection,
+      );
+      for (const id of entry?.messageIds ?? []) expect(index.taskOfMessage(id)).toBeUndefined();
+    } finally {
+      sync.close();
+    }
   });
 
   it("follows a sent message until its task completes", async () => {
