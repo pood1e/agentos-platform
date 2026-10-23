@@ -1,7 +1,7 @@
 {
   "name": "agentos-platform",
   "private": true,
-  "version": "0.27.3",
+  "version": "0.27.4",
   "type": "module",
   "engines": {
     "node": ">=24.13.0"
