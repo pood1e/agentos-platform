@@ -102,7 +102,10 @@
       "App-only tools cannot be called by Agents": "This tool is reserved for interactive views and cannot be called by Agents.",
       "An identical operation is already awaiting execution": "An identical operation is already awaiting execution; this duplicate was rejected.",
       "The operation was declined": "The approval authority declined this operation."
-    }
+    },
+    "singleAnswerHint": "Choose one option or enter your own answer.",
+    "multipleAnswerHint": "Choose options, add details, or enter your own answer.",
+    "customAnswerPlaceholder": "Enter your own answer…"
   },
   "task": {
     "prompt": "Task description",

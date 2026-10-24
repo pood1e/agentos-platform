@@ -4,7 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
+import {
+  type Answer,
+  type Interaction,
+  InteractionKind,
+  type Question,
+} from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { useAccess } from "../../lib/access.js";
@@ -17,6 +22,16 @@ import { ToolArguments } from "./ToolArguments.js";
 import { ToolIcon } from "./ToolIcon.js";
 import { useInteractionResponse } from "./use-interaction-response.js";
 import { useToolText } from "./use-tool-text.js";
+
+function answerDrafts(questions: Question[], answers: Answer[] = []) {
+  return questions.map((question, index) => {
+    const values = answers[index]?.values ?? [];
+    return {
+      selected: values.filter((value) => question.choices.includes(value)),
+      text: values.filter((value) => !question.choices.includes(value)).join("\n"),
+    };
+  });
+}
 
 function decisionLabel(interaction: Interaction) {
   const approval = interaction.kind === InteractionKind.APPROVAL;
@@ -41,15 +56,19 @@ export function Approval({
   const response = useInteractionResponse(observed);
   const { interaction, submit } = response;
   const submitted = response.request?.decision;
-  const [answers, setAnswers] = useState<string[][]>(() =>
-    submitted?.case === "answer"
-      ? submitted.value.answers.map((answer) => answer.values)
-      : interaction.questions.map(() => []),
+  const [drafts, setDrafts] = useState(() =>
+    answerDrafts(
+      interaction.questions,
+      submitted?.case === "answer" ? submitted.value.answers : [],
+    ),
   );
   const selections =
     response.sending && submitted?.case === "answer"
-      ? submitted.value.answers.map((answer) => answer.values)
-      : answers;
+      ? answerDrafts(interaction.questions, submitted.value.answers)
+      : drafts;
+  const answers = drafts.map(({ selected, text }) => [
+    ...new Set([...selected, ...(text.trim() ? [text] : [])]),
+  ]);
   const pending = awaiting(interaction.state);
   const approval = interaction.kind === InteractionKind.APPROVAL;
   const locked = !operate || !access.data || !pending || response.sending;
@@ -109,45 +128,67 @@ export function Approval({
               <p className="text-sm whitespace-pre-wrap wrap-anywhere">
                 {recorded(index).join("\n") || "—"}
               </p>
-            ) : question.choices.length ? (
-              question.choices.map((choice) => (
-                <label key={choice} className="flex items-center gap-2 text-sm">
-                  <input
-                    type={question.multiple ? "checkbox" : "radio"}
-                    name={`${interaction.id}-${index}`}
-                    checked={selections[index]?.includes(choice) ?? false}
-                    disabled={locked}
-                    onChange={(event) =>
-                      setAnswers((previous) =>
-                        previous.map((answer, position) =>
-                          position !== index
-                            ? answer
-                            : question.multiple
-                              ? event.target.checked
-                                ? [...answer, choice]
-                                : answer.filter((value) => value !== choice)
-                              : [choice],
-                        ),
-                      )
-                    }
-                  />
-                  {choice}
-                </label>
-              ))
             ) : (
-              <Textarea
-                aria-label={question.question}
-                placeholder={t("approval.answerPlaceholder")}
-                disabled={locked}
-                value={selections[index]?.[0] ?? ""}
-                onChange={(event) =>
-                  setAnswers((previous) =>
-                    previous.map((answer, position) =>
-                      position === index ? [event.target.value] : answer,
-                    ),
-                  )
-                }
-              />
+              <>
+                {question.choices.map((choice) => (
+                  <label key={choice} className="flex items-center gap-2 text-sm">
+                    <input
+                      type={question.multiple ? "checkbox" : "radio"}
+                      name={`${interaction.id}-${index}`}
+                      checked={selections[index]?.selected.includes(choice) ?? false}
+                      disabled={locked}
+                      onChange={(event) =>
+                        setDrafts((previous) =>
+                          previous.map((answer, position) =>
+                            position !== index
+                              ? answer
+                              : {
+                                  selected: question.multiple
+                                    ? event.target.checked
+                                      ? [...answer.selected, choice]
+                                      : answer.selected.filter((value) => value !== choice)
+                                    : [choice],
+                                  text: question.multiple ? answer.text : "",
+                                },
+                          ),
+                        )
+                      }
+                    />
+                    {choice}
+                  </label>
+                ))}
+                {question.choices.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      question.multiple
+                        ? "approval.multipleAnswerHint"
+                        : "approval.singleAnswerHint",
+                    )}
+                  </p>
+                )}
+                <Textarea
+                  aria-label={question.question}
+                  placeholder={t(
+                    question.choices.length
+                      ? "approval.customAnswerPlaceholder"
+                      : "approval.answerPlaceholder",
+                  )}
+                  disabled={locked}
+                  value={selections[index]?.text ?? ""}
+                  onChange={(event) =>
+                    setDrafts((previous) =>
+                      previous.map((answer, position) =>
+                        position === index
+                          ? {
+                              selected: question.multiple ? answer.selected : [],
+                              text: event.target.value,
+                            }
+                          : answer,
+                      ),
+                    )
+                  }
+                />
+              </>
             )}
           </fieldset>
         ))
