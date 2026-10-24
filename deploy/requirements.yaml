@@ -1,7 +1,13 @@
 collections:
-  - name: kubernetes.core
-    version: 6.6.0
-  - name: ansible.posix
-    version: 2.2.2
-  - name: community.general
-    version: 13.4.0
+  - name: https://github.com/ansible-collections/kubernetes.core.git
+    type: git
+    version: e91b3171ea9bb55f2fc0c3fc7ab06fb571f05ddc  # 6.6.0
+  - name: https://github.com/ansible-collections/ansible.posix.git
+    type: git
+    version: e98d9a0756458be1ac710988498000973889075c  # 2.2.2
+  - name: https://github.com/ansible-collections/community.library_inventory_filtering.git
+    type: git
+    version: 5f70dd8678885157cb186e8b64382a30cab3e12f  # 1.1.5
+  - name: https://github.com/ansible-collections/community.general.git
+    type: git
+    version: 049524674b13ad9782849c427266935c8ec61954  # 13.4.0
