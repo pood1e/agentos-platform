@@ -84,7 +84,20 @@
     "operationsRejected": "操作已拒绝",
     "approve": "批准并继续",
     "externalDecision": "此操作由外部审批服务处理",
-    "executionDenied": "执行权限不足，无法批准此操作。"
+    "executionDenied": "执行权限不足，无法批准此操作。",
+    "rawArguments": "原始参数",
+    "reasons": {
+      "Execution permissions do not allow this operation": "执行权限不足，操作已被拒绝。",
+      "This execution has read-only permissions": "此任务的执行身份为只读，无法执行写操作。",
+      "This Agent is not permitted to call this tool": "此工具不在该智能体的授权范围内。",
+      "Tool is outside the user's execution permissions": "此工具超出用户与智能体共同授权的范围。",
+      "Execution access denied": "任务的委托授权不可用或已撤销，请重新登录后发起任务。",
+      "User delegation expired or was revoked": "用户的委托授权已过期或撤销，请重新登录后发起任务。",
+      "User delegation requires renewed consent": "后台执行授权需要重新确认，请重新登录。",
+      "App-only tools cannot be called by Agents": "此工具仅供交互视图使用，智能体无法直接调用。",
+      "An identical operation is already awaiting execution": "相同操作已在等待执行，本次重复请求已拒绝。",
+      "The operation was declined": "此操作已被审批方拒绝。"
+    }
   },
   "task": {
     "prompt": "任务内容",

@@ -40,8 +40,8 @@ export function approvalCoordinator(
       );
       return true;
     } catch (error) {
-      const code = ConnectError.from(error).code;
-      if (![Code.PermissionDenied, Code.Unauthenticated].includes(code)) throw error;
+      const failure = ConnectError.from(error);
+      if (![Code.PermissionDenied, Code.Unauthenticated].includes(failure.code)) throw error;
       await sync.send(
         entry.agentId,
         hitlReply(
@@ -53,7 +53,8 @@ export function approvalCoordinator(
               approvals: interaction.tools.map((tool) => ({
                 id: tool.id,
                 approved: false,
-                rejectionReason: "Execution permissions do not allow this operation",
+                rejectionReason:
+                  failure.rawMessage || "Execution permissions do not allow this operation",
               })),
             }),
           },

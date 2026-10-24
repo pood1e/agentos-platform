@@ -188,7 +188,39 @@ it("rejects an unauthorized write before contacting the external approval servic
     expect(external).toBe(0);
     expect(hitlPayload(env.fake.received[0])).toMatchObject({
       type: "tool_approval_response",
-      value: { approvals: [{ approved: false }] },
+      value: { approvals: [{ approved: false, rejectionReason: "Read-only execution" }] },
+    });
+  } finally {
+    await env.close();
+  }
+});
+
+it("keeps approval pending while execution metadata is unavailable and retries authorization", async () => {
+  let checks = 0,
+    reads = 0;
+  const env = await setup(
+    {
+      getApproval: () => {
+        reads++;
+        return {
+          approval: create(ApprovalSchema, { id: "review", state: ActivityState.SUCCEEDED }),
+        };
+      },
+      prepareApproval: () => ({
+        approval: create(ApprovalSchema, { id: "review", state: ActivityState.WORKING }),
+      }),
+    },
+    async () => {
+      if (++checks === 1) throw new ConnectError("MCP tool metadata unavailable", Code.Unavailable);
+    },
+  );
+  try {
+    await until(() => checks === 1);
+    expect(reads).toBe(0);
+    expect(env.fake.received).toHaveLength(0);
+    await until(() => env.fake.received.length === 1, 8_000);
+    expect(hitlPayload(env.fake.received[0])).toMatchObject({
+      value: { approvals: [{ approved: true }] },
     });
   } finally {
     await env.close();

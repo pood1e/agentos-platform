@@ -89,7 +89,20 @@
     "operationsRejected": "Operations rejected",
     "approve": "Approve and continue",
     "externalDecision": "This operation is decided by the external approval service",
-    "executionDenied": "Execution permissions do not allow this approval."
+    "executionDenied": "Execution permissions do not allow this approval.",
+    "rawArguments": "Raw arguments",
+    "reasons": {
+      "Execution permissions do not allow this operation": "Execution permissions do not allow this operation.",
+      "This execution has read-only permissions": "This execution has read-only permissions and cannot perform writes.",
+      "This Agent is not permitted to call this tool": "This tool is outside the Agent’s authorized scope.",
+      "Tool is outside the user's execution permissions": "This tool is outside the user’s and Agent’s execution permissions.",
+      "Execution access denied": "Execution delegation is unavailable or revoked. Sign in again to start a new task.",
+      "User delegation expired or was revoked": "User delegation expired or was revoked. Sign in again to start a new task.",
+      "User delegation requires renewed consent": "Background execution requires renewed consent. Sign in again.",
+      "App-only tools cannot be called by Agents": "This tool is reserved for interactive views and cannot be called by Agents.",
+      "An identical operation is already awaiting execution": "An identical operation is already awaiting execution; this duplicate was rejected.",
+      "The operation was declined": "The approval authority declined this operation."
+    }
   },
   "task": {
     "prompt": "Task description",

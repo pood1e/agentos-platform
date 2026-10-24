@@ -1,5 +1,5 @@
 import { create } from "@bufbuild/protobuf";
-import { Code } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
@@ -144,14 +144,29 @@ it("fails closed for invalid visibility and missing Actor metadata", async () =>
   await expect(
     env.metadata.appOnlyCalls([{ server: "missing", tool: "graph_data" }], "agentos"),
   ).rejects.toMatchObject({
-    code: Code.PermissionDenied,
+    code: Code.Unavailable,
   });
   await expect(
     env.metadata.appOnlyCalls([{ server: "lab-views", tool: "unknown" }], "agentos"),
   ).rejects.toMatchObject({
-    code: Code.PermissionDenied,
+    code: Code.Unavailable,
   });
 });
+
+it.each(["listToolServers", "listMCPAppTools"] as const)(
+  "does not confuse a %s discovery authentication failure with a user's execution ceiling",
+  async (method) => {
+    const env = await setup();
+    const request = [{ server: "lab-views", tool: "lab-views_show_topology" }];
+    vi.spyOn(env.clients.tools, method).mockRejectedValueOnce(
+      new ConnectError("Discovery credential is unavailable", Code.PermissionDenied),
+    );
+    await expect(env.metadata.appOnlyCalls(request, "agentos")).rejects.toMatchObject({
+      code: Code.Unavailable,
+    });
+    expect(await env.metadata.appOnlyCalls(request, "agentos")).toBe(false);
+  },
+);
 
 it("projects only model-visible bindings from native presets without losing normal or unknown selections", async () => {
   const env = await setup();
