@@ -2,6 +2,8 @@ apiVersion: api.kagent.dev/v1alpha3
 kind: ModelConfig
 metadata:
   name: knowledge-embedding
+  annotations:
+    agentos.dev/model-purpose: embedding
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:

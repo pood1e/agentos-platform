@@ -60,6 +60,12 @@ enum ConnectionKind {
   CONNECTION_KIND_MCP = 2;
 }
 
+enum ModelPurpose {
+  MODEL_PURPOSE_UNSPECIFIED = 0;
+  MODEL_PURPOSE_LANGUAGE = 1;
+  MODEL_PURPOSE_EMBEDDING = 2;
+}
+
 // Resource is the authoritative agentgateway Kubernetes resource. Its native
 // CRD schema validates the spec; model and tools are the kagent consumer view.
 message Connection {
@@ -149,6 +155,7 @@ message ListConnectionsRequest {
   }];
   string page_token = 3 [(buf.validate.field).string.max_len = 2048];
   string query = 4 [(buf.validate.field).string.max_len = 200];
+  ModelPurpose model_purpose = 5 [(buf.validate.field).enum.defined_only = true];
 }
 message ListConnectionsResponse {
   repeated Connection connections = 1;

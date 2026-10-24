@@ -75,6 +75,8 @@ export class FakeResources {
             name,
             annotations: {
               "agentos.dev/system-connection": String(name === "knowledge-embedding"),
+              "agentos.dev/model-purpose":
+                name === "knowledge-embedding" ? "embedding" : "language",
             },
           },
           spec: { provider: "OpenAI", baseURL: "https://provider.example/v1", match: { model } },
@@ -87,7 +89,13 @@ export class FakeResources {
         {
           apiVersion: "api.kagent.dev/v1alpha3",
           kind: "ModelConfig",
-          metadata: { name },
+          metadata: {
+            name,
+            annotations: {
+              "agentos.dev/model-purpose":
+                name === "knowledge-embedding" ? "embedding" : "language",
+            },
+          },
           spec: {
             provider: "OpenAI",
             model,

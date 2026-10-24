@@ -133,5 +133,6 @@
     },
     "refresh": "Refresh"
   },
-  "view": "View"
+  "view": "View",
+  "embeddingModels": "Embedding models"
 }

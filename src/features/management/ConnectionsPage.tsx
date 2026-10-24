@@ -16,6 +16,7 @@ import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.
 import {
   type Connection,
   ConnectionKind,
+  ModelPurpose,
 } from "../../../gen/agentos/management/v1/management_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
@@ -54,15 +55,21 @@ function accepted(connection: Connection) {
   );
 }
 
-export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
+export function ConnectionsPage({
+  kind,
+  purpose = ModelPurpose.UNSPECIFIED,
+}: {
+  kind: ConnectionKind;
+  purpose?: ModelPurpose;
+}) {
   const { t } = useTranslation();
   const editable = useCapability(
     kind === ConnectionKind.MODEL ? Capability.MODELS_MANAGE : Capability.MCP_MANAGE,
   );
   const isMCP = kind === ConnectionKind.MCP;
   const title = t(kind === ConnectionKind.MODEL ? "management.tabs.models" : "management.tabs.mcp");
-  const list = useManagementPage(`connections:${kind}`, (request, signal) =>
-    managementClient.listConnections({ ...request, kind }, { signal }),
+  const list = useManagementPage(`connections:${kind}:${purpose}`, (request, signal) =>
+    managementClient.listConnections({ ...request, kind, modelPurpose: purpose }, { signal }),
   );
   const [editing, setEditing] = useState<{ connection?: Connection }>();
   const [deleting, setDeleting] = useState<Connection>();
@@ -205,6 +212,7 @@ export function ConnectionsPage({ kind }: { kind: ConnectionKind }) {
             <ConnectionEditor
               key={editing.connection ? connectionName(editing.connection) : "new"}
               kind={kind}
+              purpose={purpose}
               connection={editing.connection}
               onSaved={() => {
                 setEditing(undefined);

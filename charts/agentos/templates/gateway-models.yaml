@@ -9,6 +9,7 @@ metadata:
     helm.sh/resource-policy: keep
     {{- if eq .name "knowledge-embedding" }}
     agentos.dev/system-connection: "true"
+    agentos.dev/model-purpose: embedding
     {{- end }}
   labels:
     {{- include "agentos.labels" $ | nindent 4 }}
