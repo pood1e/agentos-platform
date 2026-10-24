@@ -6,8 +6,8 @@ import {
   McpUiToolMetaSchema,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { LRUCache } from "lru-cache";
+import type { ToolRequirement } from "../../gen/agentos/console/v1/tool_pb.js";
 import type { MCPAppTool, ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
-import { toolBaseName } from "../../shared/tool-name.js";
 import { type KagentClients, pool } from "./clients.js";
 
 export const appOnly = (tool: MCPAppTool) => {
@@ -90,25 +90,24 @@ export function toolMetadata(clients: KagentClients) {
     const hidden = new Set((await tools(server)).filter(appOnly).map((tool) => tool.name));
     return names.filter((name) => !hidden.has(name));
   }
-  async function appOnlyCall(services: string[], name: string, namespace: string) {
-    const raw = toolBaseName(name);
-    if (!services.length) return false;
+  async function appOnlyCalls(
+    references: Pick<ToolRequirement, "server" | "tool">[],
+    namespace: string,
+  ) {
+    if (!references.length) return false;
     const toolServers = await servers();
-    for (const service of services) {
-      const server = toolServers.find((server) => server.ref === `${namespace}/${service}`);
-      if (!server) throw new ConnectError("MCP tool metadata unavailable", Code.PermissionDenied);
-      const tool = (await tools(server)).find(
-        (tool) =>
-          tool.name === raw ||
-          `${service}_${tool.name}` === raw ||
-          tool.name === `${service}_${raw}`,
+    for (const reference of references) {
+      const server = toolServers.find(
+        (server) => server.ref === `${namespace}/${reference.server}`,
       );
+      if (!server) throw new ConnectError("MCP tool metadata unavailable", Code.PermissionDenied);
+      const tool = (await tools(server)).find((tool) => tool.name === reference.tool);
       if (!tool) throw new ConnectError("MCP tool metadata unavailable", Code.PermissionDenied);
       if (appOnly(tool)) return true;
     }
     return false;
   }
-  return { tools, reference, modelServers, modelTools, appOnlyCall, servers };
+  return { tools, reference, modelServers, modelTools, appOnlyCalls, servers };
 }
 
 export type ToolMetadata = ReturnType<typeof toolMetadata>;

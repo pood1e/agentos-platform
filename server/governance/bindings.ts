@@ -1,7 +1,10 @@
 import { create, type JsonObject } from "@bufbuild/protobuf";
 import { CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
 import { type ToolBinding, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
-import { ToolRequirementSchema } from "../../gen/agentos/console/v1/tool_pb.js";
+import {
+  type ToolRequirement,
+  ToolRequirementSchema,
+} from "../../gen/agentos/console/v1/tool_pb.js";
 import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
 import { loadCatalog, requiresApproval, type ToolCatalog } from "../../shared/tool-catalog.js";
 import { object, text } from "../read-model/decode/messages.js";
@@ -71,7 +74,9 @@ export class ToolBindings {
 
   catalogServer(server: ToolServer, servers: ToolServer[]) {
     const name = server.ref.split("/").at(-1) ?? "";
-    const service = this.targets.get(name)?.service;
+    const target = this.targets.get(name);
+    if (target?.access === "write") return server;
+    const service = target?.service;
     return (
       servers.find((candidate) => candidate.ref === `${server.ref.split("/")[0]}/${service}`) ??
       server
@@ -140,6 +145,16 @@ export class ToolBindings {
     const service = this.targets.get(binding.server)?.service ?? binding.server;
     const name = tool.startsWith(`${service}_`) ? tool.slice(service.length + 1) : tool;
     return binding.tools.some((selected) => selected === name || selected === `${service}_${name}`);
+  }
+
+  environmentCalls(bindings: ToolBinding[], tool: string, services?: string[]) {
+    return bindings.flatMap((binding): Pick<ToolRequirement, "server" | "tool">[] => {
+      const target = this.targets.get(binding.server);
+      if (!target?.environment || (services && !services.includes(target.service))) return [];
+      return binding.tools
+        .filter((selected) => this.selectedTool({ ...binding, tools: [selected] }, tool))
+        .map((selected) => ({ server: binding.server, tool: selected }));
+    });
   }
 
   permitsTool(engineer: string, server: string, tool: string, write: boolean) {

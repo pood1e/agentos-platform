@@ -143,7 +143,7 @@ AIOps 方案包示例：
 | 视图 | 提供方 | 工具 |
 | --- | --- | --- |
 | 指标 | 上游 mcp-grafana 2.1.0 及以上 | `query_prometheus`（展示与刷新共用） |
-| 拓扑 | 方案包服务，数据来自 NetBox | `show_topology`（展示）、`topology_graph`（取数） |
+| 拓扑 | 方案包服务，接收 Agent 提供的关系与指标快照，或查询 CMDB 适配器 | `show_topology`（展示）、`topology_graph`（取数） |
 | 工单 | 方案包服务，数据来自 Zammad | `show_tickets`（展示）、`ticket_search`、`ticket_detail`（取数） |
 
 ## 安全
