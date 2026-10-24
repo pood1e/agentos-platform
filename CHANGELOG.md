@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.33.0](https://github.com/pood1e/agentos-platform/compare/v0.32.0...v0.33.0) (2026-10-24)
+
+
+### Features
+
+* **mcp-apps:** host isolated interactive tool views ([#110](https://github.com/pood1e/agentos-platform/issues/110)) ([0c6a6dc](https://github.com/pood1e/agentos-platform/commit/0c6a6dc1aaeb6e91e12733bdd69f2195aed17080))
+
+
+### Bug Fixes
+
+* **mcp-apps:** hide app-only bindings from native preset drafts ([#112](https://github.com/pood1e/agentos-platform/issues/112)) ([9706420](https://github.com/pood1e/agentos-platform/commit/9706420fd93d98da76900bf1ac4c9864076ad070))
+
 ## [0.32.0](https://github.com/pood1e/agentos-platform/compare/v0.31.0...v0.32.0) (2026-10-24)
 
 
