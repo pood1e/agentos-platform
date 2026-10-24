@@ -63,7 +63,7 @@ node build/server/jobs/replay.js --execute <dead-letter-job-id>
 ## 遥测
 
 站点通过 `kagent_telemetry` 配置 kagent 控制面与 Agent 运行时的 OpenTelemetry 默认值，直接采用原生
-[`TelemetryConfig`](../third_party/kagent/kagent/config/v1/config.proto)。`traces`、`metrics`、`logs` 分别启用对应信号，支持 OTLP/gRPC 和 OTLP/HTTP protobuf；未配置的信号默认不导出。
+[`TelemetryConfig`](https://github.com/pood1e/agentos-platform/blob/main/third_party/kagent/kagent/config/v1/config.proto)。`traces`、`metrics`、`logs` 分别启用对应信号，支持 OTLP/gRPC 和 OTLP/HTTP protobuf；未配置的信号默认不导出。
 
 ```yaml
 kagent_telemetry:
