@@ -82,6 +82,60 @@ async function readonlyAnswer(page: Page) {
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
+test("accepts custom answers with choices, preserves them after a failed submit and restores the recorded text", async ({
+  page,
+}) => {
+  const received: unknown[] = [];
+  await page.route("**/agentos.console.v1.ConsoleService/RespondInteraction", (route) => {
+    received.push(route.request().postDataJSON());
+    return received.length === 1
+      ? route.fulfill({ status: 503, json: { code: "unavailable", message: "Unavailable" } })
+      : route.fulfill({ json: {} });
+  });
+  const { interaction } = await interactionPage(page);
+  const card = page.getByTestId("approval-detail");
+  const custom = card.getByRole("textbox", { name: "处理方式", exact: true });
+  const scope = card.getByRole("textbox", { name: "检查范围", exact: true });
+  const submit = card.getByRole("button", { name: "提交回答", exact: true });
+  await card.getByRole("radio", { name: "保留现状", exact: true }).check();
+  await custom.fill("先按实际主机名登记");
+  await expect(card.getByRole("radio", { name: "保留现状", exact: true })).not.toBeChecked();
+  await card.getByRole("radio", { name: "执行变更", exact: true }).check();
+  await expect(custom).toHaveValue("");
+  await card.getByRole("checkbox", { name: "网络", exact: true }).check();
+  await scope.fill("同时检查动环\n保留监控配置");
+  await card.getByRole("textbox", { name: "补充说明", exact: true }).fill("保持现有配置");
+  await custom.fill("  \n  ");
+  await expect(submit).toBeDisabled();
+  await custom.fill("先按实际主机名登记");
+  await expect(card.getByRole("checkbox", { name: "网络", exact: true })).toBeChecked();
+  const expected = [
+    ["先按实际主机名登记"],
+    ["网络", "同时检查动环\n保留监控配置"],
+    ["保持现有配置"],
+  ];
+  await page.screenshot({ path: test.info().outputPath("custom-user-answer-draft.png") });
+  await submit.click();
+  await expect(card.getByRole("alert")).toBeVisible();
+  await expect(custom).toHaveValue(expected[0][0]);
+  await expect(scope).toHaveValue(expected[1][1]);
+  await submit.click();
+  await expect(card).toContainText("已回答");
+  await expect(card.locator("input, textarea, button")).toHaveCount(0);
+  expect(received).toHaveLength(2);
+  for (const request of received)
+    expect(request).toMatchObject({ answer: { answers: expected.map((values) => ({ values })) } });
+  interaction.state = ActivityState.SUCCEEDED;
+  interaction.answers = expected.map((values) => create(AnswerSchema, { values }));
+  interaction.answeredAt = timestampFromMs(Date.now());
+  await page.reload();
+  await page.getByTestId("approval-node").click();
+  await expect(card.locator("input, textarea, button")).toHaveCount(0);
+  for (const values of expected)
+    for (const value of values) await expect(card).toContainText(value);
+  await page.screenshot({ path: test.info().outputPath("custom-user-answer-recorded.png") });
+});
+
 test("shows readable approval parameters, localizes historical denials and stops waiting for a rejected review", async ({
   page,
 }) => {

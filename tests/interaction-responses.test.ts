@@ -1,11 +1,14 @@
 import { create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
-import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { RespondInteractionRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
+import { MessageSchema, Role, TaskSchema, TaskState, TaskStatusSchema } from "../gen/a2a_pb.js";
+import {
+  AnswerDecisionSchema,
+  RespondInteractionRequestSchema,
+} from "../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { messageCommands } from "../server/console/messages.js";
-import { hitlExtension } from "../server/read-model/decode/hitl.js";
+import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { fixtureIds } from "./fixtures/kagent.js";
 import { environment, until } from "./harness.js";
 
@@ -44,6 +47,52 @@ async function pending(kind: "question" | "approval") {
   });
   return { ...env, request, task, commands: messageCommands(env.sync, env.clients) };
 }
+
+it("forwards custom single-choice and mixed multi-choice answers through native HITL", async () => {
+  const env = await pending("question");
+  const question = create(MessageSchema, {
+    messageId: "custom-question",
+    role: Role.AGENT,
+    extensions: [hitlExtension],
+    metadata: {
+      [hitlExtension]: {
+        type: "ask_user_request",
+        id: "question",
+        questions: [
+          { question: "命名方式", choices: ["按 IP 命名", "按机房命名"] },
+          { question: "检查范围", choices: ["网络", "存储"], multiple: true },
+          { question: "补充说明" },
+        ],
+      },
+    },
+  });
+  env.task.history = [question];
+  env.task.status = create(TaskStatusSchema, {
+    ...env.task.status,
+    state: TaskState.INPUT_REQUIRED,
+    message: question,
+  });
+  const values = [["以实际主机名为准"], ["网络", "同时检查动环"], ["保持现有配置\n只做核验"]];
+  env.request.decision = {
+    case: "answer",
+    value: create(AnswerDecisionSchema, { answers: values.map((values) => ({ values })) }),
+  };
+  try {
+    await env.commands.respond(env.request);
+    expect(hitlPayload(env.fake.received.at(-1))).toMatchObject({
+      type: "ask_user_response",
+      value: { id: "question", answers: values.map((answer) => ({ answer })) },
+    });
+    expect(
+      env.index.entry(env.task.id)?.interactions[0].answers.map((answer) => answer.values),
+    ).toEqual(values);
+    await expect(env.commands.respond(env.request)).rejects.toMatchObject({
+      code: Code.FailedPrecondition,
+    });
+  } finally {
+    env.sync.close();
+  }
+});
 
 it.each(["question", "approval"] as const)(
   "rejects a repeated %s decision using native history even when the local view is stale",
