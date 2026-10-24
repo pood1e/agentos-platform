@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
+import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { MCPAppToolSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { appVisible } from "../server/kagent/tool-metadata.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
@@ -136,4 +137,35 @@ it("fails closed for invalid visibility and missing Actor metadata", async () =>
       code: Code.PermissionDenied,
     },
   );
+});
+
+it("projects only model-visible bindings from native presets without losing normal or unknown selections", async () => {
+  const env = await setup();
+  env.fake.templates.set(
+    "preset-reader",
+    create(AgentTemplateSchema, {
+      ref: { namespace: "agentos", name: "preset-reader" },
+      resource: {
+        value: {
+          metadata: { name: "preset-reader" },
+          spec: {
+            systemPrompt: "Read views",
+            tools: [
+              {
+                mcp: {
+                  server: { name: "lab-views", kind: "RemoteMCPServer" },
+                  tools: ["lab-views_show_topology", "lab-views_graph_data", "unavailable_tool"],
+                },
+              },
+            ],
+          },
+        },
+      },
+    }),
+  );
+  const config = await env.client.getConfiguration({});
+  expect(config.roles.find((role) => role.name === "preset-reader")?.tools[0]?.tools).toEqual([
+    "lab-views_show_topology",
+    "unavailable_tool",
+  ]);
 });

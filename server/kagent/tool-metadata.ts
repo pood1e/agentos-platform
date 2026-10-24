@@ -70,18 +70,25 @@ export function toolMetadata(clients: KagentClients) {
     const result = new Map<string, ToolServer>();
     await pool(servers, 4, async (server) => {
       try {
-        const hidden = new Set(
-          (await tools(source(server))).filter(appOnly).map((tool) => tool.name),
+        const visible = new Set(
+          await modelTools(
+            source(server),
+            server.discoveredTools.map((tool) => tool.name),
+          ),
         );
         result.set(server.ref, {
           ...server,
-          discoveredTools: server.discoveredTools.filter((tool) => !hidden.has(tool.name)),
+          discoveredTools: server.discoveredTools.filter((tool) => visible.has(tool.name)),
         });
       } catch {
         result.set(server.ref, { ...server, discoveredTools: [] });
       }
     });
     return servers.map((server) => result.get(server.ref) ?? { ...server, discoveredTools: [] });
+  }
+  async function modelTools(server: ToolServer, names: string[]) {
+    const hidden = new Set((await tools(server)).filter(appOnly).map((tool) => tool.name));
+    return names.filter((name) => !hidden.has(name));
   }
   async function appOnlyCall(services: string[], name: string, namespace: string) {
     const raw = toolBaseName(name);
@@ -101,7 +108,7 @@ export function toolMetadata(clients: KagentClients) {
     }
     return false;
   }
-  return { tools, reference, modelServers, appOnlyCall, servers };
+  return { tools, reference, modelServers, modelTools, appOnlyCall, servers };
 }
 
 export type ToolMetadata = ReturnType<typeof toolMetadata>;
