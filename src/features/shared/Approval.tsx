@@ -9,11 +9,11 @@ import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { useAccess } from "../../lib/access.js";
 import { errorKey } from "../../lib/errors.js";
-import { pretty } from "../../lib/format.js";
 import { awaiting } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { ExternalApprovals } from "./ExternalApprovals.js";
 import { Markdown } from "./Markdown.js";
+import { ToolArguments } from "./ToolArguments.js";
 import { ToolIcon } from "./ToolIcon.js";
 import { useInteractionResponse } from "./use-interaction-response.js";
 import { useToolText } from "./use-tool-text.js";
@@ -86,19 +86,18 @@ export function Approval({
                 {label.description && (
                   <p className="text-xs leading-5 text-muted-foreground">{label.description}</p>
                 )}
-                <pre
-                  data-testid="approval-arguments"
-                  className="max-h-80 overflow-auto rounded-md bg-muted/50 p-3 text-[11px] leading-5 whitespace-pre-wrap break-all"
-                >
-                  {pretty(tool.args) ?? t("tool.missingArguments")}
-                </pre>
+                <ToolArguments value={tool.args} />
               </div>
             );
           })}
           {interaction.external && <ExternalApprovals interaction={interaction} record={record} />}
           {interaction.rejectionReason && (
             <Alert variant="destructive" data-testid="rejection-reason">
-              <AlertDescription>{interaction.rejectionReason}</AlertDescription>
+              <AlertDescription>
+                {t(`approval.reasons.${interaction.rejectionReason}`, {
+                  defaultValue: interaction.rejectionReason,
+                })}
+              </AlertDescription>
             </Alert>
           )}
         </>

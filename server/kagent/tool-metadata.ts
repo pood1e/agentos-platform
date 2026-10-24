@@ -95,17 +95,27 @@ export function toolMetadata(clients: KagentClients) {
     namespace: string,
   ) {
     if (!references.length) return false;
-    const toolServers = await servers();
-    for (const reference of references) {
-      const server = toolServers.find(
-        (server) => server.ref === `${namespace}/${reference.server}`,
+    try {
+      const toolServers = await servers();
+      for (const reference of references) {
+        const server = toolServers.find(
+          (server) => server.ref === `${namespace}/${reference.server}`,
+        );
+        if (!server) throw new Error("MCP server metadata is missing");
+        const tool = (await tools(server)).find((tool) => tool.name === reference.tool);
+        if (!tool) throw new Error("MCP tool metadata is missing");
+        if (appOnly(tool)) return true;
+      }
+      return false;
+    } catch (cause) {
+      throw new ConnectError(
+        "MCP tool metadata unavailable",
+        Code.Unavailable,
+        undefined,
+        undefined,
+        cause,
       );
-      if (!server) throw new ConnectError("MCP tool metadata unavailable", Code.PermissionDenied);
-      const tool = (await tools(server)).find((tool) => tool.name === reference.tool);
-      if (!tool) throw new ConnectError("MCP tool metadata unavailable", Code.PermissionDenied);
-      if (appOnly(tool)) return true;
     }
-    return false;
   }
   return { tools, reference, modelServers, modelTools, appOnlyCalls, servers };
 }

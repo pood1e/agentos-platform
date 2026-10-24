@@ -6,7 +6,7 @@ import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_
 import type { Interaction } from "../../../gen/agentos/console/v1/task_pb.js";
 import type { Approval } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { Failure } from "../management/ResourcePage.js";
-import { labelKey } from "../status/activity.js";
+import { active, awaiting, labelKey } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { approvalIdentity } from "./approval-identity.js";
 import { Markdown } from "./Markdown.js";
@@ -19,10 +19,14 @@ export function ExternalApprovals({
   record?: Approval;
 }) {
   const { t } = useTranslation();
+  const pending = awaiting(interaction.state);
   const result = useQuery(
     ConsoleService.method.listApprovals,
     { taskId: interaction.taskId, requestId: interaction.requestId },
-    { refetchInterval: 2_000 },
+    {
+      refetchInterval: (query) =>
+        pending || query.state.data?.approvals.some((item) => active(item.state)) ? 2_000 : false,
+    },
   );
   const approvals = [
     ...new Map(
@@ -34,7 +38,9 @@ export function ExternalApprovals({
   return (
     <div className="space-y-2" data-testid="external-approvals">
       <Failure error={result.error} />
-      {!approvals.length && !result.error && <LoaderCircle className="size-4 animate-spin" />}
+      {pending && !approvals.length && !result.error && (
+        <LoaderCircle className="size-4 animate-spin" />
+      )}
       {approvals.map((approval) => (
         <div key={approvalIdentity(approval)} className="space-y-3 rounded-lg border p-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">

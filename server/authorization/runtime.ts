@@ -21,6 +21,7 @@ import { mcpAuthorization } from "./mcp.js";
 import { offlineCredentials } from "./offline.js";
 import type { jwtIdentity } from "./oidc.js";
 import { executionStore } from "./store.js";
+import { authorizeToolSelection } from "./tools.js";
 
 function required(name: string) {
   const value = process.env[name];
@@ -176,20 +177,7 @@ export async function executionRuntime(
     const context = await registry.resolve(session);
     const { engineer, role } = await agentRole(session);
     const bindings = await access();
-    if (
-      tools.some(
-        (tool) =>
-          !role.tools.some(
-            (binding) =>
-              bindings.selectedTool(binding, toolBaseName(tool)) &&
-              bindings.permitsTool(engineer, binding.server, toolBaseName(tool), context.write),
-          ),
-      )
-    )
-      throw new ConnectError(
-        "Tool is outside the user's execution permissions",
-        Code.PermissionDenied,
-      );
+    authorizeToolSelection(bindings, engineer, role, tools, context.write);
     if (
       await metadata.appOnlyCalls(
         tools.flatMap((tool) => bindings.environmentCalls(role.tools, toolBaseName(tool))),

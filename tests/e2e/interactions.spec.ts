@@ -1,5 +1,5 @@
-import { create, toBinary, toJson } from "@bufbuild/protobuf";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { create, fromJson, toBinary, toJson } from "@bufbuild/protobuf";
+import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { encodeEnvelopes } from "@connectrpc/connect/protocol";
 import { endStreamFlag } from "@connectrpc/connect/protocol-connect";
 import { expect, type Page, test } from "@playwright/test";
@@ -7,6 +7,7 @@ import { WatchTaskResponseSchema } from "../../gen/agentos/console/v1/console_se
 import { EngineerSchema } from "../../gen/agentos/console/v1/engineer_pb.js";
 import {
   AnswerSchema,
+  type Interaction,
   InteractionKind,
   InteractionSchema,
 } from "../../gen/agentos/console/v1/task_pb.js";
@@ -20,8 +21,9 @@ const answers = [
   { values: ["只检查当前环境"] },
 ];
 
-async function question(page: Page) {
-  const interaction = create(InteractionSchema, {
+async function interactionPage(
+  page: Page,
+  interaction: Interaction = create(InteractionSchema, {
     id: "human-input",
     taskId: "task-member",
     agentId: "member",
@@ -33,7 +35,8 @@ async function question(page: Page) {
       { question: "检查范围", choices: ["网络", "存储"], multiple: true },
       { question: "补充说明" },
     ],
-  });
+  }),
+) {
   const detail = collaborationDetail([link("member")], { interactions: [interaction] });
   detail.operate = true;
   detail.participants = ["coordinator", "member"].map((id) =>
@@ -79,6 +82,64 @@ async function readonlyAnswer(page: Page) {
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
+test("shows readable approval parameters, localizes historical denials and stops waiting for a rejected review", async ({
+  page,
+}) => {
+  let reviews = 0;
+  await page.route("**/agentos.console.v1.ConsoleService/ListApprovals", (route) => {
+    reviews++;
+    return route.fulfill({ json: {} });
+  });
+  await interactionPage(
+    page,
+    create(InteractionSchema, {
+      id: "denied-approval",
+      taskId: "task-member",
+      agentId: "member",
+      requestId: "review-1",
+      kind: InteractionKind.APPROVAL,
+      state: ActivityState.REJECTED,
+      external: true,
+      rejectionReason: "Execution permissions do not allow this operation",
+      tools: [
+        {
+          id: "tool-1",
+          name: "publishing_create_ticket",
+          args: fromJson(ValueSchema, {
+            title: "服务器资产接入",
+            body: "补齐资产字段并核验连通性。\n仅处理用户指定的两台设备。",
+            targets: ["server-1", "server-2"],
+            password: "approval-private-credential",
+          }),
+        },
+      ],
+    }),
+  );
+  const card = page.getByTestId("approval-detail");
+  await expect(card.getByTestId("rejection-reason")).toHaveText("执行权限不足，操作已被拒绝。");
+  const parameters = card.getByTestId("approval-arguments");
+  await expect(parameters.getByRole("table")).toContainText("服务器资产接入");
+  await expect(parameters.getByRole("table")).toContainText("仅处理用户指定的两台设备。");
+  await expect(parameters.getByRole("table")).toContainText("targets › 1");
+  await expect(parameters.getByRole("table")).toContainText("[REDACTED]");
+  await expect(card.getByTestId("approval-raw-arguments")).not.toBeVisible();
+  await expect(card).not.toContainText("approval-private-credential");
+  await expect(card.getByRole("button", { name: "批准并继续", exact: true })).toHaveCount(0);
+  await expect(card.getByTestId("external-approvals").locator(".animate-spin")).toHaveCount(0);
+  await expect.poll(() => reviews).toBe(1);
+  await page.waitForTimeout(2_500);
+  expect(reviews).toBe(1);
+  await page.screenshot({ path: test.info().outputPath("readable-rejected-approval.png") });
+  await card.getByRole("button", { name: "原始参数", exact: true }).click();
+  await expect(card.getByTestId("approval-raw-arguments")).toContainText('"title"');
+  await expect(card).not.toContainText("approval-private-credential");
+  await card.getByRole("button", { name: "原始参数", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(parameters.getByRole("table")).toContainText("服务器资产接入");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: test.info().outputPath("readable-rejected-approval-mobile.png") });
+});
+
 test("locks a submitted answer across remounts while the observed task is still pending", async ({
   page,
 }) => {
@@ -92,7 +153,7 @@ test("locks a submitted answer across remounts while the observed task is still 
     await hold;
     await route.fulfill({ json: {} });
   });
-  const { interaction } = await question(page);
+  const { interaction } = await interactionPage(page);
   await fillAnswer(page);
   await page.getByRole("button", { name: "提交回答", exact: true }).click();
   try {
@@ -132,7 +193,7 @@ test("keeps a failed answer editable and allows a successful retry", async ({ pa
       ? route.fulfill({ status: 503, json: { code: "unavailable", message: "Unavailable" } })
       : route.fulfill({ json: {} });
   });
-  await question(page);
+  await interactionPage(page);
   await fillAnswer(page);
   const submit = page.getByRole("button", { name: "提交回答", exact: true });
   await submit.click();
@@ -150,7 +211,7 @@ test("scopes submitted answers to their task and request without locking the nex
   await page.route("**/agentos.console.v1.ConsoleService/RespondInteraction", (route) =>
     route.fulfill({ json: {} }),
   );
-  const { interaction, detail } = await question(page);
+  const { interaction, detail } = await interactionPage(page);
   await fillAnswer(page);
   await page.getByRole("button", { name: "提交回答", exact: true }).click();
   await readonlyAnswer(page);
