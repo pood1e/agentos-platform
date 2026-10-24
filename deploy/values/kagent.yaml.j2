@@ -25,11 +25,6 @@ config:
     telemetry: &telemetry
       captureContent: false
       captureRawApiBodies: false
-{% if langfuse_enabled %}
-      traces:
-        endpoint: http://langfuse-collector.{{ langfuse_namespace }}.svc.cluster.local:4317
-        protocol: grpc
-{% endif %}
     controlPlaneUrl: "http://{{ app_release_name }}-console.{{ agentos_namespace }}.svc.cluster.local:9091"
   telemetry: *telemetry
 controller:

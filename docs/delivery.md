@@ -60,25 +60,6 @@ node build/server/jobs/replay.js --execute <dead-letter-job-id>
 
 未指定 ID 时每次最多处理 100 条；每次消费仍从原生状态解析执行身份与授权，已取消的执行不会恢复。
 
-## 观测登录
-
-Langfuse Web 与 worker 使用同一版本的官方镜像，各自按摘要固定。默认使用初始化的运维账号登录。
-配置 `langfuse_oidc_issuer`、`langfuse_oidc_client_id` 与 `langfuse_oidc_client_secret_file` 后启用通用 OIDC，
-关闭用户名密码登录，并将首次登录的用户以 VIEWER 加入预置组织和项目。客户端回调为
-`https://<langfuse_domain>/api/auth/callback/custom`，密钥文件保存在站点私有目录。
-
-身份提供方返回 Langfuse 账号表未支持的扩展字段时，使用官方 `AUTH_IGNORE_ACCOUNT_FIELDS` 配置过滤。例如 Keycloak：
-
-```yaml
-langfuse_values:
-  langfuse:
-    web:
-      pod:
-        additionalEnv:
-          - name: AUTH_IGNORE_ACCOUNT_FIELDS
-            value: refresh_expires_in,not-before-policy
-```
-
 ## 方案 Harness
 
 平台发布通用 Harness 基础镜像与原生运行协议。方案包可继承基础镜像构建自己的运行镜像，由方案 CI 发布并在 Chart 中固定摘要。方案包通过 `agentos.harnesses` 声明原生 Harness，`defaultHarness` 指定系统助手与新建智能体的默认运行配置；各智能体通过 `spec.harnessRef.name` 独立选择。
@@ -216,12 +197,7 @@ Helm 首次创建 `<release>-speech` Secret，后续升级保留模型管理页�
 切换对话会取消录音和播放。音频仅在请求期间保留于内存，平台不保存录音、音频文件或生成公共音频地址。
 开放访问和 OIDC 均支持；只读用户可使用语音，目标系统的写权限继续由执行授权决定。
 
-## Langfuse
-
-`--tags observability` 管理独立的 Langfuse 与 OpenTelemetry Collector。站点传入 `langfuse_enabled: true`、
-`langfuse_namespace`、`langfuse_domain` 和 `langfuse_admin_email`；镜像与 Chart 版本固定在 `deploy/vars.yaml`。
-Web 与 worker 使用官方镜像。访问者通过[观测登录](#观测登录)配置的账号或 OIDC 身份进入组织和项目。
-项目 API Key、采集身份与数据加密密钥独立保留。
+## 发布校验
 
 Chart 校验使用 `ci/check-charts.sh`：helm-unittest 覆盖模板与非法值，Conftest 覆盖跨资源、权限及部署配置约束，kubeconform 使用固定上游 CRD 验证。后置渲染器通过标准库 unittest 验证资源边界。
 GitLab Runner 启用原生作业目录清理；契约构建仅使用源码，不下载无关运行时二进制制品。

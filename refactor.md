@@ -16,7 +16,7 @@
 
 | 阶段 | 内容 | PR | 结果 |
 | --- | --- | --- | --- |
-| 1 | 测评移出、Langfuse 官方镜像、OpenFGA 清理、依赖与 DNS 模块整理 | #75 | 已合入并部署 |
+| 1 | 测评移出、OpenFGA 清理、依赖与 DNS 模块整理 | #75 | 已合入并部署 |
 | 2 | release-please 与内网发布 | #78、#84 | 正式 tag 不可变，0.27.5 发布流水线通过 |
 | 3 | pg-boss 持久化审批协调与续接 | #77 | 已合入并部署 |
 | 4 | 平台网关与平台 API 使用工作负载 JWT | #80 | 已切换并清理旧机器令牌 |
@@ -24,7 +24,7 @@
 | 6 | helm-unittest、Conftest 与 kubeconform | #83 | 已替代对应手写校验 |
 | 7 | 上游收敛 | — | 待按能力提交与跟踪 |
 
-站点采用官方 Langfuse Web/worker 4.62.0 与个人 OIDC 登录，环境和连接分别由独立 Helm release 管理。现有 11 个智能体模板配置已保留。已验证用户退出、访问令牌到期后的后台委派续接、原始发起人 OBO、只读权限上限及执行撤销。
+环境和连接分别由独立 Helm release 管理。现有 11 个智能体模板配置已保留。已验证用户退出、访问令牌到期后的后台委派续接、原始发起人 OBO、只读权限上限及执行撤销。
 
 第一轮方案见本文件 `154e1c6` 版本，现行架构与运维入口见 [代码导航](docs/code-navigation.md)。后续发布已修复 Actor 身份头、服务级 audience、MCP 发现入口与原生探针。第二轮的切换验收继续覆盖这些约束。
 
@@ -96,7 +96,7 @@
 ### 清理与上游收敛
 
 - 引入 knip，声明 CLI、脚本、动态加载与生成代码的实际入口，按需排除 vendored UI 组件。候选依赖以检查结果及真实使用核实后删除，权限负例继续保留。
-- 更新过时的 `plan.md` 与发布说明；`docs/delivery.md` 的官方 Langfuse 登录说明已修正，按当前实现继续校验。
+- 更新过时的 `plan.md` 与发布说明，部署文档与现有入口保持一致。
 - pg-boss 轮询间隔调整到 2 秒前后测量任务唤醒、审批恢复与续接延迟，以可接受延迟确定配置。
 - kagent 补丁按 MemoryService、Actor 身份、Harness 工具约束与准备策略等能力提交上游；续接跟踪 [kagent #3244](https://github.com/kagent-dev/kagent/issues/3244)。
 - Substrate 回移跟踪 [#2159](https://github.com/agent-substrate/substrate/pull/2159) 及恢复期间出站修复。是否删除以所选发布版本包含修复且站点回归通过为准。
