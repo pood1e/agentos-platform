@@ -71,6 +71,9 @@ spec:
               valueFrom:
                 secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: cookie-secret}
             {{- end }}
+            {{- if .Values.ingress.sandbox.host }}
+            - {name: AGENTOS_SANDBOX_ORIGIN, value: {{ printf "https://%s" .Values.ingress.sandbox.host | quote }}}
+            {{- end }}
             - {name: AGENTOS_ORIGIN, value: {{ printf "https://%s" .Values.ingress.host | quote }}}
             - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
             - {name: AGENTOS_EVENT_AUTOMATION_ENABLED, value: {{ .Values.automation.enabled | quote }}}

@@ -16,6 +16,7 @@ import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
 import { millis, object } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
+import { appHTML, appService, appTools, appUri } from "./apps.js";
 import type { FakeKagent } from "./kagent.js";
 
 const page = <T>(items: T[], token: string, size: number) => {
@@ -215,7 +216,38 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
     }),
   });
   router.service(MemoryService, fake.memory.service());
-  router.service(ToolService, { listToolServers: () => ({ toolServers: fake.toolServers }) });
+  router.service(ToolService, {
+    listToolServers: () => ({ toolServers: fake.toolServers }),
+    listMCPAppTools: (request) => ({
+      tools: request.server?.ref?.name === appService ? appTools() : [],
+    }),
+    readMCPAppResource: async (request) => {
+      if (request.server?.ref?.name !== appService || request.uri !== appUri)
+        throw new ConnectError("App resource missing", Code.NotFound);
+      return {
+        result: {
+          value: {
+            contents: [
+              {
+                uri: appUri,
+                mimeType: "text/html;profile=mcp-app",
+                text: await appHTML(),
+                _meta: {
+                  ui: {
+                    csp: {
+                      resourceDomains: ["data:", "https://untrusted.example"],
+                      connectDomains: ["https://untrusted.example"],
+                    },
+                    permissions: { camera: {} },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      };
+    },
+  });
   router.service(ScheduledRunService, fake.schedules.service());
   return router;
 };

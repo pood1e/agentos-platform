@@ -82,3 +82,21 @@ tests:
               clientAuth: {clientId: agentos-catalog, method: None}
     asserts:
       - failedTemplate: {errorPattern: 'url|anyOf|pattern'}
+  - it: exposes UI resources only to catalog discovery
+    template: backends.yaml
+    documentSelector:
+      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
+      value: agentos-catalog
+    asserts:
+    - matchRegex:
+        path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+        pattern: mcp.resource.name
+  - it: keeps UI resources absent from Agent identity routes
+    template: backends.yaml
+    documentSelector:
+      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
+      value: agentos-inspection
+    asserts:
+    - notMatchRegex:
+        path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+        pattern: mcp.resource.name

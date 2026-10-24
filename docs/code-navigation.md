@@ -15,6 +15,7 @@
 | `server/authorization` | 执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
 | `server/automation` | 原生定时任务的工作空间授权、方案预置与只读执行身份绑定 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
+| `server/mcp-apps` | MCP Apps 元数据投影、资源缓存、当前用户的只读工具回调与独立源沙箱代理 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/knowledge` | 团队知识检索 |
 | `server/speech`、`src/features/chat/speech` | 语音设置 Secret、音频 API 适配与 assistant-ui 听写、朗读 |
@@ -24,6 +25,7 @@
 | `src/app`、`src/components` | 前端路由、布局与 shadcn/ui 组件 |
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
 | `src/features/chat` | assistant-ui 会话、流式文本、会话历史与删除、紧凑工具图标、工作 Agent 与子 Agent 结果 |
+| `src/features/chat/apps` | MCP Apps 折叠卡片、官方 AppBridge、沙箱消息与宿主上下文 |
 | `src/features/shared` | 头像、工具图标、原生确认与外部审批等公共展示 |
 | `src/features/tasks` | 聊天内任务面板、Agent 协作图、按 MCP 服务聚合的调用图、vis-timeline 时间线与执行抽屉 |
 | `src/features/system-tasks` | 管理员共享的系统任务页面：定时任务管理、运行历史和环境事件入口 |

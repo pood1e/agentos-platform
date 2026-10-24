@@ -62,6 +62,7 @@ export default defineConfig({
             AGENTOS_OIDC_AUDIENCE: "console",
             AGENTOS_OIDC_WRITER_ROLE: "writer",
             AGENTOS_ORIGIN: "http://127.0.0.1:8090",
+            AGENTOS_SANDBOX_ORIGIN: "http://localhost:8090",
             NODE_EXTRA_CA_CERTS: resolve("tests/fixtures/identity/tls.crt"),
             AGENTOS_WORKLOAD_AUTH_CONFIG: resolve("tests/fixtures/identity/workloads.json"),
             AGENTOS_MODEL_TOKEN_FILE: resolve(".cache/model-token"),

@@ -8,6 +8,7 @@ import { Markdown } from "../shared/Markdown.js";
 import { labelKey } from "../status/activity.js";
 import { StatusIcon } from "../status/Status.js";
 import { useConversationAgent } from "./AgentPresence.js";
+import { McpApp } from "./apps/McpApp.js";
 
 export const AgentResult: DataMessagePartComponent = ({ data }) => {
   const { t } = useTranslation();
@@ -30,6 +31,11 @@ export const AgentResult: DataMessagePartComponent = ({ data }) => {
         </span>
       </div>
       <Markdown>{run.output}</Markdown>
+      {run.calls
+        .filter((call) => call.uiResourceUri)
+        .map((call) => (
+          <McpApp key={call.id} call={call} />
+        ))}
     </section>
   );
 };

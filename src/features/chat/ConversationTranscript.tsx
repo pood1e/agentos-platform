@@ -20,7 +20,7 @@ import { ToolFallback } from "./ToolFallback.js";
 import type { Chat } from "./use-chat.js";
 
 const plugins = [remarkGfm];
-const groupTools = groupPartByType({ "tool-call": ["group-mcp"] });
+const groupTools = groupPartByType({ "standalone-tool-call": [], "tool-call": ["group-mcp"] });
 const AssistantText = ({ id }: { id?: string }) => {
   const containerProps = {
     className: "agent-markdown text-sm text-foreground",

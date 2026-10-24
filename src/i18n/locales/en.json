@@ -398,5 +398,12 @@
     "callFailed": "Voice call failed. Try again.",
     "callQueueFull": "Too many pending voice turns. Wait for the current task to finish.",
     "callUnsent": "These messages have not been sent:"
+  },
+  "mcpApp": {
+    "unavailable": "The view is currently unavailable",
+    "fullscreen": "View fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "expand": "Expand view",
+    "collapse": "Collapse view"
   }
 }

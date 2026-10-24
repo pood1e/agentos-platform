@@ -1,0 +1,32 @@
+suite: isolated MCP Apps sandbox
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release: {name: agentos, namespace: agentos}
+templates: ['*.yaml']
+tests:
+- it: omits the optional sandbox ingress
+  template: sandbox-ingress.yaml
+  asserts:
+  - hasDocuments: {count: 0}
+- it: exposes only the proxy path on the separate TLS host
+  set:
+    ingress.sandbox: {host: apps.example.net, tlsSecret: apps-tls}
+  asserts:
+  - template: sandbox-ingress.yaml
+    equal: {path: 'spec.rules[0].host', value: apps.example.net}
+  - template: sandbox-ingress.yaml
+    equal: {path: 'spec.rules[0].http.paths[0].path', value: /mcp-app-sandbox}
+  - template: sandbox-ingress.yaml
+    equal: {path: 'spec.rules[0].http.paths[0].pathType', value: Exact}
+  - template: sandbox-ingress.yaml
+    equal: {path: 'spec.tls[0].secretName', value: apps-tls}
+  - template: console-deployment.yaml
+    contains:
+      path: 'spec.template.spec.containers[0].env'
+      content: {name: AGENTOS_SANDBOX_ORIGIN, value: 'https://apps.example.net'}
+- it: rejects a same-origin sandbox
+  set:
+    ingress.sandbox: {host: agentos.example.test, tlsSecret: apps-tls}
+  template: sandbox-ingress.yaml
+  asserts:
+  - failedTemplate: {errorMessage: ingress.sandbox.host must differ from ingress.host}

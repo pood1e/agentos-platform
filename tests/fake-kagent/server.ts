@@ -8,7 +8,8 @@ import { ToolApprovalResponseSchema } from "../../gen/agentos/kagent/v1/wire_pb.
 import { hitlPayload, hitlReply } from "../../server/read-model/decode/hitl.js";
 import { fixtureExecutions } from "../fixtures/executions.js";
 import { fixtureAgents } from "../fixtures/kagent.js";
-import { templates } from "./catalog.js";
+import { appScenario } from "./apps.js";
+import { templates, toolServers } from "./catalog.js";
 import { FakeKagent } from "./kagent.js";
 import { kubernetesRequest } from "./kubernetes.js";
 import { kagentRoutes } from "./routes.js";
@@ -34,12 +35,24 @@ createHttpServer(async (request, response) => {
     fake.schedules.reset();
     await execution.seed([...fake.sessions.values()], true);
     fake.agents.splice(0, fake.agents.length, ...fixtureAgents());
+    fake.toolServers.splice(0, fake.toolServers.length, ...toolServers());
     fake.resources.reset();
     fake.memory.reset();
     fake.templates.clear();
     for (const template of templates()) fake.templates.set(template.ref?.name ?? "", template);
     response.setHeader("Content-Type", "application/json");
     response.write(JSON.stringify(scenario.ids));
+  } else if (request.method === "POST" && url.pathname === "/apps") {
+    const scenario = appScenario(fake);
+    await execution.seed([scenario.session]);
+    response.setHeader("Content-Type", "application/json");
+    response.write(
+      JSON.stringify({
+        contextId: scenario.session.id,
+        taskId: scenario.task.id,
+        callId: scenario.callId,
+      }),
+    );
   } else if (request.method === "GET" && url.pathname.startsWith("/tasks/")) {
     response.setHeader("Content-Type", "application/json");
     response.write(toJsonString(TaskSchema, fake.task(url.pathname.slice("/tasks/".length))));

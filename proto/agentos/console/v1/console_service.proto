@@ -67,6 +67,10 @@ service ConsoleService {
   rpc GetPack(GetPackRequest) returns (GetPackResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc GetAppResource(GetAppResourceRequest) returns (GetAppResourceResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc CallAppTool(CallAppToolRequest) returns (CallAppToolResponse);
   rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
   // Tool bindings and execution confirmation requirements.
@@ -76,6 +80,27 @@ service ConsoleService {
   rpc ListApprovals(ListApprovalsRequest) returns (ListApprovalsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+}
+
+message GetAppResourceRequest {
+  string task_id = 1 [(buf.validate.field).string = {min_len: 1, max_len: 128}];
+  string call_id = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+}
+
+message GetAppResourceResponse {
+  .kagent.api.v1.StructuredObject result = 1;
+  string sandbox_origin = 2;
+}
+
+message CallAppToolRequest {
+  string task_id = 1 [(buf.validate.field).string = {min_len: 1, max_len: 128}];
+  string call_id = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  string name = 3 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  .kagent.api.v1.StructuredObject arguments = 4;
+}
+
+message CallAppToolResponse {
+  .kagent.api.v1.StructuredObject result = 1;
 }
 
 message ListEngineersRequest {}

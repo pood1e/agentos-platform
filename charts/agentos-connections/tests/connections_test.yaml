@@ -96,3 +96,12 @@ tests:
   - equal:
       path: spec.selector["gateway.networking.k8s.io/gateway-name"]
       value: agentos-gateway
+- it: allows catalog UI resources without granting Agent profiles resource access
+  template: identity-views.yaml
+  documentSelector:
+    path: spec.mcp.targets[?(@.static.host == '192.0.2.21')].static.path
+    value: /mcp/inspection/kubernetes
+  asserts:
+  - notMatchRegex:
+      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+      pattern: mcp.resource.name

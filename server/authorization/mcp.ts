@@ -1,6 +1,9 @@
 import { create } from "@bufbuild/protobuf";
 import type { ServiceImpl } from "@connectrpc/connect";
-import { CallToolRequestParamsSchema } from "@modelcontextprotocol/core";
+import {
+  CallToolRequestParamsSchema,
+  ReadResourceRequestParamsSchema,
+} from "@modelcontextprotocol/core";
 import type { CallToolRequest } from "@modelcontextprotocol/server";
 import {
   AuthorizationError_Code,
@@ -19,6 +22,7 @@ export const discoveryMethods = new Set([
   "ping",
   "server/discover",
   "tools/list",
+  "resources/read",
 ]);
 
 /** Authorizes the actual MCP call with identity resolved outside model-controlled arguments. */
@@ -46,6 +50,13 @@ export function mcpAuthorization(
           const bearer = new TextDecoder("utf-8", { fatal: true }).decode(headers[0].value);
           if (!/^Bearer [^\s,]+$/.test(bearer)) throw new Error("Runtime identity required");
           session = await identity(bearer.slice(7));
+        }
+        if (request.method === "resources/read") {
+          const params = ReadResourceRequestParamsSchema.parse(
+            JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(request.mcpRequest)),
+          );
+          if (!params.uri.startsWith("ui://"))
+            throw new Error("Only MCP App resources can be read");
         }
         if (!discoveryMethods.has(request.method)) {
           if (request.method !== "tools/call" || !session)

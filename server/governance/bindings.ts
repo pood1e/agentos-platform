@@ -63,6 +63,21 @@ export class ToolBindings {
     private targets: Map<string, Target>,
   ) {}
 
+  catalogs() {
+    return [...this.targets]
+      .filter(([, target]) => target.catalog && target.environment)
+      .map(([server, target]) => ({ server, ...target }));
+  }
+
+  catalogServer(server: ToolServer, servers: ToolServer[]) {
+    const name = server.ref.split("/").at(-1) ?? "";
+    const service = this.targets.get(name)?.service;
+    return (
+      servers.find((candidate) => candidate.ref === `${server.ref.split("/")[0]}/${service}`) ??
+      server
+    );
+  }
+
   connection(services: string[], environment: string, identity: string) {
     return (
       services.length > 0 &&
