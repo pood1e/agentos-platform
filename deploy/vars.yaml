@@ -31,3 +31,4 @@ skill_repository_credential_file: ""
 agentgateway_version: v1.6.0
 helm_diff_version: v3.15.11
 gateway_api_version: v1.6.1
+kagent_telemetry: {}

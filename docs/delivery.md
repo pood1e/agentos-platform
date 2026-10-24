@@ -60,6 +60,29 @@ node build/server/jobs/replay.js --execute <dead-letter-job-id>
 
 未指定 ID 时每次最多处理 100 条；每次消费仍从原生状态解析执行身份与授权，已取消的执行不会恢复。
 
+## 遥测
+
+站点通过 `kagent_telemetry` 配置 kagent 控制面与 Agent 运行时的 OpenTelemetry 默认值，直接采用原生
+[`TelemetryConfig`](../third_party/kagent/kagent/config/v1/config.proto)。`traces`、`metrics`、`logs` 分别启用对应信号，支持 OTLP/gRPC 和 OTLP/HTTP protobuf；未配置的信号默认不导出。
+
+```yaml
+kagent_telemetry:
+  traces:
+    endpoint: https://otlp.example.com:4317
+    protocol: grpc
+    timeout: 5s
+  metrics:
+    endpoint: https://otlp.example.com/v1/metrics
+    protocol: http/protobuf
+  logs:
+    endpoint: https://otlp.example.com/v1/logs
+    protocol: http/protobuf
+```
+
+接收端及后端存储由站点提供，可接入 OpenTelemetry Collector 或兼容后端。Agent 的遥测出口由 kagent 原生编译器从配置推导。
+消息内容和原始 API 请求体采集默认关闭，分别由原生 `captureContent` 与 `captureRawApiBodies` 控制。
+部署变量应用于 `config.telemetry` 和 `config.runtimeDefaults.telemetry`，更新后由运行时部署流程生效。
+
 ## 方案 Harness
 
 平台发布通用 Harness 基础镜像与原生运行协议。方案包可继承基础镜像构建自己的运行镜像，由方案 CI 发布并在 Chart 中固定摘要。方案包通过 `agentos.harnesses` 声明原生 Harness，`defaultHarness` 指定系统助手与新建智能体的默认运行配置；各智能体通过 `spec.harnessRef.name` 独立选择。

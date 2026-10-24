@@ -27,9 +27,11 @@ for name in platform alternate solution direct-only; do
     --data .cache/chart-check/test-data.json "$@" ".cache/chart-check/$name.yaml"
 done
 kagent_version=$(python -c "import yaml; print(yaml.safe_load(open('deploy/vars.yaml'))['kagent_version'])")
-helm template kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent \
-  --version "$kagent_version" -f .cache/chart-check/kagent-values.yaml > .cache/chart-check/native-kagent.yaml
-conftest test --combine --policy tests/policies --namespace runtime_tests \
-  --data .cache/chart-check/test-data.json .cache/chart-check/kagent-values.yaml \
-  .cache/chart-check/substrate-values.yaml .cache/chart-check/native-kagent.yaml runtime/kagent/Dockerfile
+for scenario in .cache/chart-check .cache/chart-check/telemetry; do
+  helm template kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent \
+    --version "$kagent_version" -f "$scenario/kagent-values.yaml" > "$scenario/native-kagent.yaml"
+  conftest test --combine --policy tests/policies --namespace runtime_tests \
+    --data .cache/chart-check/test-data.json "$scenario/kagent-values.yaml" \
+    .cache/chart-check/substrate-values.yaml "$scenario/native-kagent.yaml" runtime/kagent/Dockerfile
+done
 ci/check-environment-charts.sh

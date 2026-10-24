@@ -12,6 +12,18 @@ substrate := file.contents if {
 	endswith(file.path, "substrate-values.yaml")
 }
 
+native_config := yaml.unmarshal(file.contents.data["controller.yaml"]) if {
+	some file in input
+	file.contents.kind == "ConfigMap"
+	file.contents.data["controller.yaml"]
+}
+
+deny contains "native controller configuration is missing" if not native_config
+
+deny contains "controller telemetry differs from the configured signals" if object.get(native_config, "telemetry", null) != kagent.config.telemetry
+
+deny contains "Agent telemetry differs from the configured signals" if object.get(object.get(native_config, "runtimeDefaults", {}), "telemetry", null) != kagent.config.runtimeDefaults.telemetry
+
 controller_version := trim(label.Value[index + 1], "\"") if {
 	some file in input
 	endswith(file.path, "runtime/kagent/Dockerfile")

@@ -23,8 +23,7 @@ config:
     maxTtl: 86400s
   runtimeDefaults:
     telemetry: &telemetry
-      captureContent: false
-      captureRawApiBodies: false
+{{ {'captureContent': false, 'captureRawApiBodies': false} | combine(kagent_telemetry, recursive=true) | to_nice_yaml(indent=2) | indent(6, true) }}
     controlPlaneUrl: "http://{{ app_release_name }}-console.{{ agentos_namespace }}.svc.cluster.local:9091"
   telemetry: *telemetry
 controller:

@@ -8,6 +8,7 @@
 - 平台资源按应用角色授权；目标系统权限由用户 OBO、Agent 工具绑定和环境身份共同限制。
 - 后台执行使用原始用户的离线授权，浏览器退出不撤销任务；执行取消撤销整个委派树。
 - 任务与调用状态来自 kagent 原生协议和读模型；业务测评由平台外流程交付。
+- 可选 OpenTelemetry 遥测通过 OTLP 接入站点接收端，默认关闭导出与内容采集。
 - 方案包提供业务 Agent、Skill、工具分级与展示资源；运维环境提供身份源、连接器、目标账号及业务审批。
 
 现行边界见[架构](docs/architecture.md)、[执行授权](docs/execution-authorization.md)与[扩展契约](docs/extension.md)。
