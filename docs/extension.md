@@ -12,11 +12,23 @@
 | 身份档案 | `global.agentos.identities` | 生成各角色的 RemoteMCPServer 绑定与环境侧账号清单 | 各角色的环境范围与访问级别 |
 | 环境接入 | `global.agentos.environments` 与 `EnvironmentConnection`（proto） | 审批协调、OIDC 资源令牌、TLS 信任和凭据绑定 | 环境标识、治理模式、issuer 与 resource |
 | 连接器 | 环境内的 MCP 服务与 `environment_connectors` 后端描述 | 环境网关、身份映射、读写视图 | MCP 服务、目标系统与各身份的后端凭据 |
+| 对话视图 | MCP Apps 官方扩展 `io.modelcontextprotocol/ui` | 独立源沙箱、宿主桥接、按当前用户授权的只读工具回调 | MCP 工具的 `_meta.ui`、`ui://` 单文件 HTML 与取数工具 |
 | 审批提供方 | proto `ApprovalService`，Connect RPC | 原生确认与外部决定协调 | 业务审批、方案、执行守卫与结果回写 |
 | 模型 | agentgateway 原生 `AgentgatewayModel` | 管理页与 `ModelConfig` 同步 | 上游地址、协议与密钥 |
 | 语音 | `speech`（proto `SpeechConfiguration`） | 可选 ASR/TTS 接入、能力查询与聊天控件 | 站点提供模型服务、音色及凭据 |
 | 展示 | `pack.json` 与资源文件（proto `Pack`） | 平台通用文案、通用头像与工具图标 | 标题、角色头像、工具图标与业务文案 |
 | 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、调用指定 Agent、超时取消与事实发布 | 源事件映射、Agent 简报与事件命名空间 |
+
+## 对话视图
+
+工具通过 `_meta.ui.resourceUri` 关联 MIME 为 `text/html;profile=mcp-app` 的资源；取数工具可声明 `visibility: ["app"]`，
+同样列入方案包的 `toolsets.readOnly`。目录路由提供视图元数据与模板，Agent 路由保留可见性并移除资源 URI，分析结果继续进入模型。
+
+卡片默认折叠，展开后加载 View。宿主使用当前查看者凭证，经原调用 Agent 的环境身份调用同一服务的只读工具；
+写操作、跨服务访问与仅模型可见工具均拒绝。`ui/message` 只预填聊天输入框；链接限 `http(s)`。
+
+站点在平台 Chart 配置 `ingress.sandbox.host` 与 `ingress.sandbox.tlsSecret`，准备对应 DNS 与 TLS Secret。
+View 使用规范默认 CSP，仅可显式申请 `data:` 静态资源，无直接网络出口。接入与验证见[对话视图](mcp-app.md)。
 
 ## 系统任务
 

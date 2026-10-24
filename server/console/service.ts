@@ -13,6 +13,8 @@ import { type Executions, relatedExecutions } from "../authorization/executions.
 import type { BindingView } from "../governance/bindings.js";
 import { approvals } from "../governance/views.js";
 import type { KagentClients } from "../kagent/clients.js";
+import type { ToolMetadata } from "../kagent/tool-metadata.js";
+import type { McpApps } from "../mcp-apps/service.js";
 import { accessProfile, requestIdentity } from "../platform/access.js";
 import { cancelTree } from "../read-model/cancel.js";
 import type { KagentSync } from "../read-model/sync.js";
@@ -35,6 +37,8 @@ import type { TemplateWriter } from "./template-writer.js";
 import { watch } from "./watch.js";
 
 export interface ConsoleDependencies {
+  apps?: McpApps;
+  metadata?: ToolMetadata;
   environmentToken?: import("../authorization/environment-tokens.js").EnvironmentTokens;
   sync: KagentSync;
   clients: KagentClients;
@@ -60,6 +64,8 @@ function required(role?: RoleDefinition): RoleDefinition {
 }
 
 export function consoleService({
+  apps,
+  metadata,
   sync,
   clients,
   namespace,
@@ -95,7 +101,7 @@ export function consoleService({
     executions,
     exclusive,
   );
-  const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate);
+  const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
   const tickets = approvalReferences(sync, operations);
   const canOperate = async (contextId: string, subject: string) => {
     if (!executions) return true;
@@ -137,6 +143,14 @@ export function consoleService({
   };
   return {
     ...speech,
+    getAppResource: (request, context) => {
+      if (!apps) throw unavailable();
+      return apps.getResource(request, context.values.get(requestIdentity), context.signal);
+    },
+    callAppTool: (request, context) => {
+      if (!apps) throw unavailable();
+      return apps.callTool(request, context.values.get(requestIdentity), context.signal);
+    },
     getAccessProfile: (_request, context) => ({ profile: context.values.get(accessProfile) }),
     async listEngineers(_request, context) {
       ready();
@@ -236,6 +250,7 @@ export function consoleService({
         )
           throw notFound("chat.invalidConversation");
         const view = await conversation(sync, request.agent, request.contextId, visible);
+        await apps?.project(view);
         await taskTags.conversation(view);
         view.operate =
           !request.contextId ||

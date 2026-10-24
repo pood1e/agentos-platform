@@ -76,6 +76,6 @@ spec:
       authorization:
         action: Require
         policy:
-          matchExpressions: [{{ printf "mcp.tool.name in %s" (toJson ((index $environment.toolsets $project).readOnly | default list)) | quote }}]
+          matchExpressions: [{{ printf "mcp.tool.name in %s || (has(mcp.resource) && mcp.resource.name.startsWith('ui://'))" (toJson ((index $environment.toolsets $project).readOnly | default list)) | quote }}]
 {{- end }}
 {{- end }}

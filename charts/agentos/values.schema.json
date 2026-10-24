@@ -216,6 +216,38 @@
         "tlsSecret": {
           "type": "string",
           "minLength": 1
+        },
+        "sandbox": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string",
+              "pattern": "^$|^[a-z0-9][a-z0-9.-]+$"
+            },
+            "tlsSecret": {
+              "type": "string"
+            }
+          },
+          "required": ["host", "tlsSecret"],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "host": {
+                    "minLength": 1
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "tlsSecret": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "required": ["host", "tlsSecret"]

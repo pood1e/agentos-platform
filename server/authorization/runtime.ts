@@ -8,13 +8,13 @@ import type { McpRequest } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.j
 import { Control } from "../../gen/ateapi_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { scheduledIdentity } from "../automation/identity.js";
-import { roleDefinition } from "../console/role-template.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentInfo } from "../read-model/agents.js";
-import { object, text } from "../read-model/decode/messages.js";
+import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
+import { text } from "../read-model/decode/messages.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
 import { actorTokenHeader, actorVerifier, runtimeIdentity } from "./actor.js";
+import { agentRoles } from "./agent-role.js";
 import type { EnvironmentTokens } from "./environment-tokens.js";
 import { executions } from "./executions.js";
 import { mcpAuthorization } from "./mcp.js";
@@ -36,6 +36,7 @@ export async function executionRuntime(
   nativeCreator?: string,
   environmentToken?: EnvironmentTokens,
   oauth?: Configuration,
+  metadata: ToolMetadata = toolMetadata(clients),
 ) {
   const persistent = await executionStore(
     required("AGENTOS_EXECUTION_DATABASE_URL"),
@@ -112,23 +113,7 @@ export async function executionRuntime(
       throw new Error("Signed runtime identity required");
     return { session: await resolveRuntime(bearer.slice(7)) };
   };
-  const agentRole = async (session: Session) => {
-    const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
-    if (!agent) throw new ConnectError("Execution Agent is unavailable", Code.PermissionDenied);
-    const reference = object(object(object(agent.resource?.value?.spec).template).ref);
-    const { agentTemplate } = await clients.templates.getAgentTemplate(
-      {
-        ref: {
-          namespace: session.agent?.namespace,
-          name: text(reference.name),
-        },
-      },
-      { timeoutMs: 5_000 },
-    );
-    if (!agentTemplate)
-      throw new ConnectError("Execution template is unavailable", Code.PermissionDenied);
-    return { engineer: agentInfo(agent).role, role: roleDefinition(agentTemplate), agent };
-  };
+  const agentRole = agentRoles(clients);
   const route = async (target: { serviceNames: string[]; metadataContext?: JsonObject }) => {
     const environment = text(target.metadataContext?.environment);
     const identity = text(target.metadataContext?.identity);
@@ -157,6 +142,7 @@ export async function executionRuntime(
       const { engineer, role } = await agentRole(session);
       const destination = await route(target);
       if (
+        (await metadata.appOnlyCall(target.serviceNames, tool.name, workspace)) ||
         engineer !== destination.identity ||
         !destination.policy.selectedCall(role.tools, target.serviceNames, tool.name) ||
         !destination.policy.permitsCall(engineer, target.serviceNames, tool.name, context.write)
@@ -187,6 +173,23 @@ export async function executionRuntime(
     const context = await registry.resolve(session);
     const { engineer, role } = await agentRole(session);
     const bindings = await access();
+    if (
+      (
+        await Promise.all(
+          tools.map((tool) =>
+            metadata.appOnlyCall(
+              bindings
+                .catalogs()
+                .filter((target) => toolBaseName(tool).startsWith(`${target.service}_`))
+                .map((target) => target.service),
+              tool,
+              workspace,
+            ),
+          ),
+        )
+      ).some(Boolean)
+    )
+      throw new ConnectError("App-only tools cannot be called by Agents", Code.PermissionDenied);
     if (
       tools.some(
         (tool) =>

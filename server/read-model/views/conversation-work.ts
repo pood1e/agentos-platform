@@ -52,36 +52,40 @@ export function conversationProgress(index: TaskIndex, contextId: string) {
   };
 }
 
+/** Latest completed run in each delegated conversation. */
+export function delegatedResults(index: TaskIndex, entry: TaskEntry, callId: string) {
+  const call = entry.calls.find((item) => item.id === callId);
+  const target = call && index.target(entry, call);
+  const tree = target ? taskTree(index, target) : undefined;
+  if (!tree) return [];
+  const contexts = new Map<string, TaskEntry>();
+  for (const member of tree.entries) {
+    if (member.contextId === entry.contextId) continue;
+    const previous = contexts.get(member.contextId);
+    if (!previous || (member.statusAt ?? 0) >= (previous.statusAt ?? 0))
+      contexts.set(member.contextId, member);
+  }
+  return [...contexts.values()]
+    .filter((member) => terminal(member.state))
+    .sort((a, b) => (a.statusAt ?? 0) - (b.statusAt ?? 0))
+    .map((member) => ({ member, background: tree.background.has(member.id) }));
+}
+
 /** Only terminal child answers enter the transcript; native tool payloads stay in their icons. */
 export function agentResults(index: TaskIndex, entry: TaskEntry, parts: ChatMessagePart[]) {
   return parts.flatMap((part) => {
     if (part.content.case !== "toolCall") return [part];
     const callId = part.content.value.id;
-    const call = entry.calls.find((item) => item.id === callId);
-    const target = call && index.target(entry, call);
-    const tree = target ? taskTree(index, target) : undefined;
-    if (!tree) return [part];
-    const contexts = new Map<string, TaskEntry>();
-    for (const member of tree.entries) {
-      if (member.contextId === entry.contextId) continue;
-      const previous = contexts.get(member.contextId);
-      if (!previous || (member.statusAt ?? 0) >= (previous.statusAt ?? 0))
-        contexts.set(member.contextId, member);
-    }
     return [
       part,
-      ...[...contexts.values()]
-        .filter((member) => terminal(member.state) && member.answer.trim())
-        .sort((a, b) => (a.statusAt ?? 0) - (b.statusAt ?? 0))
-        .map((member) =>
+      ...delegatedResults(index, entry, callId)
+        .filter(({ member }) => member.answer.trim())
+        .map(({ member, background }) =>
           create(ChatMessagePartSchema, {
             id: `result:${callId}:${member.contextId}`,
             content: {
               case: "agentResult",
-              value: {
-                ...runSummary(member, tree.background.has(member.id)),
-                output: member.answer,
-              },
+              value: { ...runSummary(member, background), output: member.answer },
             },
           }),
         ),

@@ -11,6 +11,7 @@ import type { BindingView } from "../governance/bindings.js";
 import { engineerTools } from "../kagent/builtin-tools.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { validateHarness } from "../kagent/harness.js";
+import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
 import { systemRoles } from "../read-model/agents.js";
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
@@ -41,6 +42,7 @@ export function roleCommands(
   access: BindingView,
   defaults: RoleDefaults,
   replaceTemplate: TemplateWriter,
+  metadata: ToolMetadata = toolMetadata(clients),
 ) {
   async function catalog() {
     const [templates, tools, models] = await Promise.all([
@@ -50,12 +52,16 @@ export function roleCommands(
     ]).catch((error: unknown) => {
       throw fail(Code.Unavailable, "configuration.unavailable", error);
     });
+    const policy = await access();
+    const servers = tools.toolServers.filter((server) => server.ref.startsWith(`${namespace}/`));
     return {
       modelConfigs: models.modelConfigs.filter(
         (item) => item.ref?.namespace === namespace && item.ref.name !== "knowledge-embedding",
       ),
       templates: templates.agentTemplates.filter((item) => !systemRoles.has(item.ref?.name ?? "")),
-      servers: tools.toolServers.filter((server) => server.ref.startsWith(`${namespace}/`)),
+      servers: await metadata.modelServers(servers, (server) =>
+        policy.catalogServer(server, servers),
+      ),
     };
   }
 

@@ -62,6 +62,7 @@ identity:
 ingress:
   host: ''
   tlsSecret: agentos-ingress
+  sandbox: {host: '', tlsSecret: ''}
 modelConfig:
   spec:
     provider: OpenAI

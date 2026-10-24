@@ -44,6 +44,7 @@ import manifest from "../../package.json" with { type: "json" };
 import { collaborationExecution } from "../authorization/context.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { toolMetadata } from "../kagent/tool-metadata.js";
 import type { knowledgeService } from "../knowledge/service.js";
 import { agentInfo, agentKey, systemRoles } from "../read-model/agents.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
@@ -57,10 +58,14 @@ export function sessionTools(
   access: BindingView,
   knowledge: Pick<ReturnType<typeof knowledgeService>, "search">,
 ) {
-  const inWorkspace = async () =>
-    (await clients.tools.listToolServers({}, { timeoutMs: 10_000 })).toolServers.filter((server) =>
-      server.ref.startsWith(`${namespace}/`),
-    );
+  const metadata = toolMetadata(clients);
+  const inWorkspace = async () => {
+    const servers = (
+      await clients.tools.listToolServers({}, { timeoutMs: 10_000 })
+    ).toolServers.filter((server) => server.ref.startsWith(`${namespace}/`));
+    const policy = await access();
+    return metadata.modelServers(servers, (server) => policy.catalogServer(server, servers));
+  };
   // Engineers are the workspace agents other than the console's own assistants.
   const isEngineer = async (ref?: ResourceReference) => {
     if (ref?.namespace !== namespace) return false;

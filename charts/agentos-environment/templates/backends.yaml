@@ -49,7 +49,7 @@ spec:
       authorization:
         action: Require
         policy:
-          matchExpressions: [{{ printf "mcp.tool.name in %s" (toJson $allowed) | quote }}]
+          matchExpressions: [{{ printf "mcp.tool.name in %s%s" (toJson $allowed) (ternary " || (has(mcp.resource) && mcp.resource.name.startsWith('ui://'))" "" (eq $identity.name "catalog")) | quote }}]
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

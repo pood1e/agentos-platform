@@ -15,6 +15,7 @@ export const requestIdentity = createContextKey(create(ExecutionIdentitySchema))
 
 const selfServiceMethods = new Set([
   "SendMessage",
+  "CallAppTool",
   "DeleteSession",
   "RespondInteraction",
   "CancelTask",

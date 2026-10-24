@@ -25,10 +25,13 @@ import { governanceConfig } from "../governance/config.js";
 import { approvalCoordinator } from "../governance/coordinator.js";
 import { coordinationQueue, startCoordination } from "../jobs/coordination.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
+import { toolMetadata } from "../kagent/tool-metadata.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
+import { registerAppSandbox } from "../mcp-apps/sandbox.js";
+import { mcpApps } from "../mcp-apps/service.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
 import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
@@ -73,6 +76,7 @@ const app = Fastify({
   logController: new LogController({ disableRequestLogging: true }),
   bodyLimit: 2 * 1024 * 1024,
 });
+registerAppSandbox(app, process.env.AGENTOS_ORIGIN ?? "", process.env.AGENTOS_SANDBOX_ORIGIN ?? "");
 const clients = kagentClients(kagentTransport(config));
 const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log);
 const kubeConfig = new KubeConfig();
@@ -83,6 +87,7 @@ const environmentToken = environmentTokens(
   operations,
   environmentCredentials(kubeConfig, config.namespace),
 );
+const metadata = toolMetadata(clients);
 const execution = await executionRuntime(
   clients,
   config.namespace,
@@ -91,6 +96,7 @@ const execution = await executionRuntime(
   config.userId,
   environmentToken,
   oauth,
+  metadata,
 );
 if (oauth && execution.background)
   await registerBrowserIdentity(app, {
@@ -151,6 +157,18 @@ await registerConsole(app, {
   ),
 
   service: consoleService({
+    metadata,
+    apps: mcpApps({
+      clients,
+      sync,
+      access,
+      operations,
+      metadata,
+      sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
+      executions: execution.registry,
+      token: environmentToken,
+      log: app.log,
+    }),
     sync,
     clients,
     namespace: config.namespace,

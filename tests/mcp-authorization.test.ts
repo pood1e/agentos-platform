@@ -81,3 +81,31 @@ it("checks each call using the verified Session even when arguments assert anoth
   ];
   expect((await client.checkRequest(request)).result.case).toBe("error");
 });
+
+it("allows discovery to read only ui resources and rejects other resource schemes", async () => {
+  const client = createClient(
+    ExtMcp,
+    createRouterTransport((router) =>
+      router.service(
+        ExtMcp,
+        mcpAuthorization(
+          async () => {
+            throw new Error("Actor missing");
+          },
+          async () => {},
+          async () => ({}),
+        ),
+      ),
+    ),
+  );
+  const check = async (uri: string) =>
+    (
+      await client.checkRequest({
+        method: "resources/read",
+        mcpRequest: new TextEncoder().encode(JSON.stringify({ uri })),
+      })
+    ).result.case;
+  expect(await check("ui://service/view.html")).toBe("pass");
+  expect(await check("file:///etc/passwd")).toBe("error");
+  expect(await check("https://untrusted.example/data")).toBe("error");
+});

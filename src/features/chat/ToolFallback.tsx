@@ -15,12 +15,14 @@ import { ToolIcon } from "../shared/ToolIcon.js";
 import { useToolText } from "../shared/use-tool-text.js";
 import { labelKey } from "../status/activity.js";
 import { appearance, Status, StatusIcon } from "../status/Status.js";
+import { McpApp } from "./apps/McpApp.js";
 
 export const ToolFallback: ToolCallMessagePartComponent = ({ artifact }) => {
   const { t } = useTranslation();
   const toolText = useToolText();
   if (!isMessage(artifact, ToolCallSchema)) return null;
   const call = artifact;
+  if (call.uiResourceUri) return <McpApp call={call} />;
   const label = toolText(call.name);
   const title = `${label.name} · ${t(labelKey(call.state))}`;
   return (

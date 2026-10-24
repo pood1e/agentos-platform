@@ -40,6 +40,7 @@ export const convertMessage = (message: ChatMessage): ThreadMessageLike => ({
           isError: call.state === ActivityState.FAILED || call.state === ActivityState.REJECTED,
           isPreliminary: active(call.state) || awaiting(call.state),
           artifact: call,
+          ...(call.uiResourceUri ? { mcp: { app: { resourceUri: call.uiResourceUri } } } : {}),
         },
       ];
     },

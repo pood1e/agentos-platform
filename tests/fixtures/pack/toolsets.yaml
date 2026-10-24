@@ -126,3 +126,7 @@ zammad:
     - create_ticket
     - update_ticket
     - add_ticket_note
+
+views:
+  readOnly: [show_topology, graph_data, model_only]
+  write: [destroy]

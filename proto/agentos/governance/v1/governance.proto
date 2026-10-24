@@ -43,6 +43,13 @@ message EnvironmentConnection {
     uri: true
     prefix: "https://"
   }];
+  GatewayEndpoint gateway = 6;
+}
+
+message GatewayEndpoint {
+  string address = 1 [(buf.validate.field).string.min_len = 1];
+  uint32 port = 2 [(buf.validate.field).uint32 = {gte: 1, lte: 65535}];
+  string tls_server_name = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message GovernanceConfig {

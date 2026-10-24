@@ -392,5 +392,12 @@
     "callFailed": "语音通话失败，请重试。",
     "callQueueFull": "待处理的语音过多，请等待当前任务完成后再说。",
     "callUnsent": "以下内容尚未发送："
+  },
+  "mcpApp": {
+    "unavailable": "视图暂时无法加载",
+    "fullscreen": "全屏查看",
+    "exitFullscreen": "退出全屏",
+    "expand": "展开视图",
+    "collapse": "收起视图"
   }
 }
