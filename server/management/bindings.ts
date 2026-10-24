@@ -1,5 +1,6 @@
 import type { JsonObject } from "@bufbuild/protobuf";
 import type { Connection } from "../../gen/agentos/management/v1/management_pb.js";
+import { modelPurposeAnnotation } from "../../shared/model-purpose.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { invalid } from "../shared/errors.js";
 import { type GatewayConfig, meta, optional, ownerFor } from "./native.js";
@@ -38,7 +39,13 @@ export function connectionBindings(store: ResourceStore, gateway: GatewayConfig)
       {
         apiVersion: "api.kagent.dev/v1alpha3",
         kind: "ModelConfig",
-        metadata: { name },
+        metadata: {
+          name,
+          annotations: {
+            [modelPurposeAnnotation]:
+              text(object(meta(parent).annotations)[modelPurposeAnnotation]) || "language",
+          },
+        },
         spec: {
           ...(previous.stream !== undefined ? { stream: previous.stream } : {}),
           provider: anthropic ? "Anthropic" : "OpenAI",

@@ -49,3 +49,25 @@ test("offers a usable English speech editor on mobile", async ({ page }) => {
   await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   await expect(page.getByText("Speech Transcription", { exact: true })).toHaveCount(0);
 });
+
+test("shows embedding connections separately and restores their tab after reload", async ({
+  page,
+}) => {
+  await page.goto("/engineers/models");
+  await expect(
+    page.getByTestId("connection-row").filter({ hasText: "knowledge-embedding" }),
+  ).toHaveCount(0);
+  await page.getByRole("tab", { name: "向量模型", exact: true }).click();
+  const row = page.getByTestId("connection-row").filter({ hasText: "knowledge-embedding" });
+  await expect(row).toContainText("embeddinggemma:300m");
+  await expect(row).toContainText("https://provider.example/v1");
+  await expect(
+    page.getByTestId("connection-row").filter({ hasText: "default-model-config" }),
+  ).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "向量模型", exact: true })).toHaveAttribute(
+    "data-state",
+    "active",
+  );
+  await expect(row).toBeVisible();
+});

@@ -4,9 +4,11 @@ import {
   ConnectionKind,
   ConnectionSchema,
   type ListConnectionsRequest,
+  ModelPurpose,
   type SaveConnectionRequest,
 } from "../../gen/agentos/management/v1/management_pb.js";
 import { ModelConfigSchema } from "../../gen/kagent/api/v1/models_pb.js";
+import { modelPurpose } from "../../shared/model-purpose.js";
 import { actorTokenHeader } from "../authorization/actor.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { object, text } from "../read-model/decode/messages.js";
@@ -129,11 +131,21 @@ export function connectionCommands(
       .filter((item) =>
         `${meta(item).name} ${JSON.stringify(item.spec)}`.toLowerCase().includes(query),
       )
+      .filter(
+        (item) =>
+          request.modelPurpose === ModelPurpose.UNSPECIFIED ||
+          modelPurpose(item) === request.modelPurpose,
+      )
       .sort((a, b) => text(meta(a).name).localeCompare(text(meta(b).name)));
-    const page = pageOf(items, request, `management.connections:${request.kind}`, (item) => ({
-      id: text(meta(item).name),
-      time: 0,
-    }));
+    const page = pageOf(
+      items,
+      request,
+      `management.connections:${request.kind}:${request.modelPurpose}`,
+      (item) => ({
+        id: text(meta(item).name),
+        time: 0,
+      }),
+    );
     const context = await catalog();
     const connections = await Promise.all(
       page.items.map((item) => view(request.kind, item, context)),

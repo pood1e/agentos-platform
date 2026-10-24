@@ -29,6 +29,10 @@
 具有任一平台资源管理能力的管理员可读取当前工作空间的共享定义和历史；`agentos-tasks-manage` 可维护定时任务与手动触发。定时执行使用只读服务身份，委派沿用该权限上限。
 事件入口由 Chart 的 `automation.enabled` 控制；入口状态表示平台配置，worker 运行状态由来源环境维护。
 
+## 模型用途
+
+模型接入通过 `AgentgatewayModel` 的 `agentos.dev/model-purpose` 注解区分 `language` 与 `embedding`，未声明时为对话模型。用途随接入同步到原生 `ModelConfig`；模型页面按用途查询、分页和展示，向量模型用于知识记忆，不参与聊天 Harness 的模型选择。
+
 ## 任务标签
 
 `pack.json` 的 `taskTags` 提供可选标签建议，例如 `["rca", "auto-remediation"]`；标签仍可由用户自定义。`locales.<language>.translation.task.tagNames` 提供显示名称，缺失时显示原始值。每个任务最多 32 个标签，每个标签最多 40 个字符。预置建议由方案包维护，标签编辑、可见范围与筛选由平台负责。

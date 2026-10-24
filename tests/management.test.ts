@@ -5,6 +5,7 @@ import {
   ConnectionKind,
   ConnectionSchema,
   ManagementService,
+  ModelPurpose,
 } from "../gen/agentos/management/v1/management_pb.js";
 import { ModelConfigSchema } from "../gen/kagent/api/v1/models_pb.js";
 import { object, text } from "../server/read-model/decode/messages.js";
@@ -52,6 +53,44 @@ const connection = (name: string, kind = ConnectionKind.MODEL) =>
   });
 
 describe("native gateway connections", () => {
+  it("filters embedding connections before pagination and preserves their native purpose", async () => {
+    for (const name of ["vectors-a", "vectors-b"]) {
+      const draft = connection(name);
+      object(draft.resource?.value?.metadata).annotations = {
+        "agentos.dev/model-purpose": "embedding",
+      };
+      await client.saveConnection({ connection: draft, create: true });
+      const model = await env.store.get("modelConfigs", name);
+      expect(object(object(model.metadata).annotations)["agentos.dev/model-purpose"]).toBe(
+        "embedding",
+      );
+    }
+    const first = await client.listConnections({
+      kind: ConnectionKind.MODEL,
+      modelPurpose: ModelPurpose.EMBEDDING,
+      query: "vectors-",
+      pageSize: 1,
+    });
+    expect(first.totalSize).toBe(2);
+    expect(first.connections).toHaveLength(1);
+    const next = await client.listConnections({
+      kind: ConnectionKind.MODEL,
+      modelPurpose: ModelPurpose.EMBEDDING,
+      query: "vectors-",
+      pageSize: 1,
+      pageToken: first.nextPageToken,
+    });
+    expect(next.connections).toHaveLength(1);
+    expect(next.connections[0]?.resource?.value?.metadata).not.toEqual(
+      first.connections[0]?.resource?.value?.metadata,
+    );
+    const language = await client.listConnections({
+      kind: ConnectionKind.MODEL,
+      modelPurpose: ModelPurpose.LANGUAGE,
+      query: "vectors-",
+    });
+    expect(language.totalSize).toBe(0);
+  });
   it("switches the native client protocol without bypassing the gateway or retaining cleared options", async () => {
     const draft = connection("harness-model");
     draft.model = create(ModelConfigSchema, {

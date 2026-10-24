@@ -12,7 +12,9 @@ import {
   type Connection,
   ConnectionKind,
   ConnectionSchema,
+  ModelPurpose,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { modelPurposeAnnotation } from "../../../shared/model-purpose.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
@@ -34,10 +36,12 @@ const Form = generateForm<Record<string, unknown>>();
 
 export function ConnectionEditor({
   kind,
+  purpose = ModelPurpose.LANGUAGE,
   connection,
   onSaved,
 }: {
   kind: ConnectionKind;
+  purpose?: ModelPurpose;
   connection?: Connection;
   onSaved: () => void;
 }) {
@@ -113,6 +117,16 @@ export function ConnectionEditor({
           metadata: { name },
         };
     value.spec = data;
+    if (kind === ConnectionKind.MODEL && !connection) {
+      const meta = object(value.metadata);
+      value.metadata = {
+        ...meta,
+        annotations: {
+          ...object(meta.annotations),
+          [modelPurposeAnnotation]: purpose === ModelPurpose.EMBEDDING ? "embedding" : "language",
+        },
+      };
+    }
     if (kind === ConnectionKind.MCP && displayName.trim()) {
       const meta = object(value.metadata);
       value.metadata = {
@@ -192,13 +206,14 @@ export function ConnectionEditor({
             if (event.formData) submit(event.formData as JsonObject);
           }}
         >
-          {kind === ConnectionKind.MODEL ? (
+          {kind === ConnectionKind.MODEL && purpose !== ModelPurpose.EMBEDDING && (
             <ModelRequestOptions
               spec={request}
               onChange={setRequest}
               disabled={!!connection?.systemManaged || !editable}
             />
-          ) : (
+          )}
+          {kind === ConnectionKind.MCP && (
             <Label className="mb-5">
               <Checkbox
                 checked={tls}

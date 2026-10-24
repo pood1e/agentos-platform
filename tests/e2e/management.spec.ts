@@ -5,7 +5,7 @@ test.beforeEach(async ({ request }) => resetKagent(request));
 
 test("manages gateway model and MCP connections", async ({ page }) => {
   await page.goto("/engineers/models");
-  await expect(page.getByTestId("connection-row")).toHaveCount(2);
+  await expect(page.getByTestId("connection-row")).toHaveCount(1);
   await page.getByRole("button", { name: "新增", exact: true }).click();
   const editor = page.getByTestId("connection-editor");
   await editor.locator("#connection-name").fill("browser-model");
