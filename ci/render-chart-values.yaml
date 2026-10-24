@@ -20,9 +20,10 @@
 
     - name: Create the validation directory
       ansible.builtin.file:
-        path: "{{ output }}"
+        path: "{{ item }}"
         state: directory
         mode: "0700"
+      loop: ["{{ output }}", "{{ output }}/telemetry"]
 
     - name: Render native deployment values
       ansible.builtin.template:
@@ -30,6 +31,14 @@
         dest: "{{ output }}/{{ item }}-values.yaml"
         mode: "0600"
       loop: [kagent, substrate]
+
+    - name: Render enabled OTLP deployment values
+      ansible.builtin.template:
+        src: ../deploy/values/kagent.yaml.j2
+        dest: "{{ output }}/telemetry/kagent-values.yaml"
+        mode: "0600"
+      vars:
+        kagent_telemetry: "{{ lookup('ansible.builtin.file', '../tests/fixtures/telemetry.yaml') | from_yaml }}"
 
     - name: Render the direct environment scenario
       ansible.builtin.copy:

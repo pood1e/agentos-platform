@@ -86,9 +86,10 @@ flowchart LR
 
 执行身份、会话隔离、运行时入口和环境 OBO 接线见[执行授权](execution-authorization.md)；逐资源业务授权的后续范围见[实施计划](authorization-plan.md)。
 
-## 观测
+## 执行记录与自动化
 
-Langfuse 使用官方 Helm Chart，独立 PostgreSQL、ClickHouse、Valkey 与对象存储。原生 OTel 经过 Collector 的属性白名单后接入 Langfuse；消息内容与原始 API 请求体默认关闭。Web 使用官方镜像，站点可配置通用 OIDC 登录并自动加入项目，未配置时使用初始化的运维账号登录；采集使用项目 API Key。部署入口为 `deploy/observability.yaml`。
+可选遥测复用 kagent 原生 OpenTelemetry SDK，以 OTLP 将控制面和 Agent 运行时的信号发送到站点提供的接收端。
+Traces、metrics、logs 分别配置，默认关闭导出与内容采集，接线见[遥测](delivery.md#遥测)。
 
 案例自动化按方案包的 `CaseTrigger` 映射源事件并选择原生 Agent：同一案例复用原生会话与确定性 messageId，超时取消并升级，事实类型的命名空间由方案包决定。
 聊天使用 assistant-ui，A2A 委派关联的任务在聊天右侧展示协作、MCP 服务调用和时间线；`/chat/:contextId?task=<taskId>` 可定位聊天及执行详情。消息按原始 A2A 顺序投影为带稳定 ID 的内容片段，保留过程说明、并行工具调用和最终答复的交错顺序；工具结果按调用 ID 更新原卡片。过程与草稿映射为 reasoning，完成后的最终答复映射为 text；官方朗读动作仅获取最终答复，再经 remark 转为可朗读文本。系统任务位于 `/system-tasks/:scheduleId?`，所有具有平台管理能力的管理员共享定义和执行历史，普通用户不可读取；执行详情通过 `/system-tasks?task=<taskId>` 在系统任务页内展开，复用聊天的执行详情组件。定时任务复用 kagent `ScheduledRunService` 持久化、调度和记录运行历史；配置维护和手动触发要求 `tasks.manage`。
