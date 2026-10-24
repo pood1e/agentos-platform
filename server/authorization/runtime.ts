@@ -142,10 +142,13 @@ export async function executionRuntime(
       const { engineer, role } = await agentRole(session);
       const destination = await route(target);
       if (
-        (await metadata.appOnlyCall(target.serviceNames, tool.name, workspace)) ||
         engineer !== destination.identity ||
         !destination.policy.selectedCall(role.tools, target.serviceNames, tool.name) ||
-        !destination.policy.permitsCall(engineer, target.serviceNames, tool.name, context.write)
+        !destination.policy.permitsCall(engineer, target.serviceNames, tool.name, context.write) ||
+        (await metadata.appOnlyCalls(
+          destination.policy.environmentCalls(role.tools, tool.name, target.serviceNames),
+          workspace,
+        ))
       )
         throw new ConnectError(
           "Tool is outside the user's execution permissions",
@@ -174,23 +177,6 @@ export async function executionRuntime(
     const { engineer, role } = await agentRole(session);
     const bindings = await access();
     if (
-      (
-        await Promise.all(
-          tools.map((tool) =>
-            metadata.appOnlyCall(
-              bindings
-                .catalogs()
-                .filter((target) => toolBaseName(tool).startsWith(`${target.service}_`))
-                .map((target) => target.service),
-              tool,
-              workspace,
-            ),
-          ),
-        )
-      ).some(Boolean)
-    )
-      throw new ConnectError("App-only tools cannot be called by Agents", Code.PermissionDenied);
-    if (
       tools.some(
         (tool) =>
           !role.tools.some(
@@ -204,6 +190,13 @@ export async function executionRuntime(
         "Tool is outside the user's execution permissions",
         Code.PermissionDenied,
       );
+    if (
+      await metadata.appOnlyCalls(
+        tools.flatMap((tool) => bindings.environmentCalls(role.tools, toolBaseName(tool))),
+        workspace,
+      )
+    )
+      throw new ConnectError("App-only tools cannot be called by Agents", Code.PermissionDenied);
   };
   return {
     registry,

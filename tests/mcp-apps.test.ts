@@ -1,11 +1,17 @@
 import { create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
+import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
-import { MCPAppToolSchema } from "../gen/kagent/api/v1/tools_pb.js";
+import {
+  ListMCPAppToolsResponseSchema,
+  MCPAppToolSchema,
+  ToolServerSchema,
+} from "../gen/kagent/api/v1/tools_pb.js";
 import { appVisible } from "../server/kagent/tool-metadata.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
+import { testBindings } from "./harness.js";
 
 it("projects an App from native metadata and reads only the original call's resource", async () => {
   const env = await setup();
@@ -93,10 +99,18 @@ it("hides app-only tools from role binding and identifies them for Actor authori
       .find((server) => server.ref === "agentos/lab-views")
       ?.discoveredTools.map((tool) => tool.name),
   ).toEqual(["lab-views_show_topology", "lab-views_model_only"]);
-  expect(await env.metadata.appOnlyCall(["lab-views"], "lab-views_graph_data", "agentos")).toBe(
-    true,
-  );
-  expect(await env.metadata.appOnlyCall(["lab-views"], "show_topology", "agentos")).toBe(false);
+  expect(
+    await env.metadata.appOnlyCalls(
+      [{ server: "lab-views", tool: "lab-views_graph_data" }],
+      "agentos",
+    ),
+  ).toBe(true);
+  expect(
+    await env.metadata.appOnlyCalls(
+      [{ server: "lab-views", tool: "lab-views_show_topology" }],
+      "agentos",
+    ),
+  ).toBe(false);
   env.caller({ ...env.owner, capabilities: [Capability.AGENTS_MANAGE] });
   await expect(
     env.client.createRole({
@@ -128,15 +142,15 @@ it("fails closed for invalid visibility and missing Actor metadata", async () =>
   expect(appVisible(create(MCPAppToolSchema))).toBe(true);
   const env = await setup();
   await expect(
-    env.metadata.appOnlyCall(["missing"], "graph_data", "agentos"),
+    env.metadata.appOnlyCalls([{ server: "missing", tool: "graph_data" }], "agentos"),
   ).rejects.toMatchObject({
     code: Code.PermissionDenied,
   });
-  await expect(env.metadata.appOnlyCall(["lab-views"], "unknown", "agentos")).rejects.toMatchObject(
-    {
-      code: Code.PermissionDenied,
-    },
-  );
+  await expect(
+    env.metadata.appOnlyCalls([{ server: "lab-views", tool: "unknown" }], "agentos"),
+  ).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
 });
 
 it("projects only model-visible bindings from native presets without losing normal or unknown selections", async () => {
@@ -168,4 +182,56 @@ it("projects only model-visible bindings from native presets without losing norm
     "lab-views_show_topology",
     "unavailable_tool",
   ]);
+});
+
+it("checks write visibility against the selected profile instead of the read-only catalog", async () => {
+  const env = await setup();
+  const profile = "lab-views-assistant-write";
+  const write = "lab-views_update";
+  const hidden = "lab-views_hidden_write";
+  const server = create(ToolServerSchema, {
+    ref: `agentos/${profile}`,
+    groupKind: "RemoteMCPServer.kagent.dev",
+    discoveredTools: [{ name: write }, { name: hidden }],
+  });
+  env.fake.toolServers.push(server);
+  env.fake.resources.save(
+    "agentgatewaybackends",
+    {
+      metadata: {
+        name: profile,
+        labels: { "agentos.dev/engineer": "assistant", "agentos.dev/tool-access": "write" },
+      },
+      spec: { mcp: { targets: [{ name: "lab-views" }] } },
+    },
+    true,
+  );
+  const original = env.clients.tools.listMCPAppTools.bind(env.clients.tools);
+  vi.spyOn(env.clients.tools, "listMCPAppTools").mockImplementation((request, options) =>
+    request.server?.ref?.name === profile
+      ? Promise.resolve(
+          create(ListMCPAppToolsResponseSchema, {
+            tools: [
+              { name: write },
+              { name: hidden, meta: { value: { ui: { visibility: ["app"] } } } },
+            ],
+          }),
+        )
+      : original(request, options),
+  );
+  const bindings = await testBindings(env.fake)();
+  const selected = [create(ToolBindingSchema, { server: profile, tools: [write, hidden] })];
+  const references = bindings.environmentCalls(selected, "update", ["lab-views"]);
+  expect(references).toEqual([{ server: profile, tool: write }]);
+  expect(bindings.environmentCalls(selected, "update", ["other-service"])).toEqual([]);
+  expect(bindings.environmentCalls(selected, "lab-views_update")).toEqual(references);
+  expect(await env.metadata.appOnlyCalls(references, "agentos")).toBe(false);
+  expect(
+    await env.metadata.appOnlyCalls(bindings.environmentCalls(selected, hidden), "agentos"),
+  ).toBe(true);
+  expect(bindings.catalogServer(server, env.fake.toolServers)).toBe(server);
+  const visible = await env.metadata.modelServers([server], (item) =>
+    bindings.catalogServer(item, env.fake.toolServers),
+  );
+  expect(visible[0]?.discoveredTools.map((tool) => tool.name)).toEqual([write]);
 });
