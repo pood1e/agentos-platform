@@ -14,6 +14,7 @@ import "agentos/execution/v1/state.proto";
 import "agentos/execution/v1/task.proto";
 import "agentos/governance/v1/governance.proto";
 import "agentos/kagent/v1/wire.proto";
+import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
 import "kagent/api/v1/agents.proto";
 import "kagent/api/v1/common.proto";
@@ -83,8 +84,7 @@ service ConsoleService {
 }
 
 message GetAppResourceRequest {
-  string task_id = 1 [(buf.validate.field).string = {min_len: 1, max_len: 128}];
-  string call_id = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  agentos.mcp.v1.AppReference app = 1 [(buf.validate.field).required = true];
 }
 
 message GetAppResourceResponse {
@@ -93,10 +93,9 @@ message GetAppResourceResponse {
 }
 
 message CallAppToolRequest {
-  string task_id = 1 [(buf.validate.field).string = {min_len: 1, max_len: 128}];
-  string call_id = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
-  string name = 3 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
-  .kagent.api.v1.StructuredObject arguments = 4;
+  agentos.mcp.v1.AppReference app = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  .kagent.api.v1.StructuredObject arguments = 3;
 }
 
 message CallAppToolResponse {

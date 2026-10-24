@@ -23,6 +23,7 @@ import { toolBaseName } from "../read-model/decode/tools.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { taskRun } from "../read-model/views/run.js";
 import { notFound, unavailable } from "../shared/errors.js";
+import { approvalApps } from "./approvals.js";
 import { callEnvironmentAppTool } from "./client.js";
 import { projectAppViews } from "./projection.js";
 
@@ -39,6 +40,20 @@ interface Dependencies {
   invoke?: typeof callEnvironmentAppTool;
 }
 
+function resourceResult(value: unknown): JsonObject {
+  const result = ReadResourceResultSchema.parse(value);
+  if (result.contents.length !== 1 || result.contents[0].mimeType !== RESOURCE_MIME_TYPE)
+    throw notFound("mcpApp.unavailable");
+  const content = result.contents[0];
+  const size =
+    "text" in content
+      ? Buffer.byteLength(content.text)
+      : Buffer.from(content.blob, "base64").byteLength;
+  if (size > 8 * 1024 * 1024)
+    throw new ConnectError("MCP App resource is too large", Code.ResourceExhausted);
+  return result as JsonObject;
+}
+
 export function mcpApps({
   clients,
   sync,
@@ -52,6 +67,7 @@ export function mcpApps({
   invoke = callEnvironmentAppTool,
 }: Dependencies) {
   const history = executionHistory(sync.index, executions);
+  const approval = approvalApps(sync, clients, operations, history, token);
   const agentRole = agentRoles(clients);
   const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
   const resources = new LRUCache<string, JsonObject>({
@@ -86,10 +102,12 @@ export function mcpApps({
     request: GetAppResourceRequest | CallAppToolRequest,
     identity: ExecutionIdentity,
   ) {
+    const reference = request.app;
+    if (reference?.origin.case !== "callId") throw notFound("mcpApp.unavailable");
     const view = await history(identity);
-    if (!view.entry(request.taskId)) throw notFound("task.notFound");
-    const run = await taskRun(sync, request.taskId);
-    const call = run?.calls.find((call) => call.id === request.callId);
+    if (!view.entry(reference.taskId)) throw notFound("task.notFound");
+    const run = await taskRun(sync, reference.taskId);
+    const call = run?.calls.find((call) => call.id === reference.origin.value);
     const origin = call && (await source(call));
     if (!origin) throw notFound("mcpApp.unavailable");
     return { ...origin, call };
@@ -129,6 +147,10 @@ export function mcpApps({
       signal: AbortSignal,
     ) {
       if (!sandboxOrigin) throw unavailable();
+      if (request.app?.origin.case === "approvalToolId") {
+        const result = resourceResult(await approval.resource(request.app, identity, signal));
+        return { result: { value: result }, sandboxOrigin };
+      }
       const origin = await original(request, identity);
       const key = `${origin.server.ref}:${origin.uri}`;
       let result = resources.get(key);
@@ -140,27 +162,42 @@ export function mcpApps({
           },
           { signal, timeoutMs: 15_000 },
         );
-        const resource = ReadResourceResultSchema.parse(response.result?.value);
-        if (resource.contents.length !== 1 || resource.contents[0].mimeType !== RESOURCE_MIME_TYPE)
-          throw notFound("mcpApp.unavailable");
-        const content = resource.contents[0];
-        const html =
-          "text" in content ? content.text : Buffer.from(content.blob, "base64").toString("utf8");
-        if (Buffer.byteLength(html) > 8 * 1024 * 1024)
-          throw new ConnectError("MCP App resource is too large", Code.ResourceExhausted);
-        result = resource as JsonObject;
+        result = resourceResult(response.result?.value);
         resources.set(key, result);
       }
       return { result: { value: result }, sandboxOrigin };
     },
     async callTool(request: CallAppToolRequest, identity: ExecutionIdentity, signal: AbortSignal) {
       if (!sandboxOrigin) throw unavailable();
+      if (request.app?.origin.case === "approvalToolId") {
+        const audit = {
+          initiator: identity.subject,
+          taskId: request.app.taskId,
+          tool: request.name,
+        };
+        try {
+          const result = CallToolResultSchema.parse(
+            await approval.call(
+              request.app,
+              request.name,
+              request.arguments?.value ?? {},
+              identity,
+              signal,
+            ),
+          );
+          log?.info({ ...audit, failed: result.isError ?? false }, "Approval MCP App tool call");
+          return { result: { value: result as JsonObject } };
+        } catch (error) {
+          log?.info({ ...audit, failed: true }, "Approval MCP App tool call");
+          throw error;
+        }
+      }
       const origin = await original(request, identity);
       const tool = origin.tools.find(
         (tool) => origin.unprefix(tool.name) === origin.unprefix(request.name),
       );
       if (!tool || !appVisible(tool)) throw denied();
-      const entry = sync.index.entry(request.taskId);
+      const entry = sync.index.entry(request.app?.taskId ?? "");
       const { session } = await clients.sessions.getSession(
         { sessionId: entry?.contextId },
         { signal, timeoutMs: 5_000 },
@@ -175,8 +212,8 @@ export function mcpApps({
       if (!connection?.gateway || !token) throw unavailable();
       const audit = {
         initiator: identity.subject,
-        taskId: request.taskId,
-        callId: request.callId,
+        taskId: request.app?.taskId,
+        callId: request.app?.origin.value,
         environment: origin.target.environment,
         service: origin.target.project,
         tool: origin.unprefix(tool.name),

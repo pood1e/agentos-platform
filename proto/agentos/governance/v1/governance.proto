@@ -5,6 +5,7 @@ package agentos.governance.v1;
 import "agentos/execution/v1/state.proto";
 import "agentos/execution/v1/task.proto";
 import "agentos/kagent/v1/wire.proto";
+import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 
@@ -79,6 +80,8 @@ message Approval {
   string decided_by = 4;
   optional Link link = 5;
   string description = 6;
+  agentos.mcp.v1.AppView app = 7;
+  ApprovalReference reference = 8;
 }
 
 service ApprovalService {

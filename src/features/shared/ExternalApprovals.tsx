@@ -1,15 +1,22 @@
+import { create } from "@bufbuild/protobuf";
 import { useQuery } from "@connectrpc/connect-query";
 import { ArrowUpRight, LoaderCircle } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { Interaction } from "../../../gen/agentos/console/v1/task_pb.js";
 import type { Approval } from "../../../gen/agentos/governance/v1/governance_pb.js";
+import { AppReferenceSchema } from "../../../gen/agentos/mcp/v1/app_pb.js";
 import { Failure } from "../management/ResourcePage.js";
 import { active, awaiting, labelKey } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { approvalIdentity } from "./approval-identity.js";
 import { Markdown } from "./Markdown.js";
+
+const AppView = lazy(() =>
+  import("../chat/apps/AppView.js").then((module) => ({ default: module.AppView })),
+);
 
 export function ExternalApprovals({
   interaction,
@@ -41,6 +48,13 @@ export function ExternalApprovals({
       {pending && !approvals.length && !result.error && (
         <LoaderCircle className="size-4 animate-spin" />
       )}
+      {pending && (
+        <p className="text-muted-foreground">
+          {t(
+            approvals.some((item) => item.app) ? "approval.appNotice" : "approval.operationNotice",
+          )}
+        </p>
+      )}
       {approvals.map((approval) => (
         <div key={approvalIdentity(approval)} className="space-y-3 rounded-lg border p-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
@@ -58,7 +72,19 @@ export function ExternalApprovals({
             )}
           </div>
           {approval.reason && <p>{approval.reason}</p>}
-          {approval.description && <Markdown>{approval.description}</Markdown>}
+          {approval.app && approval.reference ? (
+            <Suspense fallback={<div className="h-48 animate-pulse bg-muted" />}>
+              <AppView
+                reference={create(AppReferenceSchema, {
+                  taskId: approval.reference.taskId,
+                  origin: { case: "approvalToolId", value: approval.reference.toolId },
+                })}
+                input={approval.app}
+              />
+            </Suspense>
+          ) : approval.description ? (
+            <Markdown>{approval.description}</Markdown>
+          ) : null}
         </div>
       ))}
     </div>
