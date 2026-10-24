@@ -10,6 +10,7 @@ test("keeps assistant conversations separate and restores the current user's las
   await page.getByRole("textbox", { name: "消息", exact: true }).fill("编写产品简介");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByTestId("chat-message")).toHaveCount(2);
+  await expect(page).toHaveURL(/\/chat\/[^/?]+$/);
   await page.screenshot({ path: test.info().outputPath("agentos-console.png") });
   const session = page.url();
   expect(new URL(session).search).toBe("");
