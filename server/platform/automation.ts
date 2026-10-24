@@ -132,7 +132,7 @@ export function automationTools(
       "cancel_case",
       {
         description:
-          "Cancel active native foreground tasks belonging to this source case. Already executed effects still require verification.",
+          "Cancel unfinished native tasks belonging to this source case, including background work. Already executed effects still require verification.",
         inputSchema: inputSchema(referenceSchema),
         annotations: { idempotentHint: true },
       },

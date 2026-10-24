@@ -8,7 +8,7 @@
 {{- $write := $tools.write | default list }}
 {{- if eq $access "manage" }}
 {{- $read = concat $read ($tools.managementReadOnly | default list) }}
-{{- $write = concat $write ($tools.management | default list) }}
+{{- $write = $tools.management | default list }}
 {{- end }}
 {{- range $view := list "readOnly" "write" }}
 {{- if or (eq $view "readOnly") (and (has $access (list "operate" "manage")) $write) }}

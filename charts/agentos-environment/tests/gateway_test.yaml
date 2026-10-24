@@ -2,6 +2,18 @@ suite: environment gateway identity boundary
 values: [values.json]
 release: {name: agentos-environment, namespace: mcp}
 tests:
+  - it: restricts management routes to inventory administration
+    template: backends.yaml
+    documentSelector:
+      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
+      value: agentos-remediation
+    asserts:
+      - matchRegex:
+          path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+          pattern: nodes_list.*nodes_drain
+      - notMatchRegex:
+          path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+          pattern: resources_create_or_update
   - it: retires idle upstream connections before MCP servers close their keep-alive sockets
     template: gateway.yaml
     documentSelector: {path: kind, value: AgentgatewayParameters}

@@ -6,7 +6,7 @@
 {{- $write := $tools.write | default list }}
 {{- if eq $access "manage" }}
 {{- $read = concat $read ($tools.managementReadOnly | default list) }}
-{{- $write = concat $write ($tools.management | default list) }}
+{{- $write = $tools.management | default list }}
 {{- end }}
 {{- $allowed := $read }}
 {{- if has $access (list "operate" "manage") }}{{ $allowed = concat $read $write }}{{ end }}

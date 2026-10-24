@@ -5,6 +5,26 @@ release:
   name: agentos-connections
   namespace: agentos
 tests:
+- it: excludes operational execution from the management mutation route
+  template: identity-views.yaml
+  documentSelector:
+    path: spec.mcp.targets[0].static.path
+    value: /mcp/remediation/kubernetes
+    matchMany: true
+  asserts:
+  - notMatchRegex:
+      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+      pattern: resources_create_or_update
+- it: includes only management mutations in the management change route
+  template: identity-views.yaml
+  documentSelector:
+    path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+    value: 'mcp.tool.name in ["nodes_drain"]'
+    matchMany: true
+  asserts:
+  - matchRegex:
+      path: metadata.name
+      pattern: kubernetes-remediation-changes$
 - it: keeps presets under the connection release
   template: catalog.yaml
   documentSelector:

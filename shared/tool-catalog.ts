@@ -40,7 +40,7 @@ export function parseCatalog(projects: string, servers: string): ToolCatalog {
     approvals: new Map(
       Object.entries(source ?? {}).map(([project, lists]) => [
         project,
-        new Set(lists.approval ?? lists.write ?? []),
+        new Set(lists.approval ?? [...(lists.write ?? []), ...(lists.management ?? [])]),
       ]),
     ),
   };

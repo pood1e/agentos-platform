@@ -34,12 +34,12 @@
 {{- if or (eq $access "operate") (eq $access "manage") -}}
 {{- $write := include "agentos.environmentTools" (dict "root" $.root "environment" $environment "project" $project "access" "write") | fromYamlArray -}}
 {{- if eq $access "manage" -}}
-{{- $write = concat $write (include "agentos.environmentTools" (dict "root" $.root "environment" $environment "project" $project "access" "management") | fromYamlArray) -}}
+{{- $write = include "agentos.environmentTools" (dict "root" $.root "environment" $environment "project" $project "access" "management") | fromYamlArray -}}
 {{- end -}}
 {{- if $write -}}
 {{- $changeServer := dict "kind" "RemoteMCPServer" "name" (printf "%s-changes" $server.name) -}}
 {{- $toolset := index $.root.Values.global.agentos.toolsets $project -}}
-{{- $approval := $toolset.write | default list -}}
+{{- $approval := concat ($toolset.write | default list) ($toolset.management | default list) -}}
 {{- if hasKey $toolset "approval" -}}
 {{- $approval = $toolset.approval -}}
 {{- end -}}
