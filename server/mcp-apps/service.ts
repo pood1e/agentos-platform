@@ -53,6 +53,7 @@ export function mcpApps({
 }: Dependencies) {
   const history = executionHistory(sync.index, executions);
   const agentRole = agentRoles(clients);
+  const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
   const resources = new LRUCache<string, JsonObject>({
     max: 64,
     maxSize: 32 * 1024 * 1024,
@@ -109,8 +110,15 @@ export function mcpApps({
     async project(view: Conversation) {
       if (!sandboxOrigin) return;
       try {
-        const policy = await access();
-        await projectAppViews(sync, view, (calls) => decorate(calls, policy));
+        await projectAppViews(sync, view, async (calls) => {
+          if (!calls.length) return;
+          let policy = projectionPolicy.get("catalog");
+          if (!policy) {
+            policy = access();
+            projectionPolicy.set("catalog", policy);
+          }
+          await decorate(calls, await policy);
+        });
       } catch {
         log?.info({ component: "mcp-apps" }, "MCP App metadata unavailable");
       }
