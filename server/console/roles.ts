@@ -113,8 +113,28 @@ export function roleCommands(
     ]).catch((error: unknown) => {
       throw fail(Code.Unavailable, "configuration.unavailable", error);
     });
+    const policy = await access();
+    const roles = await Promise.all(
+      templates.map(async (template) => {
+        const role = roleDefinition(template);
+        for (const binding of role.tools) {
+          const server = servers.find((server) => server.ref.split("/").at(-1) === binding.server);
+          if (!server) continue;
+          try {
+            binding.tools = await metadata.modelTools(
+              policy.catalogServer(server, servers),
+              binding.tools,
+            );
+          } catch {
+            // Keep existing selections when discovery is unavailable; saves still validate the catalog.
+          }
+        }
+        role.tools = role.tools.filter((binding) => binding.tools.length);
+        return role;
+      }),
+    );
     return {
-      roles: templates.map(roleDefinition),
+      roles,
       toolServers: servers,
       modelConfigs,
       engineerTools: engineerTools(agents, templates, harnesses),
