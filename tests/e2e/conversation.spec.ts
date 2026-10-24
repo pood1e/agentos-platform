@@ -74,31 +74,22 @@ test("does not replace the current chat when a previous send finishes after navi
   await expect(page.getByTestId("conversation")).not.toContainText("延迟返回的另一个会话");
 });
 
-test("automatically opens delegated work beside the chat, preserves dismissal and reopens its details in place", async ({
-  page,
-}) => {
+test("keeps chat full width and shows delegated workers without task details", async ({ page }) => {
   await startOperation(page);
-  const conversation = page.url();
-  const panel = page.getByTestId("chat-task-panel");
-  await expect(panel).toBeVisible();
-  await expect(panel.getByTestId("approval-node")).toBeVisible();
-  const chat = await page.getByTestId("conversation").boundingBox();
-  const task = await panel.boundingBox();
-  expect(task?.x).toBeGreaterThan((chat?.x ?? 0) + (chat?.width ?? 0));
-  await page.screenshot({ path: test.info().outputPath("chat-delegation.png") });
-  await panel.getByRole("button", { name: "收起任务详情", exact: true }).click();
-  await expect(panel).toHaveCount(0);
-  await page.getByTestId("chat-task").click();
-  await expect(page).toHaveURL(
-    new RegExp(`${conversation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\?task=`),
-  );
-  await expect(panel).toBeVisible();
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
+  await expect(page.getByTestId("chat-working-agents")).toBeVisible();
+  await expect(page.getByTestId("chat-working-agent")).not.toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
   await page.reload();
-  await expect(panel.getByTestId("approval-node")).toBeVisible();
+  await expect(page.getByTestId("chat-working-agents")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("compact-chat-delegation-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("conversation")).toBeVisible();
+  await expect(page.getByTestId("chat-working-agents")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: test.info().outputPath("compact-chat-delegation-mobile.png") });
   await page.getByRole("button", { name: "新对话", exact: true }).click();
-  await expect(page).toHaveURL(/\/chat$/);
-  await expect(panel).toHaveCount(0);
-  await expect(page.getByTestId("chat-message")).toHaveCount(0);
+  await expect(page.getByTestId("chat-working-agents")).toHaveCount(0);
 });
 
 test("keeps streamed text visible while tools run, after completion and after reloading the chat", async ({
@@ -151,7 +142,10 @@ test("keeps streamed text visible while tools run, after completion and after re
     await expect(answer).toHaveAttribute("data-message-id", messageId ?? "");
     const call = answer.getByTestId("chat-tool-call");
     await expect(call).toHaveCount(1);
-    await expect(call).toContainText(kind === "function_call" ? "执行中" : "已完成");
+    await expect(call).toHaveAttribute(
+      "aria-label",
+      new RegExp(kind === "function_call" ? "执行中" : "已完成"),
+    );
   }
   task.artifacts.push(
     create(ArtifactSchema, {
@@ -199,16 +193,16 @@ test("shows tool-only turns, keeps parallel calls separate and retains failures 
   await page.goto(`/chat/${task.contextId}`);
   const calls = page.getByTestId("chat-tool-call");
   await expect(calls).toHaveCount(2);
-  await expect(calls.first()).toContainText("执行中");
+  await expect(calls.first()).toHaveAttribute("aria-label", /执行中/);
   await expect(calls.first().getByTestId("tool-icon")).toHaveAttribute(
     "data-tool-brand",
     "Kubernetes",
   );
   await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
-  await calls.first().getByRole("button").click();
-  await expect(calls.first().getByTestId("call-input")).toContainText("read-a");
-  await expect(calls.first().getByTestId("call-input")).toContainText("[REDACTED]");
-  await expect(calls.first()).not.toContainText("private-tool-token");
+  await calls.first().click();
+  await expect(page.getByRole("dialog").getByTestId("call-input")).toContainText("read-a");
+  await expect(page.getByRole("dialog").getByTestId("call-input")).toContainText("[REDACTED]");
+  await expect(page.getByRole("dialog")).not.toContainText("private-tool-token");
   const results: { id: string; response: JsonValue }[] = [
     { id: "read-a", response: { output: { healthy: true } } },
     { id: "read-b", response: { error: "upstream unavailable" } },
@@ -229,16 +223,20 @@ test("shows tool-only turns, keeps parallel calls separate and retains failures 
   );
   if (task.status) task.status.state = TaskState.COMPLETED;
   await observeTask(request, task);
-  await expect(calls.first()).toContainText("已完成");
-  await expect(calls.last()).toContainText("失败");
-  await expect(calls.first().getByTestId("call-output")).toContainText('"healthy": true');
+  await expect(calls.first()).toHaveAttribute("aria-label", /已完成/);
+  await expect(calls.last()).toHaveAttribute("aria-label", /失败/);
+  await expect(page.getByRole("dialog").getByTestId("call-output")).toContainText(
+    '"healthy": true',
+  );
   await page.screenshot({ path: test.info().outputPath("chat-tool-calls.png") });
   await page.reload();
   await expect(calls).toHaveCount(2);
   await expect(calls.first()).toHaveAttribute("data-call-id", "read-a");
   await expect(calls.last()).toHaveAttribute("data-call-id", "read-b");
-  await calls.last().getByRole("button").click();
-  await expect(calls.last().getByTestId("call-output")).toContainText("upstream unavailable");
+  await calls.last().click();
+  await expect(page.getByRole("dialog").getByTestId("call-output")).toContainText(
+    "upstream unavailable",
+  );
   await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
 });
 
@@ -251,12 +249,9 @@ test("shows a native pending approval in the same conversation and retains a rej
   await expect(approval.getByTestId("approval-tool")).toHaveText("k8s_apply_manifest");
   await expect(approval.getByRole("button", { name: "拒绝", exact: true })).toBeVisible();
   await decideApproval(page, request, false, "保持现状，先检查依赖");
-  await expect(approval).toHaveCount(0);
-  await page.getByTestId("chat-task").click();
-  await page.getByTestId("approval-node").first().click();
+  await expect(approval.getByRole("button", { name: "拒绝", exact: true })).toHaveCount(0);
   await expect(page.getByTestId("rejection-reason")).toContainText("保持现状，先检查依赖");
   await page.reload();
-  await page.getByTestId("approval-node").first().click();
   await expect(page.getByTestId("rejection-reason")).toContainText("保持现状，先检查依赖");
 });
 

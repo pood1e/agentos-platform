@@ -115,7 +115,7 @@ test("renders native forks, partial joins and returns between context instances"
   await expect
     .poll(async () => (await client.listTasks({ query: "dag-coordinator" })).tasks[0]?.id)
     .toBe("dag-coordinator");
-  await page.goto("/chat?task=dag-coordinator");
+  await page.goto("/system-tasks?task=dag-coordinator");
   const row = (role: string) =>
     page.locator(`.react-flow__node[data-id="session:${context(role)}"] [data-row]`);
   await expect(row("inspection")).toHaveAttribute("data-row", "2");
@@ -179,7 +179,7 @@ test("separates two contexts of one engineer and reuses the first without moving
     {
       id: "instance-b",
       contextId: second,
-      prompt: `核验设备 B 的独立上下文\n上下文：preparedRevision=${"d".repeat(64)}。\n${"保留已确认的事实及证据引用，核验范围为设备当前状态和现有记录。".repeat(24)}\n末尾证据：[原始记录](/chat?task=original)`,
+      prompt: `核验设备 B 的独立上下文\n上下文：preparedRevision=${"d".repeat(64)}。\n${"保留已确认的事实及证据引用，核验范围为设备当前状态和现有记录。".repeat(24)}\n末尾证据：[原始记录](/system-tasks?task=original)`,
     },
     {
       id: "instance-a-followup",
@@ -259,7 +259,7 @@ test("separates two contexts of one engineer and reuses the first without moving
   await expect
     .poll(async () => (await client.listTasks({ query: "instances-root" })).tasks[0]?.id)
     .toBe("instances-root");
-  await page.goto("/chat?task=instances-root");
+  await page.goto("/system-tasks?task=instances-root");
   const instance = (id: string) => page.locator(`[data-instance="${id}"]`);
   await expect(page.locator(".react-flow__node-agent")).toHaveCount(3);
   const labels = page.locator(".react-flow__edgelabel-renderer button");
@@ -316,7 +316,7 @@ test("separates two contexts of one engineer and reuses the first without moving
   await expect(prompt).toContainText("末尾证据");
   await expect(prompt.getByRole("link", { name: "原始记录" })).toHaveAttribute(
     "href",
-    "/chat?task=original",
+    "/system-tasks?task=original",
   );
   await prompt.getByRole("button", { name: "收起全文" }).click();
   await expect(prompt).not.toContainText("末尾证据");

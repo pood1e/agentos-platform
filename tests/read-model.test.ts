@@ -241,6 +241,6 @@ describe("views", () => {
     expect(question).toMatchObject({ role: Role.USER, taskId: ids.chat });
     expect(question?.tasks.map((task) => task.id)).toEqual([ids.chatRoot]);
     expect(answer?.role).toBe(Role.AGENT);
-    expect(chat).toMatchObject({ busy: false, pending: [], ready: true });
+    expect(chat).toMatchObject({ busy: false, interactions: [], ready: true });
   });
 });

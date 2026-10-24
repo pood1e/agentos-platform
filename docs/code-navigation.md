@@ -23,7 +23,7 @@
 | `server/shared`、`shared/` | 服务端公共配置、错误与前后端共用模型 |
 | `src/app`、`src/components` | 前端路由、布局与 shadcn/ui 组件 |
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
-| `src/features/chat` | assistant-ui 会话、流式文本与工具调用、A2A 任务面板入口 |
+| `src/features/chat` | assistant-ui 会话、流式文本、紧凑工具图标、工作 Agent 与子 Agent 结果 |
 | `src/features/shared` | 头像、工具图标、原生确认与外部审批等公共展示 |
 | `src/features/tasks` | 聊天内任务面板、Agent 协作图、按 MCP 服务聚合的调用图、vis-timeline 时间线与执行抽屉 |
 | `src/features/system-tasks` | 管理员共享的系统任务页面：定时任务管理、运行历史和环境事件入口 |

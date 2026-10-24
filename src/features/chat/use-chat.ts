@@ -5,6 +5,7 @@ import { Role } from "../../../gen/a2a_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { ChatMessageSchema } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
+import { pendingInteractions } from "../../../shared/conversation-interactions.js";
 import { useAccess } from "../../lib/access.js";
 import { consoleClient } from "../../lib/console.js";
 import { errorKey } from "../../lib/errors.js";
@@ -61,7 +62,7 @@ export function useChat(
       : history;
   const ready = conversation?.ready ?? false;
   const busy = conversation?.busy ?? false;
-  const pending = conversation?.pending ?? [];
+  const pending = pendingInteractions(conversation);
   const blocked =
     !access.data || !conversation?.operate || send.isPending || stop.isPending || busy || !ready;
 

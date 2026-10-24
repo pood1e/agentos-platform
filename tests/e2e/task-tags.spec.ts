@@ -3,10 +3,10 @@ import { client, ids, resetKagent } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
-test("edits preset and custom task tags, persists in the chat task panel and remains searchable", async ({
+test("edits preset and custom task tags inline in chat and remains searchable", async ({
   page,
 }) => {
-  await page.goto(`/chat?task=${ids.approvalRoot}`);
+  await page.goto(`/chat?task=${ids.chatRoot}`);
   await page.getByRole("button", { name: "编辑标签", exact: true }).click();
   const editor = page.getByRole("dialog");
   await editor.getByRole("checkbox", { name: "分析", exact: true }).check();
@@ -31,13 +31,13 @@ test("keeps long custom tags and the official tag editor inside a mobile viewpor
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const { tasks } = await client.listTasks({ query: ids.approvalRoot });
+  const { tasks } = await client.listTasks({ query: ids.chatRoot });
   await client.updateTaskTags({
-    taskId: ids.approvalRoot,
+    taskId: ids.chatRoot,
     tags: ["标签".repeat(20)],
     tagsVersion: tasks[0].tagsVersion,
   });
-  await page.goto(`/chat?task=${ids.approvalRoot}`);
+  await page.goto(`/chat?task=${ids.chatRoot}`);
   await expect(page.getByTestId("task-tags")).toContainText("标签".repeat(20));
   await page.getByRole("button", { name: "编辑标签", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();

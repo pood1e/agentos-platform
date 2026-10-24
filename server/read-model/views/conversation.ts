@@ -25,10 +25,11 @@ import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";
 import { approvals } from "../interactions.js";
 import { type PageRequest, pageOf } from "../page.js";
-import { awaiting } from "../state.js";
 import type { KagentSync } from "../sync.js";
-import { busy, foreground, taskTree } from "../tree.js";
+import { busy, taskTree } from "../tree.js";
 import { chatParts } from "./chat-parts.js";
+import { agentResults, conversationWork } from "./conversation-work.js";
+import { engineer } from "./engineers.js";
 import { runState, stamp } from "./runs.js";
 import { taskSummary } from "./task.js";
 
@@ -108,7 +109,7 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
           tasks: position === 0 ? operations(index, entry) : [],
         });
       });
-    const content = parts.get(entry.id) ?? [];
+    const content = agentResults(index, entry, parts.get(entry.id) ?? []);
     return content.length
       ? [
           ...turns,
@@ -157,6 +158,8 @@ export async function conversation(
   const latest = entries.at(-1);
   if (!contextId || !latest) return create(ConversationSchema, { contextId, ready });
   const tree = taskTree(index, latest.parentTaskId || latest.id);
+  const runs = conversationWork(index, entries);
+  const members = [...new Set(runs.map((run) => run.agentId))];
   return create(ConversationSchema, {
     contextId,
     ready,
@@ -164,11 +167,21 @@ export async function conversation(
     busy: tree ? busy(tree) : false,
     state: runState(latest),
     messages: await messages(sync, index, entries),
-    pending: tree
-      ? foreground(tree).flatMap((entry) =>
-          entry.interactions.filter((item) => awaiting(item.state)),
-        )
-      : [],
+    interactions: [
+      ...new Map(
+        runs.flatMap((run) =>
+          (index.entry(run.taskId)?.interactions ?? []).map((item) => [item.id, item] as const),
+        ),
+      ).values(),
+    ],
+    runs,
+    participants: members.map((id) =>
+      engineer(
+        index,
+        id,
+        runs.filter((run) => run.agentId === id).flatMap((run) => index.entry(run.taskId) ?? []),
+      ),
+    ),
     roleDraft: member?.role === "role-builder" ? await roleDraft(sync, latest) : undefined,
   });
 }

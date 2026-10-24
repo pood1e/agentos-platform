@@ -13,6 +13,7 @@ import {
   AskUserResponseSchema,
   ToolApprovalResponseSchema,
 } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { pendingInteractions } from "../../shared/conversation-interactions.js";
 import { shortTitle } from "../../shared/title.js";
 import type { Executions } from "../authorization/executions.js";
 import { approvalEnvironment } from "../governance/client.js";
@@ -63,7 +64,7 @@ export function messageCommands(
       const session = index.session(request.contextId);
       if (!session || session.agentId !== id) throw precondition("chat.invalidConversation");
       const view = await conversation(sync, ref, request.contextId);
-      if (view.pending.length) throw precondition("chat.pendingApproval");
+      if (pendingInteractions(view).length) throw precondition("chat.pendingApproval");
       if (view.busy) throw conflict("chat.busy");
       return { agentId: session.agentId, contextId: session.id };
     }

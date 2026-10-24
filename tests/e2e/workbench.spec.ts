@@ -1,53 +1,39 @@
 import { expect, test } from "@playwright/test";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
-import { client, decideApproval, ids, resetKagent, startOperation } from "./kagent.js";
+import { client, decideApproval, resetKagent, startOperation } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
 
-test("completes chat delegation, approval, worker continuation and background knowledge", async ({
-  page,
-  request,
-}) => {
+test("finishes delegated work inline and retains only child results", async ({ page, request }) => {
   await startOperation(page);
-  await page.getByTestId("chat-task").click();
-  await expect(page).toHaveURL(/\/chat\/[^/?]+\?task=/);
-  const id = new URL(page.url()).searchParams.get("task") ?? "";
-  await expect(page.getByTestId("approval-node")).toBeVisible();
-  await page.getByRole("button", { name: "等待审批", exact: true }).click();
-  const drawer = page.getByTestId("agent-drawer");
-  await expect(drawer.getByTestId("approval-arguments")).toContainText("approval-smoke");
-  await expect(drawer.getByRole("button", { name: "批准并继续", exact: true })).toBeVisible();
+  const contextId = new URL(page.url()).pathname.split("/").at(-1);
+  const { tasks } = await client.listTasks({});
+  const task = tasks.find((item) => item.conversationContextId === contextId);
+  expect(task).toBeDefined();
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
   await decideApproval(page, request, true);
   await expect
-    .poll(async () => (await client.listTasks({ query: id })).tasks[0]?.state, { timeout: 20_000 })
-    .toBe(ActivityState.SUCCEEDED);
-  await page.keyboard.press("Escape");
-  await page.getByTestId("task-result").getByRole("button", { name: "任务结论" }).click();
-  await expect(
-    page.getByText("用户决定已处理，执行结果已核验；知识正在后台沉淀。", { exact: true }),
-  ).toBeVisible();
-  await expect
-    .poll(async () => {
-      const controller = new AbortController();
-      try {
-        for await (const { task } of client.watchTask(
-          { taskId: id },
-          { signal: controller.signal },
-        ))
-          return task?.runs.some((run) => run.background && run.state === ActivityState.SUCCEEDED);
-      } finally {
-        controller.abort();
-      }
+    .poll(async () => (await client.listTasks({ query: task?.id })).tasks[0]?.state, {
+      timeout: 20000,
     })
-    .toBe(true);
+    .toBe(ActivityState.SUCCEEDED);
+  await expect(page.getByTestId("chat-agent-result")).not.toHaveCount(0);
+  await expect(page.getByTestId("conversation")).toContainText(
+    "用户决定已处理，执行结果已核验；知识正在后台沉淀。",
+  );
+  await expect(page.getByTestId("chat-working-agents")).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath("compact-chat-results.png") });
+  await page.reload();
+  await expect(page.getByTestId("chat-agent-result")).not.toHaveCount(0);
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
 });
 
-test("keeps mobile task details within the viewport", async ({ page }) => {
+test("keeps the composer and worker area visible on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/chat?task=${ids.approvalRoot}`);
-  await expect(page.locator(".react-flow")).toBeVisible();
+  await startOperation(page);
+  await expect(page.getByTestId("conversation")).toBeVisible();
+  await expect(page.getByTestId("chat-working-agents")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.locator(".react-flow__node-agent").first().click();
-  await expect(page.getByTestId("agent-drawer")).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: test.info().outputPath("compact-chat-mobile.png") });
 });

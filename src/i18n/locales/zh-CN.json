@@ -196,7 +196,9 @@
     "executionDenied": "当前身份无权继续此任务，请新建对话。",
     "taskDetails": "任务详情",
     "relatedTasks": "相关任务",
-    "closeTask": "收起任务详情"
+    "closeTask": "收起任务详情",
+    "workingAgents": "正在工作",
+    "agentResult": "{{name}}的任务结果"
   },
   "pagination": {
     "previous": "上一页",

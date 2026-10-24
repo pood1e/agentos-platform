@@ -53,6 +53,7 @@ export class FakeKagent {
   private requests = new Map<string, string>();
   private updates = new EventEmitter().setMaxListeners(0);
   private clock = 0;
+  private lifetime = new AbortController();
 
   constructor(fixtures: { agents: Agent[]; sessions: Session[]; tasks: Task[] }) {
     this.agents = fixtures.agents;
@@ -63,6 +64,9 @@ export class FakeKagent {
 
   /** Replaces sessions and tasks; restored tasks get a new status time so readers see a change. */
   load(fixtures: { sessions: Session[]; tasks: Task[] }): void {
+    this.lifetime.abort();
+    this.lifetime = new AbortController();
+    this.requests.clear();
     this.sessions.clear();
     this.tasks.clear();
     for (const session of fixtures.sessions) this.sessions.set(session.id, session);
@@ -117,10 +121,12 @@ export class FakeKagent {
     agent: { namespace: string; name: string },
     name: string,
   ) {
+    const { signal } = this.lifetime;
     const parent = this.sessions.get(parentId);
     if (!parent) throw new Error("Fixture parent session missing");
     const child = this.createSession(agent, randomUUID(), name);
     await this.executionCreated?.(child, parent);
+    signal.throwIfAborted();
     return child;
   }
 
@@ -141,7 +147,13 @@ export class FakeKagent {
       metadata: { [createdAtKey]: new Date(this.now()).toISOString() },
     });
     this.update(task, TaskState.WORKING);
-    setTimeout(() => void execute(this, task, message), 200);
+    const { signal } = this.lifetime;
+    setTimeout(() => {
+      if (signal.aborted) return;
+      void execute(this, task, message).catch((error) => {
+        if (!signal.aborted) throw error;
+      });
+    }, 200);
     return task;
   }
 

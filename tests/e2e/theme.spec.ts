@@ -19,7 +19,7 @@ test("recolors the graph and its drawer without resetting the viewport", async (
   request,
 }) => {
   await resetKagent(request);
-  await page.goto(`/chat?task=${ids.dispatchRoot}`);
+  await page.goto(`/system-tasks?task=${ids.dispatchRoot}`);
   await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
   await page.locator(".react-flow__controls-zoomout").click();
   const viewport = await page.locator(".react-flow__viewport").getAttribute("style");

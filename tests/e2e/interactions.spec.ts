@@ -55,7 +55,7 @@ async function question(page: Page) {
       ),
     });
   });
-  await page.goto("/chat?task=root");
+  await page.goto("/system-tasks?task=root");
   await page.getByTestId("approval-node").click();
   return { interaction: detail.interactions[0], detail };
 }

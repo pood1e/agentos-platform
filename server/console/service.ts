@@ -214,12 +214,13 @@ export function consoleService({
         )
           throw notFound("chat.invalidConversation");
         const view = await conversation(sync, request.agent, request.contextId, visible);
+        await taskTags.conversation(view);
         view.operate =
           !request.contextId ||
           (await canOperate(request.contextId, context.values.get(requestIdentity).subject));
-        if (view.pending.length)
+        if (view.interactions.length)
           await approvalsFor(
-            view.pending,
+            view.interactions,
             context.values.get(requestIdentity).subject,
             view.operate,
           );
