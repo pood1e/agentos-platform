@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.5](https://github.com/pood1e/agentos-platform/compare/v0.33.4...v0.33.5) (2026-10-24)
+
+
+### Bug Fixes
+
+* stop delegated runs and prevent MCP discovery resets ([#121](https://github.com/pood1e/agentos-platform/issues/121)) ([7ed3821](https://github.com/pood1e/agentos-platform/commit/7ed38210a41c322303ef923e32dcf6ef6c214f66))
+
 ## [0.33.4](https://github.com/pood1e/agentos-platform/compare/v0.33.3...v0.33.4) (2026-10-24)
 
 
