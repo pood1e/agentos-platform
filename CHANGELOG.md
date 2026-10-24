@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.3](https://github.com/pood1e/agentos-platform/compare/v0.33.2...v0.33.3) (2026-10-24)
+
+
+### Bug Fixes
+
+* **approvals:** clarify decisions and retry unavailable execution metadata ([#117](https://github.com/pood1e/agentos-platform/issues/117)) ([577de62](https://github.com/pood1e/agentos-platform/commit/577de62ab7568a2dc3d22e19d2520b009b94a7f7))
+
 ## [0.33.2](https://github.com/pood1e/agentos-platform/compare/v0.33.1...v0.33.2) (2026-10-24)
 
 
