@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/pood1e/agentos-platform/compare/v0.33.5...v0.34.0) (2026-10-24)
+
+
+### Features
+
+* **auth:** separate resource management from operational execution ([#123](https://github.com/pood1e/agentos-platform/issues/123)) ([a2a963d](https://github.com/pood1e/agentos-platform/commit/a2a963de056ddf306f8d19a9b8f4d0a037c6fbbd))
+
 ## [0.33.5](https://github.com/pood1e/agentos-platform/compare/v0.33.4...v0.33.5) (2026-10-24)
 
 
