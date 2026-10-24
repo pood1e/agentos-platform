@@ -79,7 +79,7 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: registry.example.com/agentos/standard-harness@sha256:7080612cd2893c295b13b7aaf429346574556055930bfa2a3aa028d10290af90
+      image: registry.example.com/agentos/standard-harness@sha256:83a61f2fc207f34fb59ebcfb214189dfc49f2ab9539ea92be33d7e013f13a517
     env:
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
@@ -91,7 +91,7 @@ harnesses:
         modelConfigRef: {name: knowledge-embedding}
         ttlDays: 3650
     workload:
-      image: registry.example.com/agentos/standard-harness@sha256:7080612cd2893c295b13b7aaf429346574556055930bfa2a3aa028d10290af90
+      image: registry.example.com/agentos/standard-harness@sha256:83a61f2fc207f34fb59ebcfb214189dfc49f2ab9539ea92be33d7e013f13a517
     env:
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:

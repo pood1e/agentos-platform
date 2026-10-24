@@ -16,7 +16,7 @@ cmp "$source_dir/proto/kagent/runtime/v1/memory.proto" "$task_root/third_party/k
 cd "$source_dir/go"
 go mod edit -replace=go.ate.dev/substrate=../../substrate-source
 go test -race -count=1 ./core/internal/database ./core/pkg/migrations ./core/internal/service/memory ./core/internal/service/tool ./core/internal/grpcserver ./core/internal/a2agateway ./core/internal/translator/adkconfig ./core/internal/substrate ./core/internal/translator ./core/internal/utils
-go test -race -count=1 ./core/internal/translator/claude ./core/internal/translator/codex ./harness/claude/... ./harness/codex/... ./adk/pkg/controllerclient ./adk/pkg/taskstore
+go test -race -count=1 ./core/internal/translator/claude ./core/internal/translator/codex ./harness/claude/... ./harness/codex/... ./adk/pkg/controllerclient ./adk/pkg/taskstore ./adk/pkg/embedding
 go test -race -count=1 ./core/internal/controller -run '^TestStatusForPairPublishesCompilationWarnings$'
 make lint AWK=awk
 mkdir -p "$task_root/.cache/controller-image"
