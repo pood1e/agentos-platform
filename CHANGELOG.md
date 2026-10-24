@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.29.0](https://github.com/pood1e/agentos-platform/compare/v0.28.1...v0.29.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deploy:** remove the observability deployment tag, Langfuse site variables, bundled services and OTLP exporter configuration.
+
+### Code Refactoring
+
+* **deploy:** replace bundled Langfuse with configurable OTLP telemetry ([#102](https://github.com/pood1e/agentos-platform/issues/102)) ([b846d5c](https://github.com/pood1e/agentos-platform/commit/b846d5cec56bcc7a4a74ed9d7d562d8b9acf9489))
+
 ## [0.28.1](https://github.com/pood1e/agentos-platform/compare/v0.28.0...v0.28.1) (2026-10-23)
 
 
