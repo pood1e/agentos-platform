@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/pood1e/agentos-platform/compare/v0.31.0...v0.32.0) (2026-10-24)
+
+
+### Features
+
+* **chat:** manage conversation history and show execution status ([#108](https://github.com/pood1e/agentos-platform/issues/108)) ([70f0f4b](https://github.com/pood1e/agentos-platform/commit/70f0f4bb56785ec9f7601ca30acb5a8262750331))
+
 ## [0.31.0](https://github.com/pood1e/agentos-platform/compare/v0.30.0...v0.31.0) (2026-10-24)
 
 
