@@ -95,7 +95,7 @@ export function ChatPage() {
               className="flex min-h-0 min-w-0 flex-1 flex-col"
             >
               <ConversationTranscript chat={chat} />
-              <WorkingAgents chat={chat} />
+              <WorkingAgents chat={chat} entryAgentId={`${agent.namespace}/${agent.name}`} />
               <ChatComposer chat={chat} />
             </ThreadPrimitive.Root>
           </ConversationRuntime>

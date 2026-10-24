@@ -19,10 +19,10 @@ export function useConversationAgent(id: string) {
   );
 }
 
-export function WorkingAgents({ chat }: { chat: Chat }) {
+export function WorkingAgents({ chat, entryAgentId }: { chat: Chat; entryAgentId: string }) {
   const { t } = useTranslation();
   const runs = (chat.conversation?.runs ?? []).filter(
-    (run) => active(run.state) || awaiting(run.state),
+    (run) => run.agentId !== entryAgentId && (active(run.state) || awaiting(run.state)),
   );
   const agents = [...new Map(runs.map((run) => [run.agentId, run])).values()];
   if (!agents.length) return null;

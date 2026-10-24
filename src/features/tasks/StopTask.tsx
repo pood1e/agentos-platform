@@ -15,6 +15,7 @@ export function StopTask({ taskId, operate }: { taskId: string; operate: boolean
   if (!operate) return null;
   return (
     <Button
+      type="button"
       variant="outline"
       size="sm"
       disabled={cancel.isPending}

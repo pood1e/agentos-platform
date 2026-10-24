@@ -79,17 +79,16 @@ async function runningTree() {
   return { ...env, tree };
 }
 
-it("cancels all unfinished foreground tasks, retains background tasks and is repeatable", async () => {
+it("cancels all unfinished delegated tasks, including background work, and is repeatable", async () => {
   const { clients, sync, index, tree, fake } = await runningTree();
   const cancel = vi.spyOn(clients.a2a, "cancelTask");
   try {
     await cancelTree(clients, sync, tree);
     expect(cancel.mock.calls.map(([request]) => request.id)).toEqual(
-      expect.arrayContaining([ids.dispatchRoot, ids.inspection]),
+      expect.arrayContaining([ids.dispatchRoot, ids.inspection, ids.background]),
     );
-    expect(cancel.mock.calls.map(([request]) => request.id)).not.toContain(ids.background);
     expect(index.entry(ids.inspection)?.state).toBe(TaskState.CANCELED);
-    expect(fake.task(ids.background).status?.state).toBe(TaskState.WORKING);
+    expect(fake.task(ids.background).status?.state).toBe(TaskState.CANCELED);
     expect(taskDetail(index, ids.dispatchRoot)?.summary?.state).toBe(ActivityState.CANCELED);
     const again = taskTree(index, ids.dispatchRoot);
     if (!again) throw new Error("missing operation");
@@ -150,6 +149,20 @@ it("accepts a native task that finishes between reading the tree and canceling i
     await cancelTree(clients, sync, tree);
     expect(index.entry(ids.inspection)?.state).toBe(TaskState.COMPLETED);
     expect(index.entry(ids.dispatchRoot)?.state).toBe(TaskState.CANCELED);
+  } finally {
+    sync.close();
+  }
+});
+
+it("does not report success before native execution acknowledges cancellation", async () => {
+  const { clients, sync, tree } = await runningTree();
+  vi.spyOn(clients.a2a, "cancelTask").mockImplementation((request) =>
+    clients.a2a.getTask({ id: request.id, tenant: request.tenant }),
+  );
+  try {
+    await expect(cancelTree(clients, sync, tree)).rejects.toMatchObject({
+      code: Code.FailedPrecondition,
+    });
   } finally {
     sync.close();
   }

@@ -22,6 +22,7 @@ function fixture() {
     messages: [],
     ready: true,
     busy: false,
+    running: false,
     pending: [],
     blocked: false,
     sending: false,

@@ -9,16 +9,14 @@ import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { isAdministrator } from "../../shared/permissions.js";
-import { type Executions, relatedExecutions } from "../authorization/executions.js";
+import type { Executions } from "../authorization/executions.js";
 import type { BindingView } from "../governance/bindings.js";
 import { approvals } from "../governance/views.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { McpApps } from "../mcp-apps/service.js";
 import { accessProfile, requestIdentity } from "../platform/access.js";
-import { cancelTree } from "../read-model/cancel.js";
 import type { KagentSync } from "../read-model/sync.js";
-import { taskTree } from "../read-model/tree.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
 import { taskRun } from "../read-model/views/run.js";
@@ -28,6 +26,7 @@ import { exclusiveCommands } from "../shared/exclusive.js";
 import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
 import { approvalReferences } from "./approval-references.js";
+import { cancellationCommands } from "./cancellation.js";
 import { conversationCommands } from "./conversations.js";
 import { chatTarget, executionHistory } from "./history.js";
 import { messageCommands } from "./messages.js";
@@ -85,6 +84,7 @@ export function consoleService({
   const history = executionHistory(index, executions);
   const taskTags = taskTagCommands(clients, tags, executions);
   const exclusive = exclusiveCommands();
+  const cancel = cancellationCommands(sync, clients, executions, exclusive);
   const messages = messageCommands(
     sync,
     clients,
@@ -209,22 +209,7 @@ export function consoleService({
     },
     async cancelTask({ taskId }, context) {
       ready();
-      const visible = await history(context.values.get(requestIdentity));
-      const root = visible.operationRoot(taskId);
-      const tree = root && taskTree(visible, root.id);
-      if (!tree) throw notFound("task.notFound");
-      if (executions) {
-        const { session } = await clients.sessions.getSession({ sessionId: tree.root.contextId });
-        if (!session) throw notFound("task.notFound");
-        await executions.own(session, context.values.get(requestIdentity));
-        await relatedExecutions(
-          executions,
-          clients.sessions,
-          session,
-          tree.entries.map((entry) => entry.contextId),
-        );
-      }
-      await cancelTree(clients, sync, tree, context.signal);
+      await cancel(taskId, context.values.get(requestIdentity), context.signal);
       return {};
     },
     async listConversations(request, context) {

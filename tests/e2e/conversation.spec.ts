@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import { ArtifactSchema, PartSchema, TaskState } from "../../gen/a2a_pb.js";
 import { partTypeKey } from "../../server/read-model/decode/messages.js";
 import {
+  client,
   decideApproval,
   ids,
   observeTask,
@@ -79,6 +80,12 @@ test("keeps chat full width and shows delegated workers without task details", a
   await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
   await expect(page.getByTestId("chat-working-agents")).toBeVisible();
   await expect(page.getByTestId("chat-working-agent")).not.toHaveCount(0);
+  const { profile } = await client.getAccessProfile({});
+  await expect(
+    page.locator(
+      `[data-testid="chat-working-agent"][data-agent-id="${profile?.workspace}/${profile?.entryAgent?.name}"]`,
+    ),
+  ).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "消息", exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("chat-working-agents")).toBeVisible();
@@ -107,6 +114,7 @@ test("keeps streamed text visible while tools run, after completion and after re
   if (task.status) task.status.state = TaskState.WORKING;
   await observeTask(request, task);
   await page.goto(`/chat/${task.contextId}`);
+  await expect(page.getByTestId("chat-working-agents")).toHaveCount(0);
   const answer = page.getByTestId("chat-message").filter({ hasText: "先读取当前资源。" });
   await expect(answer).toHaveCount(1);
   const messageId = await answer.getAttribute("data-message-id");
