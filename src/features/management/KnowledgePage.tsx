@@ -21,9 +21,10 @@ import type {
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { millis } from "../../lib/format.js";
+import { ConfirmDelete } from "../shared/ConfirmDelete.js";
 import { KnowledgeArticle } from "./KnowledgeArticle.js";
 import { knowledgeDocument } from "./knowledge-content.js";
-import { ConfirmDelete, ResourceSheet, SaveButton } from "./ResourceDialog.js";
+import { ResourceSheet, SaveButton } from "./ResourceDialog.js";
 import { Failure, ResourcePage, useManagementPage } from "./ResourcePage.js";
 
 function AddKnowledge({ onSaved }: { onSaved: () => void }) {

@@ -101,8 +101,11 @@ export class FakeKagent {
   }
 
   createSession(agent: { namespace: string; name: string }, requestId: string, name: string) {
-    const existing = this.sessions.get(this.requests.get(requestId) ?? "");
+    const previous = this.requests.get(requestId);
+    const existing = this.sessions.get(previous ?? "");
     if (existing) return existing;
+    if (previous)
+      throw new ConnectError("request belongs to a deleted session", Code.FailedPrecondition);
     const session = create(SessionSchema, {
       id: randomUUID(),
       creator: "agentos",

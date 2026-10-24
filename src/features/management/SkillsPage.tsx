@@ -30,8 +30,9 @@ import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { editSkill, newSkill, skillKinds, withKind } from "../engineers/role-draft.js";
 import { SkillSourceFields } from "../engineers/SkillSourceFields.js";
+import { ConfirmDelete } from "../shared/ConfirmDelete.js";
 import { roleLabel } from "../shared/engineers.js";
-import { ConfirmDelete, ResourceSheet, SaveButton } from "./ResourceDialog.js";
+import { ResourceSheet, SaveButton } from "./ResourceDialog.js";
 import { Failure, ResourcePage, useManagementPage } from "./ResourcePage.js";
 
 function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void }) {

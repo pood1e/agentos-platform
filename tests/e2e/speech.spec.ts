@@ -281,7 +281,7 @@ test("speaks only the completed answer and preserves visible progress across too
           content: {
             case: "text",
             value:
-              '# 检查结果\n\n**所有资源健康。**\n\n```json\n{"tool":"k8s_get_resources","result":"raw-tool-payload"}\n```\n\n| Tool | Result |\n|---|---|\n| k8s_get_resources | raw-tool-payload |\n\n[查看报告](https://example.test/report)',
+              '# 检查结果\n\n**所有资源健康。**\n\n```json\n{"tool":"k8s_get_resources","result":"raw-tool-payload"}\n```\n\n| 设备数 | 端口 |\n|---|---|\n| 12 | 443 |\n\n[查看报告](https://example.test/report)',
           },
         },
       ],
@@ -300,12 +300,16 @@ test("speaks only the completed answer and preserves visible progress across too
   );
   await page.keyboard.press("Escape");
   await answer.getByRole("button", { name: "朗读", exact: true }).click();
-  await expect.poll(() => spoken).toEqual(["检查结果\n\n所有资源健康。\n\n查看报告"]);
+  await expect
+    .poll(() => spoken)
+    .toEqual(["检查结果\n\n所有资源健康。\n\n设备数, 端口\n12, 443\n\n查看报告"]);
   await page.reload();
   await expect(answer).toContainText("所有资源健康。");
   await page.keyboard.press("Escape");
   await answer.getByRole("button", { name: "朗读", exact: true }).click();
-  await expect.poll(() => spoken).toEqual(Array(2).fill("检查结果\n\n所有资源健康。\n\n查看报告"));
+  await expect
+    .poll(() => spoken)
+    .toEqual(Array(2).fill("检查结果\n\n所有资源健康。\n\n设备数, 端口\n12, 443\n\n查看报告"));
   await page.getByRole("button", { name: "停止播放", exact: true }).click();
   task.artifacts = [
     create(ArtifactSchema, {

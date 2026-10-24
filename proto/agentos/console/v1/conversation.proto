@@ -14,6 +14,8 @@ message ConversationSummary {
   string context_id = 1;
   string title = 2;
   google.protobuf.Timestamp updated_at = 3;
+  // Includes delegated background work and pending user interactions.
+  agentos.execution.v1.ActivityState state = 4;
 }
 
 message ChatMessage {

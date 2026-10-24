@@ -42,6 +42,18 @@ export class LiveTasks {
     for (const controller of this.streams.values()) controller.abort();
   }
 
+  forgetSession(contextId: string): void {
+    for (const entry of this.index.contextEntries(contextId)) {
+      this.streams.get(entry.id)?.abort();
+      this.streams.delete(entry.id);
+      this.running.delete(entry.id);
+      this.retries.delete(entry.id);
+      this.reload.delete(entry.id);
+      this.details.delete(entry.id);
+    }
+    this.index.removeSession(contextId);
+  }
+
   /** The listed status differs from the index, or the task lost its subscription. */
   changed(task: Task): boolean {
     const entry = this.index.entry(task.id);

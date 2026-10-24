@@ -8,7 +8,7 @@ test.beforeEach(async ({ request }) => resetKagent(request));
 
 test("lets a reader query through a new conversation", async ({ page }) => {
   await page.goto("/chat");
-  await expect(page.getByRole("button", { name: "新对话", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "新聊天", exact: true })).toBeEnabled();
   await page.getByRole("textbox", { name: "消息", exact: true }).fill("你好，说明一下如何协作");
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page).toHaveURL(/\/chat\/[^/]+/);

@@ -16,11 +16,12 @@ import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.
 import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
+import { ConfirmDelete } from "../shared/ConfirmDelete.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
 import { HarnessEditor } from "./HarnessEditor.js";
 import { harnessMetadata, harnessName } from "./HarnessPicker.js";
-import { ConfirmDelete, ResourceSheet } from "./ResourceDialog.js";
+import { ResourceSheet } from "./ResourceDialog.js";
 import { ResourcePage } from "./ResourcePage.js";
 
 export function HarnessesPage() {

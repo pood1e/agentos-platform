@@ -40,7 +40,7 @@ test("does not replace the current chat when a previous send finishes after navi
   await expect(page).toHaveURL(/\/chat\/[^/?]+$/);
   await expect(page.getByTestId("chat-message").last()).toContainText("已处理：保留当前会话");
   const original = page.url();
-  await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await page.getByRole("button", { name: "新聊天", exact: true }).click();
   await expect(page).toHaveURL(/\/chat$/);
   await expect(page.getByTestId("chat-message")).toHaveCount(0);
   let release = () => {};
@@ -88,7 +88,8 @@ test("keeps chat full width and shows delegated workers without task details", a
   await expect(page.getByTestId("chat-working-agents")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: test.info().outputPath("compact-chat-delegation-mobile.png") });
-  await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await page.getByRole("button", { name: "聊天记录", exact: true }).click();
+  await page.getByRole("button", { name: "新聊天", exact: true }).click();
   await expect(page.getByTestId("chat-working-agents")).toHaveCount(0);
 });
 

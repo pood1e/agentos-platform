@@ -28,13 +28,10 @@ import { type PageRequest, pageOf } from "../page.js";
 import type { KagentSync } from "../sync.js";
 import { busy, taskTree } from "../tree.js";
 import { chatParts } from "./chat-parts.js";
-import { agentResults, conversationWork } from "./conversation-work.js";
+import { agentResults, conversationProgress, conversationWork } from "./conversation-work.js";
 import { engineer } from "./engineers.js";
 import { runState, stamp } from "./runs.js";
 import { taskSummary } from "./task.js";
-
-const lastActivity = (index: TaskIndex, contextId: string) =>
-  Math.max(0, ...index.contextEntries(contextId).map((entry) => entry.statusAt ?? 0));
 
 export function listConversations(
   index: TaskIndex,
@@ -56,10 +53,14 @@ export function listConversations(
           .toLowerCase()
           .includes(needle),
     )
-    .map((session) => ({
-      session,
-      at: Math.max(session.updatedAt ?? 0, lastActivity(index, session.id)),
-    }))
+    .map((session) => {
+      const progress = conversationProgress(index, session.id);
+      return {
+        session,
+        state: progress.state,
+        at: Math.max(session.updatedAt ?? 0, progress.updatedAt),
+      };
+    })
     .sort((a, b) => b.at - a.at || a.session.id.localeCompare(b.session.id));
   const page = pageOf(matches, request, `conversations:${id}`, (entry) => ({
     id: entry.session.id,
@@ -67,11 +68,12 @@ export function listConversations(
   }));
   return {
     conversations: page.items.map(
-      ({ session, at }): ConversationSummary =>
+      ({ session, at, state }): ConversationSummary =>
         create(ConversationSummarySchema, {
           contextId: session.id,
           title: session.name,
           updatedAt: stamp(at || undefined),
+          state,
         }),
     ),
     totalSize: page.totalSize,

@@ -87,6 +87,14 @@ export class TaskIndex {
     this.touch("");
   }
 
+  removeSession(id: string): void {
+    for (const entry of this.contextEntries(id)) this.remove(entry.id);
+    this.sessionInfo.delete(id);
+    this.missingSessions.delete(id);
+    this.contexts.delete(id);
+    this.touch("");
+  }
+
   entry = (id: string) => this.entries.get(id);
   session = (id: string) => this.sessionInfo.get(id);
   agent = (id: string) => this.agentInfo.get(id);

@@ -1,22 +1,20 @@
 import { ThreadPrimitive } from "@assistant-ui/react";
 import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { keepPreviousData } from "@tanstack/react-query";
-import { SquarePen } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { useAccess } from "../../lib/access.js";
-import { HistoryList } from "../shared/HistoryList.js";
 import { usePaging } from "../shared/paging.js";
 import { useTask } from "../tasks/use-task.js";
 import { WorkingAgents } from "./AgentPresence.js";
 import { ChatComposer } from "./ChatComposer.js";
+import { ChatHistory } from "./ChatHistory.js";
 import { ConversationRuntime } from "./ConversationRuntime.js";
 import { ConversationTranscript } from "./ConversationTranscript.js";
-import { rememberConversation } from "./conversation-storage.js";
+import { forgetConversation, rememberConversation } from "./conversation-storage.js";
 import { useChat } from "./use-chat.js";
 import { VoiceCallContext } from "./voice/context.js";
 import { useVoiceCall } from "./voice/use-voice-call.js";
@@ -52,39 +50,34 @@ export function ChatPage() {
   return (
     <div
       data-testid="chat-workspace"
-      className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 lg:grid-cols-[200px_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 xl:grid-cols-[220px_minmax(0,1fr)]"
+      className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 xl:grid-cols-[256px_minmax(0,1fr)]"
     >
-      <HistoryList
-        kind="chat"
-        entries={(list.data?.conversations ?? []).map((item) => ({
-          id: item.contextId,
-          title: item.title || t("chat.title"),
-          detail: item.title,
-        }))}
+      <ChatHistory
+        entries={list.data?.conversations ?? []}
         total={list.data?.totalSize ?? 0}
         paging={paging.controls(list.data?.nextPageToken)}
         selectedId={contextId}
-        selectedTitle={title}
         onSelect={(id) => navigate(`/chat/${id}`)}
-        disabled={chat.sending}
+        disabled={chat.sending || !access.data}
+        onNew={() => {
+          void call.stop();
+          chat.reset();
+          paging.controls().onSearch("");
+          navigate("/chat");
+        }}
+        onDeleted={(id) => {
+          if (access.data) forgetConversation(access.data, id);
+          if (contextId === id) {
+            void call.stop();
+            chat.reset();
+            navigate("/chat", { replace: true });
+          }
+        }}
+        onRefresh={() => list.refetch()}
       />
       <div className="flex min-h-0 min-w-0 flex-col">
         <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
           <h1 className="min-w-0 truncate text-sm font-medium">{title || t("chat.assistant")}</h1>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t("chat.new")}
-            title={t("chat.new")}
-            disabled={chat.sending || !access.data}
-            onClick={() => {
-              call.stop();
-              chat.reset();
-              navigate("/chat");
-            }}
-          >
-            <SquarePen />
-          </Button>
         </div>
         {linked.error && (
           <Alert variant="destructive">

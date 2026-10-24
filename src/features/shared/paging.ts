@@ -1,5 +1,12 @@
 import { useDeferredValue, useState } from "react";
-import { type HistoryPage, pageSize } from "./HistoryList.js";
+export const pageSize = 12;
+
+export interface HistoryPage {
+  page: number;
+  search: string;
+  onPage: (page: number) => void;
+  onSearch: (search: string) => void;
+}
 
 /** Keeps cursors for visited pages while only querying the selected page. */
 export function usePaging(
