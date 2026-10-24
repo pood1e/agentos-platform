@@ -9,6 +9,11 @@ spec:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {memory: 512Mi}
   logging: {format: json, level: info}
+  rawConfig:
+    config:
+      backend:
+        # Recycle sockets before Node.js's default 5s keep-alive expires.
+        poolIdleTimeout: 4s
   service:
     spec:
       type: NodePort

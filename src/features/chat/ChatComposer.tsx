@@ -48,14 +48,15 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
         />
         <div className="flex items-center justify-end gap-2">
           <SpeechInput disabled={chat.blocked || chat.sending || chat.busy} />
-          {chat.busy && chat.conversation?.messages.at(-1)?.taskId ? (
+          {chat.running && chat.conversation?.messages.at(-1)?.taskId && (
             <div className="self-end">
               <StopTask
                 taskId={chat.conversation.messages.at(-1)?.taskId ?? ""}
                 operate={chat.conversation.operate}
               />
             </div>
-          ) : (
+          )}
+          {!chat.busy && (
             <ComposerPrimitive.Send asChild disabled={dictating}>
               <Button
                 size="icon-sm"

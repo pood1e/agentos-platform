@@ -2,6 +2,11 @@ suite: environment gateway identity boundary
 values: [values.json]
 release: {name: agentos-environment, namespace: mcp}
 tests:
+  - it: retires idle upstream connections before MCP servers close their keep-alive sockets
+    template: gateway.yaml
+    documentSelector: {path: kind, value: AgentgatewayParameters}
+    asserts:
+      - equal: {path: spec.rawConfig.config.backend.poolIdleTimeout, value: 4s}
   - it: exposes the HTTPS listener with its managed certificate
     template: gateway.yaml
     documentSelector: {path: "kind", value: Gateway}

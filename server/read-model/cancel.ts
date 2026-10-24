@@ -3,17 +3,17 @@ import type { KagentClients } from "../kagent/clients.js";
 import { ingest } from "./entry.js";
 import { terminal } from "./state.js";
 import type { KagentSync } from "./sync.js";
-import { foreground, type TaskTree } from "./tree.js";
+import type { TaskTree } from "./tree.js";
 
-/** Cancel every unfinished foreground task, preserving successful results on partial failure. */
+/** Cancel every unfinished delegated task, preserving successful results on partial failure. */
 export async function cancelTree(
   clients: Pick<KagentClients, "a2a">,
   sync: KagentSync,
-  tree: TaskTree,
+  tree: Pick<TaskTree, "entries">,
   signal?: AbortSignal,
 ): Promise<void> {
   const results = await Promise.allSettled(
-    foreground(tree)
+    tree.entries
       .filter((entry) => !terminal(entry.state))
       .map(async (entry) => {
         const request = { tenant: entry.agentId, id: entry.id };
@@ -27,6 +27,8 @@ export async function cancelTree(
             return current;
           });
         sync.index.upsert(ingest(task, entry.agentId));
+        if (!terminal(task.status?.state))
+          throw new ConnectError("Task cancellation is still pending", Code.FailedPrecondition);
       }),
   );
   sync.index.flush();
