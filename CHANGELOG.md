@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/pood1e/agentos-platform/compare/v0.33.0...v0.33.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **mcp-apps:** authorize visibility against selected tool profiles ([#113](https://github.com/pood1e/agentos-platform/issues/113)) ([7e40a34](https://github.com/pood1e/agentos-platform/commit/7e40a34859ad67946edf1ebe99b790f9a0aa35ca))
+
 ## [0.33.0](https://github.com/pood1e/agentos-platform/compare/v0.32.0...v0.33.0) (2026-10-24)
 
 
