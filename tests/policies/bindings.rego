@@ -40,7 +40,7 @@ tier_suffix("readOnly") := ""
 review_required(tier, environment, tools, tool) if {
 	tier == "write"
 	environment.governance == "approval"
-	tool in object.get(tools, "approval", object.get(tools, "write", []))
+	tool in object.get(tools, "approval", array.concat(object.get(tools, "write", []), object.get(tools, "management", [])))
 } else := false
 
 expected_bindings(template) := {binding |
