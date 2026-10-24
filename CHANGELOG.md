@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/pood1e/agentos-platform/compare/v0.30.0...v0.31.0) (2026-10-24)
+
+
+### Features
+
+* **chat:** show working agents and compact tool calls ([#106](https://github.com/pood1e/agentos-platform/issues/106)) ([35f0ce8](https://github.com/pood1e/agentos-platform/commit/35f0ce8502edc9a0ad4e47144879ced89ed5f6e6))
+
 ## [0.30.0](https://github.com/pood1e/agentos-platform/compare/v0.29.0...v0.30.0) (2026-10-24)
 
 
