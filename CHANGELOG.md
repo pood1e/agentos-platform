@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/pood1e/agentos-platform/compare/v0.29.0...v0.30.0) (2026-10-24)
+
+
+### Features
+
+* **models:** display embedding models in their own model connection tab ([#104](https://github.com/pood1e/agentos-platform/issues/104)) ([c4c074c](https://github.com/pood1e/agentos-platform/commit/c4c074c117087fa156e953997ac604b0650402c7))
+
 ## [0.29.0](https://github.com/pood1e/agentos-platform/compare/v0.28.1...v0.29.0) (2026-10-24)
 
 
