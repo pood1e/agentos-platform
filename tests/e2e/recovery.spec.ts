@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { decideApproval, ids, resetKagent, startOperation } from "./kagent.js";
+import { client, decideApproval, ids, resetKagent, startOperation } from "./kagent.js";
 
 test("keeps an engineer successful after an earlier tool failure and exposes the actual call", async ({
   page,
@@ -8,7 +8,11 @@ test("keeps an engineer successful after an earlier tool failure and exposes the
   await resetKagent(request);
   await startOperation(page);
   await decideApproval(page, request, true);
-  await page.getByTestId("chat-task").click();
+  const origin = new URL(page.url()).pathname.split("/").at(-1);
+  const { tasks } = await client.listTasks({});
+  const operation = tasks.find((task) => task.conversationContextId === origin);
+  expect(operation).toBeDefined();
+  await page.goto(`/system-tasks?task=${operation?.id}`);
   const engineer = page
     .locator('[data-testid="collaboration-step"][data-agent="agentos/remediation"]')
     .first();
@@ -43,7 +47,7 @@ test("shows failed execution details and retries without closing the drawer", as
         })
       : route.continue(),
   );
-  await page.goto(`/chat?task=${ids.dispatchRoot}`);
+  await page.goto(`/system-tasks?task=${ids.dispatchRoot}`);
   await page.locator(".react-flow__node-agent").first().click();
   const drawer = page.getByTestId("agent-drawer");
   await expect(drawer.getByRole("alert")).toContainText("暂时无法加载执行详情");

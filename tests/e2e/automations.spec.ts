@@ -44,9 +44,7 @@ test("hides system tasks from ordinary users and rejects direct definitions and 
   });
   expect(runs.status()).toBe(403);
   await page.goto(`/chat?task=${execution?.taskId}`);
-  await expect(page.getByTestId("chat-task-panel").getByRole("alert")).toContainText(
-    "任务不存在或已不可见",
-  );
+  await expect(page.getByRole("alert")).toContainText("任务不存在或已不可见");
   await expect(page.getByTestId("task-title")).toHaveCount(0);
 });
 

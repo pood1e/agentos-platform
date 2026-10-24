@@ -12,7 +12,7 @@ test("opens the pending approval queue and work-order drawer from the top bar", 
   await expect(pending).toContainText(/[1-9]/);
   await pending.click();
   await page.getByRole("menuitem").filter({ hasText: "验证独立测试环境审批和实际处置" }).click();
-  await expect(page).toHaveURL(/\/chat.*task=.*approval=1/);
+  await expect(page).toHaveURL(/\/system-tasks.*task=.*approval=1/);
   const drawer = page.getByTestId("agent-drawer");
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole("button", { name: "批准并继续", exact: true })).toBeVisible();
@@ -21,7 +21,7 @@ test("opens the pending approval queue and work-order drawer from the top bar", 
 });
 
 test("stops a task with a completed root and a pending foreground worker", async ({ page }) => {
-  await page.goto(`/chat?task=${ids.approvalRoot}`);
+  await page.goto(`/system-tasks?task=${ids.approvalRoot}`);
   await page.getByRole("button", { name: "停止", exact: true }).click();
   await expect
     .poll(async () => (await client.listTasks({ query: ids.approvalRoot })).tasks[0]?.state)
@@ -40,14 +40,13 @@ test("stops a delegated operation and continues in the same conversation", async
   await startOperation(page);
   await page.getByTestId("conversation").getByRole("button", { name: "停止", exact: true }).click();
   await expect(page.getByRole("button", { name: "停止", exact: true })).toHaveCount(0);
-  await expect(page.getByTestId("approval-detail")).toHaveCount(0);
+  await expect(
+    page.getByTestId("approval-detail").getByRole("button", { name: "批准并继续", exact: true }),
+  ).toHaveCount(0);
   const input = page.getByRole("textbox", { name: "消息", exact: true });
   await expect(input).toBeEditable();
-  await page.getByTestId("chat-task").click();
-  await expect(page.getByTestId("task-title")).toBeVisible();
-  await expect(
-    page.getByTestId("chat-task-panel").getByText("已取消", { exact: true }).first(),
-  ).toBeVisible();
+  await expect(page.getByTestId("chat-task-panel")).toHaveCount(0);
+  await expect(page.getByTestId("chat-working-agents")).toHaveCount(0);
   const conversation = new URL(page.url()).pathname;
   await input.fill("停止后继续聊");
   await page.getByRole("button", { name: "发送", exact: true }).click();
@@ -58,7 +57,7 @@ test("stops a delegated operation and continues in the same conversation", async
 test("shows execution, delegation and approval intervals with working drawers", async ({
   page,
 }) => {
-  await page.goto(`/chat?task=${ids.approvalRoot}`);
+  await page.goto(`/system-tasks?task=${ids.approvalRoot}`);
   await page.getByRole("tab", { name: "时间线", exact: true }).click();
   const timeline = page.getByTestId("task-timeline");
   await expect(timeline.getByTestId("timeline-execution")).not.toHaveCount(0);

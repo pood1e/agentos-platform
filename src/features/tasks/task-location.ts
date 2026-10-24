@@ -6,5 +6,7 @@ export function taskLocation(
 ) {
   const search = new URLSearchParams({ task: task.id });
   if (approval) search.set("approval", "1");
-  return `/chat${task.conversationContextId ? `/${encodeURIComponent(task.conversationContextId)}` : ""}?${search}`;
+  return task.conversationContextId
+    ? `/chat/${encodeURIComponent(task.conversationContextId)}?${search}`
+    : `/system-tasks?${search}`;
 }

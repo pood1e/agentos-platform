@@ -201,7 +201,9 @@
     "executionDenied": "This identity cannot continue the task. Start a new conversation.",
     "taskDetails": "Task details",
     "relatedTasks": "Related tasks",
-    "closeTask": "Close task details"
+    "closeTask": "Close task details",
+    "workingAgents": "Working agents",
+    "agentResult": "Result from {{name}}"
   },
   "pagination": {
     "previous": "Previous page",

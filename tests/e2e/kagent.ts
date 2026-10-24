@@ -68,7 +68,7 @@ export async function startOperation(
   await page.getByRole("textbox", { name: "消息", exact: true }).fill(text);
   await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByTestId("approval-detail")).toBeVisible();
-  await expect(page.getByTestId("chat-task")).toHaveCount(1);
+  await expect(page.getByTestId("chat-working-agents")).toBeVisible();
 }
 
 /** Resolves the native pause through the same public API as the approval buttons. */

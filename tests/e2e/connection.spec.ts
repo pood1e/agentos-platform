@@ -3,7 +3,7 @@ import { ids, resetKagent } from "./kagent.js";
 
 test("retains graph observations and zoom while queries reconnect", async ({ page, request }) => {
   await resetKagent(request);
-  await page.goto(`/chat?task=${ids.dispatchRoot}`);
+  await page.goto(`/system-tasks?task=${ids.dispatchRoot}`);
   await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
   await page.locator(".react-flow__controls-zoomout").click();
   const viewport = page.locator(".react-flow__viewport");
@@ -50,7 +50,7 @@ test("reauthenticates an expired browser session while preserving the conversati
   request,
 }) => {
   await resetKagent(request);
-  await page.goto(`/chat?task=${ids.dispatchRoot}`);
+  await page.goto(`/system-tasks?task=${ids.dispatchRoot}`);
   await expect(page.locator(".react-flow__node-agent").first()).toBeVisible();
   const url = page.url();
   let rejected = false;

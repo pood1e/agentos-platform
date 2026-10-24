@@ -4,6 +4,7 @@ import {
   useExternalStoreRuntime,
 } from "@assistant-ui/react";
 import type { ReactNode } from "react";
+import { ConversationAgents } from "./AgentPresence.js";
 import { convertMessage } from "./runtime-message.js";
 import { SpeechContext } from "./speech/context.js";
 import { useSpeech } from "./speech/use-speech.js";
@@ -28,7 +29,9 @@ export function ConversationRuntime({ chat, children }: { chat: Chat; children: 
   });
   return (
     <SpeechContext value={controls}>
-      <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>
+      <ConversationAgents value={chat.conversation?.participants ?? []}>
+        <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>
+      </ConversationAgents>
     </SpeechContext>
   );
 }

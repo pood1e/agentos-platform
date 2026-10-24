@@ -22,6 +22,8 @@ export const convertMessage = (message: ChatMessage): ThreadMessageLike => ({
             text: content.value,
           },
         ];
+      if (content.case === "agentResult")
+        return [{ id: part.id, type: "data", name: "agent-result", data: content.value }];
       if (content.case !== "toolCall") return [];
       const call = content.value;
       return [

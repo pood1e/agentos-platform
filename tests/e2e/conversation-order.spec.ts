@@ -28,6 +28,12 @@ test("interleaves narration and parallel tool batches during streaming, completi
     ...Array.from({ length: size }, (_, index) => `read-${batch}-${index}`),
   ]);
   await expect.poll(order).toEqual(expected);
+  const groups = reply.getByTestId("chat-tool-group");
+  await expect(groups).toHaveCount(batches.length);
+  for (const group of await groups.all()) {
+    const bounds = await group.boundingBox();
+    expect(bounds?.height).toBeLessThanOrEqual(40);
+  }
   const partIds = () =>
     blocks.evaluateAll((elements) =>
       elements.map(
@@ -57,9 +63,12 @@ test("interleaves narration and parallel tool batches during streaming, completi
   await expect.poll(order).toEqual([...expected, "发现异常，告警条件需要修正。"]);
   expect(await partIds()).toEqual(draft);
   const middle = reply.locator('[data-call-id="read-2-1"]');
-  await middle.getByRole("button").click();
-  await expect(middle.getByTestId("call-input")).toContainText("read-2-1");
-  await expect(middle.getByTestId("call-output")).toContainText('"healthy": true');
+  await middle.click();
+  await expect(page.getByRole("dialog").getByTestId("call-input")).toContainText("read-2-1");
+  await expect(page.getByRole("dialog").getByTestId("call-output")).toContainText(
+    '"healthy": true',
+  );
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await partIds()).toEqual(draft);
   expect(await reply.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);

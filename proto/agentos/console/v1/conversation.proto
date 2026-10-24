@@ -4,6 +4,7 @@ package agentos.console.v1;
 
 import "a2a.proto";
 import "agentos/console/v1/role.proto";
+import "agentos/console/v1/engineer.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/execution/v1/state.proto";
 import "agentos/execution/v1/task.proto";
@@ -35,6 +36,7 @@ message ChatMessagePart {
     // Assistant narration and the current draft while work is in progress.
     string progress = 3;
     agentos.execution.v1.ToolCall tool_call = 4;
+    agentos.execution.v1.TaskRun agent_result = 5;
   }
 }
 
@@ -45,8 +47,10 @@ message Conversation {
   bool busy = 3;
   agentos.execution.v1.ActivityState state = 4;
   repeated ChatMessage messages = 5;
-  repeated Interaction pending = 6;
+  repeated Interaction interactions = 6;
   RoleDefinition role_draft = 7;
   string title = 8;
   bool operate = 9;
+  repeated agentos.execution.v1.TaskRun runs = 10;
+  repeated Engineer participants = 11;
 }

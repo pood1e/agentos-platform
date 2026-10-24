@@ -294,12 +294,16 @@ test("speaks only the completed answer and preserves visible progress across too
   await observeTask(request, task);
   const call = answer.getByTestId("chat-tool-call");
   await expect(call).toHaveCount(1);
-  await call.getByRole("button").click();
-  await expect(call.getByTestId("call-output")).toContainText("raw-tool-payload");
+  await call.click();
+  await expect(page.getByRole("dialog").getByTestId("call-output")).toContainText(
+    "raw-tool-payload",
+  );
+  await page.keyboard.press("Escape");
   await answer.getByRole("button", { name: "朗读", exact: true }).click();
   await expect.poll(() => spoken).toEqual(["检查结果\n\n所有资源健康。\n\n查看报告"]);
   await page.reload();
   await expect(answer).toContainText("所有资源健康。");
+  await page.keyboard.press("Escape");
   await answer.getByRole("button", { name: "朗读", exact: true }).click();
   await expect.poll(() => spoken).toEqual(Array(2).fill("检查结果\n\n所有资源健康。\n\n查看报告"));
   await page.getByRole("button", { name: "停止播放", exact: true }).click();

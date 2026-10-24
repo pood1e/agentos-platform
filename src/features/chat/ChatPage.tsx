@@ -2,17 +2,17 @@ import { ThreadPrimitive } from "@assistant-ui/react";
 import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { keepPreviousData } from "@tanstack/react-query";
 import { SquarePen } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { useAccess } from "../../lib/access.js";
-import { cn } from "../../lib/utils.js";
 import { HistoryList } from "../shared/HistoryList.js";
 import { usePaging } from "../shared/paging.js";
-import { taskLocation } from "../tasks/task-location.js";
 import { useTask } from "../tasks/use-task.js";
+import { WorkingAgents } from "./AgentPresence.js";
 import { ChatComposer } from "./ChatComposer.js";
 import { ConversationRuntime } from "./ConversationRuntime.js";
 import { ConversationTranscript } from "./ConversationTranscript.js";
@@ -22,31 +22,26 @@ import { VoiceCallContext } from "./voice/context.js";
 import { useVoiceCall } from "./voice/use-voice-call.js";
 import { VoiceCallControls } from "./voice/VoiceCallControls.js";
 
-const TaskPanel = lazy(() =>
-  import("../tasks/TaskPanel.js").then((module) => ({ default: module.TaskPanel })),
-);
-
 export function ChatPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { contextId = "" } = useParams();
-  const [search, setSearch] = useSearchParams();
-  const [dismissed, setDismissed] = useState("");
+  const [search] = useSearchParams();
   const paging = usePaging();
   const access = useAccess();
   const name = access.data?.entryAgent?.name ?? "assistant";
   const agent = { namespace: access.data?.workspace ?? "", name };
   const chat = useChat(agent, contextId, (id) => navigate(`/chat/${id}`));
   const call = useVoiceCall(chat, contextId);
+  const linked = useTask(search.get("task") ?? "");
+  useEffect(() => {
+    const origin = linked.value?.summary?.conversationContextId;
+    if (origin) void navigate(`/chat/${encodeURIComponent(origin)}`, { replace: true });
+  }, [linked.value?.summary?.conversationContextId, navigate]);
   const list = useQuery(
     ConsoleService.method.listConversations,
     agent.namespace
-      ? {
-          agent,
-          pageToken: paging.pageToken,
-          pageSize: paging.pageSize,
-          query: paging.query,
-        }
+      ? { agent, pageToken: paging.pageToken, pageSize: paging.pageSize, query: paging.query }
       : skipToken,
     { refetchInterval: 3_000, placeholderData: keepPreviousData },
   );
@@ -54,43 +49,6 @@ export function ChatPage() {
     if (access.data) rememberConversation(access.data, contextId);
   }, [contextId, access.data]);
   const title = chat.conversation?.title;
-  const related = chat.messages.flatMap((message) =>
-    message.tasks.map((task) => ({ task, messageId: message.id })),
-  );
-  const tasks = [...new Map(related.map(({ task }) => [task.id, task])).values()];
-  const latest = related.at(-1);
-  const latestKey = latest ? `${contextId}:${latest.messageId}:${latest.task.id}` : "";
-  const previous = useRef(latestKey);
-  const selected =
-    search.get("task") ?? (latestKey && dismissed !== latestKey ? latest?.task.id : "") ?? "";
-  const task = useTask(selected);
-  useEffect(() => {
-    const origin = task.value?.summary?.conversationContextId;
-    if (origin && origin !== contextId)
-      void navigate(
-        taskLocation(
-          { id: selected, conversationContextId: origin },
-          search.get("approval") === "1",
-        ),
-        { replace: true },
-      );
-  }, [task.value?.summary?.conversationContextId, selected, contextId, navigate, search]);
-  useEffect(() => {
-    const old = previous.current;
-    previous.current = latestKey;
-    if (old && latestKey && old !== latestKey && search.has("task")) {
-      const next = new URLSearchParams(search);
-      next.delete("task");
-      next.delete("approval");
-      setSearch(next, { replace: true });
-    }
-  }, [latestKey, search, setSearch]);
-  const selectTask = (id: string) => {
-    const next = new URLSearchParams(search);
-    next.set("task", id);
-    next.delete("approval");
-    setSearch(next);
-  };
   return (
     <div
       data-testid="chat-workspace"
@@ -110,69 +68,45 @@ export function ChatPage() {
         onSelect={(id) => navigate(`/chat/${id}`)}
         disabled={chat.sending}
       />
-      <div
-        className={cn(
-          "grid min-h-0 min-w-0 grid-cols-1",
-          selected && "xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] xl:gap-5",
-        )}
-      >
-        <div className={cn("min-h-0 min-w-0 flex-col", selected ? "hidden xl:flex" : "flex")}>
-          <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <h1 className="min-w-0 truncate text-sm font-medium">
-                {title || t("chat.assistant")}
-              </h1>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t("chat.new")}
-              title={t("chat.new")}
-              disabled={chat.sending || !access.data}
-              onClick={() => {
-                call.stop();
-                chat.reset();
-                navigate("/chat");
-              }}
-            >
-              <SquarePen />
-            </Button>
-          </div>
-          <VoiceCallControls call={call} disabled={!chat.ready || !chat.conversation?.operate} />
-          <VoiceCallContext value={call.active}>
-            <ConversationRuntime
-              key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
-              chat={chat}
-            >
-              <ThreadPrimitive.Root
-                data-testid="conversation"
-                className="flex min-h-0 min-w-0 flex-1 flex-col"
-              >
-                <ConversationTranscript chat={chat} onTask={selectTask} />
-                <ChatComposer chat={chat} />
-              </ThreadPrimitive.Root>
-            </ConversationRuntime>
-          </VoiceCallContext>
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
+          <h1 className="min-w-0 truncate text-sm font-medium">{title || t("chat.assistant")}</h1>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("chat.new")}
+            title={t("chat.new")}
+            disabled={chat.sending || !access.data}
+            onClick={() => {
+              call.stop();
+              chat.reset();
+              navigate("/chat");
+            }}
+          >
+            <SquarePen />
+          </Button>
         </div>
-        {selected && (
-          <Suspense fallback={null}>
-            <TaskPanel
-              taskId={selected}
-              detail={task.value}
-              error={task.error}
-              tasks={tasks}
-              openApproval={search.get("approval") === "1"}
-              onSelect={selectTask}
-              onClose={() => {
-                setDismissed(latestKey);
-                const next = new URLSearchParams(search);
-                next.delete("task");
-                next.delete("approval");
-                setSearch(next, { replace: true });
-              }}
-            />
-          </Suspense>
+        {linked.error && (
+          <Alert variant="destructive">
+            <AlertDescription>{t(linked.error)}</AlertDescription>
+          </Alert>
         )}
+        <VoiceCallControls call={call} disabled={!chat.ready || !chat.conversation?.operate} />
+        <VoiceCallContext value={call.active}>
+          <ConversationRuntime
+            key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
+            chat={chat}
+          >
+            <ThreadPrimitive.Root
+              data-testid="conversation"
+              className="flex min-h-0 min-w-0 flex-1 flex-col"
+            >
+              <ConversationTranscript chat={chat} />
+              <WorkingAgents chat={chat} />
+              <ChatComposer chat={chat} />
+            </ThreadPrimitive.Root>
+          </ConversationRuntime>
+        </VoiceCallContext>
       </div>
     </div>
   );
