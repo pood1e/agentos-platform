@@ -1,3 +1,74 @@
+diff --git a/go/adk/pkg/embedding/actor_identity_test.go b/go/adk/pkg/embedding/actor_identity_test.go
+new file mode 100644
+index 0000000..247ea56
+--- /dev/null
++++ b/go/adk/pkg/embedding/actor_identity_test.go
+@@ -0,0 +1,38 @@
++package embedding
++
++import (
++	"encoding/json"
++	"net/http"
++	"net/http/httptest"
++	"testing"
++
++	configv1 "github.com/kagent-dev/kagent/go/api/gen/kagent/config/v1"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
++)
++
++func TestOpenAIEmbeddingRequestsCarryHostSignedIdentity(t *testing.T) {
++	t.Setenv("OPENAI_API_KEY", "placeholder")
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
++		if got := request.Header.Get(egresspolicy.ActorIdentityHeader); got != "required" {
++			t.Errorf("actor identity header = %q, want required", got)
++		}
++		w.Header().Set("Content-Type", "application/json")
++		if err := json.NewEncoder(w).Encode(embeddingResponse("embedding")); err != nil {
++			t.Errorf("write embedding response: %v", err)
++		}
++	}))
++	t.Cleanup(server.Close)
++	client, err := New(Config{EmbeddingConfig: &configv1.ADKEmbeddingConfig{
++		Provider: "openai", Model: "embedding", BaseUrl: server.URL,
++	}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	vectors, err := client.Generate(t.Context(), []string{"verified knowledge"})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(vectors) != 1 || len(vectors[0]) != TargetDimension {
++		t.Fatalf("embedding shape = %d vectors, want one %d-dimensional vector", len(vectors), TargetDimension)
++	}
++}
+diff --git a/go/adk/pkg/embedding/embedding.go b/go/adk/pkg/embedding/embedding.go
+index 1dd863e..765d95c 100644
+--- a/go/adk/pkg/embedding/embedding.go
++++ b/go/adk/pkg/embedding/embedding.go
+@@ -22,6 +22,7 @@ import (
+ 	"github.com/kagent-dev/kagent/go/adk/pkg/internal/azureai"
+ 	"github.com/kagent-dev/kagent/go/adk/pkg/models"
+ 	configv1 "github.com/kagent-dev/kagent/go/api/gen/kagent/config/v1"
++	"github.com/kagent-dev/kagent/go/core/pkg/egresspolicy"
+ 	"github.com/kagent-dev/kagent/go/core/pkg/env"
+ 	"github.com/kagent-dev/kagent/go/pkg/logging"
+ )
+@@ -120,11 +121,13 @@ func newOpenAIProvider(cfg *configv1.ADKEmbeddingConfig) (*openAIProvider, error
+ func generateEmbeddings(ctx context.Context, client openai.Client, cfg *configv1.ADKEmbeddingConfig, provider string, isAzureFamily bool, texts []string) ([][]float32, error) {
+ 	log := logging.FromContext(ctx)
+ 
++	options := append(embeddingPassthroughOpts(ctx, cfg, isAzureFamily),
++		option.WithHeader(egresspolicy.ActorIdentityHeader, "required"))
+ 	resp, err := client.Embeddings.New(ctx, openai.EmbeddingNewParams{
+ 		Model:      openai.EmbeddingModel(cfg.Model),
+ 		Input:      openai.EmbeddingNewParamsInputUnion{OfArrayOfStrings: texts},
+ 		Dimensions: openai.Int(int64(TargetDimension)),
+-	}, embeddingPassthroughOpts(ctx, cfg, isAzureFamily)...)
++	}, options...)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("%s embeddings request failed: %w", provider, err)
+ 	}
 diff --git a/go/api/gen/kagent/runtime/v1/memory.pb.go b/go/api/gen/kagent/runtime/v1/memory.pb.go
 index de97eed..309f3a3 100644
 --- a/go/api/gen/kagent/runtime/v1/memory.pb.go
