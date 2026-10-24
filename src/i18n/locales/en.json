@@ -78,7 +78,8 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "answered": "Answered",
-    "operationNotice": "Approval is managed by the target environment.",
+    "operationNotice": "Review the approval request in the target environment. The Agent will resume after approval.",
+    "appNotice": "Review the request in the ticket view below. The Agent will resume after the decision.",
     "rejectionReason": "Reason for rejection (optional)",
     "approveAndExecute": "Approve and execute",
     "reject": "Reject",
@@ -88,7 +89,7 @@
     "operationsApproved": "Operations approved",
     "operationsRejected": "Operations rejected",
     "approve": "Approve and continue",
-    "externalDecision": "This operation is decided by the external approval service",
+    "externalDecision": "Use the approval request in the target environment to decide this operation.",
     "executionDenied": "Execution permissions do not allow this approval.",
     "rawArguments": "Raw arguments",
     "reasons": {

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package agentos.mcp.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// A view is supplied by the MCP server that owns its originating operation.
+message AppView {
+  string tool = 1 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  google.protobuf.Struct arguments = 2;
+}
+
+message AppReference {
+  string task_id = 1 [(buf.validate.field).string = {min_len: 1, max_len: 128}];
+  oneof origin {
+    option (buf.validate.oneof).required = true;
+    string call_id = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+    string approval_tool_id = 3 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  }
+}

@@ -13,8 +13,7 @@ test("renders a real MCP App across the isolated proxy, handles callbacks and fo
     const params = route.request().postDataJSON();
     if (params.name !== "graph_data") return route.continue();
     expect(params).toMatchObject({
-      taskId,
-      callId,
+      app: { taskId, callId },
       name: "graph_data",
       arguments: { value: { focus: "router-1" } },
     });

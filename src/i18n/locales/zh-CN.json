@@ -73,7 +73,8 @@
     "approved": "已批准",
     "rejected": "拒绝",
     "answered": "已回答",
-    "operationNotice": "审批由所属环境处理。",
+    "operationNotice": "请在所属环境的审批单中处理，通过后将自动继续。",
+    "appNotice": "请在下方工单视图中审批，完成后将自动继续。",
     "rejectionReason": "拒绝原因（可选）",
     "approveAndExecute": "批准并执行",
     "reject": "拒绝",
@@ -83,7 +84,7 @@
     "operationsApproved": "操作已批准",
     "operationsRejected": "操作已拒绝",
     "approve": "批准并继续",
-    "externalDecision": "此操作由外部审批服务处理",
+    "externalDecision": "请通过此操作所属环境的审批单进行审批。",
     "executionDenied": "执行权限不足，无法批准此操作。",
     "rawArguments": "原始参数",
     "reasons": {

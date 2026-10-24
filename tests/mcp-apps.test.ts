@@ -41,7 +41,9 @@ it("projects an App from native metadata and reads only the original call's reso
     }),
   ]);
   await expect(
-    env.client.getAppResource({ ...env.request, callId: "forged-call" }),
+    env.client.getAppResource({
+      app: { ...env.request.app, origin: { case: "callId", value: "forged-call" } },
+    }),
   ).rejects.toMatchObject({ code: Code.NotFound });
 });
 

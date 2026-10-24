@@ -71,7 +71,9 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
       router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] },
     }),
   );
-  const request = { taskId: scenario.task.id, callId: scenario.callId };
+  const request = {
+    app: { taskId: scenario.task.id, origin: { case: "callId" as const, value: scenario.callId } },
+  };
   return {
     ...env,
     ...scenario,

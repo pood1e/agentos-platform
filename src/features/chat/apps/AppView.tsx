@@ -1,6 +1,5 @@
-import { useAui } from "@assistant-ui/react";
-import { type JsonObject, toJson } from "@bufbuild/protobuf";
-import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import { create, type JsonObject } from "@bufbuild/protobuf";
+import type { CallToolResult } from "@modelcontextprotocol/client";
 import { CallToolResultSchema, ReadResourceResultSchema } from "@modelcontextprotocol/core";
 import { AppBridge, PostMessageTransport } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { Maximize2, Minimize2 } from "lucide-react";
@@ -9,25 +8,40 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ActivityState } from "../../../../gen/agentos/execution/v1/state_pb.js";
-import type { ToolCall } from "../../../../gen/agentos/execution/v1/task_pb.js";
+import {
+  type AppView as AppInput,
+  type AppReference,
+  AppReferenceSchema,
+} from "../../../../gen/agentos/mcp/v1/app_pb.js";
 import { appResourcePolicy } from "../../../../shared/mcp-apps-policy.js";
 import { consoleClient } from "../../../lib/console.js";
 import { ToolIcon } from "../../shared/ToolIcon.js";
 import { useToolText } from "../../shared/use-tool-text.js";
-import { active, awaiting } from "../../status/activity.js";
 import { hostContext } from "./host-context.js";
-import { appResult } from "./result.js";
 
-export function AppView({ call }: { call: ToolCall }) {
+export function AppView({
+  reference,
+  input,
+  result,
+  canceled = false,
+  onMessage,
+}: {
+  reference: AppReference;
+  input: AppInput;
+  result?: CallToolResult;
+  canceled?: boolean;
+  onMessage?: (text: string) => void;
+}) {
   const { t, i18n } = useTranslation();
   const { resolvedTheme } = useTheme();
-  const aui = useAui();
-  const label = useToolText()(call.name);
+  const taskId = reference.taskId;
+  const source = reference.origin;
+  const canMessage = Boolean(onMessage);
+  const label = useToolText()(input.tool);
   const container = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const bridge = useRef<AppBridge | undefined>(undefined);
-  const latest = useRef(call);
+  const latest = useRef({ input, result, canceled });
   const deliver = useRef<() => void>(() => {});
   const [height, setHeight] = useState(360);
   const [fullscreen, setFullscreen] = useState(false);
@@ -35,7 +49,11 @@ export function AppView({ call }: { call: ToolCall }) {
   const currentContext = useEffectEvent(() =>
     hostContext(resolvedTheme, i18n.language, fullscreen),
   );
-  const cancelled = useEffectEvent(() => t("activity.canceled"));
+  const cancellationReason = useEffectEvent(() => t("activity.canceled"));
+  const message = useEffectEvent((text: string) => {
+    if (!onMessage) throw new Error("Text input is unavailable");
+    onMessage(text);
+  });
   useEffect(() => {
     const changed = () => setFullscreen(document.fullscreenElement === container.current);
     document.addEventListener("fullscreenchange", changed);
@@ -45,10 +63,18 @@ export function AppView({ call }: { call: ToolCall }) {
     bridge.current?.setHostContext(hostContext(resolvedTheme, i18n.language, fullscreen));
   }, [resolvedTheme, i18n.language, fullscreen]);
   useEffect(() => {
-    latest.current = call;
+    latest.current = { input, result, canceled };
     deliver.current();
-  }, [call]);
+  }, [input, result, canceled]);
   useEffect(() => {
+    if (!source.case) return;
+    const app = create(AppReferenceSchema, {
+      taskId,
+      origin:
+        source.case === "callId"
+          ? { case: "callId", value: source.value }
+          : { case: "approvalToolId", value: source.value },
+    });
     const element = frame.current;
     if (!element?.contentWindow) return;
     const targetWindow = element.contentWindow;
@@ -56,10 +82,7 @@ export function AppView({ call }: { call: ToolCall }) {
     let connection: AppBridge | undefined;
     let rejectOrigin: ((event: MessageEvent) => void) | undefined;
     const load = async () => {
-      const response = await consoleClient.getAppResource(
-        { taskId: call.taskId, callId: call.id },
-        { signal: controller.signal },
-      );
+      const response = await consoleClient.getAppResource({ app }, { signal: controller.signal });
       const resource = ReadResourceResultSchema.parse(response.result?.value).contents[0];
       const html =
         "text" in resource
@@ -80,7 +103,7 @@ export function AppView({ call }: { call: ToolCall }) {
         {
           serverTools: {},
           openLinks: {},
-          message: { text: {} },
+          ...(canMessage ? { message: { text: {} } } : {}),
           sandbox: { csp, permissions: {} },
         },
         { hostContext: currentContext() },
@@ -89,29 +112,27 @@ export function AppView({ call }: { call: ToolCall }) {
       bridge.current = host;
       let initialized = false,
         sent = false;
-      const result = () => {
+      const publish = () => {
         const value = latest.current;
-        if (!initialized || sent || active(value.state) || awaiting(value.state)) return;
+        if (!initialized || sent || (!value.result && !value.canceled)) return;
         sent = true;
-        void (
-          value.state === ActivityState.CANCELED
-            ? host.sendToolCancelled({ reason: cancelled() })
-            : host.sendToolResult(appResult(value))
-        ).catch(() => {});
+        const sentResult = value.canceled
+          ? host.sendToolCancelled({ reason: cancellationReason() })
+          : value.result && host.sendToolResult(value.result);
+        void sentResult?.catch(() => {});
       };
-      deliver.current = result;
+      deliver.current = publish;
       host.onsandboxready = () => {
         void host.sendSandboxResourceReady({ html, csp }).catch(() => setError(true));
       };
       host.oninitialized = () => {
-        const args = latest.current.args ? toJson(ValueSchema, latest.current.args) : {};
         void host
           .sendToolInput({
-            arguments: args && typeof args === "object" && !Array.isArray(args) ? args : {},
+            arguments: latest.current.input.arguments ?? {},
           })
           .then(() => {
             initialized = true;
-            result();
+            publish();
           })
           .catch(() => setError(true));
       };
@@ -121,8 +142,7 @@ export function AppView({ call }: { call: ToolCall }) {
       host.oncalltool = async (params, extra) => {
         const result = await consoleClient.callAppTool(
           {
-            taskId: call.taskId,
-            callId: call.id,
+            app,
             name: params.name,
             arguments: { value: (params.arguments ?? {}) as JsonObject },
           },
@@ -143,10 +163,7 @@ export function AppView({ call }: { call: ToolCall }) {
         const text = content
           .flatMap((part) => (part.type === "text" ? [part.text] : []))
           .join("\n");
-        aui
-          .thread()
-          .composer()
-          .setText([aui.thread().composer().getState().text, text].filter(Boolean).join("\n"));
+        message(text);
         return {};
       };
       host.onrequestdisplaymode = async ({ mode }) => {
@@ -172,17 +189,17 @@ export function AppView({ call }: { call: ToolCall }) {
       if (rejectOrigin) window.removeEventListener("message", rejectOrigin, true);
       void connection?.close();
     };
-  }, [call.taskId, call.id, aui]);
+  }, [taskId, source.case, source.value, canMessage]);
   return (
     <div
       ref={container}
       data-testid="mcp-app-view"
-      data-call-id={call.id}
+      data-call-id={reference.origin.value}
       className="min-w-0 overflow-hidden bg-background"
     >
       <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5 text-xs font-medium">
         <span className="flex items-center gap-2">
-          <ToolIcon name={call.name} server={label.server} className="size-4" />
+          <ToolIcon name={input.tool} server={label.server} className="size-4" />
           {label.name}
         </span>
         <Button

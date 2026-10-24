@@ -1,6 +1,10 @@
+import { create } from "@bufbuild/protobuf";
 import type { CallOptions } from "@connectrpc/connect";
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
+import {
+  ApprovalReferenceSchema,
+  type GovernanceConfig,
+} from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { notFound } from "../shared/errors.js";
@@ -22,12 +26,13 @@ export async function approvals(
       const connection = approvalEnvironment(config.environments, tool.name);
       if (!connection?.approvalUrl) return undefined;
       try {
-        return (
-          await approvalClient(connection, token).getApproval(
-            { reference: { taskId, toolId: tool.id } },
-            options,
-          )
-        ).approval;
+        const reference = create(ApprovalReferenceSchema, { taskId, toolId: tool.id });
+        const { approval } = await approvalClient(connection, token).getApproval(
+          { reference },
+          options,
+        );
+        if (approval) approval.reference = reference;
+        return approval;
       } catch (error) {
         if (ConnectError.from(error).code === Code.NotFound) return undefined;
         throw error;

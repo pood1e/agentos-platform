@@ -85,9 +85,6 @@ export function Approval({
       {interaction.explanation && <Markdown>{interaction.explanation}</Markdown>}
       {approval ? (
         <>
-          {pending && interaction.external && (
-            <p className="text-xs text-muted-foreground">{t("approval.operationNotice")}</p>
-          )}
           {interaction.tools.map((tool) => {
             const label = toolText(tool.name);
             return (

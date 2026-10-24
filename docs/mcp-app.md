@@ -86,8 +86,8 @@ kagent 会把带 `resourceUri` 的工具结果对模型替换为已展示提示�
 
 | RPC | 输入 | 行为 |
 | --- | --- | --- |
-| `GetAppResource` | 任务 ID、调用 ID | 校验当前用户可读该调用，返回模板 HTML 与 `_meta.ui` |
-| `CallAppTool` | 任务 ID、调用 ID、工具名、参数 | 校验后以当前用户身份调用同一服务的工具，返回 `CallToolResult` |
+| `GetAppResource` | `AppReference`（任务 ID、调用或审批工具 ID） | 校验当前用户可读该来源，返回模板 HTML 与 `_meta.ui` |
+| `CallAppTool` | `AppReference`、工具名、参数 | 校验后以当前用户身份调用来源服务的工具，返回 `CallToolResult` |
 
 `CallAppTool` 的校验：
 
@@ -151,7 +151,17 @@ AIOps 方案包示例：
 - 沙箱源与控制台不同源，View 无法访问控制台的 Cookie、存储与 DOM；代理按来源转发消息。
 - 所有 View 共用沙箱源，View 之间不做存储隔离。
 - View 没有直接网络出口；数据访问经 `CallAppTool` 的归属、服务、可见性与分级校验，并受目标系统的用户权限约束。
-- View 不能发起写操作，也不能代替用户发送消息。
+- 工具调用产生的 View 仅允许只读回调；消息回调仅预填输入框。
+
+## 外部审批视图
+
+`ApprovalService` 的 `Approval.app` 可声明展示工具与入参。平台将任务和工具 ID 绑定为 `AppReference` 的审批来源，在审批卡片内复用相同的沙箱宿主；原始工具来源仍使用 `call_id`。
+
+审批提供方在 `EnvironmentConnection.approval_url` 的根路径提供 MCP HTTP 服务，Connect RPC 使用服务方法路径。平台从该服务发现展示工具、读取视图，并以当前查看者的 `catalog` OBO 令牌调用回调。
+宿主将已校验的 `ApprovalReference` 注入 MCP `_meta["agentos.dev/approval"]`，提供方据此限定工单和操作范围。
+
+审批写回调声明 `visibility: ["app"]` 与 `readOnlyHint: false`。平台在每次写入前校验查看者的写权限和原生任务仍等待同一审批；提供方校验当前人员资格、工单版本和审计身份。
+审批决定与后续执行校验仍由环境 `ApprovalService` 管理，普通工具视图的写权限保持关闭。平台不定义工单字段或审批成员组。
 
 ## 实施与验证
 
