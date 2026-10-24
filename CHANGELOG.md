@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.1](https://github.com/pood1e/agentos-platform/compare/v0.34.0...v0.34.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **knowledge:** authenticate native embedding requests with the host identity ([#125](https://github.com/pood1e/agentos-platform/issues/125)) ([c06b553](https://github.com/pood1e/agentos-platform/commit/c06b55384f167a2e6f64bf371e52b9f0fa811596))
+
 ## [0.34.0](https://github.com/pood1e/agentos-platform/compare/v0.33.5...v0.34.0) (2026-10-24)
 
 
