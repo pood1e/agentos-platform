@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.4](https://github.com/pood1e/agentos-platform/compare/v0.33.3...v0.33.4) (2026-10-24)
+
+
+### Bug Fixes
+
+* **user-input:** accept typed answers alongside suggested choices ([#119](https://github.com/pood1e/agentos-platform/issues/119)) ([eb29f7c](https://github.com/pood1e/agentos-platform/commit/eb29f7c103ff7be19fa1b83899b561849437d688))
+
 ## [0.33.3](https://github.com/pood1e/agentos-platform/compare/v0.33.2...v0.33.3) (2026-10-24)
 
 
