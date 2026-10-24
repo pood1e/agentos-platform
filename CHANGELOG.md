@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.2](https://github.com/pood1e/agentos-platform/compare/v0.33.1...v0.33.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **mcp-apps:** pair Undici fetch with its TLS dispatcher ([#115](https://github.com/pood1e/agentos-platform/issues/115)) ([a294db7](https://github.com/pood1e/agentos-platform/commit/a294db7838c58e86d10fddf8dea0001f7bec7700))
+
 ## [0.33.1](https://github.com/pood1e/agentos-platform/compare/v0.33.0...v0.33.1) (2026-10-24)
 
 
