@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/pood1e/agentos-platform/compare/v0.34.1...v0.35.0) (2026-10-24)
+
+
+### Features
+
+* **mcp:** render provider-owned approval apps in chat ([#127](https://github.com/pood1e/agentos-platform/issues/127)) ([386e570](https://github.com/pood1e/agentos-platform/commit/386e570fab33b9a585623f1b44f8a0d5e1c4e118))
+
 ## [0.34.1](https://github.com/pood1e/agentos-platform/compare/v0.34.0...v0.34.1) (2026-10-24)
 
 
