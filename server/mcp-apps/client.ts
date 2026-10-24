@@ -5,8 +5,12 @@ import {
   Client,
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
-import { Agent } from "undici";
+import { Agent, fetch as undiciFetch } from "undici";
+
 import type { EnvironmentConnection } from "../../gen/agentos/governance/v1/governance_pb.js";
+
+// Fetch and dispatcher must share an Undici version; its DOM iterator types differ.
+const fetch = undiciFetch as unknown as typeof globalThis.fetch;
 
 export async function callEnvironmentAppTool(
   connection: EnvironmentConnection,
