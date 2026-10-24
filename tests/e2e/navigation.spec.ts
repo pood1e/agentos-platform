@@ -17,7 +17,7 @@ test("keeps assistant conversations separate and restores the current user's las
   await page.goto("/");
   await expect(page).toHaveURL(session);
   await expect(page.getByRole("combobox", { name: "对话 Agent", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "新对话", exact: true }).click();
+  await page.getByRole("button", { name: "新聊天", exact: true }).click();
   await expect(page.getByTestId("chat-message")).toHaveCount(0);
   await page.getByTestId("chat-history").getByTestId("history-entry").first().click();
   await expect(page).toHaveURL(session);

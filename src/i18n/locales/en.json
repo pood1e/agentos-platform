@@ -203,7 +203,11 @@
     "relatedTasks": "Related tasks",
     "closeTask": "Close task details",
     "workingAgents": "Working agents",
-    "agentResult": "Result from {{name}}"
+    "agentResult": "Result from {{name}}",
+    "conversationActions": "Conversation actions",
+    "delete": "Delete chat",
+    "deleteConfirm": "Permanently delete “{{title}}” and its chat history? This cannot be undone.",
+    "deleteBusy": "Agents are still working or waiting for input. Delete this chat after they finish."
   },
   "pagination": {
     "previous": "Previous page",

@@ -19,6 +19,7 @@ import "kagent/api/v1/agents.proto";
 import "kagent/api/v1/common.proto";
 import "kagent/api/v1/harnesses.proto";
 import "kagent/api/v1/models.proto";
+import "kagent/api/v1/sessions.proto";
 import "kagent/api/v1/tools.proto";
 
 // Workbench API. google.rpc.ErrorInfo.reason carries localization keys.
@@ -52,6 +53,8 @@ service ConsoleService {
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Owners may delete a conversation after all delegated work has finished.
+  rpc DeleteSession(.kagent.api.v1.DeleteSessionRequest) returns (.kagent.api.v1.DeleteSessionResponse);
   // Sends the current conversation, then again whenever it changes.
   rpc WatchConversation(WatchConversationRequest) returns (stream WatchConversationResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;

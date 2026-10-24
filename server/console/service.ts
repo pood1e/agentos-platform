@@ -22,9 +22,11 @@ import { engineers } from "../read-model/views/engineers.js";
 import { taskRun } from "../read-model/views/run.js";
 import { listTasks, taskDetail } from "../read-model/views/task.js";
 import { invalid, notFound, unavailable } from "../shared/errors.js";
+import { exclusiveCommands } from "../shared/exclusive.js";
 import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
 import { approvalReferences } from "./approval-references.js";
+import { conversationCommands } from "./conversations.js";
 import { chatTarget, executionHistory } from "./history.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
@@ -76,7 +78,23 @@ export function consoleService({
   const index = sync.index;
   const history = executionHistory(index, executions);
   const taskTags = taskTagCommands(clients, tags, executions);
-  const messages = messageCommands(sync, clients, operations, executions, authorizeTools);
+  const exclusive = exclusiveCommands();
+  const messages = messageCommands(
+    sync,
+    clients,
+    operations,
+    executions,
+    authorizeTools,
+    exclusive,
+  );
+  const conversations = conversationCommands(
+    sync,
+    clients,
+    namespace,
+    entryAgent,
+    executions,
+    exclusive,
+  );
   const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate);
   const tickets = approvalReferences(sync, operations);
   const canOperate = async (contextId: string, subject: string) => {
@@ -200,6 +218,10 @@ export function consoleService({
       const identity = context.values.get(requestIdentity);
       chatTarget(namespace, entryAgent, request.agent, identity);
       return listConversations(await history(identity), request.agent, request);
+    },
+    deleteSession: (request, context) => {
+      ready();
+      return conversations.remove(request, context.values.get(requestIdentity));
     },
     async *watchConversation(request, context) {
       if (request.contextId && !index.session(request.contextId)) await sync.refresh();

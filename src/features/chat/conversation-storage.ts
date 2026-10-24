@@ -10,3 +10,8 @@ export function rememberConversation(profile: AccessProfile, contextId: string) 
   if (contextId) localStorage.setItem(key(profile), `/chat/${encodeURIComponent(contextId)}`);
   else localStorage.removeItem(key(profile));
 }
+
+export function forgetConversation(profile: AccessProfile, contextId: string) {
+  if (lastConversation(profile) === `/chat/${encodeURIComponent(contextId)}`)
+    localStorage.removeItem(key(profile));
+}

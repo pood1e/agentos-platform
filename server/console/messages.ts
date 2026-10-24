@@ -26,6 +26,7 @@ import { awaiting } from "../read-model/state.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation } from "../read-model/views/conversation.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
+import { exclusiveCommands } from "../shared/exclusive.js";
 import { messageIdentity } from "../shared/idempotency.js";
 
 export function messageCommands(
@@ -37,19 +38,9 @@ export function messageCommands(
     session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
     tools: string[],
   ) => Promise<void>,
+  exclusive = exclusiveCommands(),
 ) {
   const index = sync.index;
-  const inflight = new Set<string>();
-
-  async function exclusive<T>(key: string, run: () => Promise<T>): Promise<T> {
-    if (inflight.has(key)) throw conflict("chat.busy");
-    inflight.add(key);
-    try {
-      return await run();
-    } finally {
-      inflight.delete(key);
-    }
-  }
 
   async function target(request: SendMessageRequest, identity?: ExecutionIdentity) {
     const ref = request.agent;
@@ -109,20 +100,22 @@ export function messageCommands(
         return { contextId: accepted.contextId, taskId: accepted.id };
       }
       const { agentId, contextId } = await target(request, identity);
-      const task = await sync.send(
-        agentId,
-        create(MessageSchema, {
-          messageId: request.messageId,
-          contextId,
-          role: Role.USER,
-          parts: [{ content: { case: "text", value: text } }],
-          extensions: [hitlExtension],
-          metadata: {
-            [timelineKey]: new Date().toISOString(),
-            ...(identity ? { "agentos.initiator": identity.subject } : {}),
-          },
-        }),
-      );
+      const dispatch = () =>
+        sync.send(
+          agentId,
+          create(MessageSchema, {
+            messageId: request.messageId,
+            contextId,
+            role: Role.USER,
+            parts: [{ content: { case: "text", value: text } }],
+            extensions: [hitlExtension],
+            metadata: {
+              [timelineKey]: new Date().toISOString(),
+              ...(identity ? { "agentos.initiator": identity.subject } : {}),
+            },
+          }),
+        );
+      const task = request.contextId ? await dispatch() : await exclusive(contextId, dispatch);
       return { contextId: task.contextId, taskId: task.id };
     });
   }

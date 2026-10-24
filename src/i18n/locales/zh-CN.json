@@ -173,7 +173,7 @@
   },
   "chat": {
     "title": "聊天",
-    "new": "新对话",
+    "new": "新聊天",
     "history": "聊天记录",
     "welcome": "有什么需要帮忙的？",
     "you": "你",
@@ -198,7 +198,11 @@
     "relatedTasks": "相关任务",
     "closeTask": "收起任务详情",
     "workingAgents": "正在工作",
-    "agentResult": "{{name}}的任务结果"
+    "agentResult": "{{name}}的任务结果",
+    "conversationActions": "会话操作",
+    "delete": "删除会话",
+    "deleteConfirm": "将永久删除「{{title}}」及其聊天记录，无法恢复。",
+    "deleteBusy": "会话中仍有 Agent 正在执行或等待输入，结束后才能删除。"
   },
   "pagination": {
     "previous": "上一页",

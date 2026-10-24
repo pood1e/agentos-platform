@@ -87,6 +87,14 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
       if (!session) throw new ConnectError("session not found", Code.NotFound);
       return { session };
     },
+    deleteSession(request) {
+      const session = fake.sessions.get(request.sessionId);
+      if (!session) throw new ConnectError("session not found", Code.NotFound);
+      fake.sessions.delete(session.id);
+      for (const task of fake.tasks.values())
+        if (task.contextId === session.id) fake.tasks.delete(task.id);
+      return { session };
+    },
     createSession: (request) => ({
       session: fake.createSession(
         { namespace: request.agent?.namespace ?? "", name: request.agent?.name ?? "" },

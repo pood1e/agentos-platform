@@ -170,4 +170,12 @@ export class KagentSync {
   fullTask(id: string): Promise<Task | undefined> {
     return this.tasks.fullTask(id);
   }
+
+  async forgetSession(id: string): Promise<void> {
+    await this.running;
+    this.tasks.forgetSession(id);
+    this.unresolved.delete(id);
+    await this.index.checkpoint();
+    this.index.flush();
+  }
 }
