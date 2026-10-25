@@ -1,3 +1,4 @@
+import { create } from "@bufbuild/protobuf";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,9 +9,11 @@ import {
   type Answer,
   type Interaction,
   InteractionKind,
+  InteractionSchema,
   type Question,
 } from "../../../gen/agentos/console/v1/task_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
+import { approvalInteractionState } from "../../../shared/approval-state.js";
 import { errorKey } from "../../../shared/errors.js";
 import { useAccess } from "../../lib/access.js";
 import { awaiting } from "../status/activity.js";
@@ -20,6 +23,7 @@ import { interactionLabel } from "./interaction-state.js";
 import { Markdown } from "./Markdown.js";
 import { ToolArguments } from "./ToolArguments.js";
 import { ToolIcon } from "./ToolIcon.js";
+import { useExternalApprovals } from "./use-external-approvals.js";
 import { useInteractionResponse } from "./use-interaction-response.js";
 import { useToolText } from "./use-tool-text.js";
 
@@ -46,7 +50,15 @@ export function Approval({
   const access = useAccess();
   const toolText = useToolText();
   const response = useInteractionResponse(observed);
-  const { interaction, submit } = response;
+  const { submit } = response;
+  const external = useExternalApprovals(response.interaction);
+  const interaction = create(InteractionSchema, {
+    ...response.interaction,
+    state: approvalInteractionState(
+      response.interaction,
+      external.data?.approvals ?? response.interaction.approvals,
+    ),
+  });
   const submitted = response.request?.decision;
   const [drafts, setDrafts] = useState(() =>
     answerDrafts(
@@ -98,7 +110,9 @@ export function Approval({
               </div>
             );
           })}
-          {interaction.external && <ExternalApprovals interaction={interaction} record={record} />}
+          {interaction.external && (
+            <ExternalApprovals interaction={interaction} record={record} result={external} />
+          )}
           {interaction.rejectionReason && (
             <Alert variant="destructive" data-testid="rejection-reason">
               <AlertDescription>

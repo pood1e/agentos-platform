@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import {
   ChatMessagePartSchema,
@@ -12,6 +12,7 @@ import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { conversationTranscript } from "../server/console/conversation-transcript.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { conversationParts } from "../server/read-model/views/conversation-work.js";
+import { interactionAnchors } from "../server/read-model/views/interaction-anchors.js";
 import { convertMessage } from "../src/features/chat/runtime-message.js";
 import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 
@@ -117,6 +118,31 @@ it("anchors local approval and question cards to their own calls and keeps them 
   expect(
     Array.isArray(message.content) && message.content.every((part) => part.type !== "text"),
   ).toBe(true);
+});
+
+it("anchors a reused worker's new approval to the later delegation without moving the older approval", () => {
+  const index = fixtureIndex();
+  const root = index.entry(ids.chat),
+    child = index.entry(ids.chatRoot);
+  if (!root || !child) throw new Error("Missing conversation fixtures");
+  const first = create(InteractionSchema, { id: "first", requestedAt: timestampFromMs(200) });
+  const second = create(InteractionSchema, { id: "second", requestedAt: timestampFromMs(400) });
+  index.upsert({ ...child, interactions: [first, second], version: "reviews" });
+  const call = root.calls[0];
+  const earlier = { ...root, calls: [{ ...call, id: "first-call", startedAt: 100 }] };
+  const later = {
+    ...root,
+    id: "later-root",
+    calls: [{ ...call, id: "next-call", startedAt: 300 }],
+  };
+  const target = vi.spyOn(index, "target").mockReturnValue(child.id);
+  try {
+    const anchors = interactionAnchors(index, [earlier, later]);
+    expect(anchors.get(first.id)).toMatchObject({ entryId: earlier.id, callId: "first-call" });
+    expect(anchors.get(second.id)).toMatchObject({ entryId: later.id, callId: "next-call" });
+  } finally {
+    target.mockRestore();
+  }
 });
 
 it("shows real human reviews while leaving preflight failures in tool details and preserving the audit", () => {

@@ -1,20 +1,19 @@
 import { create } from "@bufbuild/protobuf";
-import { useQuery } from "@connectrpc/connect-query";
 import { ArrowUpRight, ChevronDown, LoaderCircle } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { Interaction } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { AppReferenceSchema } from "../../../gen/agentos/mcp/v1/app_pb.js";
 import { Failure } from "../management/ResourcePage.js";
-import { active, awaiting, labelKey } from "../status/activity.js";
+import { awaiting, labelKey } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { approvalIdentity } from "./approval-identity.js";
 import { Markdown } from "./Markdown.js";
+import type { useExternalApprovals } from "./use-external-approvals.js";
 
 const AppView = lazy(() =>
   import("../chat/apps/AppView.js").then((module) => ({ default: module.AppView })),
@@ -23,20 +22,14 @@ const AppView = lazy(() =>
 export function ExternalApprovals({
   interaction,
   record,
+  result,
 }: {
   interaction: Interaction;
   record?: Approval;
+  result: ReturnType<typeof useExternalApprovals>;
 }) {
   const { t } = useTranslation();
   const pending = awaiting(interaction.state);
-  const result = useQuery(
-    ConsoleService.method.listApprovals,
-    { taskId: interaction.taskId, requestId: interaction.requestId },
-    {
-      refetchInterval: (query) =>
-        pending || query.state.data?.approvals.some((item) => active(item.state)) ? 2_000 : false,
-    },
-  );
   const approvals = [
     ...new Map(
       (result.data?.approvals ?? interaction.approvals)

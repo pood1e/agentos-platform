@@ -30,6 +30,7 @@ import { busy, taskTree } from "../tree.js";
 import { chatParts } from "./chat-parts.js";
 import { conversationParts, conversationProgress, conversationWork } from "./conversation-work.js";
 import { engineer } from "./engineers.js";
+import { interactionAnchors } from "./interaction-anchors.js";
 import { runState, stamp } from "./runs.js";
 import { taskSummary } from "./task.js";
 
@@ -93,6 +94,7 @@ function operations(index: TaskIndex, entry: TaskEntry) {
 
 async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]) {
   const parts = new Map<string, ChatMessagePart[]>();
+  const anchors = interactionAnchors(index, entries);
   await pool(entries, 4, async (entry) => {
     const task = await sync.fullTask(entry.id);
     if (task) parts.set(entry.id, chatParts(task, entry.agentId));
@@ -112,7 +114,13 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
           tasks: position === 0 ? operations(index, entry) : [],
         });
       });
-    const content = conversationParts(index, entry, parts.get(entry.id) ?? [], interactions);
+    const content = conversationParts(
+      index,
+      entry,
+      parts.get(entry.id) ?? [],
+      interactions,
+      anchors,
+    );
     return content.length
       ? [
           ...turns,

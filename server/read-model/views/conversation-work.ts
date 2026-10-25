@@ -11,6 +11,7 @@ import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";
 import { taskActivity, terminal } from "../state.js";
 import { busy, outcomeState, taskTree } from "../tree.js";
+import type { interactionAnchors } from "./interaction-anchors.js";
 import { runSummary } from "./runs.js";
 
 export function conversationWork(index: TaskIndex, entries: TaskEntry[]) {
@@ -72,6 +73,7 @@ export function conversationParts(
   entry: TaskEntry,
   parts: ChatMessagePart[],
   interactions: Set<string>,
+  anchors: ReturnType<typeof interactionAnchors> = new Map(),
 ) {
   const emitted = new Set<string>();
   function human(items: Interaction[]) {
@@ -112,7 +114,11 @@ export function conversationParts(
       ...human(
         children
           .filter((member) => member.contextId !== entry.contextId)
-          .flatMap((member) => member.interactions),
+          .flatMap((member) => member.interactions)
+          .filter((item) => {
+            const anchor = anchors.get(item.id);
+            return !anchor || (anchor.entryId === entry.id && anchor.callId === callId);
+          }),
       ),
       ...delegatedResults(index, entry, callId)
         .filter(({ member }) => member.answer.trim() && !emitted.has(member.id))
