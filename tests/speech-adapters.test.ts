@@ -3,13 +3,13 @@ import { create } from "@bufbuild/protobuf";
 import type { CallOptions } from "@connectrpc/connect";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SynthesizeSpeechResponseSchema } from "../gen/agentos/console/v1/speech_pb.js";
-import type { TranscriptionConnection } from "../src/features/chat/speech/connection.js";
-import { RemoteDictationAdapter } from "../src/features/chat/speech/dictation.js";
-import { detectSpeechEnd } from "../src/features/chat/speech/endpointing.js";
-import { RemoteSpeechAdapter } from "../src/features/chat/speech/synthesis.js";
+import type { TranscriptionConnection } from "../shared/browser/speech/connection.js";
+import { RemoteDictationAdapter } from "../shared/browser/speech/dictation.js";
+import { detectSpeechEnd } from "../shared/browser/speech/endpointing.js";
+import { RemoteSpeechAdapter } from "../shared/browser/speech/synthesis.js";
 import { until } from "./harness.js";
 
-vi.mock("../src/features/chat/speech/endpointing.js", () => ({
+vi.mock("../shared/browser/speech/endpointing.js", () => ({
   detectSpeechEnd: vi.fn(async () => ({ start: vi.fn(async () => {}), stop: vi.fn() })),
 }));
 

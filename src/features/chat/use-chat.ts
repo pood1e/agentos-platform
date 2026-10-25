@@ -6,9 +6,9 @@ import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_
 import { ChatMessageSchema } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import { pendingInteractions } from "../../../shared/conversation-interactions.js";
+import { errorKey } from "../../../shared/errors.js";
 import { useAccess } from "../../lib/access.js";
 import { consoleClient } from "../../lib/console.js";
-import { errorKey } from "../../lib/errors.js";
 import { useWatch } from "../../lib/use-watch.js";
 import { active, awaiting } from "../status/activity.js";
 

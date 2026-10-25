@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
-import { errorKey } from "../../lib/errors.js";
+import { errorKey } from "../../../shared/errors.js";
 import { usePack } from "../../lib/pack.js";
 import { TagBadges } from "./TagBadges.js";
 

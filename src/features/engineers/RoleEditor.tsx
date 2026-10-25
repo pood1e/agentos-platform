@@ -25,8 +25,8 @@ import {
   type RoleDefinition,
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
+import { errorKey } from "../../../shared/errors.js";
 import { useCapability } from "../../lib/access.js";
-import { errorKey } from "../../lib/errors.js";
 import { engineerName } from "../shared/engineers.js";
 import { RoleBuilderPanel } from "./RoleBuilder.js";
 import { RoleRuntime } from "./RoleRuntime.js";

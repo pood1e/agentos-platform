@@ -1,4 +1,4 @@
-import type { SynthesizeSpeechResponse } from "../../../../gen/agentos/console/v1/speech_pb.js";
+import type { SynthesizeSpeechResponse } from "../../../gen/agentos/console/v1/speech_pb.js";
 import type { PcmPlayback } from "./pcm-playback.js";
 
 function event(target: EventTarget, type: string, signal: AbortSignal) {

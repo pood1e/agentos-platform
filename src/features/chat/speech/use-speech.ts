@@ -3,10 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ConsoleService } from "../../../../gen/agentos/console/v1/console_service_pb.js";
+import {
+  type DictationPhase,
+  RemoteDictationAdapter,
+} from "../../../../shared/browser/speech/dictation.js";
+import { RemoteSpeechAdapter } from "../../../../shared/browser/speech/synthesis.js";
 import { speechClient } from "../../../lib/console.js";
 import { useVoiceCallActive } from "../voice/context.js";
-import { type DictationPhase, RemoteDictationAdapter } from "./dictation.js";
-import { RemoteSpeechAdapter } from "./synthesis.js";
 
 export function useSpeech() {
   const { t, i18n } = useTranslation();

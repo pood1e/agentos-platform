@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { errorKey } from "../../lib/errors.js";
+import { errorKey } from "../../../shared/errors.js";
 import { PageControl } from "../shared/PageControl.js";
 
 export const pageSize = 12;

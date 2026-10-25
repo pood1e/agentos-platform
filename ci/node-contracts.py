@@ -29,9 +29,45 @@ package = {
     "type": "module",
     "license": "Apache-2.0",
     "exports": {"./*": {"types": "./*.d.ts", "default": "./*.js"}},
+    "peerDependencies": {
+        name: "^" + manifest["dependencies"][name]
+        for name in (
+            "@assistant-ui/react",
+            "@deepgram/sdk",
+            "@ricky0123/vad-web",
+            "livekit-client",
+            "mdast-util-to-string",
+            "remark-gfm",
+            "remark-parse",
+            "strip-markdown",
+            "unified",
+        )
+    }
+    | {"react": "^18.0.0 || ^19.0.0"},
+    "peerDependenciesMeta": {
+        name: {"optional": True}
+        for name in (
+            "react",
+            "@assistant-ui/react",
+            "@deepgram/sdk",
+            "@ricky0123/vad-web",
+            "livekit-client",
+            "mdast-util-to-string",
+            "remark-gfm",
+            "remark-parse",
+            "strip-markdown",
+            "unified",
+        )
+    },
     "dependencies": {
         name: manifest["dependencies"][name]
-        for name in ("@bufbuild/protobuf", "yaml", "canonicalize")
+        for name in (
+            "@bufbuild/protobuf",
+            "@connectrpc/connect",
+            "yaml",
+            "canonicalize",
+            "franc-min",
+        )
     },
 }
 (target / "package.json").write_text(json.dumps(package, indent=2) + "\n")

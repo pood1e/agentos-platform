@@ -1,6 +1,8 @@
-import { create } from "@bufbuild/protobuf";
+import { clone, create, fromJson, type JsonObject, toJson } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
+import { ArtifactSchema, TaskState } from "../gen/a2a_pb.js";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
@@ -12,6 +14,47 @@ import {
 import { appVisible } from "../server/kagent/tool-metadata.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
 import { testBindings } from "./harness.js";
+
+it("updates one App per response while retaining every tool call", async () => {
+  const env = await setup();
+  const artifact = env.task.artifacts[0];
+  if (!artifact) throw new Error("App fixture missing");
+  for (const id of ["revision-2", "revision-3"]) {
+    const revision = clone(ArtifactSchema, artifact);
+    revision.artifactId = id;
+    for (const part of revision.parts) {
+      if (part.content.case !== "data") continue;
+      const value = toJson(ValueSchema, part.content.value) as JsonObject;
+      value.id = id;
+      part.content.value = fromJson(ValueSchema, value);
+    }
+    env.task.artifacts.push(revision);
+  }
+  env.fake.update(env.task, TaskState.COMPLETED);
+  await env.sync.refresh();
+  const controller = new AbortController();
+  try {
+    for await (const { conversation } of env.client.watchConversation(
+      { agent: env.session.agent, contextId: env.session.id },
+      { signal: controller.signal },
+    )) {
+      const calls =
+        conversation?.messages.flatMap((message) =>
+          message.parts.flatMap((part) =>
+            part.content.case === "toolCall" ? [part.content.value] : [],
+          ),
+        ) ?? [];
+      expect(calls).toHaveLength(3);
+      expect(calls.filter((call) => call.uiResourceUri).map((call) => call.id)).toEqual([
+        "revision-3",
+      ]);
+      break;
+    }
+  } finally {
+    controller.abort();
+  }
+  await expect(env.client.getAppResource(env.request)).resolves.toHaveProperty("result");
+});
 
 it("projects an App from native metadata and reads only the original call's resource", async () => {
   const env = await setup();

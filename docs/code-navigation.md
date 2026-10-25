@@ -19,6 +19,7 @@
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/knowledge` | 团队知识检索 |
 | `server/speech`、`src/features/chat/speech` | 语音设置 Secret、音频 API 适配与 assistant-ui 听写、朗读 |
+| `shared/browser` | 对外发布的听写、流式朗读与 LiveKit 通话适配器，供平台和原生控制台复用 |
 | `server/team-sessions` | 协作 MCP：发现 Agent、创建与续接会话、知识检索、角色起草 |
 | `server/governance` | 工具分级与身份绑定、原生暂停与外部审批协议的协调 |
 | `server/shared`、`shared/` | 服务端公共配置、错误与前后端共用模型 |

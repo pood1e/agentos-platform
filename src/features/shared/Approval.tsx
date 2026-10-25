@@ -12,8 +12,8 @@ import {
 } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
+import { errorKey } from "../../../shared/errors.js";
 import { useAccess } from "../../lib/access.js";
-import { errorKey } from "../../lib/errors.js";
 import { awaiting } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { ExternalApprovals } from "./ExternalApprovals.js";

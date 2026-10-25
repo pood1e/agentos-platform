@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
-import { errorKey } from "../../lib/errors.js";
+import { errorKey } from "../../../shared/errors.js";
 
 export function StopTask({ taskId, operate }: { taskId: string; operate: boolean }) {
   const { t } = useTranslation();

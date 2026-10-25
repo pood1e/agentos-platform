@@ -7,8 +7,8 @@ import {
   ConversationSchema,
 } from "../gen/agentos/console/v1/conversation_pb.js";
 import { VoiceTurnSchema } from "../gen/agentos/voice/v1/worker_pb.js";
+import { VoiceChatBridge } from "../shared/browser/voice/chat-bridge.js";
 import type { Chat } from "../src/features/chat/use-chat.js";
-import { VoiceChatBridge } from "../src/features/chat/voice/chat-bridge.js";
 import { until } from "./harness.js";
 
 function fixture() {

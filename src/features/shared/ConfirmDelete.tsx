@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { errorKey } from "../../lib/errors.js";
+import { errorKey } from "../../../shared/errors.js";
 
 export function ConfirmDelete({
   title,

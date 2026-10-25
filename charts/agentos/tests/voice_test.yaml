@@ -31,6 +31,11 @@ tests:
         isNotNullOrEmpty: {path: "spec.template.spec.containers[0].readinessProbe.exec.command"}
       - template: voice.yaml
         containsDocument: {apiVersion: networking.k8s.io/v1, kind: NetworkPolicy, name: agentos-voice, any: true}
+      - template: voice.yaml
+        documentSelector: {path: "kind", value: NetworkPolicy}
+        equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels
+          value: {app.kubernetes.io/name: agentos, app.kubernetes.io/component: console}
       - template: console-deployment.yaml
         contains:
           path: spec.template.spec.containers[0].env
