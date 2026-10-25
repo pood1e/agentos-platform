@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { ErrorInfoSchema } from "../../gen/google/rpc/error_details_pb.js";
+import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 
 /** Server errors carry localization keys; anything else falls back to a generic key. */
 export function errorKey(error: unknown, fallback: string): string {

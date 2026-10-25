@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it } from "vitest";
-import { unreachable } from "../src/lib/errors.js";
+import { unreachable } from "../shared/errors.js";
 
 it("distinguishes failed operations from an unavailable workbench", () => {
   for (const code of [

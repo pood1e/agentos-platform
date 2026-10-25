@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
-import { errorKey, unreachable } from "./errors.js";
+import { errorKey, unreachable } from "../../shared/errors.js";
 
 const wait = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {

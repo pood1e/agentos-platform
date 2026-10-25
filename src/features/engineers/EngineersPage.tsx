@@ -8,8 +8,8 @@ import { Sheet } from "@/components/ui/sheet";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
+import { errorKey } from "../../../shared/errors.js";
 import { useCapability } from "../../lib/access.js";
-import { errorKey } from "../../lib/errors.js";
 import { RoleEditor } from "./RoleEditor.js";
 import { Team } from "./Team.js";
 

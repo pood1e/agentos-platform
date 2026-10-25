@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { InteractionKind, type TaskDetail } from "../../../gen/agentos/console/v1/task_pb.js";
-import { errorKey } from "../../lib/errors.js";
+import { errorKey } from "../../../shared/errors.js";
 import { millis, time } from "../../lib/format.js";
 import { Approval } from "../shared/Approval.js";
 import { engineerDescription, engineerName } from "../shared/engineers.js";

@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
-import { RemoteSpeechAdapter } from "../src/features/chat/speech/synthesis.js";
-import { speechText } from "../src/features/chat/speech/text.js";
+import { RemoteSpeechAdapter } from "../shared/browser/speech/synthesis.js";
+import { speechText } from "../shared/browser/speech/text.js";
 
 it.each([
   [

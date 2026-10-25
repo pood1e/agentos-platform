@@ -1,8 +1,18 @@
-import { Role } from "../../../../gen/a2a_pb.js";
-import { ActivityState } from "../../../../gen/agentos/execution/v1/state_pb.js";
-import type { VoiceTurn } from "../../../../gen/agentos/voice/v1/worker_pb.js";
+import { Role } from "../../../gen/a2a_pb.js";
+import type { ChatMessage, Conversation } from "../../../gen/agentos/console/v1/conversation_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import type { VoiceTurn } from "../../../gen/agentos/voice/v1/worker_pb.js";
 import { speechText } from "../speech/text.js";
-import type { Chat } from "../use-chat.js";
+
+export interface VoiceChat {
+  messages: readonly ChatMessage[];
+  conversation?: Pick<Conversation, "state">;
+  outgoing?: { id: string; contextId: string };
+  busy: boolean;
+  blocked: boolean;
+  submit(text: string, messageId?: string): Promise<boolean>;
+  cancel(taskId?: string): Promise<void>;
+}
 
 type Turn = {
   id: string;
@@ -21,7 +31,7 @@ export class VoiceChatBridge {
   private seen = new Set<string>();
   private submitted = new Set<string>();
   private closed = false;
-  private chat?: Chat;
+  private chat?: VoiceChat;
 
   constructor(
     private reply: (turnId: string, text: string) => void,
@@ -52,7 +62,7 @@ export class VoiceChatBridge {
     return this.submitted.has(messageId);
   }
 
-  update(chat: Chat) {
+  update(chat: VoiceChat) {
     if (this.closed) return;
     this.chat = chat;
     const turn = this.current;
@@ -108,7 +118,7 @@ export class VoiceChatBridge {
     if (this.chat) this.update(this.chat);
   }
 
-  private async cancel(turn: Turn, chat: Chat, taskId: string) {
+  private async cancel(turn: Turn, chat: VoiceChat, taskId: string) {
     turn.stopping = true;
     try {
       await chat.cancel(taskId);

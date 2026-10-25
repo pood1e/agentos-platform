@@ -9,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { speechText } from "../../../../shared/browser/speech/text.js";
 import { useSpeechControls } from "./context.js";
-import { speechText } from "./text.js";
 
 export function SpeechInput({ disabled }: { disabled: boolean }) {
   const { t, i18n } = useTranslation();

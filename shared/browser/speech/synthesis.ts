@@ -1,11 +1,12 @@
 import type { SpeechSynthesisAdapter } from "@assistant-ui/react";
-import type { consoleClient } from "../../../lib/console.js";
-import { errorKey } from "../../../lib/errors.js";
+import type { Client as RpcClient } from "@connectrpc/connect";
+import type { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
+import { errorKey } from "../../errors.js";
 import { streamAudio } from "./audio-stream.js";
 import { PcmPlayback } from "./pcm-playback.js";
 import { speechText } from "./text.js";
 
-type Client = Pick<typeof consoleClient, "synthesizeSpeech">;
+type Client = Pick<RpcClient<typeof ConsoleService>, "synthesizeSpeech">;
 
 export class RemoteSpeechAdapter implements SpeechSynthesisAdapter {
   private current?: SpeechSynthesisAdapter.Utterance;

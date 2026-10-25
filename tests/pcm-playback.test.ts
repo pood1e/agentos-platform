@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { PcmPlayback } from "../src/features/chat/speech/pcm-playback.js";
+import { PcmPlayback } from "../shared/browser/speech/pcm-playback.js";
 
 function playback() {
   const samples: Float32Array[] = [];

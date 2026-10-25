@@ -3,6 +3,8 @@
 语音能力按站点启用。普通语音输入与朗读使用 assistant-ui 官方适配器；通话使用 LiveKit Agents、Silero VAD 和 LiveKit 官方浏览器组件。
 ASR、TTS 作为独立模型服务接入，协议与凭据复用平台语音配置。
 
+浏览器适配器通过 `@agentos/contracts/shared/browser/` 发布。原生控制台复用同一套听写、PCM 流播放和通话桥接，注入已有 RPC 客户端、身份作用域与聊天发送／取消函数；转写 WebSocket 地址由接入方提供。前端按 `GetSpeechCapabilities` 展示入口，VAD 资源部署在 `/speech-vad/`。
+
 ```mermaid
 flowchart LR
     Browser[浏览器] <-->|WebRTC 音频| SFU[LiveKit Server]
