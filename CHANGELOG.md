@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/pood1e/agentos-platform/compare/v0.35.0...v0.36.0) (2026-10-25)
+
+
+### Features
+
+* **chat:** 复用语音客户端并合并 App 视图修订 ([#129](https://github.com/pood1e/agentos-platform/issues/129)) ([a81774c](https://github.com/pood1e/agentos-platform/commit/a81774c1b38437b2acba958f9c0a1dfb09fd38d0))
+
 ## [0.35.0](https://github.com/pood1e/agentos-platform/compare/v0.34.1...v0.35.0) (2026-10-24)
 
 
