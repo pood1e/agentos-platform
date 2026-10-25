@@ -25,6 +25,7 @@ import { invalid, notFound, unavailable } from "../shared/errors.js";
 import { exclusiveCommands } from "../shared/exclusive.js";
 import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
+import { approvalQueue } from "./approval-queue.js";
 import { approvalReferences } from "./approval-references.js";
 import { cancellationCommands } from "./cancellation.js";
 import { conversationCommands } from "./conversations.js";
@@ -102,7 +103,7 @@ export function consoleService({
     exclusive,
   );
   const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
-  const tickets = approvalReferences(sync, operations, environmentToken);
+  const withApprovals = approvalReferences(sync, operations, environmentToken);
   const canOperate = async (contextId: string, subject: string) => {
     if (!executions) return true;
     try {
@@ -194,7 +195,7 @@ export function consoleService({
               context.values.get(requestIdentity).subject,
               task.operate,
             );
-          return create(WatchTaskResponseSchema, { task: await tickets(task) });
+          return create(WatchTaskResponseSchema, { task: await withApprovals(task) });
         },
         true,
       );
@@ -246,7 +247,7 @@ export function consoleService({
             context.values.get(requestIdentity).subject,
             view.operate,
           );
-        return create(WatchConversationResponseSchema, { conversation: await tickets(view) });
+        return create(WatchConversationResponseSchema, { conversation: await withApprovals(view) });
       });
     },
     sendMessage: (request, context) => {
@@ -266,7 +267,8 @@ export function consoleService({
     explainTools: (request) => roles.explain(request.engineer),
     async listApprovals(request, context) {
       ready();
-      if (!(await history(context.values.get(requestIdentity))).entry(request.taskId))
+      const identity = context.values.get(requestIdentity);
+      if (!isAdministrator(identity) && !(await history(identity)).entry(request.taskId))
         throw notFound("task.notFound");
       return approvals(
         sync,
@@ -278,6 +280,18 @@ export function consoleService({
         },
         environmentToken,
       );
+    },
+    async listApprovalRequests(request, context) {
+      ready();
+      const identity = context.values.get(requestIdentity);
+      const visible = isAdministrator(identity) ? index : await history(identity);
+      const result = approvalQueue(visible, operations, request, identity.subject);
+      await approvalsFor(
+        result.requests.filter((item) => !item.external),
+        identity.subject,
+        true,
+      );
+      return result;
     },
   };
 }

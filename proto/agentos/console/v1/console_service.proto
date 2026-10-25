@@ -81,6 +81,10 @@ service ConsoleService {
   rpc ListApprovals(ListApprovalsRequest) returns (ListApprovalsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Review queue; administrators can review requests without reading private conversations.
+  rpc ListApprovalRequests(ListApprovalRequestsRequest) returns (ListApprovalRequestsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message GetAppResourceRequest {
@@ -309,4 +313,17 @@ message ListApprovalsRequest {
 }
 message ListApprovalsResponse {
   repeated agentos.governance.v1.Approval approvals = 1;
+}
+
+message ListApprovalRequestsRequest {
+  repeated agentos.execution.v1.ActivityState states = 1 [(buf.validate.field).repeated.items.enum.defined_only = true];
+  uint32 page_size = 2 [(buf.validate.field).uint32.lte = 100];
+  string page_token = 3 [(buf.validate.field).string.max_len = 4096];
+}
+
+message ListApprovalRequestsResponse {
+  repeated Interaction requests = 1;
+  uint32 total_size = 2;
+  uint32 pending_count = 3;
+  string next_page_token = 4;
 }

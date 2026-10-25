@@ -47,7 +47,8 @@ export async function approvalAppsEnvironment() {
   provider.addHook("onRequest", async (request, reply) => {
     if (
       request.headers.authorization !== "Bearer catalog" &&
-      request.headers.authorization !== "Bearer human-alice"
+      request.headers.authorization !== "Bearer human-alice" &&
+      request.headers.authorization !== "Bearer human-bob"
     )
       return reply.code(401).send();
   });
