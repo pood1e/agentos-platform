@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.5](https://github.com/pood1e/agentos-platform/compare/v0.37.4...v0.37.5) (2026-10-25)
+
+
+### Bug Fixes
+
+* **mcp-apps:** batch metadata discovery across conversation history ([#141](https://github.com/pood1e/agentos-platform/issues/141)) ([d4f4599](https://github.com/pood1e/agentos-platform/commit/d4f4599f361ad9c38843e85ff2d0ce3fea00cfb0))
+
 ## [0.37.4](https://github.com/pood1e/agentos-platform/compare/v0.37.3...v0.37.4) (2026-10-25)
 
 
