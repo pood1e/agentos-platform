@@ -1,13 +1,46 @@
 import { clone } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code } from "@connectrpc/connect";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { TaskState } from "../gen/a2a_pb.js";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { InteractionKind, InteractionSchema } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { approvalAppReferenceKey } from "../shared/mcp-apps.js";
 import { approvalAppsEnvironment as setup } from "./fixtures/approval-apps.js";
+
+it("opens approval history without reauthorizing settled or externally reviewed interactions", async () => {
+  const env = await setup();
+  const entry = env.index.entry(env.task.id);
+  const original = entry?.interactions[0];
+  if (!entry || !original) throw new Error("missing approval fixture");
+  const history = [ActivityState.SUCCEEDED, ActivityState.FAILED, ActivityState.CANCELED].map(
+    (state, position) => {
+      const item = clone(InteractionSchema, original);
+      item.id = `history-${position}`;
+      item.state = state;
+      for (const tool of item.tools) tool.name = "native_write";
+      return item;
+    },
+  );
+  env.index.upsert({ ...entry, interactions: [original, ...history], version: "history" });
+  const sessions = vi.spyOn(env.clients.sessions, "getSession");
+  const controller = new AbortController();
+  try {
+    for await (const { conversation } of env.client.watchConversation(
+      { agent: env.session.agent, contextId: env.session.id },
+      { signal: controller.signal },
+    )) {
+      expect(conversation?.interactions).toHaveLength(4);
+      expect(conversation?.interactions.every((item) => !item.approve)).toBe(true);
+      expect(sessions).toHaveBeenCalledTimes(1);
+      break;
+    }
+  } finally {
+    controller.abort();
+    sessions.mockRestore();
+  }
+});
 
 it("enriches both chat and task streams using authenticated provider lookups", async () => {
   const env = await setup();

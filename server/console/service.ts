@@ -7,10 +7,13 @@ import {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
+import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { isAdministrator } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
 import type { BindingView } from "../governance/bindings.js";
+import { approvalEnvironment } from "../governance/client.js";
 import { approvals } from "../governance/views.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
@@ -122,7 +125,15 @@ export function consoleService({
   ) => {
     for (const interaction of interactions) {
       interaction.approve = false;
-      if (!operate) continue;
+      if (
+        !operate ||
+        interaction.kind !== InteractionKind.APPROVAL ||
+        interaction.state !== ActivityState.AWAITING_APPROVAL ||
+        interaction.tools.some(
+          (tool) => approvalEnvironment(operations.environments, tool.name)?.approvalUrl,
+        )
+      )
+        continue;
       try {
         const entry = index.entry(interaction.taskId);
         if (!entry || !(await canOperate(entry.contextId, subject))) continue;
