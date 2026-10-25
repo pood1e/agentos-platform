@@ -28,7 +28,7 @@ import { type PageRequest, pageOf } from "../page.js";
 import type { KagentSync } from "../sync.js";
 import { busy, taskTree } from "../tree.js";
 import { chatParts } from "./chat-parts.js";
-import { agentResults, conversationProgress, conversationWork } from "./conversation-work.js";
+import { conversationParts, conversationProgress, conversationWork } from "./conversation-work.js";
 import { engineer } from "./engineers.js";
 import { runState, stamp } from "./runs.js";
 import { taskSummary } from "./task.js";
@@ -98,6 +98,7 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
     if (task) parts.set(entry.id, chatParts(task, entry.agentId));
   });
   const seen = new Set<string>();
+  const interactions = new Set<string>();
   return entries.flatMap((entry): ChatMessage[] => {
     const turns = entry.userMessages
       .filter((message) => !seen.has(message.id))
@@ -111,7 +112,7 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
           tasks: position === 0 ? operations(index, entry) : [],
         });
       });
-    const content = agentResults(index, entry, parts.get(entry.id) ?? []);
+    const content = conversationParts(index, entry, parts.get(entry.id) ?? [], interactions);
     return content.length
       ? [
           ...turns,
@@ -156,7 +157,11 @@ export async function conversation(
   const ready = member?.ready ?? false;
   const entries = index
     .contextEntries(contextId)
-    .sort((a, b) => (a.createdAt ?? a.statusAt ?? 0) - (b.createdAt ?? b.statusAt ?? 0));
+    .sort(
+      (a, b) =>
+        (a.createdAt ?? a.statusAt ?? 0) - (b.createdAt ?? b.statusAt ?? 0) ||
+        a.id.localeCompare(b.id),
+    );
   const latest = entries.at(-1);
   if (!contextId || !latest) return create(ConversationSchema, { contextId, ready });
   const tree = taskTree(index, latest.parentTaskId || latest.id);

@@ -6,11 +6,12 @@ import {
   useAuiState,
 } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
+import { isMessage } from "@bufbuild/protobuf";
 import { ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
-import type { TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
+import { InteractionSchema, type TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
 import { Approval } from "../shared/Approval.js";
 import { Avatar } from "../shared/Avatar.js";
 import { TaskTags } from "../tasks/TaskTags.js";
@@ -89,7 +90,13 @@ function ConversationMessage({
                   case "tool-call":
                     return <ToolFallback {...part} />;
                   case "data":
-                    return part.name === "agent-result" ? <AgentResult {...part} /> : null;
+                    if (part.name === "agent-result") return <AgentResult {...part} />;
+                    return part.name === "interaction" &&
+                      isMessage(part.data, InteractionSchema) ? (
+                      <div className="my-3 rounded-xl border p-3">
+                        <Approval interaction={part.data} operate={editable} />
+                      </div>
+                    ) : null;
                   default:
                     return null;
                 }
@@ -141,11 +148,6 @@ export function ConversationTranscript({ chat }: { chat: Chat }) {
               />
             )}
           </ThreadPrimitive.Messages>
-          {(chat.conversation?.interactions ?? []).map((interaction) => (
-            <div key={interaction.id} className="rounded-xl border p-3">
-              <Approval interaction={interaction} operate={chat.conversation?.operate ?? false} />
-            </div>
-          ))}
         </div>
       </ThreadPrimitive.Viewport>
       <ThreadPrimitive.ScrollToBottom asChild>
