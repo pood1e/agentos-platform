@@ -24,13 +24,21 @@ it("displays the verified human decision while native resumption is still pendin
   expect(approvalInteractionState(interaction, [])).toBe(ActivityState.AWAITING_APPROVAL);
   expect(
     approvalInteractionState(
-      create(InteractionSchema, { ...interaction, tools: [{ id: "write" }, { id: "second" }] }),
+      create(InteractionSchema, {
+        external: true,
+        taskId: "task",
+        state: ActivityState.AWAITING_APPROVAL,
+        tools: [{ id: "write" }, { id: "second" }],
+      }),
       [record],
     ),
   ).toBe(ActivityState.AWAITING_APPROVAL);
   expect(
     approvalInteractionState(interaction, [
-      create(ApprovalSchema, { ...record, reference: { toolId: "write", taskId: "other" } }),
+      create(ApprovalSchema, {
+        state: record.state,
+        reference: { toolId: "write", taskId: "other" },
+      }),
     ]),
   ).toBe(ActivityState.AWAITING_APPROVAL);
   expect(approvalInteractionState({ ...interaction, state: ActivityState.FAILED }, [record])).toBe(
