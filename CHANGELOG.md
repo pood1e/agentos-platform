@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.2](https://github.com/pood1e/agentos-platform/compare/v0.37.1...v0.37.2) (2026-10-25)
+
+
+### Bug Fixes
+
+* **chat:** preserve approval ordering and verified decision states ([#135](https://github.com/pood1e/agentos-platform/issues/135)) ([aaa8b01](https://github.com/pood1e/agentos-platform/commit/aaa8b01936da95b13a1957aae664d1e68d7f2387))
+
 ## [0.37.1](https://github.com/pood1e/agentos-platform/compare/v0.37.0...v0.37.1) (2026-10-25)
 
 
