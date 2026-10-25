@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.4](https://github.com/pood1e/agentos-platform/compare/v0.37.3...v0.37.4) (2026-10-25)
+
+
+### Bug Fixes
+
+* **console:** avoid reauthorizing historical approvals on chat load ([#139](https://github.com/pood1e/agentos-platform/issues/139)) ([a2413cc](https://github.com/pood1e/agentos-platform/commit/a2413cc62db93c2b19491dd69f26f95359445867))
+
 ## [0.37.3](https://github.com/pood1e/agentos-platform/compare/v0.37.2...v0.37.3) (2026-10-25)
 
 
