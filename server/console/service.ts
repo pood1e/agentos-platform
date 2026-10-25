@@ -288,7 +288,10 @@ export function consoleService({
       ready();
       const identity = context.values.get(requestIdentity);
       const visible = isAdministrator(identity) ? index : await history(identity);
-      const result = approvalQueue(visible, operations, request, identity.subject);
+      const { interactions } = await withApprovals({
+        interactions: visible.all().flatMap((entry) => entry.interactions),
+      });
+      const result = approvalQueue(interactions, request, identity.subject);
       await approvalsFor(
         result.requests.filter((item) => !item.external),
         identity.subject,

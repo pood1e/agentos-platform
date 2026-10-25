@@ -141,6 +141,22 @@ it("lets administrators review shared approvals with their own OBO identity whil
   ).rejects.toMatchObject({ code: Code.PermissionDenied });
 });
 
+it("moves a verified decision out of the pending queue before native execution resumes", async () => {
+  const env = await setup(ActivityState.SUCCEEDED);
+  expect(
+    await env.client.listApprovalRequests({ states: [ActivityState.AWAITING_APPROVAL] }),
+  ).toMatchObject({ requests: [], pendingCount: 0, totalSize: 0 });
+  const history = await env.client.listApprovalRequests({ states: [ActivityState.SUCCEEDED] });
+  expect(history).toMatchObject({
+    pendingCount: 0,
+    totalSize: 1,
+    requests: [{ taskId: "task", state: ActivityState.SUCCEEDED, approvals: [{ id: "change" }] }],
+  });
+  expect(env.index.entry(env.task.id)?.interactions[0]?.state).toBe(
+    ActivityState.AWAITING_APPROVAL,
+  );
+});
+
 it("paginates approval history without counting questions and binds cursors to the reviewer and state filter", async () => {
   const env = await setup();
   const entry = env.index.entry(env.task.id);

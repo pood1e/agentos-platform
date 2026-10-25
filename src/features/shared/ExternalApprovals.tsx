@@ -64,7 +64,9 @@ export function ExternalApprovals({
                   approval.state === ActivityState.FAILED &&
                     interaction.state === ActivityState.FAILED
                     ? "approval.validationFailed"
-                    : labelKey(approval.state),
+                    : approval.state === ActivityState.SUCCEEDED
+                      ? "approval.approved"
+                      : labelKey(approval.state),
                 )}
               </Status>
               {approval.decidedBy && (
