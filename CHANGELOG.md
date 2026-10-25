@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.3](https://github.com/pood1e/agentos-platform/compare/v0.37.2...v0.37.3) (2026-10-25)
+
+
+### Bug Fixes
+
+* **chat:** serialize cancellation within each native session ([#137](https://github.com/pood1e/agentos-platform/issues/137)) ([41fceec](https://github.com/pood1e/agentos-platform/commit/41fceec44e611f7c6aaa2c274a5fdc4033611dc2))
+
 ## [0.37.2](https://github.com/pood1e/agentos-platform/compare/v0.37.1...v0.37.2) (2026-10-25)
 
 
