@@ -12,6 +12,7 @@ import {
 } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { AppReference } from "../../gen/agentos/mcp/v1/app_pb.js";
 import { approvalAppReferenceKey } from "../../shared/mcp-apps.js";
+import { isAdministrator } from "../../shared/permissions.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { executionHistory } from "../console/history.js";
 import { approvalClient, approvalEnvironment } from "../governance/client.js";
@@ -32,7 +33,8 @@ export function approvalApps(
   const denied = () => new ConnectError("Approval App access denied", Code.PermissionDenied);
   async function origin(app: AppReference, identity: ExecutionIdentity, signal: AbortSignal) {
     if (app.origin.case !== "approvalToolId") throw denied();
-    if (!(await history(identity)).entry(app.taskId)) throw notFound("task.notFound");
+    if (!isAdministrator(identity) && !(await history(identity)).entry(app.taskId))
+      throw notFound("task.notFound");
     const entry = sync.index.entry(app.taskId);
     const toolId = app.origin.value;
     const tool = entry?.interactions
