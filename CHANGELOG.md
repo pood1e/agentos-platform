@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/pood1e/agentos-platform/compare/v0.37.0...v0.37.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **chat:** preserve completed worker phases and validation outcomes ([#133](https://github.com/pood1e/agentos-platform/issues/133)) ([10166b2](https://github.com/pood1e/agentos-platform/commit/10166b2491453527a957da8c925e94eef4a726b6))
+
 ## [0.37.0](https://github.com/pood1e/agentos-platform/compare/v0.36.0...v0.37.0) (2026-10-25)
 
 
