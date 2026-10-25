@@ -1,11 +1,69 @@
 import { clone, create, fromJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { ArtifactSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { ConversationSchema } from "../gen/agentos/console/v1/conversation_pb.js";
+import {
+  ChatMessagePartSchema,
+  ConversationSchema,
+} from "../gen/agentos/console/v1/conversation_pb.js";
+import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { mcpAppsEnvironment } from "./fixtures/mcp-apps.js";
+
+it("discovers independent App services together before either metadata response arrives", async () => {
+  const env = await mcpAppsEnvironment();
+  env.fake.toolServers.push(create(ToolServerSchema, { ref: "agentos/lab-other" }));
+  env.fake.resources.save(
+    "agentgatewaybackends",
+    {
+      metadata: {
+        name: "lab-other",
+        labels: { "agentos.dev/project": "views", "agentos.dev/environment": "lab" },
+      },
+      spec: { mcp: { targets: [{ name: "lab-other" }] } },
+    },
+    true,
+  );
+  let release = () => {};
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Set<string>();
+  const original = env.clients.tools.listMCPAppTools.bind(env.clients.tools);
+  const metadata = vi
+    .spyOn(env.clients.tools, "listMCPAppTools")
+    .mockImplementation(async (request, options) => {
+      started.add(request.server?.ref?.name ?? "");
+      await released;
+      return original(request, options);
+    });
+  const view = create(ConversationSchema, {
+    messages: [
+      {
+        id: "two-services",
+        parts: ["lab-views", "lab-other"].map((service) =>
+          create(ChatMessagePartSchema, {
+            id: service,
+            content: { case: "toolCall", value: { id: service, name: `${service}_show_topology` } },
+          }),
+        ),
+      },
+    ],
+  });
+  const projected = env.apps.project(view);
+  try {
+    await expect.poll(() => started.size, { timeout: 1000 }).toBe(2);
+  } finally {
+    release();
+    await projected;
+    metadata.mockRestore();
+  }
+  const first = view.messages[0].parts[0].content;
+  expect(first.case === "toolCall" && first.value.uiResourceUri).toBe(
+    "ui://lab-views/topology.html",
+  );
+});
 
 it("retains a completed delegated App even when the child has no text answer", async () => {
   const env = await mcpAppsEnvironment();
