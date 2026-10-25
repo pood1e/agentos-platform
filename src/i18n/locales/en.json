@@ -76,6 +76,8 @@
     "title": "Tool approval",
     "userInput": "User input",
     "approved": "Approved",
+    "notApproved": "Not approved",
+    "validationFailed": "Validation failed",
     "rejected": "Rejected",
     "answered": "Answered",
     "operationNotice": "Review the approval request in the target environment. The Agent will resume after approval.",

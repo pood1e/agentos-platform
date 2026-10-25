@@ -10,13 +10,13 @@ import {
   InteractionKind,
   type Question,
 } from "../../../gen/agentos/console/v1/task_pb.js";
-import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval as ApprovalRecord } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { errorKey } from "../../../shared/errors.js";
 import { useAccess } from "../../lib/access.js";
 import { awaiting } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { ExternalApprovals } from "./ExternalApprovals.js";
+import { interactionLabel } from "./interaction-state.js";
 import { Markdown } from "./Markdown.js";
 import { ToolArguments } from "./ToolArguments.js";
 import { ToolIcon } from "./ToolIcon.js";
@@ -31,14 +31,6 @@ function answerDrafts(questions: Question[], answers: Answer[] = []) {
       text: values.filter((value) => !question.choices.includes(value)).join("\n"),
     };
   });
-}
-
-function decisionLabel(interaction: Interaction) {
-  const approval = interaction.kind === InteractionKind.APPROVAL;
-  if (awaiting(interaction.state)) return approval ? "approval.pending" : "activity.awaitingInput";
-  if (interaction.state === ActivityState.CANCELED) return "activity.canceled";
-  if (!approval) return "approval.answered";
-  return interaction.state === ActivityState.REJECTED ? "approval.rejected" : "approval.approved";
 }
 
 export function Approval({
@@ -80,7 +72,7 @@ export function Approval({
         <h3 className="text-sm font-semibold">
           {t(approval ? "approval.title" : "approval.userInput")}
         </h3>
-        <Status state={interaction.state}>{t(decisionLabel(interaction))}</Status>
+        <Status state={interaction.state}>{t(interactionLabel(interaction))}</Status>
       </div>
       {interaction.explanation && <Markdown>{interaction.explanation}</Markdown>}
       {approval ? (

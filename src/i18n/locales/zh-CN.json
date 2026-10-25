@@ -71,6 +71,8 @@
     "title": "工具审批",
     "userInput": "用户输入",
     "approved": "已批准",
+    "notApproved": "未获批准",
+    "validationFailed": "系统校验未通过",
     "rejected": "拒绝",
     "answered": "已回答",
     "operationNotice": "请在所属环境的审批单中处理，通过后将自动继续。",
