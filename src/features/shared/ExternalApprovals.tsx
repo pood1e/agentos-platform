@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { Interaction } from "../../../gen/agentos/console/v1/task_pb.js";
+import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { Approval } from "../../../gen/agentos/governance/v1/governance_pb.js";
 import { AppReferenceSchema } from "../../../gen/agentos/mcp/v1/app_pb.js";
 import { Failure } from "../management/ResourcePage.js";
@@ -58,7 +59,14 @@ export function ExternalApprovals({
       {approvals.map((approval) => (
         <div key={approvalIdentity(approval)} className="space-y-3 rounded-lg border p-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <Status state={approval.state}>{t(labelKey(approval.state))}</Status>
+            <Status state={approval.state}>
+              {t(
+                approval.state === ActivityState.FAILED &&
+                  interaction.state === ActivityState.FAILED
+                  ? "approval.validationFailed"
+                  : labelKey(approval.state),
+              )}
+            </Status>
             {approval.decidedBy && (
               <span className="text-muted-foreground">{approval.decidedBy}</span>
             )}

@@ -9,6 +9,7 @@ import {
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { HitlTool } from "../../gen/agentos/kagent/v1/wire_pb.js";
 import type { Approval, CallEntry } from "./calls.js";
+import { approvalDecisions } from "./decode/approval-decisions.js";
 import { type HitlPayload, hitlExtension, hitlPayload, isHitlResponse } from "./decode/hitl.js";
 import { millis, object, timeline } from "./decode/messages.js";
 import { toolBaseName } from "./decode/tools.js";
@@ -19,6 +20,7 @@ interface Request {
   tools: HitlTool[];
   requestId: string;
   response?: Message;
+  decisions: ReturnType<typeof approvalDecisions>;
   current: boolean;
   canceled: boolean;
 }
@@ -51,7 +53,10 @@ function requests(task: Task): Request[] {
     const current =
       task.status?.state === TaskState.INPUT_REQUIRED && message.messageId === status?.messageId;
     const canceled = task.status?.state === TaskState.CANCELED && !response;
-    return [{ message, payload, tools, requestId, response, current, canceled }];
+    const decisions = approvalDecisions(response).filter((decision) =>
+      tools.some((tool) => tool.id === decision.reference?.toolId),
+    );
+    return [{ message, payload, tools, requestId, response, decisions, current, canceled }];
   });
 }
 
@@ -77,7 +82,11 @@ export function approvals(task: Task): Map<string, Approval> {
       const status: Approval = decision
         ? decision.approved
           ? "approved"
-          : "rejected"
+          : request.decisions.some(
+                (item) => item.reference?.toolId === tool.id && item.state === ActivityState.FAILED,
+              )
+            ? "failed"
+            : "rejected"
         : request.current
           ? "pending"
           : "abandoned";
@@ -132,7 +141,10 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
               : ActivityState.AWAITING_INPUT
             : !approval || approved(request)
               ? ActivityState.SUCCEEDED
-              : ActivityState.REJECTED,
+              : request.decisions.some((item) => item.state === ActivityState.FAILED)
+                ? ActivityState.FAILED
+                : ActivityState.REJECTED,
+        approvals: request.decisions,
         requestedAt: stamp(
           timeline(request.message.metadata) ??
             call?.startedAt ??

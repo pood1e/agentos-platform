@@ -52,43 +52,38 @@ export function conversationProgress(index: TaskIndex, contextId: string) {
   };
 }
 
-/** Latest completed run in each delegated conversation. */
+/** Completed results remain visible when the delegated conversation continues. */
 export function delegatedResults(index: TaskIndex, entry: TaskEntry, callId: string) {
   const call = entry.calls.find((item) => item.id === callId);
   const target = call && index.target(entry, call);
   const tree = target ? taskTree(index, target) : undefined;
   if (!tree) return [];
-  const contexts = new Map<string, TaskEntry>();
-  for (const member of tree.entries) {
-    if (member.contextId === entry.contextId) continue;
-    const previous = contexts.get(member.contextId);
-    if (!previous || (member.statusAt ?? 0) >= (previous.statusAt ?? 0))
-      contexts.set(member.contextId, member);
-  }
-  return [...contexts.values()]
-    .filter((member) => terminal(member.state))
-    .sort((a, b) => (a.statusAt ?? 0) - (b.statusAt ?? 0))
+  return tree.entries
+    .filter((member) => member.contextId !== entry.contextId && terminal(member.state))
+    .sort((a, b) => (a.statusAt ?? 0) - (b.statusAt ?? 0) || a.id.localeCompare(b.id))
     .map((member) => ({ member, background: tree.background.has(member.id) }));
 }
 
 /** Only terminal child answers enter the transcript; native tool payloads stay in their icons. */
 export function agentResults(index: TaskIndex, entry: TaskEntry, parts: ChatMessagePart[]) {
+  const emitted = new Set<string>();
   return parts.flatMap((part) => {
     if (part.content.case !== "toolCall") return [part];
     const callId = part.content.value.id;
     return [
       part,
       ...delegatedResults(index, entry, callId)
-        .filter(({ member }) => member.answer.trim())
-        .map(({ member, background }) =>
-          create(ChatMessagePartSchema, {
-            id: `result:${callId}:${member.contextId}`,
+        .filter(({ member }) => member.answer.trim() && !emitted.has(member.id))
+        .map(({ member, background }) => {
+          emitted.add(member.id);
+          return create(ChatMessagePartSchema, {
+            id: `result:${callId}:${member.id}`,
             content: {
               case: "agentResult",
               value: { ...runSummary(member, background), output: member.answer },
             },
-          }),
-        ),
+          });
+        }),
     ];
   });
 }

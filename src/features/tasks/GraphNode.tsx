@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Engineer } from "../../../gen/agentos/console/v1/engineer_pb.js";
-import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
+import { InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { Avatar } from "../shared/Avatar.js";
 import { engineerName } from "../shared/engineers.js";
+import { interactionLabel } from "../shared/interaction-state.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
-import { awaiting, labelKey, posture } from "../status/activity.js";
+import { labelKey, posture } from "../status/activity.js";
 import { appearance, StatusIcon } from "../status/Status.js";
 import { currentInteraction } from "./flow/approval-activities.js";
 import type { ActivityLayout } from "./flow/collaboration-layout.js";
@@ -28,18 +29,9 @@ export type AgentNode = Node<
   "agent"
 >;
 
-function humanLabel(interaction: Interaction) {
-  if (awaiting(interaction.state))
-    return interaction.kind === InteractionKind.APPROVAL
-      ? "approval.pending"
-      : "activity.awaitingInput";
-  if (interaction.kind === InteractionKind.QUESTION) return "approval.answered";
-  return interaction.state === ActivityState.REJECTED ? "approval.rejected" : "approval.approved";
-}
-
 function nodeState(activity: ActivityLayout) {
   const interaction = currentInteraction(activity.interactions);
-  if (interaction) return { state: activity.state, label: humanLabel(interaction) };
+  if (interaction) return { state: activity.state, label: interactionLabel(interaction) };
   const state = activity.state;
   return { state, label: labelKey(state) };
 }

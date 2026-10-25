@@ -7,11 +7,13 @@ import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import {
   type Approval,
   ApprovalContextSchema,
+  ApprovalSchema,
   type GovernanceConfig,
 } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { HitlToolSchema, ToolApprovalResponseSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { Coordinator } from "../jobs/coordination.js";
+import { withApprovalDecisions } from "../read-model/decode/approval-decisions.js";
 import { hitlReply } from "../read-model/decode/hitl.js";
 import { object } from "../read-model/decode/messages.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
@@ -44,21 +46,31 @@ export function approvalCoordinator(
       if (![Code.PermissionDenied, Code.Unauthenticated].includes(failure.code)) throw error;
       await sync.send(
         entry.agentId,
-        hitlReply(
-          { taskId: entry.id, contextId: entry.contextId },
-          messageIdentity("authorization", entry.id, interaction.requestId),
-          {
-            type: "tool_approval_response",
-            value: create(ToolApprovalResponseSchema, {
-              approvals: interaction.tools.map((tool) => ({
-                id: tool.id,
-                approved: false,
-                rejectionReason:
-                  failure.rawMessage || "Execution permissions do not allow this operation",
-              })),
+        withApprovalDecisions(
+          hitlReply(
+            { taskId: entry.id, contextId: entry.contextId },
+            messageIdentity("authorization", entry.id, interaction.requestId),
+            {
+              type: "tool_approval_response",
+              value: create(ToolApprovalResponseSchema, {
+                approvals: interaction.tools.map((tool) => ({
+                  id: tool.id,
+                  approved: false,
+                  rejectionReason:
+                    failure.rawMessage || "Execution permissions do not allow this operation",
+                })),
+              }),
+            },
+            "The operation was blocked by execution authorization",
+          ),
+          interaction.tools.map((tool) =>
+            create(ApprovalSchema, {
+              id: tool.id,
+              state: ActivityState.FAILED,
+              reason: failure.rawMessage || "Execution permissions do not allow this operation",
+              reference: { taskId: entry.id, toolId: tool.id },
             }),
-          },
-          "The operation was rejected by execution authorization",
+          ),
         ),
       );
       return false;
@@ -102,6 +114,7 @@ export function approvalCoordinator(
       const run = await taskRun(sync, entry.id);
       if (!run) throw new Error("Native execution is unavailable");
       const decisions = [];
+      const outcomes: Approval[] = [];
       const preparations = [];
       let waiting = false;
       for (const { tool, connection } of targets) {
@@ -154,14 +167,26 @@ export function approvalCoordinator(
         }
         if (!approval) throw new Error("External decision service returned no approval");
         if (
-          ![ActivityState.SUCCEEDED, ActivityState.REJECTED, ActivityState.CANCELED].includes(
-            approval.state,
-          )
+          ![
+            ActivityState.SUCCEEDED,
+            ActivityState.REJECTED,
+            ActivityState.CANCELED,
+            ActivityState.FAILED,
+          ].includes(approval.state)
         ) {
           waiting = true;
           continue;
         }
         const approved = approval.state === ActivityState.SUCCEEDED;
+        outcomes.push(
+          create(ApprovalSchema, {
+            id: approval.id,
+            state: approval.state,
+            reason: approval.reason,
+            decidedBy: approval.decidedBy,
+            reference,
+          }),
+        );
         decisions.push({
           id: tool.id,
           approved,
@@ -195,6 +220,11 @@ export function approvalCoordinator(
             if (decision) {
               decision.approved = false;
               decision.rejectionReason = "An identical operation is already awaiting execution";
+              const outcome = outcomes[preparation.index];
+              if (outcome) {
+                outcome.state = ActivityState.FAILED;
+                outcome.reason = decision.rejectionReason;
+              }
             }
           }
         }
@@ -212,7 +242,7 @@ export function approvalCoordinator(
           ...reply.metadata,
           "agentos.dev/approval-request": interaction.requestId,
         };
-        await sync.send(entry.agentId, reply);
+        await sync.send(entry.agentId, withApprovalDecisions(reply, outcomes));
         return 2;
       }
       return;

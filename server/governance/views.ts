@@ -34,7 +34,8 @@ export async function approvals(
         if (approval) approval.reference = reference;
         return approval;
       } catch (error) {
-        if (ConnectError.from(error).code === Code.NotFound) return undefined;
+        if (ConnectError.from(error).code === Code.NotFound)
+          return interaction.approvals.find((record) => record.reference?.toolId === tool.id);
         throw error;
       }
     }),

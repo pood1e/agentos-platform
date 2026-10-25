@@ -16,6 +16,59 @@ async function view(index: ReturnType<typeof fixtureIndex>) {
 }
 
 describe("conversation worker projection", () => {
+  it("keeps a completed result through a working continuation and preserves both completed phases", async () => {
+    const index = fixtureIndex();
+    const entry = index.entry(ids.chatRoot);
+    if (!entry) throw new Error("Missing child fixture");
+    index.upsert({
+      ...entry,
+      state: TaskState.COMPLETED,
+      answer: "Initial findings",
+      statusAt: 100,
+      version: "initial-completed",
+    });
+    const results = async () =>
+      (await view(index)).messages.flatMap((message) =>
+        message.parts.filter((part) => part.content.case === "agentResult"),
+      );
+    const first = (await results()).find(
+      (part) => part.content.case === "agentResult" && part.content.value.taskId === entry.id,
+    );
+    expect(first).toBeDefined();
+    const continuation = {
+      ...entry,
+      id: "continued-worker",
+      parentTaskId: entry.id,
+      state: TaskState.WORKING,
+      answer: "Unfinished follow-up",
+      statusAt: 200,
+      version: "continued-working",
+    };
+    index.upsert(continuation);
+    expect(await results()).toContainEqual(first);
+    expect(
+      (await results()).some(
+        (part) =>
+          part.content.case === "agentResult" && part.content.value.taskId === continuation.id,
+      ),
+    ).toBe(false);
+    index.upsert({
+      ...continuation,
+      state: TaskState.COMPLETED,
+      answer: "Follow-up findings",
+      version: "continued-completed",
+    });
+    const completed = await results();
+    expect(completed).toContainEqual(first);
+    expect(
+      completed.flatMap((part) =>
+        part.content.case === "agentResult" ? [part.content.value.output] : [],
+      ),
+    ).toEqual(expect.arrayContaining(["Initial findings", "Follow-up findings"]));
+    expect(new Set(completed.map((part) => part.id)).size).toBe(completed.length);
+    expect(await results()).toEqual(completed);
+  });
+
   it("shows a child only as presence while working and emits its final answer at the delegation", async () => {
     const index = fixtureIndex();
     const entry = index.entry(ids.chatRoot);

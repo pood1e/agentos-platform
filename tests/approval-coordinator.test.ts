@@ -137,6 +137,37 @@ it("keeps native execution paused when the decision service is unavailable", asy
   }
 });
 
+it("returns failed policy validation to the Agent without preparing execution or recording a human rejection", async () => {
+  let preparations = 0;
+  const env = await setup({
+    getApproval: () => ({
+      approval: create(ApprovalSchema, {
+        id: "validation",
+        state: ActivityState.FAILED,
+        reason: "Required evidence is missing",
+      }),
+    }),
+    prepareApproval: () => {
+      preparations++;
+      return {};
+    },
+  });
+  try {
+    await until(() => env.fake.received.length === 1, 5_000);
+    expect(preparations).toBe(0);
+    const reply = env.fake.received[0];
+    expect(hitlPayload(reply)).toMatchObject({
+      type: "tool_approval_response",
+      value: { approvals: [{ approved: false, rejectionReason: "Required evidence is missing" }] },
+    });
+    const record = create(TaskSchema, env.task);
+    record.history.push(reply);
+    expect(ingest(record, "agentos/inspection").interactions[0]?.state).toBe(ActivityState.FAILED);
+  } finally {
+    await env.close();
+  }
+});
+
 it("does not resume a task canceled while its external authorization is being prepared", async () => {
   let preparing = false;
   let release: () => void = () => {};
