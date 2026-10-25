@@ -3,20 +3,20 @@ import type { Approval } from "../../../../gen/agentos/governance/v1/governance_
 import { approvalIdentity } from "../../shared/approval-identity.js";
 import { awaiting } from "../../status/activity.js";
 
-export const approvalNodeId = (change: Approval) => {
-  const identity = approvalIdentity(change);
+export const approvalNodeId = (approval: Approval) => {
+  const identity = approvalIdentity(approval);
   return identity ? `record:${identity}` : undefined;
 };
 
 export function approvalActivities(interaction: Interaction) {
-  const tickets = new Map<string, { id: string; record: Approval }>();
+  const records = new Map<string, { id: string; record: Approval }>();
   if (interaction.kind === InteractionKind.APPROVAL)
-    for (const change of interaction.approvals) {
-      const id = approvalNodeId(change);
-      if (id) tickets.set(id, { id, record: change });
+    for (const approval of interaction.approvals) {
+      const id = approvalNodeId(approval);
+      if (id) records.set(id, { id, record: approval });
     }
-  return tickets.size
-    ? [...tickets.values()]
+  return records.size
+    ? [...records.values()]
     : [{ id: `interaction:${interaction.id}`, record: undefined }];
 }
 

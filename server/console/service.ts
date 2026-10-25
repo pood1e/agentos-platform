@@ -103,7 +103,7 @@ export function consoleService({
     exclusive,
   );
   const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
-  const tickets = approvalReferences(sync, operations, environmentToken);
+  const withApprovals = approvalReferences(sync, operations, environmentToken);
   const canOperate = async (contextId: string, subject: string) => {
     if (!executions) return true;
     try {
@@ -195,7 +195,7 @@ export function consoleService({
               context.values.get(requestIdentity).subject,
               task.operate,
             );
-          return create(WatchTaskResponseSchema, { task: await tickets(task) });
+          return create(WatchTaskResponseSchema, { task: await withApprovals(task) });
         },
         true,
       );
@@ -247,7 +247,7 @@ export function consoleService({
             context.values.get(requestIdentity).subject,
             view.operate,
           );
-        return create(WatchConversationResponseSchema, { conversation: await tickets(view) });
+        return create(WatchConversationResponseSchema, { conversation: await withApprovals(view) });
       });
     },
     sendMessage: (request, context) => {
