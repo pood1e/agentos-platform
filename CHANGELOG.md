@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/pood1e/agentos-platform/compare/v0.36.0...v0.37.0) (2026-10-25)
+
+
+### Features
+
+* **console:** add independent approval review queue ([#131](https://github.com/pood1e/agentos-platform/issues/131)) ([19d1d1e](https://github.com/pood1e/agentos-platform/commit/19d1d1e07f70efb12912a9fcca19730bff9ff520))
+
 ## [0.36.0](https://github.com/pood1e/agentos-platform/compare/v0.35.0...v0.36.0) (2026-10-25)
 
 
