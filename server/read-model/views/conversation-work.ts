@@ -3,12 +3,15 @@ import {
   type ChatMessagePart,
   ChatMessagePartSchema,
 } from "../../../gen/agentos/console/v1/conversation_pb.js";
+import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../decode/messages.js";
+import { toolBaseName } from "../decode/tools.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskIndex } from "../index.js";
 import { taskActivity, terminal } from "../state.js";
 import { busy, outcomeState, taskTree } from "../tree.js";
+import type { interactionAnchors } from "./interaction-anchors.js";
 import { runSummary } from "./runs.js";
 
 export function conversationWork(index: TaskIndex, entries: TaskEntry[]) {
@@ -65,13 +68,58 @@ export function delegatedResults(index: TaskIndex, entry: TaskEntry, callId: str
 }
 
 /** Only terminal child answers enter the transcript; native tool payloads stay in their icons. */
-export function agentResults(index: TaskIndex, entry: TaskEntry, parts: ChatMessagePart[]) {
+export function conversationParts(
+  index: TaskIndex,
+  entry: TaskEntry,
+  parts: ChatMessagePart[],
+  interactions: Set<string>,
+  anchors: ReturnType<typeof interactionAnchors> = new Map(),
+) {
   const emitted = new Set<string>();
-  return parts.flatMap((part) => {
+  function human(items: Interaction[]) {
+    return items
+      .toSorted((a, b) => (millis(a.requestedAt) ?? 0) - (millis(b.requestedAt) ?? 0))
+      .flatMap((item) => {
+        if (interactions.has(item.id)) return [];
+        interactions.add(item.id);
+        return [
+          create(ChatMessagePartSchema, {
+            id: `interaction:${item.id}`,
+            content: { case: "interaction", value: item },
+          }),
+        ];
+      });
+  }
+  const result = parts.flatMap((part) => {
     if (part.content.case !== "toolCall") return [part];
     const callId = part.content.value.id;
+    const call = entry.calls.find((item) => item.id === callId);
+    const target = call && index.target(entry, call);
+    const children = target ? (taskTree(index, target)?.entries ?? []) : [];
     return [
       part,
+      ...human(
+        entry.interactions.filter((item) => {
+          if (item.kind === InteractionKind.APPROVAL)
+            return item.tools.some((tool) => tool.callId === callId);
+          const at = millis(item.requestedAt);
+          const call = entry.calls.findLast(
+            (call) =>
+              toolBaseName(call.name) === "ask_user" &&
+              (at === undefined || call.startedAt === undefined || call.startedAt <= at),
+          );
+          return call?.id === callId;
+        }),
+      ),
+      ...human(
+        children
+          .filter((member) => member.contextId !== entry.contextId)
+          .flatMap((member) => member.interactions)
+          .filter((item) => {
+            const anchor = anchors.get(item.id);
+            return !anchor || (anchor.entryId === entry.id && anchor.callId === callId);
+          }),
+      ),
       ...delegatedResults(index, entry, callId)
         .filter(({ member }) => member.answer.trim() && !emitted.has(member.id))
         .map(({ member, background }) => {
@@ -86,4 +134,5 @@ export function agentResults(index: TaskIndex, entry: TaskEntry, parts: ChatMess
         }),
     ];
   });
+  return [...result, ...human(entry.interactions)];
 }

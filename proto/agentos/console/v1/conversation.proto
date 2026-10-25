@@ -39,6 +39,8 @@ message ChatMessagePart {
     string progress = 3;
     agentos.execution.v1.ToolCall tool_call = 4;
     agentos.execution.v1.TaskRun agent_result = 5;
+    // Human interaction anchored to its originating tool call or delegated turn.
+    Interaction interaction = 6;
   }
 }
 

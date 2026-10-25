@@ -14,6 +14,7 @@ import { MessageSchema, Role, TaskSchema, TaskState } from "../../gen/a2a_pb.js"
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { PackSchema } from "../../gen/agentos/console/v1/pack_pb.js";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
+import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import {
   ApprovalService,
   GovernanceConfigSchema,
@@ -28,7 +29,7 @@ import { hitlExtension } from "../../server/read-model/decode/hitl.js";
 import { environment, testBindings } from "../harness.js";
 import { memoryStore } from "./execution-store.js";
 
-export async function approvalAppsEnvironment() {
+export async function approvalAppsEnvironment(approvalState = ActivityState.UNOBSERVED) {
   const calls: { name: string; meta: unknown; authorization: string }[] = [];
   const provider = Fastify();
   let failure = false;
@@ -38,6 +39,7 @@ export async function approvalAppsEnvironment() {
         getApproval: async () => ({
           approval: {
             id: "change",
+            state: approvalState,
             app: { tool: "show_ticket", arguments: { id: 19 } },
             link: { name: "#19", url: "https://tickets.example/19" },
           },

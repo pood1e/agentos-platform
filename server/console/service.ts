@@ -28,6 +28,7 @@ import type { TaskTagStore } from "../tasks/tags.js";
 import { approvalQueue } from "./approval-queue.js";
 import { approvalReferences } from "./approval-references.js";
 import { cancellationCommands } from "./cancellation.js";
+import { conversationTranscript } from "./conversation-transcript.js";
 import { conversationCommands } from "./conversations.js";
 import { chatTarget, executionHistory } from "./history.js";
 import { messageCommands } from "./messages.js";
@@ -247,7 +248,9 @@ export function consoleService({
             context.values.get(requestIdentity).subject,
             view.operate,
           );
-        return create(WatchConversationResponseSchema, { conversation: await withApprovals(view) });
+        return create(WatchConversationResponseSchema, {
+          conversation: conversationTranscript(await withApprovals(view)),
+        });
       });
     },
     sendMessage: (request, context) => {
@@ -285,7 +288,10 @@ export function consoleService({
       ready();
       const identity = context.values.get(requestIdentity);
       const visible = isAdministrator(identity) ? index : await history(identity);
-      const result = approvalQueue(visible, operations, request, identity.subject);
+      const { interactions } = await withApprovals({
+        interactions: visible.all().flatMap((entry) => entry.interactions),
+      });
+      const result = approvalQueue(interactions, request, identity.subject);
       await approvalsFor(
         result.requests.filter((item) => !item.external),
         identity.subject,
