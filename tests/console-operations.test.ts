@@ -1,8 +1,8 @@
-import { create } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
-import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
+import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { cancelTree } from "../server/read-model/cancel.js";
 import { taskTree } from "../server/read-model/tree.js";
@@ -117,6 +117,47 @@ it("attempts every cancellation and keeps native successes when one task fails",
     );
     expect(index.entry(ids.inspection)?.state).toBe(TaskState.CANCELED);
     expect(index.entry(ids.dispatchRoot)?.state).toBe(TaskState.WORKING);
+  } finally {
+    sync.close();
+  }
+});
+
+it("cancels unanswered tasks in one native session without overlapping its actor commands", async () => {
+  const { clients, sync, index, fake } = await runningTree();
+  const question = fake.task(ids.inspection);
+  const approval = clone(TaskSchema, question);
+  approval.id = "pending-approval";
+  fake.update(question, TaskState.INPUT_REQUIRED);
+  fake.update(approval, TaskState.AUTH_REQUIRED);
+  await sync.refresh();
+  const tree = {
+    entries: [ids.dispatchRoot, ids.inspection, ids.background, approval.id].map((id) => {
+      const entry = index.entry(id);
+      if (!entry) throw new Error("missing operation task");
+      return entry;
+    }),
+  };
+  const native = clients.a2a.cancelTask;
+  const sessions = new Set<string>();
+  let concurrency = 0;
+  vi.spyOn(clients.a2a, "cancelTask").mockImplementation(async (request, options) => {
+    const contextId = fake.task(request.id ?? "").contextId;
+    if (sessions.has(contextId))
+      throw new ConnectError("session actor is handling cancellation", Code.InvalidArgument);
+    sessions.add(contextId);
+    concurrency = Math.max(concurrency, sessions.size);
+    try {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      return await native(request, options);
+    } finally {
+      sessions.delete(contextId);
+    }
+  });
+  try {
+    await cancelTree(clients, sync, tree);
+    expect(concurrency).toBeGreaterThan(1);
+    for (const entry of tree.entries) expect(index.entry(entry.id)?.state).toBe(TaskState.CANCELED);
+    expect(fake.received).toEqual([]);
   } finally {
     sync.close();
   }
