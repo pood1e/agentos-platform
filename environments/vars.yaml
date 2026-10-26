@@ -17,6 +17,7 @@ cert_manager_version: v1.21.2
 native_controller_service_account: kagent-controller
 approval_service_url: ""
 approval_service_authorization_file: ""
+environment_apis: []
 registry_config_file: ""
 agentos_config: "{{ (lookup('ansible.builtin.file', agentos_values_file) | from_yaml).global.agentos }}"
 toolsets: >-

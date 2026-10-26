@@ -39,6 +39,12 @@ export function automationPresets(workspace: string, dir?: string) {
   }
   if (createValidator().validate(AutomationPresetsSchema, presets).kind !== "valid")
     throw new Error("Invalid automation presets");
+  if (
+    Object.entries(presets.scheduledRunPrompts).some(
+      ([key, prompt]) => !ids.has(key) || !prompt.trim(),
+    )
+  )
+    throw new Error("Managed instructions require an existing preset key and a nonempty prompt");
   return {
     eventTriggers: presets.eventTriggers,
     scheduledRuns,
@@ -50,6 +56,17 @@ export function automationPresets(workspace: string, dir?: string) {
         });
         if (!scheduledRun?.id || scheduledRun.agent?.namespace !== workspace)
           throw new Error("Automation preset requires a workspace schedule");
+        const prompt = presets.scheduledRunPrompts[request.requestId.slice(prefix.length)];
+        if (prompt && scheduledRun.config && prompt !== scheduledRun.config.prompt) {
+          await clients.schedules.updateScheduledRun(
+            {
+              scheduledRunId: scheduledRun.id,
+              etag: scheduledRun.etag,
+              config: { ...scheduledRun.config, prompt },
+            },
+            { timeoutMs: 15_000 },
+          );
+        }
         references.push(
           create(ScheduledRunPresetSchema, {
             key: request.requestId.slice(prefix.length),

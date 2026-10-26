@@ -35,6 +35,7 @@ View 使用规范默认 CSP，仅可显式申请 `data:` 静态资源，无直�
 方案镜像可在 `/pack/automation.json` 提供 `agentos.automation.v1.AutomationPresets`：
 
 - `scheduledRuns`：kagent 官方 `CreateScheduledRunRequest`，包含稳定的 `requestId`、目标 `agent` 与 `config`。平台补齐工作空间；调度表达式、时区及超时由上游校验。预置使用 `paused: true`，由任务管理员启用。
+- `scheduledRunPrompts`：按预置 `key` 管理方案说明。平台以原生 etag 更新提示词，保留任务 ID、启停、周期和执行历史；初始创建输入保持不变。
 - `eventTriggers`：既有 `CaseTrigger` 列表，来源环境的 worker 读取同一份定义。`locales.<language>.translation.automation.eventNames.<eventNamespace>` 提供显示名称。
 
 平台在启动时通过原生幂等创建接口登记定时任务，后续重启保留用户编辑、启停与删除状态。同一预置 ID 对应固定的初始输入。
@@ -43,6 +44,12 @@ View 使用规范默认 CSP，仅可显式申请 `data:` 静态资源，无直�
 
 MCP 接入目录展示供 Agent 调用的工具服务。自动化事件入口使用注解
 `agentos.dev/connection-role: ingress`，由部署配置托管，事件触发状态在系统任务中展示。
+
+## 环境结果读取与 API
+
+环境的 `automationSources` 可以用 `scheduledRunPresets` 精确授权原生定时执行结果。该身份仅能调用 `list_scheduled_run_executions` 与 `get_scheduled_run_execution_result`，与 `caseAgents`、写权限和能力授权互斥。读取仅包含该次触发的原始任务及因果子任务，排除后续聊天和审批复查；结果脱敏、分页并限制响应大小。业务结果由环境校验并持久化。
+
+`EnvironmentConnection.apis` 声明环境服务的 `service`、`readMethods` 和 `writeMethods`。平台 `/environments/{environment}/rpc/{service}/{method}` 只转发白名单中的 unary Connect JSON，按当前用户进行环境令牌交换，保留环境服务的原生错误。写方法要求用户写权限，读写名单互斥。环境服务继续负责资源、业务角色和审批校验。
 
 ## 模型用途
 

@@ -917,10 +917,22 @@
       "additionalProperties": false,
       "description": "An environment's client-credentials identity; human tokens do not match it.",
       "patternProperties": {
+        "^(case_agents)$": {
+          "items": {
+            "$ref": "#/$defs/kagent.api.v1.ResourceReference.jsonschema.json"
+          },
+          "type": "array"
+        },
         "^(client_id)$": {
           "default": "",
           "minLength": 1,
           "type": "string"
+        },
+        "^(scheduled_run_presets)$": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "properties": {
@@ -928,6 +940,38 @@
           "default": "",
           "minLength": 1,
           "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "anyOf": [
+              {
+                "enum": [
+                  "CAPABILITY_UNSPECIFIED",
+                  "CAPABILITY_AGENTS_MANAGE",
+                  "CAPABILITY_SKILLS_MANAGE",
+                  "CAPABILITY_MCP_MANAGE",
+                  "CAPABILITY_KNOWLEDGE_MANAGE",
+                  "CAPABILITY_MODELS_MANAGE",
+                  "CAPABILITY_HARNESSES_MANAGE",
+                  "CAPABILITY_TASKS_MANAGE"
+                ],
+                "type": "string"
+              },
+              {
+                "maximum": 2147483647,
+                "minimum": -2147483648,
+                "type": "integer"
+              }
+            ],
+            "title": "Capability"
+          },
+          "type": "array"
+        },
+        "caseAgents": {
+          "items": {
+            "$ref": "#/$defs/kagent.api.v1.ResourceReference.jsonschema.json"
+          },
+          "type": "array"
         },
         "clientId": {
           "default": "",
@@ -944,13 +988,45 @@
           "pattern": "^https://.*",
           "type": "string"
         },
+        "scheduledRunPresets": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "subject": {
           "default": "",
           "minLength": 1,
           "type": "string"
+        },
+        "write": {
+          "default": false,
+          "type": "boolean"
         }
       },
       "title": "Automation Source",
+      "type": "object"
+    },
+    "kagent.api.v1.ResourceReference.jsonschema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "",
+          "maxLength": 253,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+          "type": "string"
+        },
+        "namespace": {
+          "default": "",
+          "maxLength": 63,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "type": "string"
+        }
+      },
+      "title": "Resource Reference",
       "type": "object"
     }
   }

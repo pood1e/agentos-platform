@@ -28,7 +28,7 @@ spec:
       authorization:
         action: Require
         policy:
-          matchExpressions: ["mcp.tool.name in ['run_case', 'observe_case', 'cancel_case']"]
+          matchExpressions: ["mcp.tool.name in ['run_case', 'observe_case', 'cancel_case', 'list_scheduled_run_executions', 'get_scheduled_run_execution_result']"]
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

@@ -20,4 +20,6 @@ plugins:
       - agentos.kagent.v1.InvokeSessionInput
       - agentos.automation.v1.CaseRequest
       - agentos.automation.v1.CaseReference
+      - agentos.automation.v1.ScheduledExecutionQuery
+      - agentos.automation.v1.GetScheduledRunExecutionResultRequest
     opt: [target=json-bundle]
