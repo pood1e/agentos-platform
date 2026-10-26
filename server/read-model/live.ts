@@ -100,7 +100,9 @@ export class LiveTasks {
   }
 
   follow() {
-    for (const entry of this.index.all()) {
+    for (const task of this.running.values()) {
+      const entry = this.index.entry(task.id);
+      if (!entry) continue;
       if (entry.state !== TaskState.WORKING && entry.state !== TaskState.SUBMITTED) continue;
       if (this.streams.has(entry.id) || this.reload.has(entry.id)) continue;
       if ((this.retries.get(entry.id)?.after ?? 0) > Date.now()) continue;

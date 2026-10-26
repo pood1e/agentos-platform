@@ -1,12 +1,14 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
+import { ModelPurpose } from "../../gen/agentos/management/v1/management_pb.js";
 import { ErrorInfoSchema } from "../../gen/google/rpc/error_details_pb.js";
 import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import {
   type ResourceReference,
   ResourceReferenceSchema,
 } from "../../gen/kagent/api/v1/common_pb.js";
+import { modelPurpose } from "../../shared/model-purpose.js";
 import type { BindingView } from "../governance/bindings.js";
 import { engineerTools } from "../kagent/builtin-tools.js";
 import type { KagentClients } from "../kagent/clients.js";
@@ -56,7 +58,9 @@ export function roleCommands(
     const servers = tools.toolServers.filter((server) => server.ref.startsWith(`${namespace}/`));
     return {
       modelConfigs: models.modelConfigs.filter(
-        (item) => item.ref?.namespace === namespace && item.ref.name !== "knowledge-embedding",
+        (item) =>
+          item.ref?.namespace === namespace &&
+          modelPurpose(item.resource?.value) === ModelPurpose.LANGUAGE,
       ),
       templates: templates.agentTemplates.filter((item) => !systemRoles.has(item.ref?.name ?? "")),
       servers: await metadata.modelServers(servers, (server) =>

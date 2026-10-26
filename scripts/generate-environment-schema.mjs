@@ -20,7 +20,6 @@ const https = { type: "string", format: "uri", pattern: "^https://[^/]+" };
 const port = { type: "integer", minimum: 30000, maximum: 32767 };
 const identifier = shared.environments.items.properties.name;
 const gateway = object({ address: text, host: text, nodePort: port, ca: text });
-const trust = root.properties.execution.properties;
 const common = { toolsets: shared.toolsets, identities: shared.identities };
 const environment = object({
   environment: object({ name: identifier, issuer: https, resource: https, jwksURL: https }),
@@ -78,9 +77,6 @@ const connections = object({
     release: identifier,
     controllerServiceAccount: identifier,
     actorIssuer: https,
-    actorJWKS: trust.actorJWKS,
-    kubernetesIssuer: https,
-    kubernetesJWKS: trust.kubernetesJWKS,
   }),
   environments: {
     type: "array",

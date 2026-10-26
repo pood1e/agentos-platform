@@ -1,7 +1,8 @@
 import { create } from "@bufbuild/protobuf";
-import { createClient, createRouterTransport } from "@connectrpc/connect";
+import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import {
+  AuthorizationError_Code,
   ExtMcp,
   McpHeaderSchema,
   McpRequestSchema,
@@ -80,6 +81,40 @@ it("checks each call using the verified Session even when arguments assert anoth
     }),
   ];
   expect((await client.checkRequest(request)).result.case).toBe("error");
+});
+
+it("keeps transient authorization failures distinct from denied tools", async () => {
+  const session = create(SessionSchema, { id: "native-session" });
+  let code = Code.Unavailable;
+  const service = mcpAuthorization(
+    async () => session,
+    async () => {
+      throw new ConnectError("Upstream failed", code);
+    },
+  );
+  const client = createClient(
+    ExtMcp,
+    createRouterTransport((router) => router.service(ExtMcp, service)),
+  );
+  const request = create(McpRequestSchema, {
+    method: "tools/call",
+    headers: [{ key: actorTokenHeader, value: new TextEncoder().encode("Bearer host-signed") }],
+    mcpRequest: new TextEncoder().encode('{"name":"read"}'),
+  });
+  expect((await client.checkRequest(request)).result).toMatchObject({
+    case: "error",
+    value: { code: AuthorizationError_Code.UNKNOWN, reason: "Tool authorization unavailable" },
+  });
+  code = Code.PermissionDenied;
+  expect((await client.checkRequest(request)).result).toMatchObject({
+    case: "error",
+    value: { code: AuthorizationError_Code.PERMISSION_DENIED },
+  });
+  request.mcpRequest = new TextEncoder().encode("invalid");
+  expect((await client.checkRequest(request)).result).toMatchObject({
+    case: "error",
+    value: { code: AuthorizationError_Code.INVALID },
+  });
 });
 
 it("allows discovery to read only ui resources and rejects other resource schemes", async () => {

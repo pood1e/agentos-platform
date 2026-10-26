@@ -4,6 +4,7 @@ import { type JWTPayload, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { type Control, ResourceMetadataSchema } from "../../gen/ateapi_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { tokenRejected } from "./token-errors.js";
 
 export const actorTokenHeader = "x-substrate-actor-token";
 const denied = () => new ConnectError("Runtime identity is invalid", Code.Unauthenticated);
@@ -20,8 +21,15 @@ export function actorVerifier(keys: JWTVerifyGetKey, issuer: string, audience: s
         algorithms: ["ES256", "RS256"],
         requiredClaims: ["iss", "sub", "aud", "exp", "nbf", "iat", "jti"],
       }));
-    } catch {
-      throw denied();
+    } catch (error) {
+      if (tokenRejected(error)) throw denied();
+      throw new ConnectError(
+        "Actor signing keys unavailable",
+        Code.Unavailable,
+        undefined,
+        undefined,
+        error,
+      );
     }
     const raw = payload["actor.ate.dev"];
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw denied();

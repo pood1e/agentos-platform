@@ -192,7 +192,9 @@
     "waitingExecution": "Waiting for this instance to start execution."
   },
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "retry": "Retry",
+    "loading": "Loading…"
   },
   "chat": {
     "title": "Chat",

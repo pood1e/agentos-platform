@@ -84,7 +84,7 @@ export class TaskIndex {
     if (previous && JSON.stringify(previous) === JSON.stringify(session)) return;
     this.sessionInfo.set(session.id, session);
     this.missingSessions.delete(session.id);
-    this.touch("");
+    this.touch(`session:${session.id}`);
   }
 
   removeSession(id: string): void {
@@ -92,7 +92,7 @@ export class TaskIndex {
     this.sessionInfo.delete(id);
     this.missingSessions.delete(id);
     this.contexts.delete(id);
-    this.touch("");
+    this.touch(`session:${id}`);
   }
 
   entry = (id: string) => this.entries.get(id);

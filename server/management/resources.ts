@@ -26,11 +26,16 @@ export interface ResourceStore {
   list(kind: ResourceKind): Promise<JsonObject[]>;
   get(kind: ResourceKind, name: string): Promise<JsonObject>;
   save(kind: ResourceKind, resource: JsonObject, create: boolean): Promise<JsonObject>;
-  validate(kind: ResourceKind, resource: JsonObject, create?: boolean): Promise<void>;
+  validate(kind: ResourceKind, resource: JsonObject, create?: boolean): Promise<JsonObject>;
   remove(kind: ResourceKind, name: string, version: string): Promise<void>;
   readCatalog(): Promise<{ value: string; version: string }>;
   writeCatalog(value: string, version: string): Promise<string>;
-  credential(name: string, value: string, owner: JsonObject): Promise<void>;
+  credential(
+    name: string,
+    value: string,
+    owner: JsonObject,
+    dryRun?: boolean,
+  ): Promise<() => Promise<void>>;
 }
 
 export function resourceError(error: unknown): never {
@@ -101,14 +106,14 @@ export function resourceStore(
           dryRun: "All",
           fieldValidation: "Strict",
         };
-        if (create) await custom.createNamespacedCustomObject(request);
-        else
-          await custom.replaceNamespacedCustomObject({
-            ...request,
-            name: String(object(resource.metadata).name ?? ""),
-          });
+        return create
+          ? await custom.createNamespacedCustomObject(request)
+          : await custom.replaceNamespacedCustomObject({
+              ...request,
+              name: String(object(resource.metadata).name ?? ""),
+            });
       } catch (error) {
-        resourceError(error);
+        return resourceError(error);
       }
     },
     async remove(kind, name, version) {
@@ -156,7 +161,7 @@ export function resourceStore(
         return resourceError(error);
       }
     },
-    async credential(name, value, owner) {
+    async credential(name, value, owner, dryRun = false) {
       const metadata = object(owner.metadata);
       const body = {
         apiVersion: "v1",
@@ -183,20 +188,49 @@ export function resourceStore(
             if (error instanceof ApiException && error.code === 404) return undefined;
             throw error;
           });
-        if (existing) {
-          if (!existing.metadata?.ownerReferences?.some((ref) => ref.uid === metadata.uid))
-            throw invalid("management.credentialOwner");
-          await core.replaceNamespacedSecret({
-            namespace,
-            name,
-            body: {
-              ...body,
-              metadata: { ...body.metadata, resourceVersion: existing.metadata?.resourceVersion },
-            },
-          });
-        } else await core.createNamespacedSecret({ namespace, body });
+        if (
+          existing &&
+          !existing.metadata?.ownerReferences?.some((ref) => ref.uid === metadata.uid)
+        )
+          throw invalid("management.credentialOwner");
+        const saved = existing
+          ? await core.replaceNamespacedSecret({
+              namespace,
+              name,
+              ...(dryRun ? { dryRun: "All" } : {}),
+              body: {
+                ...body,
+                metadata: { ...body.metadata, resourceVersion: existing.metadata?.resourceVersion },
+              },
+            })
+          : await core.createNamespacedSecret({
+              namespace,
+              body,
+              ...(dryRun ? { dryRun: "All" } : {}),
+            });
+        return async () => {
+          if (dryRun) return;
+          if (existing)
+            await core.replaceNamespacedSecret({
+              namespace,
+              name,
+              body: {
+                ...existing,
+                metadata: {
+                  ...existing.metadata,
+                  resourceVersion: saved.metadata?.resourceVersion,
+                },
+              },
+            });
+          else
+            await core.deleteNamespacedSecret({
+              namespace,
+              name,
+              body: { preconditions: { resourceVersion: saved.metadata?.resourceVersion } },
+            });
+        };
       } catch (error) {
-        resourceError(error);
+        return resourceError(error);
       }
     },
   };

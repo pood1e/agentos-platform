@@ -47,8 +47,12 @@ export async function managementEnvironment() {
   return {
     ...env,
     store,
+    kubeConfig: config,
     dependencies,
     service: managementService(dependencies),
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () => {
+      server.closeAllConnections();
+      return new Promise<void>((resolve) => server.close(() => resolve()));
+    },
   };
 }

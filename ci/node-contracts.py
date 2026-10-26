@@ -33,6 +33,9 @@ package = {
         name: "^" + manifest["dependencies"][name]
         for name in (
             "@assistant-ui/react",
+            "@modelcontextprotocol/client",
+            "@modelcontextprotocol/core",
+            "@modelcontextprotocol/ext-apps",
             "@deepgram/sdk",
             "@ricky0123/vad-web",
             "livekit-client",
@@ -49,6 +52,9 @@ package = {
         for name in (
             "react",
             "@assistant-ui/react",
+            "@modelcontextprotocol/client",
+            "@modelcontextprotocol/core",
+            "@modelcontextprotocol/ext-apps",
             "@deepgram/sdk",
             "@ricky0123/vad-web",
             "livekit-client",

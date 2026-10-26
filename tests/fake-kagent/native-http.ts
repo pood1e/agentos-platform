@@ -3,6 +3,7 @@ import type { JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { object, text } from "../../server/read-model/decode/messages.js";
 import type { FakeKagent } from "./kagent.js";
+import { nativeWatch } from "./native-watch.js";
 
 export async function nativeRequest(
   fake: FakeKagent,
@@ -46,6 +47,10 @@ export async function nativeRequest(
   try {
     if (match && match[1] !== "agentos")
       throw new ConnectError("Namespace not found", Code.NotFound);
+    if (match && request.method === "GET" && url.searchParams.get("watch") === "true") {
+      nativeWatch(fake.resources, match[2], response);
+      return true;
+    }
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     const body = chunks.length ? (JSON.parse(Buffer.concat(chunks).toString()) as JsonObject) : {};
@@ -78,7 +83,12 @@ export async function nativeRequest(
     else if (request.method === "GET")
       result = name
         ? fake.resources.get(plural, name)
-        : { apiVersion: "v1", kind: "List", items: fake.resources.list(plural) };
+        : {
+            apiVersion: "v1",
+            kind: "List",
+            metadata: { resourceVersion: "1" },
+            items: fake.resources.list(plural),
+          };
     else if (request.method === "POST" || request.method === "PUT")
       result = fake.resources.save(plural, body, request.method === "POST");
     else if (request.method === "PATCH" && name) {

@@ -12,11 +12,20 @@ import { notFound } from "../shared/errors.js";
 
 /** Read access survives cancellation and credential expiry; it never grants execution authority. */
 export function executionHistory(index: TaskIndex, executions?: Executions) {
-  return async (identity: ExecutionIdentity, systemOnly = false) => {
+  return async (
+    identity: ExecutionIdentity,
+    systemOnly = false,
+    contexts?: ReadonlySet<string>,
+  ) => {
     if (!executions) return systemOnly ? new TaskIndex() : index;
+    const sessions = contexts
+      ? [...contexts].flatMap((id) => index.session(id) ?? [])
+      : index.sessions();
+    const entries = contexts
+      ? [...contexts].flatMap((id) => index.contextEntries(id))
+      : index.all();
     const scheduled = new Map(
-      index
-        .all()
+      entries
         .filter((entry) => entry.messageIds.some(scheduledExecutionId))
         .map((entry) => [entry.contextId, entry]),
     );
@@ -31,13 +40,13 @@ export function executionHistory(index: TaskIndex, executions?: Executions) {
       identity.subject,
       [
         ...new Set([
-          ...index.sessions().map((session) => session.id),
-          ...index.all().map((entry) => entry.contextId),
+          ...sessions.map((session) => session.id),
+          ...entries.map((entry) => entry.contextId),
         ]),
       ],
       origins,
     );
-    const contexts = new Set(
+    const visible = new Set(
       bindings
         .filter(
           (binding) =>
@@ -49,8 +58,8 @@ export function executionHistory(index: TaskIndex, executions?: Executions) {
     );
     const view = new TaskIndex();
     view.setAgents(index.agents());
-    for (const session of index.sessions()) if (contexts.has(session.id)) view.setSession(session);
-    for (const entry of index.all()) if (contexts.has(entry.contextId)) view.upsert(entry);
+    for (const session of sessions) if (visible.has(session.id)) view.setSession(session);
+    for (const entry of entries) if (visible.has(entry.contextId)) view.upsert(entry);
     return view;
   };
 }

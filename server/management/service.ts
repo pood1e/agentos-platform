@@ -72,7 +72,7 @@ export function managementService({
       id: (await memories.add(request.content)).id,
     }),
     deleteKnowledge: (request) => memories.remove(request.id),
-    clearKnowledge: (request) => memories.clear(request.expectedCount),
+    clearKnowledge: (request) => memories.clear(request.etag),
     listHarnesses: (request) => harnesses.list(request.namespace),
     saveHarness: (request) => harnesses.save(request),
     deleteHarness: (request) => harnesses.remove(request),

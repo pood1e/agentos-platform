@@ -187,7 +187,9 @@
     "waitingExecution": "等待实例开始执行。"
   },
   "common": {
-    "close": "关闭"
+    "close": "关闭",
+    "retry": "重试",
+    "loading": "正在加载…"
   },
   "chat": {
     "title": "聊天",

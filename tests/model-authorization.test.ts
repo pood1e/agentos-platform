@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { create, fromJsonString } from "@bufbuild/protobuf";
+import { Code } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import {
   ModelAuthorizationSchema,
@@ -12,7 +13,7 @@ import { object } from "../server/read-model/decode/messages.js";
 import { environment } from "./harness.js";
 
 it("checks the Actor audience, execution binding, current model and API for every model request", async () => {
-  const { clients, sync } = environment();
+  const { clients, sync, fake } = environment();
   const trust = fromJsonString(
     WorkloadAuthenticationSchema,
     readFileSync("tests/fixtures/identity/workloads.json", "utf8"),
@@ -57,6 +58,21 @@ it("checks the Actor audience, execution binding, current model and API for ever
     await expect(authorize(request, headers)).rejects.toThrow("revoked");
     const controller = { authorization: "Bearer controller" };
     await expect(authorize(request, controller)).rejects.toThrow();
+    const current = fake.resources.get("modelconfigs", "default-model-config");
+    fake.resources.save(
+      "modelconfigs",
+      {
+        ...current,
+        metadata: {
+          ...object(current.metadata),
+          annotations: { "agentos.dev/model-purpose": "embedding" },
+        },
+      },
+      false,
+    );
+    await expect(authorize(request, headers)).rejects.toMatchObject({
+      code: Code.PermissionDenied,
+    });
   } finally {
     sync.close();
   }

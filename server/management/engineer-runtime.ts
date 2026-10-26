@@ -1,15 +1,11 @@
 import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import {
-  ModelPurpose,
-  type SetEngineerRuntimeRequest,
-} from "../../gen/agentos/management/v1/management_pb.js";
+import type { SetEngineerRuntimeRequest } from "../../gen/agentos/management/v1/management_pb.js";
 import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import { ModelConfigSchema } from "../../gen/kagent/api/v1/models_pb.js";
 import { harnessModelIssue } from "../../shared/harness-model.js";
-import { modelPurpose } from "../../shared/model-purpose.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { validateHarness } from "../kagent/harness.js";
 import { agentInfo, systemRoles } from "../read-model/agents.js";
@@ -61,7 +57,6 @@ export function engineerRuntime(store: ResourceStore, clients: KagentClients, na
       store.get("modelConfigs", modelName),
       clients.tools.listToolServers({}, { timeoutMs: 10_000 }),
     ]);
-    if (modelPurpose(model) === ModelPurpose.EMBEDDING) throw invalid("management.invalidModel");
     const updatedTemplate = { ...template, modelConfig: { name: modelName } };
     validateHarness(
       asHarness(harness),

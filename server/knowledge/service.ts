@@ -1,10 +1,11 @@
+import { createHash } from "node:crypto";
 import { Code, ConnectError } from "@connectrpc/connect";
 import OpenAI, { type ClientOptions } from "openai";
 import type {
   MemoryServiceListRequest,
   SessionMemoryInput,
 } from "../../gen/kagent/runtime/v1/memory_pb.js";
-import type { KagentClients } from "../kagent/clients.js";
+import { type KagentClients, pool } from "../kagent/clients.js";
 import { millis } from "../read-model/decode/messages.js";
 import { type PageRequest, pageOf } from "../read-model/page.js";
 import type { KagentConfig } from "../shared/config.js";
@@ -21,6 +22,10 @@ export interface KnowledgeConfig {
 
 /** The console and read-only MCP search share the knowledge curator's native memory. */
 export function knowledgeService(clients: KagentClients, config: KnowledgeConfig) {
+  const etag = (memories: { id: string }[]) =>
+    createHash("sha256")
+      .update(JSON.stringify(memories.map((item) => item.id).sort()))
+      .digest("hex");
   const options = (timeoutMs = 10_000) => ({
     timeoutMs,
     headers: { "x-user-id": config.scope.userId },
@@ -63,7 +68,12 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
       id: item.id,
       time: millis(item.createdAt) ?? 0,
     }));
-    return { memories: page.items, nextPageToken: page.nextPageToken, totalSize: page.totalSize };
+    return {
+      memories: page.items,
+      nextPageToken: page.nextPageToken,
+      totalSize: page.totalSize,
+      etag: etag(memories),
+    };
   }
   async function search(query: string, limit = 20) {
     return clients.memory.search(
@@ -90,13 +100,19 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
       options(),
     );
   }
-  async function clear(expected: number) {
+  async function clear(expected: string) {
     const { memories } = await clients.memory.list(
       { agentName: config.scope.agentName },
       options(),
     );
-    if (memories.length !== expected) throw conflict("management.knowledgeChanged");
-    await clients.memory.delete({ agentName: config.scope.agentName }, options());
+    if (etag(memories) !== expected) throw conflict("management.knowledgeChanged");
+    await pool(memories, 4, async ({ id }) => {
+      try {
+        await clients.memory.deleteEntry({ agentName: config.scope.agentName, id }, options());
+      } catch (error) {
+        if (!(error instanceof ConnectError && error.code === Code.NotFound)) throw error;
+      }
+    });
     return {};
   }
   async function remove(id: string) {

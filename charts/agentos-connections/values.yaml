@@ -2,7 +2,4 @@ platform:
   release: agentos
   controllerServiceAccount: kagent-controller
   actorIssuer: ''
-  actorJWKS: {keys: []}
-  kubernetesIssuer: ''
-  kubernetesJWKS: {keys: []}
 environments: []

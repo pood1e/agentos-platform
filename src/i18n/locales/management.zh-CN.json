@@ -61,7 +61,7 @@
   "secretReferenceRequired": "密钥应填写在访问密钥字段。",
   "skillExists": "Skill 标识已存在或已被删除，请刷新。",
   "catalogFull": "Skill 目录已达到存储上限。",
-  "knowledgeChanged": "知识数量已变化，请刷新后确认。",
+  "knowledgeChanged": "知识记录已变化，请刷新后确认。",
   "embeddingFailed": "嵌入服务调用失败，请检查模型接入。",
   "invalidModel": "所选模型接入已不可用。",
   "fields": {
@@ -134,5 +134,6 @@
     "refresh": "刷新"
   },
   "view": "查看",
-  "embeddingModels": "向量模型"
+  "embeddingModels": "向量模型",
+  "partialSave": "保存未完整完成，请刷新核对配置后重试。"
 }

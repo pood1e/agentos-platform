@@ -80,11 +80,17 @@ export function toolMetadata(clients: KagentClients) {
           ...server,
           discoveredTools: server.discoveredTools.filter((tool) => visible.has(tool.name)),
         });
-      } catch {
-        result.set(server.ref, { ...server, discoveredTools: [] });
+      } catch (cause) {
+        throw new ConnectError(
+          "MCP tool discovery unavailable",
+          Code.Unavailable,
+          undefined,
+          undefined,
+          cause,
+        );
       }
     });
-    return servers.map((server) => result.get(server.ref) ?? { ...server, discoveredTools: [] });
+    return servers.map((server) => result.get(server.ref) ?? server);
   }
   async function modelTools(server: ToolServer, names: string[]) {
     const hidden = new Set((await tools(server)).filter(appOnly).map((tool) => tool.name));

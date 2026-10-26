@@ -26,9 +26,6 @@ execution:
   databaseCASecret: kagent-postgres-ca
   substrateURL: https://api.ate-system.svc
   actorIssuer: https://idp.ate-system.svc
-  actorJWKS: {keys: []}
-  kubernetesIssuer: ''
-  kubernetesJWKS: {keys: []}
 console:
   resources:
     requests:

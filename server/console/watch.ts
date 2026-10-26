@@ -1,5 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { type DescMessage, equals, type MessageShape } from "@bufbuild/protobuf";
+import type { ObservationScope } from "../read-model/observation.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { unavailable } from "../shared/errors.js";
 
@@ -20,11 +21,18 @@ export async function* watch<Desc extends DescMessage>(
   schema: Desc,
   signal: AbortSignal,
   view: () => MessageShape<Desc> | Promise<MessageShape<Desc>>,
-  poll = false,
+  options: { poll?: boolean; scope?: ObservationScope } = {},
 ): AsyncGenerator<MessageShape<Desc>> {
   let changed = true;
   let wake = () => {};
-  const unsubscribe = sync.index.onChange(() => {
+  let projecting = false;
+  const pending = new Set<string>();
+  const unsubscribe = sync.index.onChange((ids) => {
+    if (projecting) {
+      for (const id of ids) pending.add(id);
+      return;
+    }
+    if (options.scope && !options.scope.affects(ids)) return;
     changed = true;
     wake();
   });
@@ -36,7 +44,13 @@ export async function* watch<Desc extends DescMessage>(
       if (!sync.healthy()) throw unavailable();
       if (changed) {
         changed = false;
+        projecting = true;
+        options.scope?.refresh();
         const next = await view();
+        options.scope?.refresh();
+        projecting = false;
+        if (pending.size && (!options.scope || options.scope.affects(pending))) changed = true;
+        pending.clear();
         if (!last || !equals(schema, last, next)) {
           last = next;
           sentAt = Date.now();
@@ -53,7 +67,7 @@ export async function* watch<Desc extends DescMessage>(
         sentAt = Date.now();
         yield last;
       }
-      if (poll) changed = true;
+      if (options.poll) changed = true;
       wake = () => {};
     }
   } finally {

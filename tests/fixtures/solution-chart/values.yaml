@@ -58,14 +58,4 @@ agentos:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   ingress:
     host: agentos.example.test
-  execution:
-    kubernetesIssuer: https://kube.test
-    kubernetesJWKS: &id001
-      keys:
-      - kty: RSA
-        "n": ujUBKO2rce1Iwca_WI_VB_zipwZ6qtshcfCtWjP4R0XxIsz8CQ9yO7dCsHV04iTNDC0qJh9FrFP2oZWBlqQ_teaMdMlrY6fvyWBGsLk3MvnUwGASBSh9GllGrtXZXoL_lwLrZK02A4NtACKJWTTqgVlaEylFVeW2VeEA03QuyC3STv42bcyhoMraE5o2Wy7he4Gem8loFgxvFZoxftW5IDF0prs5xePFEDHs4TvozlyG7qCuWHV39TJcgjVRukrViKKcB0AnQRuB805l064aSCXVBbWICGz2il7iXa7Bh5g_sAjsSgM8xZfiNgQ4McFlTMS6d_SnMMkQHp9kVcGiXw
-        e: AQAB
-        alg: RS256
-        kid: test-workload
-        use: sig
-    actorJWKS: *id001
+  execution: {}
