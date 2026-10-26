@@ -156,6 +156,48 @@
               "required": ["name"]
             }
           },
+          "apis": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "description": "Unary Connect JSON APIs served by the environment's OAuth resource.",
+              "patternProperties": {
+                "^(read_methods)$": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "^(write_methods)$": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "properties": {
+                "readMethods": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "service": {
+                  "default": "",
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "writeMethods": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "title": "Environment Api",
+              "type": "object"
+            }
+          },
           "titles": {
             "type": "object",
             "additionalProperties": {

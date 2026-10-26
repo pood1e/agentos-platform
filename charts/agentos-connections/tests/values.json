@@ -65,7 +65,14 @@
       "titles": {
         "kubernetes": "Kubernetes",
         "tickets": "Tickets"
-      }
+      },
+      "apis": [
+        {
+          "service": "example.resources.v1.Resources",
+          "readMethods": ["ListResources"],
+          "writeMethods": ["UpdateResource"]
+        }
+      ]
     },
     {
       "name": "env-direct",

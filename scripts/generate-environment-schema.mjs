@@ -21,6 +21,8 @@ const port = { type: "integer", minimum: 30000, maximum: 32767 };
 const identifier = shared.environments.items.properties.name;
 const gateway = object({ address: text, host: text, nodePort: port, ca: text });
 const common = { toolsets: shared.toolsets, identities: shared.identities };
+const apiBundle = read("gen/schema/agentos.governance.v1.EnvironmentApi.jsonschema.bundle.json");
+const { $schema, ...api } = apiBundle.$defs["agentos.governance.v1.EnvironmentApi.jsonschema.json"];
 const environment = object({
   environment: object({ name: identifier, issuer: https, resource: https, jwksURL: https }),
   gateway: object({
@@ -88,6 +90,7 @@ const connections = object({
         resource: https,
         gateway,
         ...common,
+        apis: { type: "array", items: api },
         titles: { type: "object", additionalProperties: text },
         approvalUrl: https,
         authorization: text,
