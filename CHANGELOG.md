@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.7](https://github.com/pood1e/agentos-platform/compare/v0.37.6...v0.37.7) (2026-10-26)
+
+
+### Bug Fixes
+
+* **mcp-apps:** coalesce concurrent resource reads ([#145](https://github.com/pood1e/agentos-platform/issues/145)) ([9aadc0a](https://github.com/pood1e/agentos-platform/commit/9aadc0af807b37a6661c42789a835d695827691a))
+
 ## [0.37.6](https://github.com/pood1e/agentos-platform/compare/v0.37.5...v0.37.6) (2026-10-26)
 
 
