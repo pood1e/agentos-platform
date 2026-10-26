@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/pood1e/agentos-platform/compare/v0.38.3...v0.39.0) (2026-10-26)
+
+
+### Features
+
+* manage solution schedule preset lifecycle ([#155](https://github.com/pood1e/agentos-platform/issues/155)) ([0e2727f](https://github.com/pood1e/agentos-platform/commit/0e2727f4b7b7ff5dab3f46ead9a6c1d1b9d0d010))
+
 ## [0.38.3](https://github.com/pood1e/agentos-platform/compare/v0.38.2...v0.38.3) (2026-10-26)
 
 
