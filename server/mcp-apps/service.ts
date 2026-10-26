@@ -70,11 +70,22 @@ export function mcpApps({
   const approval = approvalApps(sync, clients, operations, history, token);
   const agentRole = agentRoles(clients);
   const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
-  const resources = new LRUCache<string, JsonObject>({
+  const resources = new LRUCache<
+    string,
+    JsonObject,
+    Parameters<KagentClients["tools"]["readMCPAppResource"]>[0]
+  >({
     max: 64,
     maxSize: 32 * 1024 * 1024,
     sizeCalculation: (value) => Buffer.byteLength(JSON.stringify(value)),
     ttl: 60_000,
+    fetchMethod: async (_key, _stale, { context, signal }) => {
+      const response = await clients.tools.readMCPAppResource(context, {
+        signal,
+        timeoutMs: 15_000,
+      });
+      return resourceResult(response.result?.value);
+    },
   });
   const denied = () => new ConnectError("MCP App tool access denied", Code.PermissionDenied);
   async function source(call: ToolCall, selectedPolicy?: ToolBindings) {
@@ -153,18 +164,12 @@ export function mcpApps({
       }
       const origin = await original(request, identity);
       const key = `${origin.server.ref}:${origin.uri}`;
-      let result = resources.get(key);
-      if (!result) {
-        const response = await clients.tools.readMCPAppResource(
-          {
-            server: metadata.reference(origin.server),
-            uri: origin.uri,
-          },
-          { signal, timeoutMs: 15_000 },
-        );
-        result = resourceResult(response.result?.value);
-        resources.set(key, result);
-      }
+      signal.throwIfAborted();
+      // The cache owns the shared fetch; one departing viewer cannot cancel other Apps.
+      const result = await resources.forceFetch(key, {
+        context: { server: metadata.reference(origin.server), uri: origin.uri },
+      });
+      signal.throwIfAborted();
       return { result: { value: result }, sandboxOrigin };
     },
     async callTool(request: CallAppToolRequest, identity: ExecutionIdentity, signal: AbortSignal) {
