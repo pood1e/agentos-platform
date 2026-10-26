@@ -2,10 +2,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { create, fromJsonString } from "@bufbuild/protobuf";
 import { createValidator } from "@bufbuild/protovalidate";
-import { AutomationPresetsSchema } from "../../gen/agentos/automation/v1/service_pb.js";
+import {
+  AutomationPresetsSchema,
+  type ScheduledRunPreset,
+  ScheduledRunPresetSchema,
+} from "../../gen/agentos/automation/v1/service_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 
 export function automationPresets(workspace: string, dir?: string) {
+  const prefix = `preset/${workspace}/`;
+  const scheduledRuns: ScheduledRunPreset[] = [];
   const path = dir && join(dir, "automation.json");
   const presets =
     path && existsSync(path)
@@ -16,7 +22,7 @@ export function automationPresets(workspace: string, dir?: string) {
     if (!request.requestId || ids.has(request.requestId))
       throw new Error("Automation preset IDs must be unique and nonempty");
     ids.add(request.requestId);
-    request.requestId = `preset/${workspace}/${request.requestId}`;
+    request.requestId = `${prefix}${request.requestId}`;
     if (request.agent && !request.agent.namespace) request.agent.namespace = workspace;
     if (request.agent?.namespace !== workspace)
       throw new Error("Automation preset is outside the workspace");
@@ -35,9 +41,23 @@ export function automationPresets(workspace: string, dir?: string) {
     throw new Error("Invalid automation presets");
   return {
     eventTriggers: presets.eventTriggers,
+    scheduledRuns,
     async seed(clients: KagentClients) {
-      for (const request of presets.scheduledRuns)
-        await clients.schedules.createScheduledRun(request, { timeoutMs: 15_000 });
+      const references: ScheduledRunPreset[] = [];
+      for (const request of presets.scheduledRuns) {
+        const { scheduledRun } = await clients.schedules.createScheduledRun(request, {
+          timeoutMs: 15_000,
+        });
+        if (!scheduledRun?.id || scheduledRun.agent?.namespace !== workspace)
+          throw new Error("Automation preset requires a workspace schedule");
+        references.push(
+          create(ScheduledRunPresetSchema, {
+            key: request.requestId.slice(prefix.length),
+            scheduledRunId: scheduledRun.id,
+          }),
+        );
+      }
+      scheduledRuns.splice(0, scheduledRuns.length, ...references);
     },
   };
 }

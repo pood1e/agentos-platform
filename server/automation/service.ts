@@ -12,7 +12,10 @@ const missing = () => new ConnectError("Automation not found", Code.NotFound);
 export function automationService(
   clients: KagentClients,
   workspace: string,
-  presets: Pick<ReturnType<typeof automationPresets>, "eventTriggers"> = { eventTriggers: [] },
+  presets: Pick<ReturnType<typeof automationPresets>, "eventTriggers" | "scheduledRuns"> = {
+    eventTriggers: [],
+    scheduledRuns: [],
+  },
   environments: string[] = [],
   ingressEnabled = false,
 ): ServiceImpl<typeof AutomationService> {
@@ -34,6 +37,10 @@ export function automationService(
     return response;
   };
   return {
+    listScheduledRunPresets(_request, context) {
+      read(context);
+      return { presets: presets.scheduledRuns };
+    },
     async listScheduledRuns(request, context) {
       read(context);
       const seen = new Set<string>();
@@ -64,6 +71,11 @@ export function automationService(
     async deleteScheduledRun(request, context) {
       manage(context);
       await get(request.scheduledRunId, context);
+      if (presets.scheduledRuns.some((preset) => preset.scheduledRunId === request.scheduledRunId))
+        throw new ConnectError(
+          "Solution schedules can be paused but not deleted",
+          Code.FailedPrecondition,
+        );
       return native.deleteScheduledRun(request, options(context));
     },
     async triggerScheduledRun(request, context) {
