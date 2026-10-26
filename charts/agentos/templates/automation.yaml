@@ -5,6 +5,9 @@ apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
 metadata:
   name: automation
+  annotations:
+    agentos.dev/connection-role: ingress
+    agentos.dev/system-connection: 'true'
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:

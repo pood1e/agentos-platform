@@ -41,6 +41,9 @@ View 使用规范默认 CSP，仅可显式申请 `data:` 静态资源，无直�
 具有任一平台资源管理能力的管理员可读取当前工作空间的共享定义和历史；`agentos-tasks-manage` 可维护定时任务与手动触发。定时执行使用只读服务身份，委派沿用该权限上限。
 事件入口由 Chart 的 `automation.enabled` 控制；入口状态表示平台配置，worker 运行状态由来源环境维护。
 
+MCP 接入目录展示供 Agent 调用的工具服务。自动化事件入口使用注解
+`agentos.dev/connection-role: ingress`，由部署配置托管，事件触发状态在系统任务中展示。
+
 ## 模型用途
 
 模型接入通过 `AgentgatewayModel` 的 `agentos.dev/model-purpose` 注解区分 `language` 与 `embedding`，未声明时为对话模型。用途随接入同步到原生 `ModelConfig`；模型页面按用途查询、分页和展示，向量模型用于知识记忆，不参与聊天 Harness 的模型选择。

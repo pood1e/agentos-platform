@@ -24,7 +24,7 @@ test("manages gateway model and MCP connections", async ({ page }) => {
   await page.getByRole("button", { name: "确认", exact: true }).click();
   await expect(model).toHaveCount(0);
   await page.goto("/engineers/mcp");
-  const builtins = page.getByTestId("connection-row").filter({ hasText: "系统内置" });
+  const builtins = page.getByTestId("connection-row").filter({ hasText: "部署托管" });
   await expect(builtins).toHaveCount(2);
   await expect(builtins.filter({ hasText: "团队协作" })).toHaveCount(1);
   await expect(builtins.filter({ hasText: "会话与工作空间" })).toHaveCount(1);

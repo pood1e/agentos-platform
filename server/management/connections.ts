@@ -126,7 +126,9 @@ export function connectionCommands(
       .filter(
         (item) =>
           request.kind === ConnectionKind.MODEL ||
-          (object(item.spec).mcp !== undefined && !credentialProfile(item)),
+          (object(item.spec).mcp !== undefined &&
+            !credentialProfile(item) &&
+            object(meta(item).annotations)["agentos.dev/connection-role"] !== "ingress"),
       )
       .filter((item) =>
         `${meta(item).name} ${JSON.stringify(item.spec)}`.toLowerCase().includes(query),
