@@ -82,7 +82,7 @@ export function registerEnvironmentApis(
           if (response.body)
             for await (const chunk of response.body) {
               size += chunk.byteLength;
-              if (size > 2 * 1024 * 1024) {
+              if (size > 17 * 1024 * 1024) {
                 abort.abort();
                 throw new ConnectError(
                   "Environment response exceeds the limit",

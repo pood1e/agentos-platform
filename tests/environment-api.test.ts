@@ -5,7 +5,7 @@ import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb
 import { GovernanceConfigSchema } from "../gen/agentos/governance/v1/governance_pb.js";
 import { registerEnvironmentApis } from "../server/platform/environment-api.js";
 
-async function setup(write = false, tls = false) {
+async function setup(write = false, tls = false, result: unknown = { native: true }) {
   const cert = await readFile(new URL("fixtures/identity/apps.crt", import.meta.url));
   const key = await readFile(new URL("fixtures/identity/tls.key", import.meta.url));
   if (tls) {
@@ -22,7 +22,7 @@ async function setup(write = false, tls = false) {
   const received: { authorization?: string; body: unknown }[] = [];
   native.post("/example.incidents.v1.IncidentService/:method", async (request) => {
     received.push({ authorization: request.headers.authorization, body: request.body });
-    return { native: true };
+    return result;
   });
   const resource = await native.listen({ host: "127.0.0.1", port: 0 });
   const address = new URL(resource);
@@ -116,6 +116,23 @@ it("uses the configured gateway address, TLS server name and environment CA for 
   expect(f.received).toEqual([
     { authorization: "Bearer human-exchanged-token", body: { id: "native-id" } },
   ]);
+});
+
+it("relays embedded MCP App resources within the existing console response budget", async () => {
+  const resource = {
+    contents: [{ uri: "ui://example/topology", text: "a".repeat(3 * 1024 * 1024) }],
+  };
+  const f = await setup(false, false, { resource });
+  const response = await f.request();
+  expect(response.statusCode).toBe(200);
+  expect(response.json()).toEqual({ resource });
+});
+
+it("aborts environment responses that exceed the response budget", async () => {
+  const f = await setup(false, false, { text: "a".repeat(17 * 1024 * 1024) });
+  const response = await f.request();
+  expect(response.statusCode).toBe(503);
+  expect(response.json()).toMatchObject({ code: "resource_exhausted" });
 });
 
 it("rejects overlapping read and write methods at startup", () => {
