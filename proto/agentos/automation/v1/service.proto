@@ -11,6 +11,9 @@ service AutomationService {
   rpc ListScheduledRuns(kagent.api.v1.ListScheduledRunsRequest) returns (kagent.api.v1.ListScheduledRunsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc ListScheduledRunPresets(ListScheduledRunPresetsRequest) returns (ListScheduledRunPresetsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc GetScheduledRun(kagent.api.v1.GetScheduledRunRequest) returns (kagent.api.v1.GetScheduledRunResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -33,6 +36,18 @@ service AutomationService {
 message AutomationPresets {
   repeated kagent.api.v1.CreateScheduledRunRequest scheduled_runs = 1 [(buf.validate.field).repeated.max_items = 64];
   repeated CaseTrigger event_triggers = 2 [(buf.validate.field).repeated.max_items = 64];
+}
+
+message ListScheduledRunPresetsRequest {}
+
+message ListScheduledRunPresetsResponse {
+  repeated ScheduledRunPreset presets = 1;
+}
+
+// Stable solution keys resolve to native schedules across configuration edits.
+message ScheduledRunPreset {
+  string key = 1;
+  string scheduled_run_id = 2;
 }
 
 message ListEventTriggersRequest {}

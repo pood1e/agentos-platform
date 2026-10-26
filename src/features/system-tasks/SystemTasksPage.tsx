@@ -57,6 +57,11 @@ export function SystemTasksPage() {
       ),
     refetchInterval: 5_000,
   });
+  const presets = useQuery({
+    enabled: allowed,
+    queryKey: ["system-tasks", "presets"],
+    queryFn: ({ signal }) => automationClient.listScheduledRunPresets({}, { signal }),
+  });
   const refresh = () => query.invalidateQueries({ queryKey: ["system-tasks"] });
   const action = useMutation({
     mutationFn: async ({ schedule, run }: { schedule: ScheduledRun; run: boolean }) => {
@@ -128,7 +133,7 @@ export function SystemTasksPage() {
                 </Button>
               )}
             </div>
-            <Failure error={list.error || action.error} />
+            <Failure error={list.error || presets.error || action.error} />
             {list.isPending && (
               <div
                 role="status"
@@ -145,6 +150,10 @@ export function SystemTasksPage() {
                   key={schedule.id}
                   schedule={schedule}
                   manage={manage}
+                  deletable={
+                    presets.isSuccess &&
+                    !presets.data.presets.some((preset) => preset.scheduledRunId === schedule.id)
+                  }
                   pending={action.isPending}
                   onOpen={() => void navigate(`/system-tasks/${schedule.id}`)}
                   onRun={() => action.mutate({ schedule, run: true })}

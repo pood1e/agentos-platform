@@ -18,7 +18,7 @@ const close: (() => void)[] = [];
 afterEach(() => {
   for (const stop of close.splice(0)) stop();
 });
-function setup() {
+async function setup() {
   const env = environment([]);
   close.push(() => env.sync.close());
   const principal = create(ExecutionIdentitySchema, {
@@ -26,10 +26,13 @@ function setup() {
     write: false,
     capabilities: [Capability.TASKS_MANAGE],
   });
+  const presets = automationPresets("agentos", "tests/fixtures/pack");
+  await presets.seed(env.clients);
   const service = automationService(
     env.clients,
     "agentos",
     {
+      ...presets,
       eventTriggers: [
         create(CaseTriggerSchema, {
           eventNamespace: "ops",
@@ -52,11 +55,11 @@ function setup() {
       },
     }),
   );
-  return { ...env, principal, client };
+  return { ...env, principal, client, presets };
 }
 
 it("allows every platform administrator to inspect shared system tasks and gates every mutation", async () => {
-  const { client, principal } = setup();
+  const { client, principal } = await setup();
   const schedule = (await client.listScheduledRuns({})).scheduledRuns[0];
   if (!schedule?.config) throw new Error("Missing preset");
   for (const capability of allCapabilities) {
@@ -69,6 +72,7 @@ it("allows every platform administrator to inspect shared system tasks and gates
       (await client.listScheduledRunExecutions({ scheduledRunId: schedule.id })).executions,
     ).toEqual([]);
     expect((await client.listEventTriggers({})).eventTriggers).toHaveLength(1);
+    expect((await client.listScheduledRunPresets({})).presets).toHaveLength(2);
   }
   principal.capabilities = [Capability.AGENTS_MANAGE];
   principal.write = true;
@@ -111,7 +115,7 @@ it("allows every platform administrator to inspect shared system tasks and gates
 });
 
 it("denies ordinary users all system-task definitions, events and execution history even with target write access", async () => {
-  const { client, principal } = setup();
+  const { client, principal } = await setup();
   const schedule = (await client.listScheduledRuns({})).scheduledRuns[0];
   const { execution } = await client.triggerScheduledRun({
     scheduledRunId: schedule.id,
@@ -121,6 +125,7 @@ it("denies ordinary users all system-task definitions, events and execution hist
   principal.write = true;
   for (const read of [
     () => client.listScheduledRuns({}),
+    () => client.listScheduledRunPresets({}),
     () => client.getScheduledRun({ scheduledRunId: schedule.id }),
     () => client.listScheduledRunExecutions({ scheduledRunId: schedule.id }),
     () => client.getScheduledRunExecution({ executionId: execution?.id }),
@@ -130,7 +135,7 @@ it("denies ordinary users all system-task definitions, events and execution hist
 });
 
 it("keeps scheduling mutations, stale edits, idempotent triggers and retained history in the native service", async () => {
-  const { client } = setup();
+  const { client } = await setup();
   const request = {
     requestId: randomUUID(),
     agent: { namespace: "agentos", name: "inspection" },
@@ -176,7 +181,7 @@ it("keeps scheduling mutations, stale edits, idempotent triggers and retained hi
 });
 
 it("filters foreign-workspace pages and denies guessed schedule and execution IDs", async () => {
-  const { fake, client } = setup();
+  const { fake, client } = await setup();
   const foreign = create(ScheduledRunSchema, {
     id: randomUUID(),
     creator: "agentos",
@@ -214,24 +219,36 @@ it("filters foreign-workspace pages and denies guessed schedule and execution ID
   ).rejects.toMatchObject({ code: Code.NotFound });
 });
 
-it("seeds solution defaults without reverting user edits or recreating deleted schedules", async () => {
-  const { clients, client } = setup();
-  const presets = automationPresets("agentos", "tests/fixtures/pack");
-  await presets.seed(clients);
-  const schedule = (await client.listScheduledRuns({})).scheduledRuns[0];
+it("retains stable preset references and operator edits across startup, and protects presets from deletion", async () => {
+  const { clients, client, presets } = await setup();
+  const before = (await client.listScheduledRunPresets({})).presets;
+  expect(before.map((preset) => preset.key)).toEqual(["inspection-v1", "report-v1"]);
+  const id = before[0].scheduledRunId;
+  const schedule = (await client.getScheduledRun({ scheduledRunId: id })).scheduledRun;
   if (!schedule?.config) throw new Error("Missing preset");
   await client.updateScheduledRun({
     scheduledRunId: schedule.id,
     etag: schedule.etag,
-    config: { ...schedule.config, name: "Operator's configuration", paused: false },
+    config: {
+      ...schedule.config,
+      name: "Operator's configuration",
+      schedule: "*/15 * * * *",
+      paused: false,
+    },
   });
+  await expect(client.deleteScheduledRun({ scheduledRunId: id })).rejects.toMatchObject({
+    code: Code.FailedPrecondition,
+  });
+  const restarted = automationPresets("agentos", "tests/fixtures/pack");
+  await restarted.seed(clients);
+  expect(restarted.scheduledRuns).toEqual(before);
   await presets.seed(clients);
-  expect(
-    (await client.getScheduledRun({ scheduledRunId: schedule.id })).scheduledRun?.config,
-  ).toMatchObject({ name: "Operator's configuration", paused: false });
-  await client.deleteScheduledRun({ scheduledRunId: schedule.id });
-  await presets.seed(clients);
-  expect((await client.listScheduledRuns({})).scheduledRuns.map((item) => item.id)).not.toContain(
-    schedule.id,
+  expect((await client.listScheduledRunPresets({})).presets).toEqual(before);
+  expect((await client.getScheduledRun({ scheduledRunId: id })).scheduledRun?.config).toMatchObject(
+    {
+      name: "Operator's configuration",
+      schedule: "*/15 * * * *",
+      paused: false,
+    },
   );
 });

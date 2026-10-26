@@ -27,6 +27,7 @@ import { ScheduleStatus } from "./ScheduleStatus.js";
 export function ScheduleCard({
   schedule,
   manage,
+  deletable,
   pending,
   onOpen,
   onRun,
@@ -36,6 +37,7 @@ export function ScheduleCard({
 }: {
   schedule: ScheduledRun;
   manage: boolean;
+  deletable: boolean;
   pending: boolean;
   onOpen: () => void;
   onRun: () => void;
@@ -82,11 +84,15 @@ export function ScheduleCard({
                   <History />
                   {t("automation.history")}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                  <Trash2 />
-                  {t("automation.delete")}
-                </DropdownMenuItem>
+                {deletable && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+                      <Trash2 />
+                      {t("automation.delete")}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

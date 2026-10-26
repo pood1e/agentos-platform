@@ -27,6 +27,7 @@ export class FakeSchedules {
   readonly executions = new Map<string, ScheduledRunExecution>();
   private requests = new Map<string, { hash: string; id: string }>();
   private firings = new Map<string, string>();
+  private presetIds = new Map<string, string>();
 
   constructor(private fake: FakeKagent) {
     this.reset();
@@ -71,8 +72,11 @@ export class FakeSchedules {
     } catch {
       throw new ConnectError("Invalid time zone", Code.InvalidArgument);
     }
+    const preset = request.requestId.startsWith("preset/");
+    const id = (preset && this.presetIds.get(request.requestId)) || randomUUID();
+    if (preset) this.presetIds.set(request.requestId, id);
     const schedule = create(ScheduledRunSchema, {
-      id: randomUUID(),
+      id,
       etag: randomUUID(),
       creator: "agentos",
       agent: request.agent,

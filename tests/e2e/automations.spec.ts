@@ -99,6 +99,11 @@ test("shows the system-task entry without a standalone task page and restores de
   await expect(page.getByRole("heading", { name: "系统任务", level: 1 })).toBeVisible();
   await expect(system).toHaveAttribute("aria-current", "page");
   await expect(page.getByTestId("scheduled-run-row")).toHaveCount(2);
+  const preset = page.getByTestId("scheduled-run-row").filter({ hasText: "例行检查" });
+  await preset.getByRole("button", { name: "更多操作", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "编辑定时任务", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "删除定时任务", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "例行检查", exact: true }).click();
   await expect(page).toHaveURL(/\/system-tasks\/[^/]+$/);
   const url = page.url();
