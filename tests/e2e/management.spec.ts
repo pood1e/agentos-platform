@@ -24,14 +24,14 @@ test("manages gateway model and MCP connections", async ({ page }) => {
   await page.getByRole("button", { name: "确认", exact: true }).click();
   await expect(model).toHaveCount(0);
   await page.goto("/engineers/mcp");
-  const builtins = page.getByTestId("connection-row").filter({ hasText: "部署托管" });
-  await expect(builtins).toHaveCount(2);
-  await expect(builtins.filter({ hasText: "团队协作" })).toHaveCount(1);
-  await expect(builtins.filter({ hasText: "会话与工作空间" })).toHaveCount(1);
-  for (const row of await builtins.all()) {
+  const platformServices = page.getByTestId("connection-row").filter({ hasText: "平台服务" });
+  await expect(platformServices).toHaveCount(2);
+  await expect(platformServices.filter({ hasText: "团队协作" })).toHaveCount(1);
+  await expect(platformServices.filter({ hasText: "会话与工作空间" })).toHaveCount(1);
+  for (const row of await platformServices.all()) {
     await expect(row.getByRole("button", { name: "删除", exact: true })).toBeDisabled();
   }
-  await builtins.first().getByRole("button", { name: "编辑", exact: true }).click();
+  await platformServices.first().getByRole("button", { name: "编辑", exact: true }).click();
   await expect(editor.locator("#connection-label")).toBeDisabled();
   await expect(editor.getByRole("button", { name: "保存", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");

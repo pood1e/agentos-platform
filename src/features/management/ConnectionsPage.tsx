@@ -139,8 +139,8 @@ export function ConnectionsPage({
                           )}
                           {!isMCP && String(object(native(connection).spec).provider ?? "")}
                           {isMCP && environment && <Badge variant="outline">{environment}</Badge>}
-                          {connection.systemManaged && (
-                            <Badge variant="secondary">{t("management.managed")}</Badge>
+                          {isMCP && connection.systemManaged && !environment && (
+                            <Badge variant="secondary">{t("management.platformService")}</Badge>
                           )}
                         </div>
                       </div>
