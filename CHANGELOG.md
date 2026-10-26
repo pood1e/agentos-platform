@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.6](https://github.com/pood1e/agentos-platform/compare/v0.37.5...v0.37.6) (2026-10-26)
+
+
+### Bug Fixes
+
+* **mcp-apps:** retain independent views across tool calls ([#143](https://github.com/pood1e/agentos-platform/issues/143)) ([f90b3bf](https://github.com/pood1e/agentos-platform/commit/f90b3bf1bf48f3efdff29fc1a6ad6ea4ef546cff))
+
 ## [0.37.5](https://github.com/pood1e/agentos-platform/compare/v0.37.4...v0.37.5) (2026-10-25)
 
 
