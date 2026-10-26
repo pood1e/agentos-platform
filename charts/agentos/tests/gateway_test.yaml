@@ -67,6 +67,12 @@ tests:
     value: AgentgatewayBackend
   asserts:
   - equal:
+      path: metadata.annotations["agentos.dev/connection-role"]
+      value: ingress
+  - equal:
+      path: metadata.annotations["agentos.dev/system-connection"]
+      value: 'true'
+  - equal:
       path: spec.policies.extAuth.failureMode
       value: FailClosed
   - equal:
