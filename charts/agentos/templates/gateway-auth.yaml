@@ -59,4 +59,4 @@ spec:
               path: "'/authorize/model'"
               body: "{'path': request.path, 'method': request.method, 'model': request.method == 'POST' ? json(request.body).model : ''}"
               allowedRequestHeaders: [x-substrate-actor-token, authorization]
-              allowedResponseHeaders: [authorization, x-substrate-actor-token]
+              allowedResponseHeaders: [authorization]

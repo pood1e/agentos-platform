@@ -75,7 +75,6 @@ export function gatewayAuthorization(
         if (request.url === "/authorize/model")
           response.writeHead(200, {
             authorization: "",
-            [actorTokenHeader]: "",
             "cache-control": "no-store",
           });
       }

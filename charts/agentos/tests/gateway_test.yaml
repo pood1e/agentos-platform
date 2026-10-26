@@ -85,4 +85,3 @@ tests:
       path: spec.traffic.extAuth.conditional[0].policy.http.allowedResponseHeaders
       value:
       - authorization
-      - x-substrate-actor-token
