@@ -3,6 +3,7 @@
 {{- $connection := dict "environment" (dict "name" .name "governance" (printf "GOVERNANCE_%s" (.governance | upper))) "issuer" .issuer "resource" .resource "gateway" (dict "address" .gateway.address "port" .gateway.nodePort "tlsServerName" .gateway.host) -}}
 {{- with .approvalUrl -}}{{- $_ := set $connection "approvalUrl" . -}}{{- end -}}
 {{- with .authorization -}}{{- $_ := set $connection "authorization" . -}}{{- end -}}
+{{- with .apis -}}{{- $_ := set $connection "apis" . -}}{{- end -}}
 {{- $connections = append $connections $connection -}}
 {{- end -}}
 apiVersion: v1

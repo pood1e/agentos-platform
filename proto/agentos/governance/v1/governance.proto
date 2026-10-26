@@ -45,6 +45,14 @@ message EnvironmentConnection {
     prefix: "https://"
   }];
   GatewayEndpoint gateway = 6;
+  repeated EnvironmentApi apis = 7;
+}
+
+// Unary Connect JSON APIs served by the environment's OAuth resource.
+message EnvironmentApi {
+  string service = 1 [(buf.validate.field).string.min_len = 1];
+  repeated string read_methods = 2;
+  repeated string write_methods = 3;
 }
 
 message GatewayEndpoint {

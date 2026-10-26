@@ -43,6 +43,7 @@ async function setup() {
     },
     ["test-environment"],
     false,
+    env.sync,
   );
   const client = createClient(
     AutomationService,
@@ -129,6 +130,7 @@ it("denies ordinary users all system-task definitions, events and execution hist
     () => client.getScheduledRun({ scheduledRunId: schedule.id }),
     () => client.listScheduledRunExecutions({ scheduledRunId: schedule.id }),
     () => client.getScheduledRunExecution({ executionId: execution?.id }),
+    () => client.getScheduledRunExecutionResult({ executionId: execution?.id }),
     () => client.listEventTriggers({}),
   ])
     await expect(read()).rejects.toMatchObject({ code: Code.PermissionDenied });

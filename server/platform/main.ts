@@ -44,6 +44,7 @@ import { registerTranscription } from "../speech/transcription.js";
 import { taskTagStore } from "../tasks/store.js";
 import { continuations } from "../team-sessions/continuation.js";
 import { workspaceContext } from "./access.js";
+import { registerEnvironmentApis } from "./environment-api.js";
 import { grpcServer } from "./grpc.js";
 import { collaborationGuardrails } from "./guardrails.js";
 import { registerPlatformMcp } from "./mcp.js";
@@ -90,6 +91,7 @@ const environmentToken = environmentTokens(
   operations,
   environmentCredentials(kubeConfig, config.namespace),
 );
+
 const metadata = toolMetadata(clients);
 const execution = await executionRuntime(
   configuration.clients,
@@ -109,6 +111,13 @@ if (oauth && execution.background)
     grants: execution.background,
     executions: execution.registry,
   });
+registerEnvironmentApis(
+  app,
+  operations,
+  environmentToken,
+  identity,
+  process.env.AGENTOS_ORIGIN ?? "",
+);
 const tags = await taskTagStore(
   process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
   config.namespace,
@@ -200,6 +209,7 @@ await registerConsole(app, {
     automation,
     operations.environments.flatMap((entry) => entry.environment?.name ?? []),
     process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
+    sync,
   ),
   ready: () => sync.healthy() && configuration.healthy(),
   staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
@@ -214,6 +224,7 @@ await registerPlatformMcp(
   workloads,
   access,
   knowledgeService(clients, knowledge),
+  automation.scheduledRuns,
 );
 const continueDelegation = continuations(sync, async (contextId, contexts) => {
   const { session: parent } = await clients.sessions.getSession({ sessionId: contextId });

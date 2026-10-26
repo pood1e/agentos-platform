@@ -5,7 +5,9 @@ import type { ScheduledRun } from "../../gen/kagent/api/v1/scheduled_runs_pb.js"
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
+import type { KagentSync } from "../read-model/sync.js";
 import type { automationPresets } from "./presets.js";
+import { scheduledExecutionResult } from "./results.js";
 
 const missing = () => new ConnectError("Automation not found", Code.NotFound);
 
@@ -18,6 +20,7 @@ export function automationService(
   },
   environments: string[] = [],
   ingressEnabled = false,
+  sync?: KagentSync,
 ): ServiceImpl<typeof AutomationService> {
   const native = clients.schedules;
   const options = (context: HandlerContext) => ({ signal: context.signal, timeoutMs: 15_000 });
@@ -93,6 +96,20 @@ export function automationService(
     async listScheduledRunExecutions(request, context) {
       await get(request.scheduledRunId, context);
       return native.listScheduledRunExecutions(request, options(context));
+    },
+    async getScheduledRunExecutionResult(request, context) {
+      read(context);
+      if (!sync) throw new ConnectError("Execution history is unavailable", Code.Unavailable);
+      return scheduledExecutionResult(
+        clients,
+        sync,
+        workspace,
+        request,
+        async (id) => {
+          await get(id, context);
+        },
+        context.signal,
+      );
     },
     listEventTriggers: (_request, context) => {
       read(context);

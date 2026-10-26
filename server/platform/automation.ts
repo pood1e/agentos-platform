@@ -29,6 +29,7 @@ export function automationTools(
   workspace: string,
   environment: string,
   authorize?: (session: Session, cancel?: boolean, contexts?: string[]) => Promise<void>,
+  allowedAgents?: string[],
 ) {
   const messageId = (ref: CaseReference) =>
     messageIdentity(workspace, environment, ref.agent?.name ?? "", ref.key, String(ref.version));
@@ -37,6 +38,8 @@ export function automationTools(
     if (validation.kind !== "valid") throw new Error("A versioned source case is required");
     if (ref.agent?.namespace !== workspace || !ref.agent.name)
       throw new Error("Select an Agent in this workspace");
+    if (allowedAgents && !allowedAgents.includes(ref.agent.name))
+      throw new Error("Agent is outside the source binding");
     const { agent } = await clients.agents.getAgent({ ref: ref.agent }, { timeoutMs: 15_000 });
     if (!agent) throw new Error("The selected Agent is unavailable");
     const { session } = await clients.sessions.createSession(

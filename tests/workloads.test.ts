@@ -98,6 +98,10 @@ it("validates the registered environment issuer, audience, client and service-ac
     audience: "agentos-automation",
     clientId: "case-worker",
     subject: "service-account-123",
+    scheduledRunPresets: [],
+    caseAgents: [],
+    write: false,
+    capabilities: [],
   });
   const identity = workloadIdentity(trust, {
     createTokenReview: vi.fn<AuthenticationV1Api["createTokenReview"]>(),

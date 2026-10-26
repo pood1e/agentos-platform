@@ -3,7 +3,9 @@ syntax = "proto3";
 package agentos.automation.v1;
 
 import "agentos/automation/v1/automation.proto";
+import "agentos/execution/v1/task.proto";
 import "buf/validate/validate.proto";
+import "kagent/api/v1/common.proto";
 import "kagent/api/v1/scheduled_runs.proto";
 
 // Workspace authorization around kagent's native scheduling API.
@@ -27,15 +29,37 @@ service AutomationService {
   rpc ListScheduledRunExecutions(kagent.api.v1.ListScheduledRunExecutionsRequest) returns (kagent.api.v1.ListScheduledRunExecutionsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc GetScheduledRunExecutionResult(GetScheduledRunExecutionResultRequest) returns (GetScheduledRunExecutionResultResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ListEventTriggers(ListEventTriggersRequest) returns (ListEventTriggersResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
 
+message ScheduledExecutionQuery {
+  string preset_key = 1 [(buf.validate.field).string.min_len = 1];
+  kagent.api.v1.PageRequest page = 2;
+}
+
+message GetScheduledRunExecutionResultRequest {
+  string execution_id = 1 [(buf.validate.field).string.uuid = true];
+  kagent.api.v1.PageRequest page = 2;
+}
+
+message GetScheduledRunExecutionResultResponse {
+  kagent.api.v1.ScheduledRunExecution execution = 1;
+  repeated agentos.execution.v1.TaskRun runs = 2;
+  kagent.api.v1.PageResponse page = 3;
+}
+
 // Solution defaults are created once; subsequent edits remain in kagent.
 message AutomationPresets {
+  // Immutable idempotency inputs used to reserve native schedules.
   repeated kagent.api.v1.CreateScheduledRunRequest scheduled_runs = 1 [(buf.validate.field).repeated.max_items = 64];
   repeated CaseTrigger event_triggers = 2 [(buf.validate.field).repeated.max_items = 64];
+  // Pack-owned instructions, updated with the native etag while retaining runtime settings.
+  map<string, string> scheduled_run_prompts = 3;
 }
 
 message ListScheduledRunPresetsRequest {}
