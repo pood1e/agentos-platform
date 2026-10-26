@@ -23,7 +23,7 @@
   "usedBy": "使用方",
   "accepted": "网关已接纳",
   "pending": "等待网关就绪",
-  "managed": "部署托管",
+  "platformService": "平台服务",
   "addConnection": "新增接入",
   "editConnection": "接入配置",
   "deleteNamed": "删除 {{name}}？",

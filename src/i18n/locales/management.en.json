@@ -23,7 +23,7 @@
   "usedBy": "Used by",
   "accepted": "Accepted by gateway",
   "pending": "Awaiting gateway",
-  "managed": "Deployment managed",
+  "platformService": "Platform service",
   "addConnection": "Add connection",
   "editConnection": "Connection settings",
   "deleteNamed": "Delete {{name}}?",
