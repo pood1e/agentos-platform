@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.1](https://github.com/pood1e/agentos-platform/compare/v0.38.0...v0.38.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **mcp:** separate inbound endpoints from the connection catalog ([#149](https://github.com/pood1e/agentos-platform/issues/149)) ([658f871](https://github.com/pood1e/agentos-platform/commit/658f87198ae2292750bd36a886e10b20baa309f9))
+
 ## [0.38.0](https://github.com/pood1e/agentos-platform/compare/v0.37.7...v0.38.0) (2026-10-26)
 
 
