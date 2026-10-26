@@ -7,6 +7,7 @@ import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { registerBrowserIdentity } from "../authorization/browser.js";
 import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { relatedExecutions } from "../authorization/executions.js";
+import { actorKeyServer } from "../authorization/keys.js";
 import { modelAuthorization } from "../authorization/models.js";
 import { registerRuntime } from "../authorization/native.js";
 import { oidcIdentity } from "../authorization/oidc.js";
@@ -25,6 +26,7 @@ import { governanceConfig } from "../governance/config.js";
 import { approvalCoordinator } from "../governance/coordinator.js";
 import { coordinationQueue, startCoordination } from "../jobs/coordination.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
+import { configurationClients } from "../kagent/configuration.js";
 import { toolMetadata } from "../kagent/tool-metadata.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
@@ -81,7 +83,8 @@ const clients = kagentClients(kagentTransport(config));
 const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log);
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
-const access = toolBindings(kubeConfig, config.namespace);
+const configuration = await configurationClients(kubeConfig, config.namespace, clients, app.log);
+const access = toolBindings(kubeConfig, config.namespace, undefined, configuration.backends);
 const operations = governanceConfig();
 const environmentToken = environmentTokens(
   operations,
@@ -89,7 +92,7 @@ const environmentToken = environmentTokens(
 );
 const metadata = toolMetadata(clients);
 const execution = await executionRuntime(
-  clients,
+  configuration.clients,
   config.namespace,
   access,
   identity,
@@ -198,7 +201,7 @@ await registerConsole(app, {
     operations.environments.flatMap((entry) => entry.environment?.name ?? []),
     process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
   ),
-  ready: sync.healthy,
+  ready: () => sync.healthy() && configuration.healthy(),
   staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
   packRoot,
 });
@@ -243,8 +246,9 @@ const stopCoordination = await startCoordination(sync, jobs, [continueDelegation
 const processor = grpcServer(app, {
   fallback: gatewayAuthorization(
     execution.authorizeTransport,
-    modelAuthorization(clients, execution, workloads, config.namespace),
+    modelAuthorization(configuration.clients, execution, workloads, config.namespace),
     workloads,
+    { log: app.log },
   ),
   routes: (router) => {
     const collaboration = collaborationGuardrails(
@@ -275,10 +279,12 @@ const processor = grpcServer(app, {
 const runtimeProcessor = grpcServer(app, {
   routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
 });
+const keys = actorKeyServer(app, execution.actorKeys);
 app.addHook("onClose", async () => {
   await stopCoordination();
   await jobs.boss.stop({ graceful: true, timeout: 40_000 });
   sync.close();
+  await configuration.close();
   await execution.close();
   await tags.close();
 });
@@ -288,5 +294,6 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => 
 await Promise.all([
   processor.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), listenConfig().host),
   runtimeProcessor.listen(Number(process.env.AGENTOS_RUNTIME_PORT ?? "9091"), listenConfig().host),
+  keys.listen({ host: listenConfig().host, port: Number(process.env.AGENTOS_JWKS_PORT ?? "9092") }),
 ]);
 await app.listen(listenConfig());

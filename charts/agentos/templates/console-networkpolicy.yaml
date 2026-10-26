@@ -21,6 +21,12 @@ spec:
       ports: [{port: 8080, protocol: TCP}, {port: 9090, protocol: TCP}]
     - from:
         - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: agentgateway-system}
+          podSelector:
+            matchLabels: {agentgateway: agentgateway}
+      ports: [{port: 9092, protocol: TCP}]
+    - from:
+        - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: ate-system}
           podSelector:
             matchLabels: {app: atenet-egress}

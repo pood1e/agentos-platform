@@ -247,16 +247,23 @@ export class ToolBindings {
   }
 }
 
-export function toolBindings(config: KubeConfig, namespace: string, catalog?: ToolCatalog) {
+export function toolBindings(
+  config: KubeConfig,
+  namespace: string,
+  catalog?: ToolCatalog,
+  backends?: () => Promise<JsonObject[]>,
+) {
   const api = config.makeApiClient(CustomObjectsApi);
   const tools = catalog ?? loadCatalog();
   return async () => {
-    const response = (await api.listNamespacedCustomObject({
-      group: "agentgateway.dev",
-      version: "v1alpha1",
-      plural: "agentgatewaybackends",
-      namespace,
-    })) as { items: JsonObject[] };
+    const response = backends
+      ? { items: await backends() }
+      : ((await api.listNamespacedCustomObject({
+          group: "agentgateway.dev",
+          version: "v1alpha1",
+          plural: "agentgatewaybackends",
+          namespace,
+        })) as { items: JsonObject[] });
     return new ToolBindings(tools, serverTargets(response.items));
   };
 }

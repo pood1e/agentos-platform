@@ -335,11 +335,11 @@ describe("native knowledge memory", () => {
       memory: { content: "Private memory" },
     });
     expect((await client.listKnowledge({})).totalSize).toBe(1);
-    await expect(client.clearKnowledge({ expectedCount: 0 })).rejects.toMatchObject({
+    await expect(client.clearKnowledge({ etag: "0".repeat(64) })).rejects.toMatchObject({
       code: Code.Aborted,
     });
     expect(env.fake.memory.records.size).toBe(2);
-    await client.clearKnowledge({ expectedCount: 1 });
+    await client.clearKnowledge({ etag: (await client.listKnowledge({})).etag });
     expect((await client.listKnowledge({})).totalSize).toBe(0);
     expect(env.fake.memory.records.size).toBe(1);
   });

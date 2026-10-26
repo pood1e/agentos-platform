@@ -153,6 +153,18 @@ it("rejects revoked offline grants and changed subjects without substituting a s
   });
 });
 
+it("does not lock valid credentials and coalesces concurrent refreshes", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const { store, grants } = await setup();
+  const update = vi.spyOn(store, "updateIdentity");
+  await Promise.all(Array.from({ length: 12 }, () => grants.resolve(`${issuer}#alice`)));
+  expect(update).not.toHaveBeenCalled();
+  vi.setSystemTime(Date.now() + 180_000);
+  await Promise.all(Array.from({ length: 12 }, () => grants.resolve(`${issuer}#alice`)));
+  expect(refreshes).toBe(1);
+  expect(update).toHaveBeenCalledOnce();
+});
+
 it("uses authorization code with PKCE, state and nonce and keeps the offline credential outside cookies", async () => {
   const { grants, registry, oauth } = await setup();
   const app = Fastify();

@@ -2,6 +2,64 @@ import { expect, test } from "@playwright/test";
 import { resetKagent } from "./kagent.js";
 
 test.beforeEach(async ({ request }) => resetKagent(request));
+
+test("retries failed App loads and reuses the resource when the card is reopened", async ({
+  page,
+  request,
+}) => {
+  const setup = await request.post("http://127.0.0.1:8094/apps");
+  const { contextId } = await setup.json();
+  let reads = 0;
+  await page.route("**/agentos.console.v1.ConsoleService/GetAppResource", async (route) => {
+    reads++;
+    if (reads > 2) return route.continue();
+    await route.fulfill({
+      status: 503,
+      json: { code: "unavailable", message: "Temporary outage" },
+    });
+  });
+  await page.goto(`/chat/${contextId}`);
+  const card = page.getByTestId("mcp-app");
+  await card.getByRole("button", { name: "展开视图", exact: true }).click();
+  await expect(card.getByRole("button", { name: "重试", exact: true })).toBeVisible();
+  expect(reads).toBe(2);
+  await card.getByRole("button", { name: "重试", exact: true }).click();
+  const view = () => card.frameLocator("iframe").frameLocator("iframe");
+  await expect(view().getByRole("heading", { name: "Topology App" })).toBeVisible();
+  await card.getByRole("button", { name: "收起视图", exact: true }).click();
+  await expect(card.locator("iframe")).toHaveCount(0);
+  await card.getByRole("button", { name: "展开视图", exact: true }).click();
+  await expect(view().getByRole("heading", { name: "Topology App" })).toBeVisible();
+  expect(reads).toBe(3);
+});
+
+test("times out an unresponsive App and can retry the same resource", async ({ page, request }) => {
+  const setup = await request.post("http://127.0.0.1:8094/apps");
+  const { contextId } = await setup.json();
+  let reads = 0;
+  await page.route("**/agentos.console.v1.ConsoleService/GetAppResource", async (route) => {
+    reads++;
+    if (reads > 1) return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    body.result.value.contents[0].text = "<html><body>Not initialized</body></html>";
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(`/chat/${contextId}`);
+  const card = page.getByTestId("mcp-app");
+  await card.getByRole("button", { name: "展开视图", exact: true }).click();
+  await expect(card.getByRole("button", { name: "重试", exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await card.getByRole("button", { name: "重试", exact: true }).click();
+  await expect(
+    card
+      .frameLocator("iframe")
+      .frameLocator("iframe")
+      .getByRole("heading", { name: "Topology App" }),
+  ).toBeVisible();
+  expect(reads).toBe(2);
+});
 test("renders a real MCP App across the isolated proxy, handles callbacks and follows theme", async ({
   page,
   request,

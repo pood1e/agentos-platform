@@ -7,18 +7,16 @@ import {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
-import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
-import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { isAdministrator } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
 import type { BindingView } from "../governance/bindings.js";
-import { approvalEnvironment } from "../governance/client.js";
 import { approvals } from "../governance/views.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { McpApps } from "../mcp-apps/service.js";
 import { accessProfile, requestIdentity } from "../platform/access.js";
+import { ObservationScope } from "../read-model/observation.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
@@ -34,6 +32,7 @@ import { cancellationCommands } from "./cancellation.js";
 import { conversationTranscript } from "./conversation-transcript.js";
 import { conversationCommands } from "./conversations.js";
 import { chatTarget, executionHistory } from "./history.js";
+import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
 import { taskTagCommands } from "./task-tags.js";
@@ -56,10 +55,7 @@ export interface ConsoleDependencies {
   speech?: ReturnType<typeof speechService>;
   executions?: Executions;
   entryAgent?: string;
-  authorizeTools?: (
-    session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
-    tools: string[],
-  ) => Promise<void>;
+  authorizeTools?: AuthorizeTools;
 }
 
 function required(role?: RoleDefinition): RoleDefinition {
@@ -108,49 +104,13 @@ export function consoleService({
   );
   const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
   const withApprovals = approvalReferences(sync, operations, environmentToken);
-  const canOperate = async (contextId: string, subject: string) => {
-    if (!executions) return true;
-    try {
-      const { session } = await clients.sessions.getSession({ sessionId: contextId });
-      if (!session) return false;
-      return (await executions.resolve(session)).binding.subject === subject;
-    } catch {
-      return false;
-    }
-  };
-  const approvalsFor = async (
-    interactions: import("../../gen/agentos/console/v1/task_pb.js").Interaction[],
-    subject: string,
-    operate: boolean,
-  ) => {
-    for (const interaction of interactions) {
-      interaction.approve = false;
-      if (
-        !operate ||
-        interaction.kind !== InteractionKind.APPROVAL ||
-        interaction.state !== ActivityState.AWAITING_APPROVAL ||
-        interaction.tools.some(
-          (tool) => approvalEnvironment(operations.environments, tool.name)?.approvalUrl,
-        )
-      )
-        continue;
-      try {
-        const entry = index.entry(interaction.taskId);
-        if (!entry || !(await canOperate(entry.contextId, subject))) continue;
-        const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
-        if (authorizeTools) {
-          if (!session) continue;
-          await authorizeTools(
-            session,
-            interaction.tools.map((tool) => tool.name),
-          );
-        }
-        interaction.approve = true;
-      } catch {
-        /* Permission failures leave the interaction readable. */
-      }
-    }
-  };
+  const { canOperate, approvalsFor } = interactionPermissions(
+    index,
+    clients,
+    operations,
+    executions,
+    authorizeTools,
+  );
   const ready = () => {
     if (!sync.healthy()) throw unavailable();
   };
@@ -188,12 +148,17 @@ export function consoleService({
     async *watchTask(request, context) {
       const known = index.entry(request.taskId);
       if (!known || !index.session(known.contextId)) await sync.refresh();
+      const scope = new ObservationScope(index, { taskId: request.taskId });
       yield* watch(
         sync,
         WatchTaskResponseSchema,
         context.signal,
         async () => {
-          const view = await history(context.values.get(requestIdentity));
+          const view = await history(
+            context.values.get(requestIdentity),
+            false,
+            scope.contextIds(),
+          );
           const task = taskDetail(view, request.taskId);
           if (!task) throw notFound("task.notFound");
           await taskTags.detail(task, view, context.values.get(requestIdentity));
@@ -209,7 +174,7 @@ export function consoleService({
             );
           return create(WatchTaskResponseSchema, { task: await withApprovals(task) });
         },
-        true,
+        { poll: true, scope },
       );
     },
     async getTaskRun(request, context) {
@@ -237,32 +202,39 @@ export function consoleService({
     },
     async *watchConversation(request, context) {
       if (request.contextId && !index.session(request.contextId)) await sync.refresh();
-      yield* watch(sync, WatchConversationResponseSchema, context.signal, async () => {
-        const identity = context.values.get(requestIdentity);
-        chatTarget(namespace, entryAgent, request.agent, identity);
-        const visible = await history(identity);
-        if (
-          request.contextId &&
-          visible.session(request.contextId)?.agentId !==
-            `${request.agent?.namespace}/${request.agent?.name}`
-        )
-          throw notFound("chat.invalidConversation");
-        const view = await conversation(sync, request.agent, request.contextId, visible);
-        await apps?.project(view);
-        await taskTags.conversation(view);
-        view.operate =
-          !request.contextId ||
-          (await canOperate(request.contextId, context.values.get(requestIdentity).subject));
-        if (view.interactions.length)
-          await approvalsFor(
-            view.interactions,
-            context.values.get(requestIdentity).subject,
-            view.operate,
-          );
-        return create(WatchConversationResponseSchema, {
-          conversation: conversationTranscript(await withApprovals(view)),
-        });
-      });
+      const scope = new ObservationScope(index, { contextId: request.contextId });
+      yield* watch(
+        sync,
+        WatchConversationResponseSchema,
+        context.signal,
+        async () => {
+          const identity = context.values.get(requestIdentity);
+          chatTarget(namespace, entryAgent, request.agent, identity);
+          const visible = await history(identity, false, scope.contextIds());
+          if (
+            request.contextId &&
+            visible.session(request.contextId)?.agentId !==
+              `${request.agent?.namespace}/${request.agent?.name}`
+          )
+            throw notFound("chat.invalidConversation");
+          const view = await conversation(sync, request.agent, request.contextId, visible);
+          await apps?.project(view);
+          await taskTags.conversation(view);
+          view.operate =
+            !request.contextId ||
+            (await canOperate(request.contextId, context.values.get(requestIdentity).subject));
+          if (view.interactions.length)
+            await approvalsFor(
+              view.interactions,
+              context.values.get(requestIdentity).subject,
+              view.operate,
+            );
+          return create(WatchConversationResponseSchema, {
+            conversation: conversationTranscript(await withApprovals(view)),
+          });
+        },
+        { scope },
+      );
     },
     sendMessage: (request, context) => {
       const identity = context.values.get(requestIdentity);

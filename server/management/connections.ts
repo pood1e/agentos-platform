@@ -15,6 +15,7 @@ import { object, text } from "../read-model/decode/messages.js";
 import { pageOf } from "../read-model/page.js";
 import { conflict, invalid, precondition } from "../shared/errors.js";
 import { connectionBindings } from "./bindings.js";
+import { resourceChanges } from "./changes.js";
 import { credentialReferences } from "./credential-references.js";
 import { mcpGuardrails } from "./mcp-authorization.js";
 import { credentialProfile, refreshCredentialProfiles, serviceBindings } from "./mcp-services.js";
@@ -33,7 +34,6 @@ export function connectionCommands(
   clients: KagentClients,
   gateway: GatewayConfig,
 ) {
-  const { bindModel, bindMCP } = connectionBindings(store, gateway);
   async function catalog() {
     const [templates, harnesses, modelConfigs, toolServers, backends] = await Promise.all([
       store.list("templates"),
@@ -252,38 +252,32 @@ export function connectionCommands(
           }
         : undefined,
     );
-    const saved = await store.save(
-      keyFor(kind),
-      {
-        ...value,
-        metadata: {
-          ...meta(value),
-          annotations: {
-            ...object(meta(value).annotations),
-            "agentos.dev/system-connection": "false",
+    return resourceChanges(store, async (target) => {
+      const { bindModel, bindMCP } = connectionBindings(target, gateway);
+      const saved = await target.save(
+        keyFor(kind),
+        {
+          ...value,
+          metadata: {
+            ...meta(value),
+            annotations: {
+              ...object(meta(value).annotations),
+              "agentos.dev/system-connection": "false",
+            },
           },
+          spec,
         },
-        spec,
-      },
-      request.create,
-    );
-    try {
+        request.create,
+      );
       if (request.credential?.trim())
-        await store.credential(credentialName, request.credential.trim(), saved);
+        await target.credential(credentialName, request.credential.trim(), saved);
       if (kind === ConnectionKind.MODEL) await bindModel(saved, connection);
       else {
         await bindMCP(saved);
-        await refreshCredentialProfiles(store, saved);
+        await refreshCredentialProfiles(target, saved);
       }
-    } catch (error) {
-      if (request.create) {
-        const latest = await optional(store, keyFor(kind), name);
-        if (latest && meta(latest).resourceVersion === meta(saved).resourceVersion)
-          await store.remove(keyFor(kind), name, text(meta(saved).resourceVersion));
-      }
-      throw error;
-    }
-    return { connection: await view(kind, await store.get(keyFor(kind), name), await catalog()) };
+      return { connection: await view(kind, saved, await catalog()) };
+    });
   }
   async function remove(kind: ConnectionKind, name: string, version: string) {
     const current = await store.get(keyFor(kind), name);

@@ -97,7 +97,7 @@ export async function executionRuntime(
   ) => {
     const bearer = headers[actorTokenHeader];
     if (typeof bearer !== "string" || !/^Bearer [^\s,]+$/.test(bearer))
-      throw new Error("Signed runtime identity required");
+      throw new ConnectError("Signed runtime identity required", Code.Unauthenticated);
     const resolver = audience
       ? runtimeIdentity(
           actorVerifier(keys, issuer, audience),
@@ -111,7 +111,7 @@ export async function executionRuntime(
   const authenticatedActor = async (headers: Headers) => {
     const bearer = headers.get("authorization");
     if (!bearer || !/^Bearer [^\s,]+$/.test(bearer))
-      throw new Error("Signed runtime identity required");
+      throw new ConnectError("Signed runtime identity required", Code.Unauthenticated);
     return { session: await resolveRuntime(bearer.slice(7)) };
   };
   const agentRole = agentRoles(clients);
@@ -189,6 +189,10 @@ export async function executionRuntime(
   return {
     registry,
     issuer,
+    actorKeys: async () => {
+      await keys.reload();
+      return keys.jwks();
+    },
     background,
     actor,
     authenticatedActor,

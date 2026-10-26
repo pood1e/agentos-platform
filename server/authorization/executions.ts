@@ -18,7 +18,7 @@ export function executions(
   store: ExecutionStore,
   verify?: ReturnType<typeof jwtIdentity>,
   adopt?: (session: Session, messageIds: string[]) => Promise<ExecutionIdentity | undefined>,
-  renew?: (subject: string) => Promise<ExecutionIdentity | undefined>,
+  renew?: (subject: string, saved: ExecutionIdentity) => Promise<ExecutionIdentity | undefined>,
 ) {
   const remembered = new LRUCache<string, ExecutionIdentity>({ max: 512, ttl: 60_000 });
   const narrowed = (identity: ExecutionIdentity, ceiling: ExecutionIdentity) => ({
@@ -111,7 +111,7 @@ export function executions(
     const identity =
       saved.credential.case === "accessToken"
         ? renew
-          ? await renew(binding.subject)
+          ? await renew(binding.subject, saved)
           : await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
         : saved.credential.case === "service" &&
             saved.credential.value &&

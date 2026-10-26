@@ -37,6 +37,9 @@ Substrate 宿主机为每个出站目标注入短期 Actor JWT。平台验证签
 管理 RPC 与 A2A 入口仅向控制面开放。运行时出站策略与 NetworkPolicy 同时限制直连原生控制器。
 
 Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根使用 Substrate 的原生 PodCertificate 与 ClusterTrustBundle。
+平台通过 JOSE 远程 JWKS 解析器取得公钥，在仅供网关控制器访问的 HTTP/1.1 端口 9092 提供 `/keys/actor`，每次拉取刷新源公钥。
+平台网关的原生远程 JWKS 引用该 Service；Chart 与部署值只保存受信 issuer，不保存公钥快照。
+网关控制器沿用原生默认 5 分钟公钥刷新间隔，轮换须保留覆盖未到期令牌及缓存窗口的旧公钥。密钥服务故障与无效令牌分别报告不可用和身份拒绝；已有缓存的有效期遵循各 SDK 与网关策略。
 托管 Harness 的原生客户端与 MCP 编译配置发送 `x-substrate-actor-token` 占位头，宿主替换为签名凭证。自定义 Harness 使用相同的请求头和原生持久化协议。
 
 ## 平台工作负载
@@ -49,6 +52,7 @@ Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根�
 | 环境自动化 worker | 已登记环境的 client credentials JWT | 对应环境的案例运行、观察与取消 |
 
 Kubernetes 工作负载通过官方客户端调用 TokenReview，显式传入目标 audience，并校验认证结果、返回 audience 与精确 ServiceAccount 主体。每次请求重新审核，绑定对象撤销与签名密钥轮换由 API Server 处理；平台仅拥有创建 TokenReview 的权限，API 不可用时拒绝请求。
+网关 JWT 策略只解析 Actor 专用头。无 Actor 的环境发现先经 HTTP 外部授权完成 TokenReview，再换取环境发现令牌；平台 MCP 与模型入口分别在其授权处理器中审核工作负载，原始 Authorization 的存在本身不授予调用权限。
 
 平台模型与协作 MCP 分别使用独立入口 audience。每个平台 MCP 服务只注册一次，ExtMCP 按具体服务及工具校验当前 Agent 的绑定，工具同名不会跨服务授权。
 自动化客户端精确匹配 issuer、audience、azp、服务账号 sub，人工用户令牌或其他环境客户端无法接管该入口。
@@ -71,7 +75,7 @@ OIDC 登录使用授权码、PKCE、state 与 nonce，并请求标准 `offline_a
 
 后台任务按需续期短期 access token，再以原用户令牌执行 OBO。普通浏览器退出、关闭页面和 access token 到期不撤销已授权任务。离线授权失效、账号禁用或身份提供方拒绝续期时停止后续调用；停止任务等待原生执行取消，不以服务身份接管。无人值守系统任务使用独立的显式服务身份。
 
-同一用户的刷新通过 PostgreSQL 行锁串行执行，支持进程重启与多个控制台副本。新令牌反映当前角色，执行时始终与会话创建时的权限上限相交；权限提升不会扩大既有任务。短期令牌尚有效时，身份提供方变更的传播上限由 access token 有效期决定。
+有效访问令牌的签名和权限核验不加数据库行锁。同一用户的令牌刷新在进程内合并，并通过 PostgreSQL 行锁在多个控制台副本间串行执行。新令牌反映当前角色，执行时始终与会话创建时的权限上限相交；权限提升不会扩大既有任务。短期令牌尚有效时，身份提供方变更的传播上限由 access token 有效期决定。
 
 `identity.mode: none` 使用共享访客身份，保留 Agent 工具上限、Actor 身份验证与目标系统权限。此模式没有独立用户身份，访客共享聊天记录。
 

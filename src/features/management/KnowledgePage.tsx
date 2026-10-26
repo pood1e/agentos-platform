@@ -73,7 +73,7 @@ export function KnowledgePage() {
   });
   const [viewing, setViewing] = useState<MemorySummary | MemorySearchResult>();
   const [adding, setAdding] = useState(false);
-  const [clearing, setClearing] = useState(false);
+  const [clearing, setClearing] = useState<{ etag: string; count: number }>();
   const [deleting, setDeleting] = useState<MemorySummary | MemorySearchResult>();
   const records = semantic ?? list.data?.memories ?? [];
   const date = (value?: number, includeTime = true) =>
@@ -127,7 +127,9 @@ export function KnowledgePage() {
                 size="icon"
                 aria-label={t("management.clearKnowledge")}
                 disabled={!!list.search || semantic !== undefined || !list.data?.totalSize}
-                onClick={() => setClearing(true)}
+                onClick={() =>
+                  setClearing({ etag: list.data?.etag ?? "", count: list.data?.totalSize ?? 0 })
+                }
               >
                 <Trash2 />
               </Button>
@@ -229,12 +231,12 @@ export function KnowledgePage() {
         <ConfirmDelete
           title={t("management.clearKnowledge")}
           description={t("management.clearKnowledgeNotice", {
-            count: list.data?.totalSize ?? 0,
+            count: clearing.count,
           })}
-          onClose={() => setClearing(false)}
+          onClose={() => setClearing(undefined)}
           onConfirm={async () => {
             await managementClient.clearKnowledge({
-              expectedCount: list.data?.totalSize ?? 0,
+              etag: clearing.etag,
             });
             setSemantic(undefined);
             list.onSearch("");

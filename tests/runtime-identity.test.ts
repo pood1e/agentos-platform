@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { create } from "@bufbuild/protobuf";
-import { createClient, createRouterTransport } from "@connectrpc/connect";
+import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { expect, it } from "vitest";
 import { ActorSchema, Control } from "../gen/ateapi_pb.js";
@@ -73,6 +73,18 @@ it("rejects unknown signers, expired tokens and missing required claims", async 
   await expect(verify(await sign({ exp: 1 }))).rejects.toThrow("Runtime identity is invalid");
   for (const claim of ["iat", "nbf", "exp", "jti", "sub", "iss", "aud"])
     await expect(verify(await sign({ [claim]: undefined }))).rejects.toThrow();
+});
+
+it("reports a signing-key outage as unavailable rather than a rejected identity", async () => {
+  const { sign } = await fixture();
+  const verify = actorVerifier(
+    async () => {
+      throw new Error("JWKS upstream down");
+    },
+    issuer,
+    audience,
+  );
+  await expect(verify(await sign())).rejects.toMatchObject({ code: Code.Unavailable });
 });
 
 it("binds the native Session and rejects a cached token after Actor replacement", async () => {

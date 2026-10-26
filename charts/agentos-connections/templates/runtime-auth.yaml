@@ -14,27 +14,25 @@ spec:
       matchLabels: {agentos.dev/mcp-source: {{ $name }}}
   traffic:
     jwtAuthentication:
-      mode: Strict
+      mode: Permissive
       preserveToken: true
       location:
         expression: >-
-          'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') :
-          ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '')
+          'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') : ''
       providers:
         - issuer: {{ $.Values.platform.actorIssuer | quote }}
           audiences: [{{ printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name $.Release.Namespace | quote }}]
-          jwks: {inline: {{ $.Values.platform.actorJWKS | toJson | quote }}}
-          validation: {requiredClaims: [sub, exp, aud]}
-        - issuer: {{ $.Values.platform.kubernetesIssuer | quote }}
-          audiences: [agentos-mcp-discovery]
-          jwks: {inline: {{ $.Values.platform.kubernetesJWKS | toJson | quote }}}
+          jwks:
+            remote:
+              backendRef: {name: {{ $.Values.platform.release }}-console, port: 9092}
+              jwksPath: /keys/actor
           validation: {requiredClaims: [sub, exp, aud]}
     authorization:
       action: Require
       policy:
         matchExpressions:
           - >-
-            (request.path != '/mcp/{{ $name }}' && jwt.iss == '{{ $.Values.platform.actorIssuer }}') ||
-            (jwt.iss == '{{ $.Values.platform.kubernetesIssuer }}' && jwt.sub == 'system:serviceaccount:{{ $.Release.Namespace }}:{{ $.Values.platform.controllerServiceAccount }}')
+            (request.path != '/mcp/{{ $name }}' && has(jwt.iss) && jwt.iss == '{{ $.Values.platform.actorIssuer }}') ||
+            (!('x-substrate-actor-token' in request.headers) && 'authorization' in request.headers)
 {{- end }}
 {{- end }}

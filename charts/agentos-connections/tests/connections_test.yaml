@@ -61,10 +61,14 @@ tests:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       value:
       - http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080
+  - lengthEqual:
+      path: spec.traffic.jwtAuthentication.providers
+      count: 1
   - equal:
-      path: spec.traffic.jwtAuthentication.providers[1].audiences
+      path: spec.traffic.jwtAuthentication.providers[0].jwks.remote
       value:
-      - agentos-mcp-discovery
+        backendRef: {name: agentos-console, port: 9092}
+        jwksPath: /keys/actor
   - equal:
       path: spec.targetSelectors[0].matchLabels["agentos.dev/mcp-source"]
       value: env-approval-kubernetes
@@ -88,13 +92,13 @@ tests:
     equal:
       path: stringData["connections.json"]
       value: '{"environments":[]}'
-- it: rejects an empty workload trust set
+- it: rejects removed inline workload keys
   set:
     platform.actorJWKS:
       keys: []
   asserts:
   - failedTemplate:
-      errorPattern: actorJWKS|keys
+      errorPattern: actorJWKS|Additional property
 - it: advertises the catalog origin covered by its Actor audience
   template: catalog.yaml
   documentSelector:

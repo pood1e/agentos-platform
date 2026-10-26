@@ -67,8 +67,7 @@
       ansible.builtin.copy:
         content: >-
           {{ {'platform': {'release': platform_release, 'controllerServiceAccount': native_controller_service_account,
-                           'actorIssuer': native.platform_actor_issuer, 'actorJWKS': native.platform_actor_jwks,
-                           'kubernetesIssuer': native.platform_discovery_issuer, 'kubernetesJWKS': native.platform_discovery_jwks},
+                           'actorIssuer': native.platform_actor_issuer},
               'environments': groups['environments'] | map('extract', hostvars) | selectattr('environment_connection', 'defined')
                               | selectattr('environment_connection')
                               | map(attribute='environment_connection') | list} | to_nice_json }}

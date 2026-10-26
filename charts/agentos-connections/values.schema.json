@@ -21,47 +21,9 @@
           "type": "string",
           "format": "uri",
           "pattern": "^https://[^/]+"
-        },
-        "actorJWKS": {
-          "type": "object",
-          "required": ["keys"],
-          "properties": {
-            "keys": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "kubernetesIssuer": {
-          "type": "string",
-          "format": "uri",
-          "pattern": "^https://[^/]+"
-        },
-        "kubernetesJWKS": {
-          "type": "object",
-          "required": ["keys"],
-          "properties": {
-            "keys": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object"
-              }
-            }
-          }
         }
       },
-      "required": [
-        "release",
-        "controllerServiceAccount",
-        "actorIssuer",
-        "actorJWKS",
-        "kubernetesIssuer",
-        "kubernetesJWKS"
-      ]
+      "required": ["release", "controllerServiceAccount", "actorIssuer"]
     },
     "environments": {
       "type": "array",

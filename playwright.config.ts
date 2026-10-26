@@ -47,6 +47,7 @@ export default defineConfig({
           env: {
             AGENTOS_PORT: "8090",
             AGENTOS_RUNTIME_PORT: "8096",
+            AGENTOS_JWKS_PORT: "8097",
             AGENTOS_EXECUTION_DATABASE_URL: process.env.CHANGE_TEST_DATABASE_URL ?? "",
             AGENTOS_EXECUTION_KEY: executionKey,
             AGENTOS_SUBSTRATE_URL: issuer,

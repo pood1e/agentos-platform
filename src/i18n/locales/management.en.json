@@ -61,7 +61,7 @@
   "secretReferenceRequired": "Enter the key in the access key field.",
   "skillExists": "The skill already exists or was removed. Refresh to continue.",
   "catalogFull": "The skill catalog has reached its storage limit.",
-  "knowledgeChanged": "Knowledge records have changed. Refresh before confirming.",
+  "knowledgeChanged": "Knowledge records changed. Refresh before confirming.",
   "embeddingFailed": "The embedding request failed. Check the model connection.",
   "invalidModel": "The selected model connection is no longer available.",
   "fields": {
@@ -134,5 +134,6 @@
     "refresh": "Refresh"
   },
   "view": "View",
-  "embeddingModels": "Embedding models"
+  "embeddingModels": "Embedding models",
+  "partialSave": "The update could not be fully restored. Refresh and check the configuration before retrying."
 }

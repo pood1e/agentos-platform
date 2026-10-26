@@ -92,6 +92,19 @@ it("projects an App from native metadata and reads only the original call's reso
   ).rejects.toMatchObject({ code: Code.NotFound });
 });
 
+it("reports discovery outages separately from empty tool sets and permits recovery", async () => {
+  const env = await setup();
+  const servers = (await env.clients.tools.listToolServers({})).toolServers;
+  const discover = vi.spyOn(env.clients.tools, "listMCPAppTools");
+  discover.mockRejectedValueOnce(new ConnectError("MCP unavailable", Code.Unavailable));
+  await expect(env.metadata.modelServers(servers.slice(0, 1))).rejects.toMatchObject({
+    code: Code.Unavailable,
+  });
+  const result = await env.metadata.modelServers(servers.slice(0, 1));
+  expect(result[0]?.discoveredTools.length).toBeGreaterThan(0);
+  expect(discover).toHaveBeenCalledTimes(2);
+});
+
 it("calls only same-service app-visible read tools as the current viewer and original Agent identity", async () => {
   const env = await setup();
   expect(

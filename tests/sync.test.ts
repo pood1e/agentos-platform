@@ -9,6 +9,23 @@ import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment, until } from "./harness.js";
 
 describe("kagent synchronization", () => {
+  it("subscribes to active work without rescanning completed history", async () => {
+    const { fake, sync, clients, index } = environment();
+    try {
+      await sync.refresh();
+      const all = vi.spyOn(index, "all");
+      const follow = vi.spyOn(clients.a2a, "subscribeToTask");
+      fake.update(fake.task(ids.inspection), TaskState.WORKING);
+      await sync.refresh();
+      expect(follow).toHaveBeenCalledWith(
+        expect.objectContaining({ id: ids.inspection }),
+        expect.anything(),
+      );
+      expect(all).not.toHaveBeenCalled();
+    } finally {
+      sync.close();
+    }
+  });
   it("projects saved role names and descriptions from the template", async () => {
     const { fake, sync, index } = environment();
     try {

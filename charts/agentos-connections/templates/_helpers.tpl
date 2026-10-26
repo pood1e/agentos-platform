@@ -7,14 +7,13 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- end -}}
 
 {{- define "agentos-connections.transport" -}}
-{{- $controller := printf "system:serviceaccount:%s:%s" .root.Release.Namespace .root.Values.platform.controllerServiceAccount -}}
-{{- $discovery := printf "(has(jwt.iss) && jwt.iss == %s && jwt.sub == %s)" (toJson .root.Values.platform.kubernetesIssuer) (toJson $controller) -}}
+{{- $discovery := "!('x-substrate-actor-token' in request.headers)" -}}
 backendRef: {name: {{ .root.Values.platform.release }}-console, port: 9090}
 failureMode: FailClosed
 http:
   path: "'/authorize/environment'"
   body: {{ printf "{'serviceNames': [%s], 'metadataContext': {'environment': %s, 'identity': %s, 'discovery': %s}}" (toJson .service) (toJson .environment) (toJson .identity) $discovery | quote }}
-  allowedRequestHeaders: [x-substrate-actor-token]
+  allowedRequestHeaders: [x-substrate-actor-token, authorization]
   allowedResponseHeaders: [authorization]
 {{- end -}}
 

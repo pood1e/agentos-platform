@@ -42,6 +42,16 @@ tests:
       value: 16Mi
   - notExists:
       path: spec.traffic.apiKeyAuthentication
+  - lengthEqual:
+      path: spec.traffic.jwtAuthentication.providers
+      count: 1
+  - equal:
+      path: spec.traffic.jwtAuthentication.providers[0].jwks.remote
+      value:
+        backendRef: {name: agentos-console, port: 9092}
+        jwksPath: /keys/actor
+  - notExists:
+      path: spec.traffic.jwtAuthentication.providers[0].jwks.inline
   - contains:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       content: http://agentos-gateway.agentos.svc.cluster.local:8080

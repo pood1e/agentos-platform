@@ -54,7 +54,7 @@ spec:
         - name: console
           image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
           command: [node, build/server/platform/main.js]
-          ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}, {name: runtime, containerPort: 9091}]
+          ports: [{name: http, containerPort: 8080}, {name: guardrails, containerPort: 9090}, {name: runtime, containerPort: 9091}, {name: jwks, containerPort: 9092}]
           env:
             {{- include "agentos.executionEnv" . | nindent 12 }}
             - {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}

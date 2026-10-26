@@ -230,6 +230,7 @@ message ListKnowledgeResponse {
   repeated kagent.runtime.v1.MemorySummary memories = 1;
   string next_page_token = 2;
   int32 total_size = 3;
+  string etag = 4;
 }
 message SearchKnowledgeRequest {
   reserved 1;
@@ -256,7 +257,7 @@ message DeleteKnowledgeRequest {
 }
 message DeleteKnowledgeResponse {}
 message ClearKnowledgeRequest {
-  reserved 1;
-  int32 expected_count = 2 [(buf.validate.field).int32.gte = 0];
+  reserved 1, 2;
+  string etag = 3 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
 }
 message ClearKnowledgeResponse {}
