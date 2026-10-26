@@ -174,6 +174,7 @@ message GetScheduledRunExecutionResponse {
 message ListScheduledRunExecutionsRequest {
   string scheduled_run_id = 1 [(buf.validate.field).string.uuid = true];
   PageRequest page = 2;
+  bool active_only = 3;
 }
 message ListScheduledRunExecutionsResponse {
   repeated ScheduledRunExecution executions = 1;

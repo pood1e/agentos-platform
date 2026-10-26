@@ -120,4 +120,11 @@ it("dispatches only explicitly bound presets without creating a session for skip
   ).not.toBe("");
   expect((await dispatch(started.id, false)).result.isError).toBeFalsy();
   expect(env.fake.sessions.size).toBe(sessions + 1);
+  const history = await rpc("tools/call", {
+    name: "list_scheduled_run_executions",
+    arguments: { presetKey: allowed.key, activeOnly: true },
+  });
+  expect(
+    history.result.structuredContent.executions.map((item: { id: string }) => item.id),
+  ).toEqual([started.id]);
 });

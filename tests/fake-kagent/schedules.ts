@@ -191,7 +191,14 @@ export class FakeSchedules {
       listScheduledRunExecutions: (r) => {
         const result = page(
           [...this.executions.values()]
-            .filter((item) => item.scheduledRunId === r.scheduledRunId)
+            .filter(
+              (item) =>
+                item.scheduledRunId === r.scheduledRunId &&
+                (!r.activeOnly ||
+                  [ScheduledRunExecutionState.PENDING, ScheduledRunExecutionState.RUNNING].includes(
+                    item.state,
+                  )),
+            )
             .reverse(),
           r.page?.pageToken,
           r.page?.limit || 50,

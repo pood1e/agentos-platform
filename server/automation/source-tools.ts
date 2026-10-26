@@ -84,6 +84,7 @@ export function scheduledSourceTools(
             {
               scheduledRunId: preset.scheduledRunId,
               page: query.page,
+              activeOnly: query.activeOnly,
             },
             { signal: context.mcpReq.signal, timeoutMs: 15_000 },
           ),

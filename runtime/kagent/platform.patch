@@ -70,7 +70,7 @@ index 1dd863e..765d95c 100644
  		return nil, fmt.Errorf("%s embeddings request failed: %w", provider, err)
  	}
 diff --git a/go/api/gen/kagent/api/v1/scheduled_runs.pb.go b/go/api/gen/kagent/api/v1/scheduled_runs.pb.go
-index 82c3e71..2e87979 100644
+index 82c3e71..cae9c38 100644
 --- a/go/api/gen/kagent/api/v1/scheduled_runs.pb.go
 +++ b/go/api/gen/kagent/api/v1/scheduled_runs.pb.go
 @@ -1,6 +1,6 @@
@@ -329,7 +329,14 @@ index 82c3e71..2e87979 100644
  }
  
  func (x *GetScheduledRunExecutionResponse) GetExecution() *ScheduledRunExecution {
-@@ -1132,7 +1264,7 @@ type ListScheduledRunExecutionsRequest struct {
+@@ -1126,13 +1258,14 @@ type ListScheduledRunExecutionsRequest struct {
+ 	state          protoimpl.MessageState `protogen:"open.v1"`
+ 	ScheduledRunId string                 `protobuf:"bytes,1,opt,name=scheduled_run_id,json=scheduledRunId,proto3" json:"scheduled_run_id,omitempty"`
+ 	Page           *PageRequest           `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
++	ActiveOnly     bool                   `protobuf:"varint,3,opt,name=active_only,json=activeOnly,proto3" json:"active_only,omitempty"`
+ 	unknownFields  protoimpl.UnknownFields
+ 	sizeCache      protoimpl.SizeCache
+ }
  
  func (x *ListScheduledRunExecutionsRequest) Reset() {
  	*x = ListScheduledRunExecutionsRequest{}
@@ -338,7 +345,7 @@ index 82c3e71..2e87979 100644
  	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
  	ms.StoreMessageInfo(mi)
  }
-@@ -1144,7 +1276,7 @@ func (x *ListScheduledRunExecutionsRequest) String() string {
+@@ -1144,7 +1277,7 @@ func (x *ListScheduledRunExecutionsRequest) String() string {
  func (*ListScheduledRunExecutionsRequest) ProtoMessage() {}
  
  func (x *ListScheduledRunExecutionsRequest) ProtoReflect() protoreflect.Message {
@@ -347,7 +354,7 @@ index 82c3e71..2e87979 100644
  	if x != nil {
  		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
  		if ms.LoadMessageInfo() == nil {
-@@ -1157,7 +1289,7 @@ func (x *ListScheduledRunExecutionsRequest) ProtoReflect() protoreflect.Message
+@@ -1157,7 +1290,7 @@ func (x *ListScheduledRunExecutionsRequest) ProtoReflect() protoreflect.Message
  
  // Deprecated: Use ListScheduledRunExecutionsRequest.ProtoReflect.Descriptor instead.
  func (*ListScheduledRunExecutionsRequest) Descriptor() ([]byte, []int) {
@@ -356,7 +363,21 @@ index 82c3e71..2e87979 100644
  }
  
  func (x *ListScheduledRunExecutionsRequest) GetScheduledRunId() string {
-@@ -1184,7 +1316,7 @@ type ListScheduledRunExecutionsResponse struct {
+@@ -1174,6 +1307,13 @@ func (x *ListScheduledRunExecutionsRequest) GetPage() *PageRequest {
+ 	return nil
+ }
+ 
++func (x *ListScheduledRunExecutionsRequest) GetActiveOnly() bool {
++	if x != nil {
++		return x.ActiveOnly
++	}
++	return false
++}
++
+ type ListScheduledRunExecutionsResponse struct {
+ 	state         protoimpl.MessageState   `protogen:"open.v1"`
+ 	Executions    []*ScheduledRunExecution `protobuf:"bytes,1,rep,name=executions,proto3" json:"executions,omitempty"`
+@@ -1184,7 +1324,7 @@ type ListScheduledRunExecutionsResponse struct {
  
  func (x *ListScheduledRunExecutionsResponse) Reset() {
  	*x = ListScheduledRunExecutionsResponse{}
@@ -365,7 +386,7 @@ index 82c3e71..2e87979 100644
  	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
  	ms.StoreMessageInfo(mi)
  }
-@@ -1196,7 +1328,7 @@ func (x *ListScheduledRunExecutionsResponse) String() string {
+@@ -1196,7 +1336,7 @@ func (x *ListScheduledRunExecutionsResponse) String() string {
  func (*ListScheduledRunExecutionsResponse) ProtoMessage() {}
  
  func (x *ListScheduledRunExecutionsResponse) ProtoReflect() protoreflect.Message {
@@ -374,7 +395,7 @@ index 82c3e71..2e87979 100644
  	if x != nil {
  		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
  		if ms.LoadMessageInfo() == nil {
-@@ -1209,7 +1341,7 @@ func (x *ListScheduledRunExecutionsResponse) ProtoReflect() protoreflect.Message
+@@ -1209,7 +1349,7 @@ func (x *ListScheduledRunExecutionsResponse) ProtoReflect() protoreflect.Message
  
  // Deprecated: Use ListScheduledRunExecutionsResponse.ProtoReflect.Descriptor instead.
  func (*ListScheduledRunExecutionsResponse) Descriptor() ([]byte, []int) {
@@ -383,7 +404,7 @@ index 82c3e71..2e87979 100644
  }
  
  func (x *ListScheduledRunExecutionsResponse) GetExecutions() []*ScheduledRunExecution {
-@@ -1230,7 +1362,7 @@ var File_kagent_api_v1_scheduled_runs_proto protoreflect.FileDescriptor
+@@ -1230,7 +1370,7 @@ var File_kagent_api_v1_scheduled_runs_proto protoreflect.FileDescriptor
  
  const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
  	"\n" +
@@ -392,7 +413,7 @@ index 82c3e71..2e87979 100644
  	"\x12ScheduledRunConfig\x12\x1c\n" +
  	"\x04name\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04name\x12&\n" +
  	"\bschedule\x18\x02 \x01(\tB\n" +
-@@ -1239,7 +1371,8 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
+@@ -1239,7 +1379,8 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
  	"\x06prompt\x18\x04 \x01(\tB\x0f\xbaH\fr\n" +
  	"\x10\x01(\x80\x80\x022\x02\\SR\x06prompt\x12\x16\n" +
  	"\x06paused\x18\x05 \x01(\bR\x06paused\x12[\n" +
@@ -402,7 +423,7 @@ index 82c3e71..2e87979 100644
  	"\fScheduledRun\x12\x0e\n" +
  	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
  	"\acreator\x18\x02 \x01(\tR\acreator\x126\n" +
-@@ -1287,7 +1420,7 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
+@@ -1287,7 +1428,7 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
  	"request_id\x18\x02 \x01(\tB\n" +
  	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\trequestId\"a\n" +
  	"\x1bTriggerScheduledRunResponse\x12B\n" +
@@ -411,7 +432,7 @@ index 82c3e71..2e87979 100644
  	"\x15ScheduledRunExecution\x12\x0e\n" +
  	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
  	"\acreator\x18\x02 \x01(\tR\acreator\x12(\n" +
-@@ -1304,8 +1437,17 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
+@@ -1304,34 +1445,47 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
  	" \x01(\x0e2).kagent.api.v1.ScheduledRunExecutionStateR\x05state\x12\x17\n" +
  	"\atask_id\x18\v \x01(\tR\x06taskId\x12=\n" +
  	"\fcompleted_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x12%\n" +
@@ -431,7 +452,15 @@ index 82c3e71..2e87979 100644
  	"\x1fGetScheduledRunExecutionRequest\x12+\n" +
  	"\fexecution_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vexecutionId\"f\n" +
  	" GetScheduledRunExecutionResponse\x12B\n" +
-@@ -1317,21 +1459,23 @@ const file_kagent_api_v1_scheduled_runs_proto_rawDesc = "" +
+-	"\texecution\x18\x01 \x01(\v2$.kagent.api.v1.ScheduledRunExecutionR\texecution\"\x87\x01\n" +
++	"\texecution\x18\x01 \x01(\v2$.kagent.api.v1.ScheduledRunExecutionR\texecution\"\xa8\x01\n" +
+ 	"!ListScheduledRunExecutionsRequest\x122\n" +
+ 	"\x10scheduled_run_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x0escheduledRunId\x12.\n" +
+-	"\x04page\x18\x02 \x01(\v2\x1a.kagent.api.v1.PageRequestR\x04page\"\x9b\x01\n" +
++	"\x04page\x18\x02 \x01(\v2\x1a.kagent.api.v1.PageRequestR\x04page\x12\x1f\n" +
++	"\vactive_only\x18\x03 \x01(\bR\n" +
++	"activeOnly\"\x9b\x01\n" +
+ 	"\"ListScheduledRunExecutionsResponse\x12D\n" +
  	"\n" +
  	"executions\x18\x01 \x03(\v2$.kagent.api.v1.ScheduledRunExecutionR\n" +
  	"executions\x12/\n" +
@@ -458,7 +487,7 @@ index 82c3e71..2e87979 100644
  	"\x18GetScheduledRunExecution\x12..kagent.api.v1.GetScheduledRunExecutionRequest\x1a/.kagent.api.v1.GetScheduledRunExecutionResponse\x12\x81\x01\n" +
  	"\x1aListScheduledRunExecutions\x120.kagent.api.v1.ListScheduledRunExecutionsRequest\x1a1.kagent.api.v1.ListScheduledRunExecutionsResponseB=Z;github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1b\x06proto3"
  
-@@ -1348,83 +1492,88 @@ func file_kagent_api_v1_scheduled_runs_proto_rawDescGZIP() []byte {
+@@ -1348,83 +1502,88 @@ func file_kagent_api_v1_scheduled_runs_proto_rawDescGZIP() []byte {
  }
  
  var file_kagent_api_v1_scheduled_runs_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
@@ -611,7 +640,7 @@ index 82c3e71..2e87979 100644
  }
  
  func init() { file_kagent_api_v1_scheduled_runs_proto_init() }
-@@ -1443,7 +1592,7 @@ func file_kagent_api_v1_scheduled_runs_proto_init() {
+@@ -1443,7 +1602,7 @@ func file_kagent_api_v1_scheduled_runs_proto_init() {
  			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
  			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kagent_api_v1_scheduled_runs_proto_rawDesc), len(file_kagent_api_v1_scheduled_runs_proto_rawDesc)),
  			NumEnums:      1,
@@ -1526,8 +1555,20 @@ index 0000000..ab31b26
 +		t.Fatal("session reservation was not idempotent")
 +	}
 +}
+diff --git a/go/core/internal/database/scheduled_run_models.go b/go/core/internal/database/scheduled_run_models.go
+index faff1ac..39f22ef 100644
+--- a/go/core/internal/database/scheduled_run_models.go
++++ b/go/core/internal/database/scheduled_run_models.go
+@@ -15,6 +15,7 @@ type ScheduledRunQuery struct {
+ type ScheduledRunExecutionQuery struct {
+ 	ScheduledRunQuery
+ 	ScheduledRunID uuid.UUID
++	ActiveOnly     bool
+ }
+ 
+ // ScheduledRunExecutionLease fences status updates from a previous worker.
 diff --git a/go/core/internal/database/scheduled_runs.go b/go/core/internal/database/scheduled_runs.go
-index ad8d506..bb5f0e2 100644
+index ad8d506..56d2611 100644
 --- a/go/core/internal/database/scheduled_runs.go
 +++ b/go/core/internal/database/scheduled_runs.go
 @@ -316,8 +316,9 @@ func reserveScheduledRunExecution(ctx context.Context, db dbExecutor, schedule *
@@ -1542,7 +1583,20 @@ index ad8d506..bb5f0e2 100644
  	}
  	if due != nil {
  		execution.Trigger = &apiv1.ScheduledRunExecution_ScheduledTime{ScheduledTime: timestamppb.New(*due)}
-@@ -426,6 +427,9 @@ func (c *Client) ReserveScheduledRunExecutionSession(ctx context.Context, id uui
+@@ -365,10 +366,11 @@ func (c *Client) ListScheduledRunExecutions(ctx context.Context, query Scheduled
+ 		    scheduled_run_execution e JOIN scheduled_run s ON s.id = e.scheduled_run_id
+ 		WHERE s.creator = $1 AND e.scheduled_run_id = $2
+ 		  AND ($4::uuid IS NULL OR e.id < $4::uuid)
++		  AND (NOT $5::boolean OR e.state IN ('SCHEDULED_RUN_EXECUTION_STATE_PENDING', 'SCHEDULED_RUN_EXECUTION_STATE_RUNNING'))
+ 		ORDER BY e.id DESC LIMIT $3
+ 	`,
+ 		pgx.RowToStructByName[scheduledRunExecutionRow], query.Creator, query.ScheduledRunID, int32(query.Limit),
+-		query.AfterID,
++		query.AfterID, query.ActiveOnly,
+ 	)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("failed to list executions: %w", err)
+@@ -426,6 +428,9 @@ func (c *Client) ReserveScheduledRunExecutionSession(ctx context.Context, id uui
  		if !errors.Is(err, pgx.ErrNoRows) {
  			return err
  		}
@@ -1630,10 +1684,18 @@ index 0000000..7e8b3fe
 +	return &runtimev1.MemoryServiceDeleteEntryResponse{}, nil
 +}
 diff --git a/go/core/internal/grpcserver/policy.go b/go/core/internal/grpcserver/policy.go
-index 5cf4214..3aa9184 100644
+index 5cf4214..13f4ed0 100644
 --- a/go/core/internal/grpcserver/policy.go
 +++ b/go/core/internal/grpcserver/policy.go
-@@ -119,6 +119,10 @@ func DefaultMethodPolicies() MethodPolicies {
+@@ -104,6 +104,7 @@ func DefaultMethodPolicies() MethodPolicies {
+ 	policies[apiv1.ScheduledRunService_ListScheduledRuns_FullMethodName] = auth.AccessRead
+ 	policies[apiv1.ScheduledRunService_GetScheduledRunExecution_FullMethodName] = auth.AccessRead
+ 	policies[apiv1.ScheduledRunService_ListScheduledRunExecutions_FullMethodName] = auth.AccessRead
++	policies[apiv1.ScheduledRunService_DispatchScheduledRunExecution_FullMethodName] = auth.AccessUpdate
+ 	policies[apiv1.SandboxService_CreateSandbox_FullMethodName] = auth.AccessCreate
+ 	policies[apiv1.SandboxService_GetSandbox_FullMethodName] = auth.AccessRead
+ 	policies[apiv1.SandboxService_ListSandboxes_FullMethodName] = auth.AccessRead
+@@ -119,6 +120,10 @@ func DefaultMethodPolicies() MethodPolicies {
  	maps.Copy(policies, runtimeMethodPolicies())
  	policies[runtimev1.MemoryService_List_FullMethodName] = auth.AccessRead
  	policies[runtimev1.MemoryService_Delete_FullMethodName] = auth.AccessDelete
@@ -1644,11 +1706,92 @@ index 5cf4214..3aa9184 100644
  	return policies
  }
  
+diff --git a/go/core/internal/grpcserver/policy_test.go b/go/core/internal/grpcserver/policy_test.go
+index 51c3d3c..6d6f9d5 100644
+--- a/go/core/internal/grpcserver/policy_test.go
++++ b/go/core/internal/grpcserver/policy_test.go
+@@ -76,6 +76,10 @@ func TestReadOnlyShareCannotRenameAConversation(t *testing.T) {
+ 			name:   "read-only share may not rename",
+ 			method: apiv1.SessionService_UpdateSessionName_FullMethodName, wantCode: codes.PermissionDenied,
+ 		},
++		{
++			name:   "read-only share may not dispatch scheduled executions",
++			method: apiv1.ScheduledRunService_DispatchScheduledRunExecution_FullMethodName, wantCode: codes.PermissionDenied,
++		},
+ 	} {
+ 		t.Run(test.name, func(t *testing.T) {
+ 			shareStore := &testShareStore{
+diff --git a/go/core/internal/grpcserver/scheduled_dispatch_test.go b/go/core/internal/grpcserver/scheduled_dispatch_test.go
+new file mode 100644
+index 0000000..ad92de0
+--- /dev/null
++++ b/go/core/internal/grpcserver/scheduled_dispatch_test.go
+@@ -0,0 +1,53 @@
++package grpcserver
++
++import (
++	"testing"
++
++	"github.com/stretchr/testify/require"
++	"google.golang.org/grpc/codes"
++	"google.golang.org/grpc/metadata"
++	"google.golang.org/grpc/status"
++
++	apiv1 "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1"
++)
++
++func TestScheduledDispatchPersistenceAndValidation(t *testing.T) {
++	_, client, _, owner := scheduledRunTestServer(t)
++	created, err := client.CreateScheduledRun(owner, &apiv1.CreateScheduledRunRequest{
++		Agent: &apiv1.ResourceReference{Namespace: "team", Name: "report"}, RequestId: "gated",
++		Config: &apiv1.ScheduledRunConfig{Schedule: "* * * * *", Prompt: "analyze", DispatchRequired: true},
++	})
++	require.NoError(t, err)
++	id := created.ScheduledRun.Id
++	pending, err := client.TriggerScheduledRun(owner, &apiv1.TriggerScheduledRunRequest{ScheduledRunId: id, RequestId: "old-pending"})
++	require.NoError(t, err)
++	reserved, err := client.TriggerScheduledRun(owner, &apiv1.TriggerScheduledRunRequest{ScheduledRunId: id, RequestId: "new-skipped"})
++	require.NoError(t, err)
++	require.True(t, reserved.Execution.AwaitingDispatch)
++	require.Empty(t, reserved.Execution.SessionId)
++	request := &apiv1.DispatchScheduledRunExecutionRequest{ExecutionId: reserved.Execution.Id, Skip: true}
++	_, err = client.DispatchScheduledRunExecution(owner, request)
++	require.Equal(t, codes.InvalidArgument, status.Code(err))
++	request.Reason = "No pending work"
++	visitor := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("x-user-id", "bob"))
++	_, err = client.DispatchScheduledRunExecution(visitor, request)
++	require.Equal(t, codes.NotFound, status.Code(err))
++	for range 2 {
++		result, err := client.DispatchScheduledRunExecution(owner, request)
++		require.NoError(t, err)
++		require.Equal(t, apiv1.ScheduledRunExecutionState_SCHEDULED_RUN_EXECUTION_STATE_SKIPPED, result.Execution.State)
++		require.False(t, result.Execution.AwaitingDispatch)
++		require.NotNil(t, result.Execution.CompletedAt)
++		require.Empty(t, result.Execution.SessionId)
++	}
++	request.Skip = false
++	_, err = client.DispatchScheduledRunExecution(owner, request)
++	require.Equal(t, codes.Aborted, status.Code(err))
++	active, err := client.ListScheduledRunExecutions(owner, &apiv1.ListScheduledRunExecutionsRequest{
++		ScheduledRunId: id, ActiveOnly: true, Page: &apiv1.PageRequest{Limit: 1},
++	})
++	require.NoError(t, err)
++	require.Len(t, active.Executions, 1)
++	require.Equal(t, pending.Execution.Id, active.Executions[0].Id)
++	require.Empty(t, active.Page.NextPageToken)
++}
 diff --git a/go/core/internal/grpcserver/scheduledrun.go b/go/core/internal/grpcserver/scheduledrun.go
-index 4d3433e..3455963 100644
+index 4d3433e..a369923 100644
 --- a/go/core/internal/grpcserver/scheduledrun.go
 +++ b/go/core/internal/grpcserver/scheduledrun.go
-@@ -79,3 +79,11 @@ func (s *scheduledRunServer) ListScheduledRunExecutions(ctx context.Context, req
+@@ -73,9 +73,17 @@ func (s *scheduledRunServer) GetScheduledRunExecution(ctx context.Context, reque
+ }
+ 
+ func (s *scheduledRunServer) ListScheduledRunExecutions(ctx context.Context, request *apiv1.ListScheduledRunExecutionsRequest) (*apiv1.ListScheduledRunExecutionsResponse, error) {
+-	result, next, err := s.service.ListExecutions(ctx, uuid.MustParse(request.GetScheduledRunId()), request.GetPage())
++	result, next, err := s.service.ListExecutions(ctx, uuid.MustParse(request.GetScheduledRunId()), request.GetPage(), request.GetActiveOnly())
+ 	if err != nil {
+ 		return nil, err
  	}
  	return &apiv1.ListScheduledRunExecutionsResponse{Executions: result, Page: &apiv1.PageResponse{NextPageToken: next}}, nil
  }
@@ -1875,14 +2018,15 @@ index ee3ada8..4b8882f 100644
 +}
 diff --git a/go/core/internal/service/scheduledrun/dispatch.go b/go/core/internal/service/scheduledrun/dispatch.go
 new file mode 100644
-index 0000000..26ddeca
+index 0000000..6a5d96e
 --- /dev/null
 +++ b/go/core/internal/service/scheduledrun/dispatch.go
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,36 @@
 +package scheduledrun
 +
 +import (
 +	"context"
++	"fmt"
 +
 +	"github.com/google/uuid"
 +
@@ -1900,7 +2044,11 @@ index 0000000..26ddeca
 +	if err != nil {
 +		return nil, storeError(err)
 +	}
-+	schedule, err := s.store.GetScheduledRun(ctx, uuid.MustParse(execution.ScheduledRunId), creator)
++	scheduleID, err := uuid.Parse(execution.ScheduledRunId)
++	if err != nil {
++		return nil, fmt.Errorf("failed to decode execution schedule: %w", err)
++	}
++	schedule, err := s.store.GetScheduledRun(ctx, scheduleID, creator)
 +	if err != nil {
 +		return nil, storeError(err)
 +	}
@@ -1911,7 +2059,7 @@ index 0000000..26ddeca
 +	return result, storeError(err)
 +}
 diff --git a/go/core/internal/service/scheduledrun/service.go b/go/core/internal/service/scheduledrun/service.go
-index 99046c9..f1c2a7f 100644
+index 99046c9..426f787 100644
 --- a/go/core/internal/service/scheduledrun/service.go
 +++ b/go/core/internal/service/scheduledrun/service.go
 @@ -31,6 +31,7 @@ type serviceStore interface {
@@ -1922,6 +2070,24 @@ index 99046c9..f1c2a7f 100644
  }
  
  type Service struct {
+@@ -171,7 +172,7 @@ func (s *Service) GetExecution(ctx context.Context, id uuid.UUID) (*apiv1.Schedu
+ 	return result, storeError(err)
+ }
+ 
+-func (s *Service) ListExecutions(ctx context.Context, id uuid.UUID, page *apiv1.PageRequest) ([]*apiv1.ScheduledRunExecution, string, error) {
++func (s *Service) ListExecutions(ctx context.Context, id uuid.UUID, page *apiv1.PageRequest, activeOnly bool) ([]*apiv1.ScheduledRunExecution, string, error) {
+ 	creator, err := s.authorize(ctx, auth.VerbGet, id.String()+"/executions")
+ 	if err != nil {
+ 		return nil, "", err
+@@ -180,7 +181,7 @@ func (s *Service) ListExecutions(ctx context.Context, id uuid.UUID, page *apiv1.
+ 	if err != nil {
+ 		return nil, "", err
+ 	}
+-	rows, err := s.store.ListScheduledRunExecutions(ctx, database.ScheduledRunExecutionQuery{ScheduledRunQuery: query, ScheduledRunID: id})
++	rows, err := s.store.ListScheduledRunExecutions(ctx, database.ScheduledRunExecutionQuery{ScheduledRunQuery: query, ScheduledRunID: id, ActiveOnly: activeOnly})
+ 	if err != nil {
+ 		return nil, "", storeError(err)
+ 	}
 diff --git a/go/core/internal/service/tool/discovery_auth.go b/go/core/internal/service/tool/discovery_auth.go
 new file mode 100644
 index 0000000..a3446e9
@@ -3686,7 +3852,7 @@ index bea8ee8..1b8c73a 100644
  		t.Fatal("generated Codex configuration does not enable request_user_input in default mode")
  	}
 diff --git a/proto/kagent/api/v1/scheduled_runs.proto b/proto/kagent/api/v1/scheduled_runs.proto
-index ac4c176..17dda2a 100644
+index ac4c176..4c7d9b7 100644
 --- a/proto/kagent/api/v1/scheduled_runs.proto
 +++ b/proto/kagent/api/v1/scheduled_runs.proto
 @@ -18,6 +18,7 @@ service ScheduledRunService {
@@ -3732,6 +3898,14 @@ index ac4c176..17dda2a 100644
  }
  
  message GetScheduledRunExecutionRequest {
+@@ -159,6 +174,7 @@ message GetScheduledRunExecutionResponse {
+ message ListScheduledRunExecutionsRequest {
+   string scheduled_run_id = 1 [(buf.validate.field).string.uuid = true];
+   PageRequest page = 2;
++  bool active_only = 3;
+ }
+ message ListScheduledRunExecutionsResponse {
+   repeated ScheduledRunExecution executions = 1;
 diff --git a/proto/kagent/runtime/v1/memory.proto b/proto/kagent/runtime/v1/memory.proto
 index 0651311..9448346 100644
 --- a/proto/kagent/runtime/v1/memory.proto
