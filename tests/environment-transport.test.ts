@@ -5,17 +5,21 @@ import type { AuthenticationV1Api } from "@kubernetes/client-node";
 import Fastify from "fastify";
 import { expect, it, vi } from "vitest";
 import { McpRequestSchema } from "../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { WorkloadAuthenticationSchema } from "../gen/agentos/authorization/v1/workload_pb.js";
+import {
+  ModelAuthorizationSchema,
+  WorkloadAuthenticationSchema,
+} from "../gen/agentos/authorization/v1/workload_pb.js";
 import { gatewayAuthorization } from "../server/authorization/transport.js";
 import { workloadIdentity } from "../server/authorization/workloads.js";
 import { grpcServer } from "../server/platform/grpc.js";
 
-it("authenticates transport notifications, event streams and session cleanup over native h2c", async () => {
+it("authenticates model and MCP transports without adding runtime identity headers", async () => {
   const app = Fastify();
   const authorize = vi.fn(async () => "environment-token");
+  const authorizeModel = vi.fn(async () => {});
   const server = grpcServer(app, {
     routes: () => {},
-    fallback: gatewayAuthorization(authorize, async () => {}, {
+    fallback: gatewayAuthorization(authorize, authorizeModel, {
       automation: async () => {
         throw new Error("not configured");
       },
@@ -29,10 +33,15 @@ it("authenticates transport notifications, event streams and session cleanup ove
     serviceNames: ["lab-kubernetes"],
     metadataContext: { environment: "lab", identity: "diagnosis", discovery: true },
   });
-  async function request(method: string, body: string, path = "/authorize/environment") {
+  async function request(
+    method: string,
+    body: string,
+    path = "/authorize/environment",
+    requestHeaders: IncomingHttpHeaders = { "x-substrate-actor-token": "Bearer actor-proof" },
+  ) {
     return new Promise<IncomingHttpHeaders>((resolve, reject) => {
       const stream = client.request(
-        { ":method": method, ":path": path, "x-substrate-actor-token": "Bearer actor-proof" },
+        { ":method": method, ":path": path, ...requestHeaders },
         { endStream: false },
       );
       let headers: IncomingHttpHeaders;
@@ -46,6 +55,26 @@ it("authenticates transport notifications, event streams and session cleanup ove
     });
   }
   try {
+    const model = create(ModelAuthorizationSchema, {
+      path: "/v1/embeddings",
+      method: "POST",
+      model: "embedding-model",
+    });
+    for (const headers of [
+      { authorization: "Bearer platform" },
+      { "x-substrate-actor-token": "Bearer actor-proof" },
+    ]) {
+      const response = await request(
+        "POST",
+        toJsonString(ModelAuthorizationSchema, model),
+        "/authorize/model",
+        headers,
+      );
+      expect(response[":status"]).toBe(200);
+      expect(authorizeModel).toHaveBeenLastCalledWith(model, expect.objectContaining(headers));
+      expect(response.authorization).toBe("");
+      expect(response["x-substrate-actor-token"]).toBeUndefined();
+    }
     for (const method of ["POST", "GET", "DELETE"]) {
       const response = await request(method, toJsonString(McpRequestSchema, target));
       expect(response[":status"]).toBe(200);
