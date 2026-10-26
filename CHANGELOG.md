@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.3](https://github.com/pood1e/agentos-platform/compare/v0.38.2...v0.38.3) (2026-10-26)
+
+
+### Bug Fixes
+
+* preserve workload identity through model authorization ([#153](https://github.com/pood1e/agentos-platform/issues/153)) ([4dbd63b](https://github.com/pood1e/agentos-platform/commit/4dbd63b5c4472c13b2940252de09744181761792))
+
 ## [0.38.2](https://github.com/pood1e/agentos-platform/compare/v0.38.1...v0.38.2) (2026-10-26)
 
 
