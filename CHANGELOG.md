@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.38.0](https://github.com/pood1e/agentos-platform/compare/v0.37.7...v0.38.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* ClearKnowledge requires a record snapshot ETag, and Charts no longer accept embedded JWKS values. Frontend, contracts and deployment producers change together.
+
+### Code Refactoring
+
+* harden configuration consistency and scoped observation ([#147](https://github.com/pood1e/agentos-platform/issues/147)) ([902eeb3](https://github.com/pood1e/agentos-platform/commit/902eeb3d8f11a8437c44cf19f4b85e9d37e8ac9d))
+
 ## [0.37.7](https://github.com/pood1e/agentos-platform/compare/v0.37.6...v0.37.7) (2026-10-26)
 
 
