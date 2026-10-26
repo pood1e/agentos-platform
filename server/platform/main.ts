@@ -102,6 +102,7 @@ const execution = await executionRuntime(
   environmentToken,
   oauth,
   metadata,
+  app.log,
 );
 if (oauth && execution.background)
   await registerBrowserIdentity(app, {

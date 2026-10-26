@@ -7,11 +7,18 @@ import {
   ScheduledExecutionQuerySchema,
   type ScheduledRunPreset,
 } from "../../gen/agentos/automation/v1/service_pb.js";
-import { ListScheduledRunExecutionsResponseSchema } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
+import {
+  DispatchScheduledRunExecutionRequestSchema,
+  DispatchScheduledRunExecutionResponseSchema,
+  ListScheduledRunExecutionsResponseSchema,
+} from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import resultSchema from "../../gen/schema/agentos.automation.v1.GetScheduledRunExecutionResultRequest.jsonschema.bundle.json" with {
   type: "json",
 };
 import querySchema from "../../gen/schema/agentos.automation.v1.ScheduledExecutionQuery.jsonschema.bundle.json" with {
+  type: "json",
+};
+import dispatchSchema from "../../gen/schema/kagent.api.v1.DispatchScheduledRunExecutionRequest.jsonschema.bundle.json" with {
   type: "json",
 };
 import type { KagentClients } from "../kagent/clients.js";
@@ -25,10 +32,41 @@ export function scheduledSourceTools(
   workspace: string,
   presets: ScheduledRunPreset[],
   allowed: string[],
+  dispatchAllowed: string[] = [],
 ) {
   const available = () => presets.filter((preset) => allowed.includes(preset.key));
   return createMcpHandler(() => {
     const server = new McpServer({ name: "automation-results", version: "1.0.0" });
+    if (dispatchAllowed.length)
+      server.registerTool(
+        "dispatch_scheduled_run_execution",
+        {
+          description:
+            "Start or skip a pending native occurrence for an explicitly authorized preset, before creating its Agent session.",
+          inputSchema: inputSchema(dispatchSchema),
+          annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+        },
+        async (args, context) => {
+          const request = fromJson(DispatchScheduledRunExecutionRequestSchema, args);
+          const options = { signal: context.mcpReq.signal, timeoutMs: 15_000 };
+          const { execution } = await clients.schedules.getScheduledRunExecution(
+            { executionId: request.executionId },
+            options,
+          );
+          if (
+            !presets.some(
+              (preset) =>
+                dispatchAllowed.includes(preset.key) &&
+                preset.scheduledRunId === execution?.scheduledRunId,
+            )
+          )
+            throw new ConnectError("Execution dispatch is not authorized", Code.PermissionDenied);
+          return result(
+            DispatchScheduledRunExecutionResponseSchema,
+            await clients.schedules.dispatchScheduledRunExecution(request, options),
+          );
+        },
+      );
     server.registerTool(
       "list_scheduled_run_executions",
       {

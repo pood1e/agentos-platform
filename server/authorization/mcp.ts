@@ -45,6 +45,7 @@ export function mcpAuthorization(
     session: Session | undefined,
     target: McpRequest,
   ) => Promise<Pick<McpRequestResult, "headerMutation" | "metadata">>,
+  onFailure?: (error: unknown, target: Pick<McpRequest, "method" | "serviceNames">) => void,
 ): Required<ServiceImpl<typeof ExtMcp>> {
   return {
     async checkRequest(request) {
@@ -90,6 +91,7 @@ export function mcpAuthorization(
       } catch (error) {
         const code = ConnectError.from(error).code;
         const denied = [Code.Unauthenticated, Code.PermissionDenied, Code.NotFound].includes(code);
+        if (!denied && code !== Code.InvalidArgument) onFailure?.(error, request);
         return create(McpRequestResultSchema, {
           result: {
             case: "error",

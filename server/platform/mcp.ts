@@ -43,18 +43,27 @@ export async function registerPlatformMcp(
       if (workloads.config.automationSources.some((source) => source.issuer === claims?.iss)) {
         const source = await workloads.automation(headers);
         const { environment, subject } = source;
-        if (source.scheduledRunPresets.length) {
+        if (source.scheduledRunPresets.length || source.scheduledRunDispatchPresets.length) {
           if (source.caseAgents.length || source.write || source.capabilities.length)
-            throw new Error("A result reader requires an isolated read-only source identity");
+            throw new Error(
+              "A scheduled source requires an isolated identity without operation write grants",
+            );
           return {
             clientId: subject,
-            scopes: ["list_scheduled_run_executions", "get_scheduled_run_execution_result"],
+            scopes: [
+              "list_scheduled_run_executions",
+              "get_scheduled_run_execution_result",
+              ...(source.scheduledRunDispatchPresets.length
+                ? ["dispatch_scheduled_run_execution"]
+                : []),
+            ],
             handler: scheduledSourceTools(
               clients,
               sync,
               config.namespace,
               presets,
               source.scheduledRunPresets,
+              source.scheduledRunDispatchPresets,
             ),
           };
         }

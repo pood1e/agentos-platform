@@ -18,6 +18,7 @@ service ScheduledRunService {
   rpc UpdateScheduledRun(UpdateScheduledRunRequest) returns (UpdateScheduledRunResponse);
   rpc DeleteScheduledRun(DeleteScheduledRunRequest) returns (DeleteScheduledRunResponse);
   rpc TriggerScheduledRun(TriggerScheduledRunRequest) returns (TriggerScheduledRunResponse);
+  rpc DispatchScheduledRunExecution(DispatchScheduledRunExecutionRequest) returns (DispatchScheduledRunExecutionResponse);
   rpc GetScheduledRunExecution(GetScheduledRunExecutionRequest) returns (GetScheduledRunExecutionResponse);
   rpc ListScheduledRunExecutions(ListScheduledRunExecutionsRequest) returns (ListScheduledRunExecutionsResponse);
 }
@@ -46,6 +47,8 @@ message ScheduledRunConfig {
       nanos: 0
     }
   }];
+  // Reserve an occurrence without creating an Agent session until an external decision.
+  bool dispatch_required = 7;
 }
 
 message ScheduledRun {
@@ -124,6 +127,7 @@ enum ScheduledRunExecutionState {
   SCHEDULED_RUN_EXECUTION_STATE_SUCCEEDED = 3;
   SCHEDULED_RUN_EXECUTION_STATE_FAILED = 4;
   SCHEDULED_RUN_EXECUTION_STATE_TIMED_OUT = 5;
+  SCHEDULED_RUN_EXECUTION_STATE_SKIPPED = 6;
 }
 
 // One accepted firing. Its identity and immutable inputs survive session deletion.
@@ -148,6 +152,17 @@ message ScheduledRunExecution {
   google.protobuf.Timestamp completed_at = 12;
   // Stable explanation of failure. Runtime diagnostics remain in A2A/telemetry.
   string failure_reason = 13;
+  bool awaiting_dispatch = 14;
+  string dispatch_reason = 15;
+}
+
+message DispatchScheduledRunExecutionRequest {
+  string execution_id = 1 [(buf.validate.field).string.uuid = true];
+  bool skip = 2;
+  string reason = 3 [(buf.validate.field).string = {min_len: 1, max_len: 4096}];
+}
+message DispatchScheduledRunExecutionResponse {
+  ScheduledRunExecution execution = 1;
 }
 
 message GetScheduledRunExecutionRequest {

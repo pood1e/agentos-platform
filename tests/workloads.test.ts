@@ -99,6 +99,7 @@ it("validates the registered environment issuer, audience, client and service-ac
     clientId: "case-worker",
     subject: "service-account-123",
     scheduledRunPresets: [],
+    scheduledRunDispatchPresets: [],
     caseAgents: [],
     write: false,
     capabilities: [],

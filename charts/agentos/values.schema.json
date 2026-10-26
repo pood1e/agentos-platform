@@ -928,6 +928,12 @@
           "minLength": 1,
           "type": "string"
         },
+        "^(scheduled_run_dispatch_presets)$": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "^(scheduled_run_presets)$": {
           "items": {
             "type": "string"
@@ -987,6 +993,12 @@
           "default": "",
           "pattern": "^https://.*",
           "type": "string"
+        },
+        "scheduledRunDispatchPresets": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "scheduledRunPresets": {
           "items": {

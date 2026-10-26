@@ -101,6 +101,20 @@ export class FakeSchedules {
     return execution;
   }
 
+  private start(execution: ScheduledRunExecution) {
+    const schedule = this.get(execution.scheduledRunId);
+    const session = this.fake.createSession(
+      { namespace: schedule.agent?.namespace ?? "", name: schedule.agent?.name ?? "" },
+      `scheduled-run/${execution.id}`,
+      schedule.config?.name ?? "",
+    );
+    execution.state = ScheduledRunExecutionState.RUNNING;
+    execution.sessionId = session.id;
+    execution.taskId = this.fake.accept(
+      createMessage(session.id, execution.id, execution.prompt),
+    ).id;
+  }
+
   service(): ServiceImpl<typeof ScheduledRunService> {
     return {
       createScheduledRun: (r) => ({ scheduledRun: this.create(r) }),
@@ -144,21 +158,33 @@ export class FakeSchedules {
           scheduledRunId: schedule.id,
           creator: schedule.creator,
           prompt: schedule.config?.prompt,
-          state: ScheduledRunExecutionState.RUNNING,
+          state: ScheduledRunExecutionState.PENDING,
+          awaitingDispatch: schedule.config?.dispatchRequired,
           trigger: { case: "manualRequestId", value: r.requestId },
           createdAt: timestampFromMs(Date.now()),
           deadline: timestampFromMs(Date.now() + 900_000),
         });
-        const session = this.fake.createSession(
-          { namespace: schedule.agent?.namespace ?? "", name: schedule.agent?.name ?? "" },
-          `scheduled-run/${execution.id}`,
-          schedule.config?.name ?? "",
-        );
-        execution.sessionId = session.id;
-        const task = this.fake.accept(createMessage(session.id, execution.id, execution.prompt));
-        execution.taskId = task.id;
+        if (!execution.awaitingDispatch) this.start(execution);
         this.executions.set(execution.id, execution);
         this.firings.set(key, execution.id);
+        return { execution };
+      },
+      dispatchScheduledRunExecution: (r) => {
+        const execution = this.execution(r.executionId);
+        if (!execution.awaitingDispatch) {
+          if (
+            execution.dispatchReason === r.reason &&
+            (execution.state === ScheduledRunExecutionState.SKIPPED) === r.skip
+          )
+            return { execution };
+          throw new ConnectError("Execution already dispatched", Code.Aborted);
+        }
+        execution.awaitingDispatch = false;
+        execution.dispatchReason = r.reason;
+        if (r.skip) {
+          execution.state = ScheduledRunExecutionState.SKIPPED;
+          execution.completedAt = timestampFromMs(Date.now());
+        } else this.start(execution);
         return { execution };
       },
       getScheduledRunExecution: (r) => ({ execution: this.execution(r.executionId) }),

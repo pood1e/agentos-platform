@@ -51,8 +51,10 @@
     "RUNNING": "Running",
     "SUCCEEDED": "Completed",
     "FAILED": "Failed",
-    "TIMED_OUT": "Timed out"
+    "TIMED_OUT": "Timed out",
+    "SKIPPED": "Skipped"
   },
+  "awaitingDispatch": "Awaiting environment decision",
   "waitingToEnable": "Starts when enabled",
   "moreActions": "More actions",
   "updated": "Updated"

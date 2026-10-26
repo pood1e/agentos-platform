@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
+import type { FastifyBaseLogger } from "fastify";
 import { createRemoteJWKSet } from "jose";
 import type { Configuration } from "openid-client";
 import type { McpRequest } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
@@ -38,6 +39,7 @@ export async function executionRuntime(
   environmentToken?: EnvironmentTokens,
   oauth?: Configuration,
   metadata: ToolMetadata = toolMetadata(clients),
+  log?: Pick<FastifyBaseLogger, "error">,
 ) {
   const persistent = await executionStore(
     required("AGENTOS_EXECUTION_DATABASE_URL"),
@@ -171,6 +173,18 @@ export async function executionRuntime(
           throw new ConnectError("Discovery identity mismatch", Code.PermissionDenied);
       }
       return {};
+    },
+    (error, target) => {
+      const failure = ConnectError.from(error);
+      log?.error(
+        {
+          code: failure.code,
+          reason: failure.rawMessage,
+          method: target.method,
+          services: target.serviceNames,
+        },
+        "MCP authorization dependency failed",
+      );
     },
   );
   const authorizeTools = async (session: Session, tools: string[]) => {

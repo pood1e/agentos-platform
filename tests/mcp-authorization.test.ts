@@ -86,11 +86,14 @@ it("checks each call using the verified Session even when arguments assert anoth
 it("keeps transient authorization failures distinct from denied tools", async () => {
   const session = create(SessionSchema, { id: "native-session" });
   let code = Code.Unavailable;
+  const failures: unknown[] = [];
   const service = mcpAuthorization(
     async () => session,
     async () => {
       throw new ConnectError("Upstream failed", code);
     },
+    undefined,
+    (error) => failures.push(error),
   );
   const client = createClient(
     ExtMcp,
@@ -105,6 +108,8 @@ it("keeps transient authorization failures distinct from denied tools", async ()
     case: "error",
     value: { code: AuthorizationError_Code.UNKNOWN, reason: "Tool authorization unavailable" },
   });
+  expect(failures).toHaveLength(1);
+  expect(failures[0]).toMatchObject({ code: Code.Unavailable });
   code = Code.PermissionDenied;
   expect((await client.checkRequest(request)).result).toMatchObject({
     case: "error",
@@ -115,6 +120,7 @@ it("keeps transient authorization failures distinct from denied tools", async ()
     case: "error",
     value: { code: AuthorizationError_Code.INVALID },
   });
+  expect(failures).toHaveLength(1);
 });
 
 it("allows discovery to read only ui resources and rejects other resource schemes", async () => {

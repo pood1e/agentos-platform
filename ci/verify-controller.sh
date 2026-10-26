@@ -8,6 +8,7 @@ git clone --quiet --depth 1 --branch v1.0.0-alpha17 https://github.com/kagent-de
 test "$(git -C "$source_dir" rev-parse HEAD)" = "$upstream_commit"
 git -C "$source_dir" apply --index "$task_root/runtime/kagent/platform.patch"
 cmp "$source_dir/proto/kagent/runtime/v1/memory.proto" "$task_root/third_party/kagent/kagent/runtime/v1/memory.proto"
+cmp "$source_dir/proto/kagent/api/v1/scheduled_runs.proto" "$task_root/third_party/kagent/kagent/api/v1/scheduled_runs.proto"
 (
   cd "$source_dir"
   git diff --cached --name-only -- '*.go' | xargs gofmt -l > "$task_root/.cache/controller-format.txt"
@@ -15,7 +16,7 @@ cmp "$source_dir/proto/kagent/runtime/v1/memory.proto" "$task_root/third_party/k
 )
 cd "$source_dir/go"
 go mod edit -replace=go.ate.dev/substrate=../../substrate-source
-go test -race -count=1 ./core/internal/database ./core/pkg/migrations ./core/internal/service/memory ./core/internal/service/tool ./core/internal/grpcserver ./core/internal/a2agateway ./core/internal/translator/adkconfig ./core/internal/substrate ./core/internal/translator ./core/internal/utils
+go test -race -count=1 ./core/internal/database ./core/pkg/migrations ./core/internal/service/memory ./core/internal/service/tool ./core/internal/service/scheduledrun ./core/internal/controller/scheduledrun ./core/internal/grpcserver ./core/internal/a2agateway ./core/internal/translator/adkconfig ./core/internal/substrate ./core/internal/translator ./core/internal/utils
 go test -race -count=1 ./core/internal/translator/claude ./core/internal/translator/codex ./harness/claude/... ./harness/codex/... ./adk/pkg/controllerclient ./adk/pkg/taskstore ./adk/pkg/embedding
 go test -race -count=1 ./core/internal/controller -run '^TestStatusForPairPublishesCompilationWarnings$'
 make lint AWK=awk

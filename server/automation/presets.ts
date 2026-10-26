@@ -45,6 +45,8 @@ export function automationPresets(workspace: string, dir?: string) {
     )
   )
     throw new Error("Managed instructions require an existing preset key and a nonempty prompt");
+  if (presets.externallyDispatchedPresets.some((key) => !ids.has(key)))
+    throw new Error("External dispatch requires an existing preset key");
   return {
     eventTriggers: presets.eventTriggers,
     scheduledRuns,
@@ -56,13 +58,19 @@ export function automationPresets(workspace: string, dir?: string) {
         });
         if (!scheduledRun?.id || scheduledRun.agent?.namespace !== workspace)
           throw new Error("Automation preset requires a workspace schedule");
-        const prompt = presets.scheduledRunPrompts[request.requestId.slice(prefix.length)];
-        if (prompt && scheduledRun.config && prompt !== scheduledRun.config.prompt) {
+        const key = request.requestId.slice(prefix.length);
+        const prompt = presets.scheduledRunPrompts[key] || scheduledRun.config?.prompt || "";
+        const dispatchRequired = presets.externallyDispatchedPresets.includes(key);
+        if (
+          scheduledRun.config &&
+          (prompt !== scheduledRun.config.prompt ||
+            dispatchRequired !== scheduledRun.config.dispatchRequired)
+        ) {
           await clients.schedules.updateScheduledRun(
             {
               scheduledRunId: scheduledRun.id,
               etag: scheduledRun.etag,
-              config: { ...scheduledRun.config, prompt },
+              config: { ...scheduledRun.config, prompt, dispatchRequired },
             },
             { timeoutMs: 15_000 },
           );
