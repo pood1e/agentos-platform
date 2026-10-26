@@ -15,7 +15,7 @@ import { appVisible } from "../server/kagent/tool-metadata.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
 import { testBindings } from "./harness.js";
 
-it("updates one App per response while retaining every tool call", async () => {
+it("retains independent App instances when later calls share the same resource", async () => {
   const env = await setup();
   const artifact = env.task.artifacts[0];
   if (!artifact) throw new Error("App fixture missing");
@@ -46,6 +46,8 @@ it("updates one App per response while retaining every tool call", async () => {
         ) ?? [];
       expect(calls).toHaveLength(3);
       expect(calls.filter((call) => call.uiResourceUri).map((call) => call.id)).toEqual([
+        env.callId,
+        "revision-2",
         "revision-3",
       ]);
       break;

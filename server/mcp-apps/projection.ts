@@ -4,7 +4,6 @@ import {
   ChatMessagePartSchema,
   type Conversation,
 } from "../../gen/agentos/console/v1/conversation_pb.js";
-import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { TaskRun, ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
 import { pool } from "../kagent/clients.js";
 import type { KagentSync } from "../read-model/sync.js";
@@ -74,21 +73,6 @@ export async function projectAppViews(
         existing.add(member.contextId);
       }
     }
-    const calls = parts.flatMap((part) =>
-      part.content.case === "toolCall"
-        ? [part.content.value]
-        : part.content.case === "agentResult"
-          ? part.content.value.calls
-          : [],
-    );
-    const latest = new Map<string, ToolCall>();
-    for (const call of calls) {
-      if (!call.uiResourceUri) continue;
-      if (call.state === ActivityState.SUCCEEDED || !latest.has(call.uiResourceUri))
-        latest.set(call.uiResourceUri, call);
-    }
-    for (const call of calls)
-      if (call.uiResourceUri && latest.get(call.uiResourceUri) !== call) call.uiResourceUri = "";
     message.parts = parts;
   }
 }
