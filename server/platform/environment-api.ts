@@ -5,6 +5,7 @@ import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { jwtIdentity } from "../authorization/oidc.js";
+import { environmentUrl, withEnvironmentHttp } from "../shared/environment-http.js";
 
 /** Relays allowlisted environment APIs with the current user's exchanged identity. */
 export function registerEnvironmentApis(
@@ -58,35 +59,41 @@ export function registerEnvironmentApis(
         const accessToken = await token(environment, "catalog", principal);
         const abort = new AbortController();
         reply.raw.once("close", () => abort.abort());
-        const response = await fetch(new URL(`/${service}/${method}`, connection.resource), {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            "Connect-Protocol-Version": "1",
-          },
-          body: JSON.stringify(request.body),
-          redirect: "error",
-          signal: AbortSignal.any([abort.signal, AbortSignal.timeout(30_000)]),
-        });
-        if (!response.headers.get("content-type")?.includes("application/json"))
-          throw new ConnectError("Environment API returned an invalid response", Code.Unavailable);
-        const chunks: Uint8Array[] = [];
-        let size = 0;
-        if (response.body)
-          for await (const chunk of response.body) {
-            size += chunk.byteLength;
-            if (size > 2 * 1024 * 1024) {
-              abort.abort();
-              throw new ConnectError(
-                "Environment response exceeds the limit",
-                Code.ResourceExhausted,
-              );
+        const url = environmentUrl(connection, `/${service}/${method}`);
+        return await withEnvironmentHttp(connection, url, async (fetch) => {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Connect-Protocol-Version": "1",
+            },
+            body: JSON.stringify(request.body),
+            redirect: "error",
+            signal: AbortSignal.any([abort.signal, AbortSignal.timeout(30_000)]),
+          });
+          if (!response.headers.get("content-type")?.includes("application/json"))
+            throw new ConnectError(
+              "Environment API returned an invalid response",
+              Code.Unavailable,
+            );
+          const chunks: Uint8Array[] = [];
+          let size = 0;
+          if (response.body)
+            for await (const chunk of response.body) {
+              size += chunk.byteLength;
+              if (size > 2 * 1024 * 1024) {
+                abort.abort();
+                throw new ConnectError(
+                  "Environment response exceeds the limit",
+                  Code.ResourceExhausted,
+                );
+              }
+              chunks.push(chunk);
             }
-            chunks.push(chunk);
-          }
-        const body = Buffer.concat(chunks).toString("utf8");
-        return reply.code(response.status).type("application/json").send(body);
+          const body = Buffer.concat(chunks).toString("utf8");
+          return reply.code(response.status).type("application/json").send(body);
+        });
       } catch (error) {
         const failure = ConnectError.from(error, Code.Unavailable);
         const status =
