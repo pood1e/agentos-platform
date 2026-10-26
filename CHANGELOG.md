@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.2](https://github.com/pood1e/agentos-platform/compare/v0.38.1...v0.38.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **mcp:** show provider origins for connections ([#151](https://github.com/pood1e/agentos-platform/issues/151)) ([4e507af](https://github.com/pood1e/agentos-platform/commit/4e507af1a3259aaad35942c330cf3ac6bf1ca3fa))
+
 ## [0.38.1](https://github.com/pood1e/agentos-platform/compare/v0.38.0...v0.38.1) (2026-10-26)
 
 
