@@ -157,7 +157,7 @@ class OCITest(unittest.TestCase):
     def test_charts_and_collection_share_one_source_and_repackage_identically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name in ("charts", "deploy", "environments", "ci"):
+            for name in ("charts", "deploy", "environments", "roles", "ci"):
                 shutil.copytree(
                     ROOT / name, root / name, ignore=shutil.ignore_patterns("charts", "__pycache__")
                 )

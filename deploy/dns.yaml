@@ -12,16 +12,5 @@
         state: present
       loop: "{{ node_hosts }}"
     - name: Configure shared node resolver
-      ansible.builtin.import_tasks: tasks/dns.yaml
-
-  handlers:
-    - name: Restart resolver
-      ansible.builtin.systemd_service:
-        name: systemd-resolved
-        state: restarted
-
-    - name: Restart K3s DNS
-      ansible.builtin.systemd_service:
-        name: k3s
-        state: restarted
-      when: dns_k3s.stat.exists
+      ansible.builtin.import_role:
+        name: node_dns

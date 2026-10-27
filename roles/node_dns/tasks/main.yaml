@@ -1,7 +1,7 @@
 - name: Inspect K3s service
   ansible.builtin.stat:
     path: /etc/systemd/system/k3s.service
-  register: dns_k3s
+  register: node_dns_k3s
 
 - name: Create resolver configuration directories
   ansible.builtin.file:

@@ -36,10 +36,11 @@ for name in platform alternate solution direct-only; do
     --data .cache/chart-check/test-data.json "$@" ".cache/chart-check/$name.yaml"
 done
 kagent_version=$(python -c "import yaml; print(yaml.safe_load(open('deploy/vars.yaml'))['kagent_version'])")
+kagent_image=$(python -c "import yaml; print(yaml.safe_load(open('deploy/vars.yaml'))['kagent_controller_image'].replace('{{ agentos_image_registry }}', 'registry.example.com/agentos'))")
 for scenario in .cache/chart-check .cache/chart-check/telemetry; do
   HELM_PLUGINS="$PWD/deploy/helm-plugins" \
     AGENTOS_KUSTOMIZE_OVERLAY="$PWD/deploy/kustomize/kagent" \
-    AGENTOS_PATCHED_IMAGE="$(python -c "import yaml; print(yaml.safe_load(open('deploy/vars.yaml'))['kagent_controller_image'].replace('{{ agentos_image_registry }}', 'registry.example.com/agentos'))")" \
+    AGENTOS_PATCHED_IMAGE="$kagent_image" \
     helm template kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent --post-renderer agentos-kustomize \
     --version "$kagent_version" -f "$scenario/kagent-values.yaml" > "$scenario/native-kagent.yaml"
   conftest test --combine --policy tests/policies --namespace runtime_tests \
