@@ -16,7 +16,7 @@
 
 ### 1.1 执行存储（已实现）
 
-按总览的[执行存储](refactor.md#执行存储)设计实施，不迁移存量数据。
+按总览的[执行存储](refactor.md#执行存储)设计实施。
 
 删除：`server/authorization/store.ts` 的整行加密与 `agentos_authorization.objects` 表。
 

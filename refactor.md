@@ -15,7 +15,7 @@
 
 ## 原则
 
-- 每个单元一次切换：同一版本删除旧实现，不保留兼容层或双轨实现，不迁移存量数据。
+- 每个单元一次切换：同一版本删除旧实现，不保留兼容层、双轨实现或迁移代码。
 - 复用维护中的组件、官方 SDK 与官方资源类型，平台代码只保留业务语义。
 - 模型唯一来源：RPC 与持久化使用 proto；Kubernetes 资源使用 Go 类型生成的 CRD schema，Helm values schema 与 TS 类型由该 schema 生成。
 - 依赖方向：前端只经平台 API 访问平台；Agent 只经网关与运行时控制面访问 dataplane；控制器只写 Kubernetes 资源。
@@ -88,7 +88,7 @@ flowchart LR
 
 - `agentos_authorization.execution_bindings` 按列保存会话、发起人、Agent、根会话、父会话、写权限、能力与撤销时间；工具调用以一次递归查询取得完整委派链。
 - `agentos_authorization.credentials` 按列保存主体、写权限与能力，access token 与 refresh token 由 AWS Encryption SDK 的 Raw AES keyring 信封加密：密文头携带密钥名称，加密上下文包含工作空间、记录类型与主体。
-- 密钥沿用现有的执行密钥 Secret；表在启动时幂等创建，旧表 `agentos_authorization.objects` 直接删除，存量绑定与凭据不迁移。
+- 密钥沿用现有的执行密钥 Secret；表在启动时幂等创建。
 
 ### 读投影
 
@@ -186,7 +186,6 @@ flowchart LR
 | 新增 Go 控制器 | 复用现有 Go 与 envtest 工具链；分级规则只在控制器中实现 |
 | oauth2-proxy alpha 配置随版本变化 | 固定版本，配置纳入 Chart 测试 |
 | LiveKit 听写的建连延迟 | 页面打开时预连，验收首个转写片段延迟 |
-| 不迁移存量数据 | 升级后存量会话的执行绑定与离线凭据失效：用户重新登录，旧会话不再对原用户可见 |
 | 方案包与 Controller UI 依赖平台契约 | 契约变更随单元发布，消费方在同一切换窗口升级 |
 
 ## 依据

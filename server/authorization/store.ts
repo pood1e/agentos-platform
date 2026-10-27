@@ -89,7 +89,6 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
       await transaction`select pg_advisory_xact_lock(hashtext('agentos_authorization'))`;
       await transaction`create schema if not exists agentos_authorization`;
       await transaction`revoke all on schema agentos_authorization from public`;
-      await transaction`drop table if exists agentos_authorization.objects`;
       await transaction`create table if not exists agentos_authorization.execution_bindings (
         workspace text not null, session_id text not null, root_session_id text not null,
         parent_session_id text not null, agent_namespace text not null, agent_name text not null,
