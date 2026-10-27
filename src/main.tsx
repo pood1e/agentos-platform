@@ -1,4 +1,3 @@
-import "@xyflow/react/dist/style.css";
 import "./styles.css";
 import "./i18n/index.js";
 import { TransportProvider } from "@connectrpc/connect-query";

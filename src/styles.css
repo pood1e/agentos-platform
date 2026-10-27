@@ -53,9 +53,6 @@
   --success: #0f766e;
   --warning: #92400e;
   --info: #1d4ed8;
-  --graph-background: #faf8f3;
-  --graph-grid: #d9d0c3;
-  --graph-return: #786e62;
   --radius: 0.75rem;
 }
 
@@ -75,9 +72,6 @@
   --success: #72d6c1;
   --warning: #f2cb77;
   --info: #9bbfff;
-  --graph-background: #1c1a17;
-  --graph-grid: #423c34;
-  --graph-return: #b0a598;
 }
 
 @layer base {
@@ -146,44 +140,7 @@
   }
 }
 
-.react-flow {
-  --xy-background-color: var(--graph-background);
-  --xy-edge-stroke: var(--graph-return);
-  --xy-controls-button-background-color: var(--card);
-  --xy-controls-button-background-color-hover: var(--muted);
-  --xy-controls-button-border-color: var(--border);
-  --xy-controls-button-color: var(--foreground);
-  --xy-handle-background-color: currentColor;
-  --xy-handle-border-color: var(--card);
-}
-.react-flow__node {
-  border-radius: 12px;
-}
-.react-flow__node:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 4px;
-}
-.react-flow__handle {
-  width: 7px;
-  height: 7px;
-  pointer-events: none;
-}
-.react-flow__edge.animated path {
-  animation-duration: 2s;
-}
-.react-flow__controls {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: none;
-}
-.react-flow__edge-text {
-  font-family: inherit;
-}
 @media (prefers-reduced-motion: reduce) {
-  .react-flow__edge.animated path {
-    animation: none;
-  }
   *,
   *::before,
   *::after {

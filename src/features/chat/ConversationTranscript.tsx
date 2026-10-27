@@ -42,10 +42,12 @@ function ConversationMessage({
   message,
   tasks,
   editable,
+  tagsEditable,
 }: {
   message: ThreadMessage;
   tasks: TaskSummary[];
   editable: boolean;
+  tagsEditable: boolean;
 }) {
   const { t } = useTranslation();
   const user = message.role === "user";
@@ -109,7 +111,7 @@ function ConversationMessage({
       {tasks.length > 0 && (
         <div className="flex flex-wrap justify-end gap-1">
           {tasks.map((task) => (
-            <TaskTags key={task.id} task={task} editable={editable} available={[]} />
+            <TaskTags key={task.id} task={task} editable={tagsEditable} available={[]} />
           ))}
         </div>
       )}
@@ -117,8 +119,16 @@ function ConversationMessage({
   );
 }
 
-export function ConversationTranscript({ chat }: { chat: Chat }) {
+/** Tag editing follows execution authority unless the caller grants shared task management. */
+export function ConversationTranscript({
+  chat,
+  tagsEditable,
+}: {
+  chat: Chat;
+  tagsEditable?: boolean;
+}) {
   const { t } = useTranslation();
+  const operate = chat.conversation?.operate ?? false;
   const tasks = new Map(chat.messages.map((message) => [message.id, message.tasks]));
   const empty = useAuiState((state) => state.thread.messages.length === 0);
   return (
@@ -144,7 +154,8 @@ export function ConversationTranscript({ chat }: { chat: Chat }) {
               <ConversationMessage
                 message={message}
                 tasks={tasks.get(message.id) ?? []}
-                editable={chat.conversation?.operate ?? false}
+                editable={operate}
+                tagsEditable={tagsEditable ?? operate}
               />
             )}
           </ThreadPrimitive.Messages>

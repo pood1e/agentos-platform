@@ -12,7 +12,7 @@ import { taskTagStore } from "../../server/tasks/store.js";
 import { allCapabilities } from "../../shared/permissions.js";
 import { identityIssuer, testToken } from "./identity.js";
 
-export const executionKey = Buffer.alloc(32, 1).toString("base64");
+const executionKey = Buffer.alloc(32, 1).toString("base64");
 
 export async function fixtureExecutions() {
   const uri = process.env.CHANGE_TEST_DATABASE_URL;

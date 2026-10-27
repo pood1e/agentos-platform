@@ -1,5 +1,4 @@
 import { TaskState } from "../../gen/a2a_pb.js";
-import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import type { TaskEntry } from "./entry.js";
 import type { TaskIndex } from "./index.js";
 import { terminal } from "./state.js";
@@ -46,9 +45,7 @@ export function taskTree(index: TaskIndex, rootId: string): TaskTree | undefined
     index,
     entries.flatMap((entry) =>
       entry.calls.flatMap((call) =>
-        call.delegation?.kind === DelegationKind.BACKGROUND
-          ? (index.target(entry, call) ?? [])
-          : [],
+        call.delegation?.kind === "background" ? (index.target(entry, call) ?? []) : [],
       ),
     ),
   );

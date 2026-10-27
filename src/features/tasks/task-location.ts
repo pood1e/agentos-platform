@@ -1,12 +1,11 @@
 import type { TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
+import { systemRunLocation } from "../system-tasks/location.js";
 
+/** Chat operations open in their conversation; shared executions open in system tasks. */
 export function taskLocation(
-  task: Pick<TaskSummary, "id" | "conversationContextId">,
-  approval = false,
+  task: Pick<TaskSummary, "conversationContextId" | "agent" | "contextId">,
 ) {
-  const search = new URLSearchParams({ task: task.id });
-  if (approval) search.set("approval", "1");
   return task.conversationContextId
-    ? `/chat/${encodeURIComponent(task.conversationContextId)}?${search}`
-    : `/system-tasks?${search}`;
+    ? `/chat/${encodeURIComponent(task.conversationContextId)}`
+    : systemRunLocation(task.agent?.name ?? "", task.contextId);
 }

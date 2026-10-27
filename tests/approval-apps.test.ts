@@ -42,7 +42,7 @@ it("opens approval history without reauthorizing settled or externally reviewed 
   }
 });
 
-it("enriches both chat and task streams using authenticated provider lookups", async () => {
+it("enriches the chat stream using authenticated provider lookups", async () => {
   const env = await setup();
   const controller = new AbortController();
   try {
@@ -56,17 +56,6 @@ it("enriches both chat and task streams using authenticated provider lookups", a
         approvals: [
           { reference: { taskId: "task", toolId: "write" }, app: { tool: "show_ticket" } },
         ],
-      });
-      break;
-    }
-    for await (const { task } of env.client.watchTask(
-      { taskId: env.task.id },
-      { signal: controller.signal },
-    )) {
-      expect(task?.interactions[0]).toMatchObject({
-        external: true,
-        approve: false,
-        approvals: [{ id: "change" }],
       });
       break;
     }
@@ -156,9 +145,6 @@ it("lets administrators review shared approvals with their own OBO identity whil
     contextId: env.session.id,
   });
   await expect(watch[Symbol.asyncIterator]().next()).rejects.toMatchObject({ code: Code.NotFound });
-  await expect(
-    env.client.watchTask({ taskId: env.task.id })[Symbol.asyncIterator]().next(),
-  ).rejects.toMatchObject({ code: Code.NotFound });
   await env.client.getAppResource({ app: env.app });
   await env.client.callAppTool({ app: env.app, name: "decide_ticket" });
   expect(env.calls.at(-1)?.authorization).toBe("Bearer human-bob");

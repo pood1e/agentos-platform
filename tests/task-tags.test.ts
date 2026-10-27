@@ -88,15 +88,18 @@ async function taggedWorkspace() {
       },
     ),
   );
-  async function detail(id: string) {
-    for await (const response of client.watchTask({ taskId: id })) return response.task;
+  const agent = { namespace: "agentos", name: "inspection" };
+  async function shared(contextId: string) {
+    for await (const response of client.watchConversation({ agent, contextId }))
+      return response.conversation;
   }
   return {
     ...env,
+    agent,
     alice,
     bob,
     client,
-    detail,
+    shared,
     caller: (value: typeof alice) => {
       caller = value;
     },
@@ -105,10 +108,9 @@ async function taggedWorkspace() {
 
 it("lets read-only owners tag revoked executions while keeping personal metadata private even from administrators", async () => {
   const env = await taggedWorkspace();
-  const { client, detail, alice, bob } = env;
+  const { client, alice, bob } = env;
   const native = structuredClone([...env.fake.tasks]);
   try {
-    expect(await detail("task-alice")).toMatchObject({ operate: false, editTags: true });
     const saved = await client.updateTaskTags({
       taskId: "task-alice",
       tags: ["private-analysis"],
@@ -121,7 +123,7 @@ it("lets read-only owners tag revoked executions while keeping personal metadata
     await expect(
       client.updateTaskTags({ taskId: "task-alice", tags: [], tagsVersion: "1" }),
     ).rejects.toMatchObject({ code: Code.NotFound });
-    await expect(detail("task-alice")).rejects.toMatchObject({ code: Code.NotFound });
+    expect((await client.listTasks({ query: "task-alice" })).totalSize).toBe(0);
     env.caller(alice);
     expect(
       (await client.listTasks({ query: "private-analysis" })).tasks.map((task) => task.id),
@@ -132,31 +134,34 @@ it("lets read-only owners tag revoked executions while keeping personal metadata
   }
 });
 
-it("requires the dedicated capability for shared task tags and reflects permission changes in streams", async () => {
+it("requires the dedicated capability for shared task tags and streams their changes", async () => {
   const env = await taggedWorkspace();
-  const { client, detail, alice } = env;
-  const id = "task-service:automation:example";
+  const { client, shared, agent, alice } = env;
+  const session = "service:automation:example";
+  const id = `task-${session}`;
   try {
-    await expect(detail(id)).rejects.toMatchObject({ code: Code.NotFound });
+    await expect(shared(session)).rejects.toMatchObject({ code: Code.NotFound });
     alice.capabilities = [Capability.AGENTS_MANAGE];
-    expect(await detail(id)).toMatchObject({ editTags: false });
+    expect((await shared(session))?.messages[0]?.tasks[0]?.id).toBe(id);
     await expect(
       client.updateTaskTags({ taskId: id, tags: ["analysis"], tagsVersion: "0" }),
     ).rejects.toMatchObject({ code: Code.PermissionDenied });
     alice.capabilities = [Capability.TASKS_MANAGE];
-    expect(await detail(id)).toMatchObject({ editTags: true });
-    const events = client.watchTask({ taskId: id })[Symbol.asyncIterator]();
+    const events = client.watchConversation({ agent, contextId: session })[Symbol.asyncIterator]();
     try {
       await events.next();
       await client.updateTaskTags({ taskId: id, tags: ["analysis", "维护"], tagsVersion: "0" });
-      expect((await events.next()).value?.task?.summary?.tags).toEqual(["analysis", "维护"]);
+      expect((await events.next()).value?.conversation?.messages[0]?.tasks[0]?.tags).toEqual([
+        "analysis",
+        "维护",
+      ]);
     } finally {
       await events.return?.();
     }
     expect((await client.listTasks({ tags: ["analysis", "维护"] })).totalSize).toBe(1);
     expect((await client.listTasks({ tags: ["analysis", "absent"] })).totalSize).toBe(0);
     alice.capabilities = [];
-    await expect(detail(id)).rejects.toMatchObject({ code: Code.NotFound });
+    await expect(shared(session)).rejects.toMatchObject({ code: Code.NotFound });
     await expect(
       client.updateTaskTags({ taskId: id, tags: [], tagsVersion: "1" }),
     ).rejects.toMatchObject({ code: Code.NotFound });

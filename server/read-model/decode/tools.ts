@@ -1,7 +1,6 @@
 import { fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { type Part, SendMessageResponseSchema } from "../../../gen/a2a_pb.js";
-import { DelegationKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import {
   type InvokeSessionOutput,
   InvokeSessionOutputSchema,
@@ -105,7 +104,8 @@ export function structured(value: JsonValue | undefined): JsonValue | undefined 
 }
 
 export interface DelegationRef {
-  kind: DelegationKind;
+  /** Synchronous invocation, background dispatch or a native agent transfer. */
+  kind: "invoke" | "background" | "handoff";
   sessionId: string;
   agentName: string;
   messageId: string;
@@ -150,7 +150,7 @@ export function delegationRef(
     case "invoke_session": {
       const result = invocation(output);
       return {
-        kind: DelegationKind.INVOKE,
+        kind: "invoke",
         sessionId: text(args.session_id),
         agentName: "",
         messageId: text(args.message_id),
@@ -162,7 +162,7 @@ export function delegationRef(
     case "dispatch_session": {
       const { contextId, messageId, taskId } = dispatched(event.args, output);
       return {
-        kind: DelegationKind.BACKGROUND,
+        kind: "background",
         sessionId: contextId,
         agentName: "",
         messageId,
@@ -171,7 +171,7 @@ export function delegationRef(
     }
     case "transfer_to_agent":
       return {
-        kind: DelegationKind.HANDOFF,
+        kind: "handoff",
         sessionId: "",
         agentName: text(args.agent_name),
         messageId: "",
@@ -181,7 +181,7 @@ export function delegationRef(
       const result = invocation(output);
       if (!result?.sessionId && !result?.taskId) return undefined;
       return {
-        kind: DelegationKind.INVOKE,
+        kind: "invoke",
         sessionId: result.sessionId,
         agentName: "",
         messageId: text(args.messageId) || text(args.message_id),

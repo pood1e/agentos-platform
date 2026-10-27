@@ -17,7 +17,7 @@ import { Failure } from "../management/ResourcePage.js";
 import { PageControl } from "../shared/PageControl.js";
 import { usePaging } from "../shared/paging.js";
 import { scheduledTime } from "./format.js";
-import { systemTaskLocation } from "./location.js";
+import { systemRunLocation } from "./location.js";
 
 export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const { t } = useTranslation();
@@ -102,10 +102,10 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
                     : t(`automation.states.${ScheduledRunExecutionState[execution.state]}`)}
                 </TableCell>
                 <TableCell>
-                  {execution.taskId ? (
+                  {execution.sessionId && schedule?.agent ? (
                     <Link
                       className="text-primary underline-offset-4 hover:underline"
-                      to={systemTaskLocation(execution.taskId)}
+                      to={systemRunLocation(schedule.agent.name, execution.sessionId)}
                     >
                       {t("automation.viewExecution")}
                     </Link>

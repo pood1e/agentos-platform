@@ -6,8 +6,6 @@ __pycache__/
 dist/
 build/
 gen/
-test-results/
-playwright-report/
 .env
 .env.*
 !.env.example

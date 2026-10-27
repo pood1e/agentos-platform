@@ -57,5 +57,7 @@
   "awaitingDispatch": "Awaiting environment decision",
   "waitingToEnable": "Starts when enabled",
   "moreActions": "More actions",
-  "updated": "Updated"
+  "updated": "Updated",
+  "execution": "Execution",
+  "closeExecution": "Close execution"
 }

@@ -1,6 +1,10 @@
+import { create } from "@bufbuild/protobuf";
 import type { AgentTemplate } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { Agent } from "../../gen/kagent/api/v1/agents_pb.js";
-import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import {
+  type ResourceReference,
+  ResourceReferenceSchema,
+} from "../../gen/kagent/api/v1/common_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { millis, object, text } from "./decode/messages.js";
 
@@ -8,6 +12,11 @@ export const systemRoles = new Set(["assistant", "role-builder"]);
 
 export const agentKey = (ref?: Pick<ResourceReference, "namespace" | "name">) =>
   ref ? `${ref.namespace}/${ref.name}` : "";
+
+export function agentRef(id: string) {
+  const [namespace = "", name = ""] = id.split("/");
+  return create(ResourceReferenceSchema, { namespace, name });
+}
 
 export interface AgentInfo {
   id: string;

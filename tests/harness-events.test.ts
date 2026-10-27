@@ -2,7 +2,6 @@ import { create, fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { type Part, PartSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { DelegationKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { callEntries, toolCalls } from "../server/read-model/calls.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
@@ -53,7 +52,7 @@ describe("native Harness tool activity", () => {
       id: "call",
       state: ActivityState.SUCCEEDED,
       delegation: {
-        kind: DelegationKind.INVOKE,
+        kind: "invoke",
         sessionId: "child-session",
         messageId: "child-message",
         taskId: "child-task",
@@ -73,7 +72,7 @@ describe("native Harness tool activity", () => {
       { result: [{ type: "text", text: JSON.stringify({ task: { id: "child-task" } }) }] },
     );
     expect(callEntries(current, new Map())[0]?.delegation).toMatchObject({
-      kind: DelegationKind.BACKGROUND,
+      kind: "background",
       sessionId: "child-session",
       messageId: "child-message",
       taskId: "child-task",

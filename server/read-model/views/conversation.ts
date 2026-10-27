@@ -82,12 +82,15 @@ export function listConversations(
   };
 }
 
-/** Operations this conversation turn delegated to engineers. */
+/** Operations this conversation turn started: its own root or those it delegated to engineers. */
 function operations(index: TaskIndex, entry: TaskEntry) {
   const roots = new Set(index.relations().roots.map((root) => root.id));
-  return entry.calls.flatMap((call) => {
+  const delegated = entry.calls.flatMap((call) => {
     const root = index.operationRoot(index.target(entry, call) ?? "");
-    const tree = root && roots.has(root.id) ? taskTree(index, root.id) : undefined;
+    return root && roots.has(root.id) ? [root.id] : [];
+  });
+  return [...new Set(roots.has(entry.id) ? [entry.id, ...delegated] : delegated)].flatMap((id) => {
+    const tree = taskTree(index, id);
     return tree ? [taskSummary(index, tree)] : [];
   });
 }

@@ -2,7 +2,6 @@ import { create } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
 import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { WatchConversationResponseSchema } from "../gen/agentos/console/v1/console_service_pb.js";
-import { DelegationKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { watch } from "../server/console/watch.js";
 import { ingest } from "../server/read-model/entry.js";
@@ -145,11 +144,10 @@ it("retains delegation events arriving while an asynchronous projection is in pr
         id: "dispatch",
         name: "invoke_session",
         intent: "",
-        dependsOn: [],
         returned: false,
         state: ActivityState.WORKING,
         delegation: {
-          kind: DelegationKind.INVOKE,
+          kind: "invoke",
           sessionId: "child-session",
           messageId: "",
           taskId: "",

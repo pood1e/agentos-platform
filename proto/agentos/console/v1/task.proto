@@ -2,13 +2,11 @@ syntax = "proto3";
 
 package agentos.console.v1;
 
-import "agentos/console/v1/engineer.proto";
 import "agentos/execution/v1/state.proto";
-import "agentos/execution/v1/task.proto";
 import "agentos/governance/v1/governance.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "kagent/api/v1/sessions.proto";
+import "kagent/api/v1/common.proto";
 
 // Root operation, including conversation delegations and system executions.
 message TaskSummary {
@@ -22,53 +20,9 @@ message TaskSummary {
   string tags_version = 7;
   // Conversation that delegated this operation, when one exists.
   string conversation_context_id = 8;
-}
-
-// Operation tree rooted at one task. Runs omit prompt, output and calls.
-message TaskDetail {
-  TaskSummary summary = 1;
-  repeated Engineer participants = 2;
-  repeated Delegation delegations = 3;
-  repeated Interaction interactions = 4;
-  repeated agentos.execution.v1.TaskRun runs = 5;
-  string answer = 6;
-  google.protobuf.Timestamp started_at = 7;
-  google.protobuf.Timestamp completed_at = 8;
-  // Native session identities and names used by this operation.
-  repeated kagent.api.v1.Session sessions = 9;
-  bool operate = 10;
-  bool edit_tags = 11;
-}
-
-enum DelegationKind {
-  DELEGATION_KIND_UNSPECIFIED = 0;
-  DELEGATION_KIND_INVOKE = 1;
-  DELEGATION_KIND_BACKGROUND = 2;
-  DELEGATION_KIND_HANDOFF = 3;
-  DELEGATION_KIND_RESUME = 4;
-  DELEGATION_KIND_REVIEW = 5;
-}
-
-message Delegation {
-  string id = 1;
-  DelegationKind kind = 2;
-  string source_agent_id = 3;
-  string target_agent_id = 4;
-  string source_task_id = 5;
-  string target_task_id = 6;
-  string call_id = 7;
-  agentos.execution.v1.ActivityState state = 8;
-  google.protobuf.Timestamp started_at = 9;
-  google.protobuf.Timestamp returned_at = 10;
-  google.protobuf.Timestamp finished_at = 11;
-  // Native approval request reviewed by this task.
-  string request_id = 12;
-  // Delegations whose synchronous replies were observed before this dispatch.
-  repeated string depends_on = 13;
-  // A synchronous reply was recorded, including replies without a timestamp.
-  bool returned = 14;
-  string source_context_id = 15;
-  string target_context_id = 16;
+  // Native session that runs the operation root.
+  kagent.api.v1.ResourceReference agent = 9;
+  string context_id = 10;
 }
 
 enum InteractionKind {

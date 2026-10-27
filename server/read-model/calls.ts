@@ -1,7 +1,6 @@
 import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { Task } from "../../gen/a2a_pb.js";
-import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { type ToolCall, ToolCallSchema } from "../../gen/agentos/execution/v1/task_pb.js";
 import { hitlPayload } from "./decode/hitl.js";
@@ -26,7 +25,6 @@ interface Draft {
   intent: string;
   args?: JsonValue;
   responses: JsonValue[];
-  dependsOn: string[];
   startedAt?: number;
   endedAt?: number;
 }
@@ -39,7 +37,6 @@ export interface CallEntry {
   startedAt?: number;
   endedAt?: number;
   delegation?: DelegationRef;
-  dependsOn: string[];
   returned: boolean;
 }
 
@@ -52,8 +49,6 @@ function drafts(task: Task): Draft[] {
       .map((message) => `message:${message.messageId}`),
   );
   let narration = "";
-  const replies = new Set<string>();
-  const observed = new Set<string>();
   for (const source of sources) {
     if (interruptions.has(source.key)) continue;
     for (const [index, part] of source.parts.entries()) {
@@ -68,10 +63,9 @@ function drafts(task: Task): Draft[] {
       const previous = calls.get(id);
       const name = event.name || previous?.name || "";
       if (toolBaseName(name) === "adk_request_confirmation") continue;
-      const call = previous ?? { id, name, intent: "", responses: [], dependsOn: [] };
+      const call = previous ?? { id, name, intent: "", responses: [] };
       const at = timeline(part.metadata) ?? source.at;
       if (event.kind === "function_call") {
-        if (!previous) call.dependsOn = [...replies];
         call.args = event.args;
         call.intent = text(part.metadata?.[intentKey]) || narration.trim() || call.intent;
         call.startedAt = at;
@@ -79,11 +73,6 @@ function drafts(task: Task): Draft[] {
       } else {
         call.responses.push(event.response ?? null);
         call.endedAt = at;
-        if (delegationRef(call)?.kind === DelegationKind.INVOKE && !observed.has(id)) {
-          observed.add(id);
-          for (const dependency of call.dependsOn) replies.delete(dependency);
-          replies.add(id);
-        }
       }
       calls.set(id, call);
     }
@@ -128,7 +117,6 @@ export function callEntries(task: Task, approvals: Map<string, Approval>): CallE
       startedAt: call.startedAt,
       endedAt: call.endedAt,
       delegation,
-      dependsOn: call.dependsOn,
       returned: call.responses.length > 0,
     };
   });

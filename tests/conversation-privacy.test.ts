@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
+import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
@@ -125,11 +126,13 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
       await expect(
         first(client.watchConversation({ agent, contextId: "legacy" })),
       ).rejects.toMatchObject({ code: Code.NotFound });
-      await expect(client.getTaskRun({ taskId: `task-${foreign.subject}` })).rejects.toMatchObject({
-        code: Code.NotFound,
-      });
       await expect(
-        first(client.watchTask({ taskId: `task-${foreign.subject}` })),
+        first(
+          client.watchConversation({
+            agent: { namespace: "agentos", name: "inspection" },
+            contextId: `${owner.subject}-operation`,
+          }),
+        ),
       ).rejects.toMatchObject({ code: Code.NotFound });
       await expect(
         client.listApprovals({ taskId: `task-${foreign.subject}`, requestId: "probe" }),
@@ -201,6 +204,92 @@ it("interrupts a foreground run while preserving the owner's conversation and to
     });
     expect(next.contextId).toBe(session.id);
     expect(next.taskId).not.toBe(task.id);
+  } finally {
+    env.sync.close();
+  }
+});
+
+it("lets administrators read shared service sessions of workspace agents without operating them", async () => {
+  const env = environment([]);
+  const registry = executions(memoryStore());
+  const user = identity("user:alice");
+  const administrator = create(ExecutionIdentitySchema, {
+    subject: "user:administrator",
+    capabilities: [Capability.TASKS_MANAGE],
+    credential: { case: "service", value: true },
+  });
+  const agent = { namespace: "agentos", name: "inspection" };
+  const shared = create(SessionSchema, { id: "shared-run", agent, name: "Nightly inspection" });
+  const personal = create(SessionSchema, { id: "personal-run", agent, name: "Own inspection" });
+  env.fake.load({
+    sessions: [shared, personal],
+    tasks: [shared, personal].map((session) =>
+      create(TaskSchema, {
+        id: `task-${session.id}`,
+        contextId: session.id,
+        status: { state: TaskState.COMPLETED },
+        history: [
+          create(MessageSchema, {
+            messageId: `message-${session.id}`,
+            role: Role.USER,
+            parts: [{ content: { case: "text", value: "Inspect the cluster" } }],
+          }),
+        ],
+      }),
+    ),
+  });
+  await env.sync.refresh();
+  await registry.bind(shared, identity("service:scheduler"));
+  await registry.bind(personal, user);
+  let caller = administrator;
+  const client = createClient(
+    ConsoleService,
+    createRouterTransport(
+      (router) =>
+        router.service(
+          ConsoleService,
+          consoleService({
+            ...env,
+            namespace: "agentos",
+            access: testBindings(env.fake),
+            executions: registry,
+            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
+            roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
+            replaceTemplate: async (value) => env.fake.replaceTemplate(value),
+            pack: loadPack(),
+          }),
+        ),
+      { router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] } },
+    ),
+  );
+  async function first(stream: AsyncIterable<unknown>) {
+    for await (const value of stream) return value;
+  }
+  try {
+    await expect(
+      first(client.watchConversation({ agent, contextId: shared.id })),
+    ).resolves.toMatchObject({
+      conversation: {
+        contextId: shared.id,
+        operate: false,
+        messages: [
+          {
+            tasks: [{ id: "task-shared-run", contextId: shared.id, agent: { name: "inspection" } }],
+          },
+        ],
+      },
+    });
+    for (const contextId of [personal.id, ""])
+      await expect(first(client.watchConversation({ agent, contextId }))).rejects.toMatchObject({
+        code: Code.NotFound,
+      });
+    await expect(
+      client.sendMessage({ agent, contextId: shared.id, messageId: "write", text: "Continue" }),
+    ).rejects.toMatchObject({ code: Code.NotFound });
+    caller = user;
+    await expect(
+      first(client.watchConversation({ agent, contextId: shared.id })),
+    ).rejects.toMatchObject({ code: Code.NotFound });
   } finally {
     env.sync.close();
   }

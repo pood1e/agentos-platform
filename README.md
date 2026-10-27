@@ -22,7 +22,6 @@ docker compose up --wait
 export CHANGE_TEST_DATABASE_URL='postgresql://postgres:agentos-dev@localhost:55432/agentos?sslmode=disable'
 mise exec -- npm ci
 mise exec -- npm run verify    # 生成、构建、静态检查与单元测试
-mise exec -- npm run test:e2e  # fake kagent 与示例方案包
 docker compose down
 ```
 
@@ -38,7 +37,7 @@ docker compose down
 - [执行授权](docs/execution-authorization.md)：用户身份、运行时边界、工具授权与 OBO
 - [环境接入](docs/environments.md)：环境网关、身份绑定与可选审批服务
 - [扩展契约](docs/extension.md)：方案包可提供的内容与格式
-- [维护面重构](refactor.md)：维护成本、交付链路与上游收敛
+- [架构收敛重构](refactor.md)：进程拆分、状态持久化、规则单一来源与交付收敛
 
 ## 许可证
 
