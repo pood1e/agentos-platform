@@ -37,7 +37,7 @@ docker compose down
 - [执行授权](docs/execution-authorization.md)：用户身份、运行时边界、工具授权与 OBO
 - [环境接入](docs/environments.md)：环境网关、身份绑定与可选审批服务
 - [扩展契约](docs/extension.md)：方案包可提供的内容与格式
-- [架构收敛重构](refactor.md)：进程拆分、状态持久化、规则单一来源与交付收敛
+- [架构收敛重构](refactor.md)：目标架构与两份并行计划（[平台服务](refactor-services.md)、[Kubernetes 编排与交付](refactor-kubernetes.md)）
 
 ## 许可证
 

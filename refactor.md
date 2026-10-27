@@ -1,7 +1,8 @@
 # 架构收敛重构
 
 状态：第三轮方案，替代第二轮未完成的阶段 12–14；前两轮方案与结果见本文件 `902eeb3` 版本。
-第二轮已完成合并门禁、容器 CI 与固定工具镜像、knip 入口检查、TokenReview、远程 JWKS 接线与授权配置 Informer 索引；阶段 11 的延迟验收并入单元 5，生产轮换验收不在本轮。
+第二轮已完成合并门禁、容器 CI 与固定工具镜像、knip 入口检查、TokenReview、远程 JWKS 接线与授权配置 Informer 索引；阶段 11 的延迟验收并入单元 1.4，生产轮换验收不在本轮。
+本轮已删除轨迹视图与浏览器 e2e（`bd2e97c`），其余工作分为两份可同时推进的[并行计划](#并行计划)。
 
 ## 目标
 
@@ -26,18 +27,18 @@
 
 | 环节 | 现状 | 目标 | 单元 |
 | --- | --- | --- | --- |
-| 进程 | `server/platform/main.ts` 单进程承载 BFF、extAuth、ExtMCP、运行时持久化代理、Actor JWKS、协作 MCP、编排与读模型，固定单副本；网关以 `FailClosed` 依赖该进程 | api、dataplane、worker 分离，无状态多副本 | 5 |
-| 前端 | SPA、OIDC 回调、Cookie 与 Origin 校验内置于平台 API；外部前端需由方案包复制 API Deployment 接入 | 可选的 console（oauth2-proxy 与静态资源），平台 API 只认 Bearer | 3 |
-| 离线委派 | refresh token 只在浏览器登录回调中采集；Bearer 客户端的后台执行随 access token 过期中断 | 平台 API 自有委派流程，任意客户端可引导用户授权 | 3 |
-| 默认值 | `identity.mode: none` 为无认证的全权限共享访客；Ingress 固定 traefik | 访客模式改为内置密码身份源，平台只走 OIDC；Gateway API HTTPRoute | 3 |
-| 读模型 | 每 2 秒轮询 kagent 并维护全量内存索引；冷启动重放全部历史；部分委派关系按 prompt 文本推断 | PostgreSQL 投影：写路径驱动、定时对账、显式委派关系 | 4 |
-| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密；进程启动时建表 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识；版本化迁移 | 2 |
-| 工具分级 | 三个 Chart、Ansible 模板、TS 与 Rego 分别推导分级与绑定，运行时解析资源标签 | `AccessPlan` 由控制器编译一次，运行时读取编译结果 | 6 |
-| 派生资源 | 连接保存逐个写入派生资源并逆序补偿，无崩溃恢复；预置依赖 Helm `lookup` 与 `resource-policy: keep`，在 `helm template` 下失效 | 控制器 reconcile，API 只写父资源，预置由控制器以 SSA 维护 | 6 |
-| 轨迹视图 | 协作画布、MCP 调用图、时间线与执行抽屉 | 删除；系统任务执行记录复用只读会话视图 | 1 |
-| 续接 | 以合成用户消息回传子任务结果，结果截断为 180 字或 80 词 | 携带子任务引用与完整结果；上游支持后删除续接 | 4 |
-| 语音 | WebSocket 听写与流式 TTS、LiveKit 通话两套链路；通话轮次在浏览器编排 | LiveKit 单链路，轮次在 voice worker 编排 | 7 |
-| 交付 | generic package、自定义发布清单与下载器、Python 后置渲染 | OCI 与 cosign、npm 与 PyPI 注册表、Ansible collection、Kustomize | 8 |
+| 进程 | `server/platform/main.ts` 单进程承载 BFF、extAuth、ExtMCP、运行时持久化代理、Actor JWKS、协作 MCP、编排与读模型，固定单副本；网关以 `FailClosed` 依赖该进程 | api、dataplane、worker 分离，无状态多副本 | 1.4 |
+| 前端 | SPA、OIDC 回调、Cookie 与 Origin 校验内置于平台 API；外部前端需由方案包复制 API Deployment 接入 | 可选的 console（oauth2-proxy 与静态资源），平台 API 只认 Bearer | 1.2 |
+| 离线委派 | refresh token 只在浏览器登录回调中采集；Bearer 客户端的后台执行随 access token 过期中断 | 平台 API 自有委派流程，任意客户端可引导用户授权 | 1.2 |
+| 默认值 | `identity.mode: none` 为无认证的全权限共享访客；Ingress 固定 traefik | 访客模式改为内置密码身份源，平台只走 OIDC；Gateway API HTTPRoute | 1.2 |
+| 读模型 | 每 2 秒轮询 kagent 并维护全量内存索引；冷启动重放全部历史；部分委派关系按 prompt 文本推断 | PostgreSQL 投影：写路径驱动、定时对账、显式委派关系 | 1.3 |
+| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密；进程启动时建表 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识；版本化迁移 | 1.1 |
+| 工具分级 | 三个 Chart、Ansible 模板、TS 与 Rego 分别推导分级与绑定，运行时解析资源标签 | `AccessPlan` 由控制器编译一次，运行时读取编译结果 | 2.1 |
+| 派生资源 | 连接保存逐个写入派生资源并逆序补偿，无崩溃恢复；预置依赖 Helm `lookup` 与 `resource-policy: keep`，在 `helm template` 下失效 | 控制器 reconcile，API 只写父资源，预置由控制器以 SSA 维护 | 2.1 |
+| 轨迹视图 | 协作画布、MCP 调用图、时间线与执行抽屉 | 删除；系统任务执行记录复用只读会话视图 | 已完成 |
+| 续接 | 以合成用户消息回传子任务结果，结果截断为 180 字或 80 词 | 携带子任务引用与完整结果；上游支持后删除续接 | 1.3 |
+| 语音 | WebSocket 听写与流式 TTS、LiveKit 通话两套链路；通话轮次在浏览器编排 | LiveKit 单链路，轮次在 voice worker 编排 | 1.5 |
+| 交付 | generic package、自定义发布清单与下载器、Python 后置渲染 | OCI 与 cosign、npm 与 PyPI 注册表、Ansible collection、Kustomize | 2.2 |
 
 ## 目标架构
 
@@ -127,135 +128,33 @@ flowchart LR
 - `StartVoiceSession` 按听写、朗读或通话模式创建语音会话并签发 LiveKit 令牌。
 - 通话轮次在 worker 中编排：worker 以工作负载身份调用 api，只能向语音会话绑定的对话发送消息并读取回答，权限上限为会话发起人。
 
-## 实施单元
+## 并行计划
 
-### 1 删除轨迹视图（已实现）
-
-删除：
-
-- `src/features/tasks` 中的协作画布、MCP 调用图、时间线、执行抽屉、`flow/`、`TaskView`、`TaskPanel` 与 `use-task`；依赖 `@xyflow/react`、`elkjs` 与 `vis-timeline`。
-- RPC `WatchTask`、`GetTaskRun`，消息 `TaskDetail`、`Delegation` 与 `DelegationKind`；`taskDetail`、`server/read-model/views/reviews.ts` 与只供画布使用的委派依赖计算。
-- 浏览器 e2e：`tests/e2e`、`playwright.config.ts`、`tests/fake-identity.ts` 与 CI 中的 `e2e` 作业；CI 工具镜像改用 Ubuntu 基础镜像。
-- 对应的单元测试、样式变量、文案与文档段落。
-
-聊天内的工具调用、子 Agent 结果、工作中 Agent、审批与任务标签保留。`TaskSummary` 携带根任务的 `agent` 与 `context_id`；系统任务执行记录以只读会话打开，管理员只能读取服务身份发起的会话，`tasks.manage` 持有者维护其标签。
-
-验收：buf lint、Biome、tsc 与 knip 通过；单元与集成测试覆盖共享会话的读取范围、只读状态与标签更新。
-
-### 2 执行存储
-
-删除：`server/authorization/store.ts` 的整行加密、`agentos_authorization.objects` 表与启动建表；`server/tasks/store.ts` 的启动建表；`charts/agentos/templates/execution-secret.yaml` 的密钥生成。迁移 Job 解密旧记录并写入新表后删除旧表。
-
-验收：
-
-- 单次工具调用的委派链校验为一次查询（当前最多 32 次读取与解密）。
-- 互换两行密文后解密失败。
-- 迁移在 CI 中分别对空库与上一版本数据库执行。
-
-### 3 身份与前端解耦
-
-新增 console 镜像、委派端点与密码模式的 identity 入口。
-
-删除：
-
-- `server/authorization/browser.ts`，由委派端点替代；`server/platform/access.ts` 的 Origin 校验与访客主体；`identity.mode: none`。
-- 平台 API 镜像中的前端产物与静态托管；`server/mcp-apps/sandbox.ts` 移入 console。
-- `charts/agentos/templates/console-ingress.yaml` 与 `sandbox-ingress.yaml`。
-- 方案包的 `environments/clients.yaml` 与 `environments/tasks/client-api.yaml`；Controller UI 对平台会话 Cookie 的绑定。
-
-验收：
-
-- 同一平台 API 同时服务 AgentOS console、Controller UI 与 CLI。
-- 浏览器退出与 access token 过期后后台任务继续；身份提供方撤销离线会话后，一个 access token 有效期内拒绝后续调用。
-- 跨站写请求与 WebSocket 不携带会话；错误的 issuer、audience 与未登记的 `return_to` 被拒绝。
-- 密码模式下 console、CLI 与后台任务使用与外部身份提供方相同的授权路径；连续输错密码触发限速。
-- console 发版不重启平台 API。
-
-### 4 读投影
-
-删除：`server/read-model` 的 `sync`、`live`、`index`、`checkpoints`、`observation`、`page` 与内存视图，`decode/` 保留为投影写入的解析；`server/jobs/coordination.ts` 的启动全量入队与 checkpoint 订阅；`server/team-sessions/continuation.ts` 的结果截断与语言判断。切换时由 Job 从 kagent 回填投影。
-
-验收：
-
-- 就绪时长与进程内存不随任务量增长，与切换前同等任务量对比。
-- 平台对 kagent 的请求速率与活动量相关，与历史量无关。
-- 运行时写入 1 秒内可见，kagent 侧变化在对账周期内可见。
-- 越权读取的负例保持拒绝；测试中的委派关系全部按 ID 解析。
-
-### 5 进程拆分
-
-`server/platform/main.ts` 拆为 `server/apps/{api,dataplane,worker}.ts`；Chart 为三个入口分别生成 Deployment、Service 与 NetworkPolicy；网关 extAuth、ExtMCP、协作 MCP 后端与 kagent `controlPlaneUrl` 指向 dataplane；各入口接入 OpenTelemetry Node SDK。验证 agentgateway 远程 JWKS 能否经 BackendTLSPolicy 直连 `ate-idp-server`，可行则删除 9092 中转。
-
-删除：单进程入口、`console-service.yaml` 的多端口 Service、启动路径上的 `automation.seed`（改为 worker 单例作业）。
-
-验收：
-
-- 负载下逐个终止任意 Pod，模型与 MCP 调用无超出网关重试的失败，审批与续接不丢失。
-- api 滚动发布不影响 dataplane；console 流式负载下 dataplane 授权 p99 不劣于切换前。
-- 各角色 NetworkPolicy 的负例通过。
-
-### 6 平台控制器
-
-切换前导出受影响资源；迁移按现有对象与方案预置的差异判定预置归属，并把派生资源的字段所有权移交控制器。
-
-删除：
-
-- `server/management/{changes,bindings,mcp-services,credential-references}.ts` 与 `connections.ts` 的派生写入，错误类型 `management.partialSave`。
-- `server/governance/bindings.ts` 的标签解析。
-- `charts/agentos/templates/{_environment-tools,_presets}.tpl`、`charts/agentos-connections/templates/identity-views.yaml`、`charts/agentos-environment/templates/backends.yaml` 的分级推导，以及 Chart 中全部 `lookup` 与 `resource-policy: keep`。
-- `environments/templates/initialize-service-tools.yaml.j2` 与 `environments/connect.yaml` 的绑定追加。
-- `tests/policies/tools.rego` 的分级推导，保留跨资源 audience、主体、路由覆盖与越权不变量。
-- `scripts/generate-environment-schema.mjs` 与手写 `values.schema.json` 中由 CRD schema 覆盖的部分；Gateway 级拼接的 CEL。
-
-验收：
-
-- 现有站点配置迁移前后的渲染资源语义一致，差异逐条列明。
-- reconcile 中途终止后收敛；连接保存为单次写入。
-- 用户修改过的预置在方案包升级后保留，未修改的预置随之更新。
-- 跨身份、只读写入、未知工具与同名跨服务工具的授权负例保持拒绝。
-
-### 7 语音单链路
-
-删除：RPC `TranscribeAudio`、`SynthesizeSpeech`、`StartVoiceCall` 与 `EndVoiceCall`；`server/speech` 的 WebSocket 转写代理与合成流；`shared/browser/speech` 与 `shared/browser/voice/chat-bridge.ts`；依赖 `@deepgram/sdk`、`@ricky0123/vad-web`、`@fastify/websocket` 与 `ws`。
-
-验收：
-
-- 听写首个转写片段、朗读首段音频与通话打断的延迟不劣于切换前。
-- 页面切到后台或短暂断网后通话继续。
-- worker 向未绑定对话发送消息、使用过期语音会话或越过发起人权限的请求被拒绝。
-
-### 8 交付
-
-- 镜像与 Chart 使用 OCI 并以 cosign 签名，安装前验签；npm 与 Python 契约发布到 GitLab 注册表；参考部署交付 Ansible collection。
-- 上游 Chart 的资源补丁改用 Kustomize post-renderer。
-
-删除：generic package 发布、`deployment.tar.gz`、`proto/agentos/distribution/v1` 发布清单与 `ci/` 中对应的打包、清单和发布脚本；`deploy/gateway/kagent-post-renderer.py` 与 `deploy/microvm/substrate-post-renderer.py`；消费方的 `platform.lock.json`、`fetch-platform.py`、`scripts/fetch-agentos-contracts.mjs` 与 `agentos-contracts.lock.json`。
-
-验收：干净环境从注册表完成安装与升级；篡改或错版本的制品被拒绝；同一版本的镜像、Chart、包与 collection 来自同一源码提交。
-
-### 上游收敛
-
-独立推进；所选发布版本包含对应能力且站点回归通过后删除本地实现。
-
-- kagent [#3244](https://github.com/kagent-dev/kagent/issues/3244) 发布后删除续接协调。
-- kagent 补丁按 MemoryService 身份范围、Actor 身份头、Harness 工具约束与准备策略提交上游。
-- kagent 公开 HITL 与工具调用元数据协议后删除 `proto/agentos/kagent/v1/wire.proto`。
-- Substrate [#2159](https://github.com/agent-substrate/substrate/pull/2159) 与启动出站修复进入发布版本后删除 `runtime/substrate/golden-skills.patch`。
-
-## 实施顺序
-
-| 单元 | 依赖 | 可并行 |
+| 计划 | 内容 | 单元 |
 | --- | --- | --- |
-| 1 删除轨迹视图 | — | 2、6 |
-| 2 执行存储 | — | 1、6 |
-| 3 身份与前端解耦 | 2 | 6 |
-| 4 读投影 | 1、2 | 6、7 |
-| 5 进程拆分 | 3、4 | 6、7 |
-| 6 平台控制器 | — | 1–5、7 |
-| 7 语音单链路 | 3 | 4–6 |
-| 8 交付 | 6 | — |
+| [计划一：平台服务](refactor-services.md) | 执行存储、身份与前端解耦、读投影、进程拆分、语音 | 1.1–1.5 |
+| [计划二：Kubernetes 编排与交付](refactor-kubernetes.md) | 平台控制器、制品交付、上游收敛 | 2.1–2.2 |
 
-每个单元合并后发布并完成验收，依赖它的单元随后开始。
+两份计划按目录划分代码归属，各自的范围见计划文档。
+
+### 共享文件
+
+| 文件 | 归属与约定 |
+| --- | --- |
+| `server/platform/main.ts`，1.4 后为 `server/apps/*.ts` | 计划一维护；计划二只改所属模块的接线 |
+| `proto/agentos/console/v1/console_service.proto` | 计划一维护；计划二只改角色、配置与工具说明 RPC |
+| `proto/agentos/management/v1/management.proto` | 计划二维护；计划一只改语音配置消息 |
+| `charts/agentos/values.yaml`、`values.schema.json`、`templates/_helpers.tpl` | 各自只改所属字段与命名模板；平台服务的 Service 地址集中在 `_helpers.tpl` 的命名模板，由计划一维护，网关模板只引用该命名模板 |
+| `ci/` 的镜像构建作业 | 计划二维护；计划一为自己新增的镜像补充构建作业 |
+| `package.json`、`mise.toml` 与锁文件 | 双方均可新增依赖，后合入者重新生成锁文件 |
+| `docs/`、`README.md`、`plan.md` 与本文件 | 各自更新所属段落与状态 |
+
+### 同步约定
+
+- 计划二保持 `server/governance` 的导出接口不变，只替换数据来源；`managementService` 的入参由计划二维护，计划一原样接线。
+- 计划一不改 Kubernetes 资源格式与方案预置；计划二不改 PostgreSQL schema 与会话、任务协议。
+- 需要修改对方文件时只做最小改动，并在提交说明中列出。
+- 每个单元独立合入 main 并通过 CI；后合入者负责 rebase，冲突按上表归属解决。
 
 ## 评估后保留
 

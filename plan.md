@@ -15,19 +15,18 @@
 
 ## 维护与交付
 
-架构收敛按 [refactor.md](refactor.md) 推进：
+架构收敛按 [refactor.md](refactor.md) 分两份计划同时推进，已删除轨迹视图与浏览器 e2e：
 
-| 单元 | 内容 | 状态 |
-| --- | --- | --- |
-| 1 | 删除协作画布、MCP 调用图、时间线与浏览器 e2e | 已实现 |
-| 2 | 执行存储：结构化绑定、凭据信封加密与版本化迁移 | 待实施 |
-| 3 | 身份与前端解耦：Bearer API、oauth2-proxy console、离线委派与密码身份源 | 待实施 |
-| 4 | PostgreSQL 读投影 | 待实施 |
-| 5 | api、dataplane、worker 进程拆分 | 待实施 |
-| 6 | 平台控制器：AccessPlan、连接派生与方案预置 | 待实施 |
-| 7 | 语音单链路 | 待实施 |
-| 8 | OCI 与注册表交付 | 待实施 |
-| 持续 | kagent、Substrate 上游能力收敛 | 按发布版本验证 |
+| 计划 | 单元 | 内容 | 状态 |
+| --- | --- | --- | --- |
+| [平台服务](refactor-services.md) | 1.1 | 执行存储：结构化绑定、凭据信封加密与版本化迁移 | 待实施 |
+| | 1.2 | 身份与前端解耦：Bearer API、oauth2-proxy console、离线委派与密码身份源 | 待实施 |
+| | 1.3 | PostgreSQL 读投影 | 待实施 |
+| | 1.4 | api、dataplane、worker 进程拆分 | 待实施 |
+| | 1.5 | 语音单链路 | 待实施 |
+| [Kubernetes 编排与交付](refactor-kubernetes.md) | 2.1 | 平台控制器：AccessPlan、连接派生与方案预置 | 待实施 |
+| | 2.2 | OCI 与注册表交付 | 待实施 |
+| | 持续 | kagent、Substrate 上游能力收敛 | 按发布版本验证 |
 
 ## 后续产品能力
 
