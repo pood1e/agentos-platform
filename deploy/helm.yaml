@@ -10,7 +10,7 @@
         state: directory
         mode: "0755"
 
-    - name: Download Helm 3
+    - name: Download Helm 4
       ansible.builtin.get_url:
         url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
         dest: "{{ agentos_cache }}/helm.tar.gz"
@@ -21,4 +21,29 @@
       ansible.builtin.unarchive:
         src: "{{ agentos_cache }}/helm.tar.gz"
         dest: "{{ agentos_cache }}/helm"
-        creates: "{{ helm_binary }}"
+
+    - name: Read the native Helm plugin directory
+      ansible.builtin.command:
+        argv: ["{{ helm_binary }}", env, HELM_PLUGINS]
+      register: helm_plugin_directory
+      changed_when: false
+      check_mode: false
+
+    - name: Create the Helm plugin directory
+      ansible.builtin.file:
+        path: "{{ helm_plugin_directory.stdout }}"
+        state: directory
+        mode: "0755"
+
+    - name: Register the bundled Kustomize post-renderer
+      ansible.builtin.file:
+        src: "{{ playbook_dir }}/helm-plugins/agentos-kustomize"
+        dest: "{{ helm_plugin_directory.stdout }}/agentos-kustomize"
+        state: link
+
+    - name: Install Helm diff for rendered manifest checks
+      kubernetes.core.helm_plugin:
+        binary_path: "{{ helm_binary }}"
+        plugin_path: https://github.com/databus23/helm-diff
+        plugin_version: "{{ helm_diff_version }}"
+        state: present

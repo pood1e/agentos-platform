@@ -85,7 +85,7 @@
         chart_version: "{{ substrate_version }}"
         release_namespace: ate-system
         release_values: "{{ lookup('template', 'values/substrate.yaml.j2') | from_yaml }}"
-        post_renderer: "{{ playbook_dir }}/post-renderer.sh"
+        post_renderer: agentos-kustomize
         wait: false
         timeout: 10m
       environment:
@@ -253,14 +253,6 @@
         wait: true
         timeout: 10m
 
-    - name: Install Helm diff for rendered manifest checks
-      kubernetes.core.helm_plugin:
-        binary_path: "{{ helm_binary }}"
-        plugin_path: https://github.com/databus23/helm-diff
-        plugin_version: "{{ helm_diff_version }}"
-        state: present
-      tags: [kagent]
-
     - name: Prepare kagent image pull credentials
       ansible.builtin.include_tasks:
         file: registry.yaml
@@ -285,7 +277,7 @@
         chart_version: "{{ kagent_version }}"
         release_namespace: "{{ agentos_namespace }}"
         release_values: "{{ lookup('template', 'values/kagent.yaml.j2') | from_yaml }}"
-        post_renderer: "{{ playbook_dir }}/post-renderer.sh"
+        post_renderer: agentos-kustomize
         wait: true
         timeout: 10m
 

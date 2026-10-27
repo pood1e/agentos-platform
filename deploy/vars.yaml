@@ -18,8 +18,8 @@ postgres_image: ghcr.io/cloudnative-pg/postgresql:18.6-202610120828-standard-tri
 k3s_version: v1.37.1+k3s1
 k3s_checksum: sha256:92b94582eb7b34a8cf532e6006842b9ed215a6783cf56a3dd6271fd35243b2c0
 k3s_install_checksum: sha256:ed01f89fd977bf20ac1516bbebf8370bf3ddbaa55dac8aba610956a4c78cc00b
-helm_version: v3.22.1
-helm_checksum: sha256:896cf63684a42a723d61c980369d6e588330927deb13676ca0d85006dd6da0ea
+helm_version: v4.3.1
+helm_checksum: sha256:0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
 substrate_version: 0.6.0-alpha3
 substrate_api_image: "{{ agentos_image_registry }}/substrate/ateapi@sha256:81e24c533468e9bce6759e1825a9a9d4b6a544323e98cd00236da51a346002a1"
 substrate_microvm_image: "{{ agentos_image_registry }}/substrate/ateworker-microvm@sha256:b4d7dd6b0f6c1143b19bc963982c34fcb30756da78c24615b5a1323cd399f20b"
@@ -35,6 +35,6 @@ model_key_file: ""
 registry_config_file: ""
 skill_repository_credential_file: ""
 agentgateway_version: v1.6.0
-helm_diff_version: v3.15.11
+helm_diff_version: v3.15.15
 gateway_api_version: v1.6.1
 kagent_telemetry: {}

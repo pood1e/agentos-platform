@@ -164,7 +164,7 @@ class OCITest(unittest.TestCase):
             for name in ("package.json", ".release-please-manifest.json", "LICENSE"):
                 shutil.copyfile(ROOT / name, root / name)
             (root / "gen").mkdir()
-            shutil.copyfile(ROOT / "gen/authorization.json", root / "gen/authorization.json")
+            (root / "gen/authorization.json").write_text("{}\n")
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
             subprocess.run(["git", "add", "."], cwd=root, check=True)
             subprocess.run(

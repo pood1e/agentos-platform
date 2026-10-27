@@ -43,7 +43,7 @@ GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更�
 工具版本与来源校验由 `mise.toml`、`mise.lock` 管理；CI 镜像在 `ci/images/Dockerfile` 构建，消费者在 `ci/toolchain.gitlab-ci.yml` 固定其摘要。
 PostgreSQL 使用原生服务容器，npm 与 Go 缓存由 CI 管理。镜像按自身路径使用资源锁，可并行构建；最终发布串行执行且不被新提交取消。
 发布 PR 的版本提交跳过重复的 main 构建，由正式 tag 完成发布。协议生成使用官方 protoc 与 Buf 插件。
-平台与环境共用 `deploy/post-renderer.sh`，上游 kagent / Substrate 的资源调整由 Kustomize overlay 完成。
+工具链与参考部署固定 Helm 4.3.1。平台与环境共用 `agentos-kustomize` Helm 4 插件，上游 kagent / Substrate 的资源调整由 Kustomize overlay 完成。插件采用原生 `postrenderer/v1` 接口，模板和 hook 一并验证。
 
 
 | CI/CD 变量 | 说明 |
@@ -196,7 +196,7 @@ ansible-playbook agentos.platform.deploy -i <site>/inventory.yaml -e @<site>/var
 Python 使用项目的 `/packages/pypi/simple` 索引，锁文件固定 `agentos-contracts` 的 PEP 440 版本与 wheel SHA-256。
 注册表认证采用 pip 的原生配置，禁用该项目的 PyPI 转发；依赖由站点统一索引或已安装的运行环境提供。
 官方用法见 [GitLab npm](https://docs.gitlab.com/user/packages/npm_registry/)、[GitLab PyPI](https://docs.gitlab.com/user/packages/pypi_repository/)、
-[Helm OCI](https://helm.sh/docs/v3/topics/registries/) 与 [Ansible collection 安装](https://docs.ansible.com/projects/ansible/latest/collections_guide/collections_installing.html)。
+[Helm OCI](https://helm.sh/docs/topics/registries/) 与 [Ansible collection 安装](https://docs.ansible.com/projects/ansible/latest/collections_guide/collections_installing.html)。
 
 标签 `node`、`runtime`、`model`、`ingress`、`app` 可单独执行；更新应用使用 `--tags app`。不使用 Cloudflare 时跳过 `ingress`，自行准备域名解析与
 TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服务端 dry-run 校验 microVM 资源；在节点上执行

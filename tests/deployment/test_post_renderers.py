@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -26,14 +27,23 @@ def resource(kind, name, spec):
 
 
 def transform(overlay, resources, image):
-    result = subprocess.run(
-        [str(ROOT / "deploy/post-renderer.sh")],
-        input=yaml.safe_dump_all(resources),
-        text=True,
-        capture_output=True,
-        check=True,
-        env={**os.environ, "AGENTOS_KUSTOMIZE_OVERLAY": str(ROOT / "deploy/kustomize" / overlay), "AGENTOS_PATCHED_IMAGE": image},
-    )
+    with tempfile.TemporaryDirectory() as directory:
+        chart = Path(directory)
+        (chart / "Chart.yaml").write_text("apiVersion: v2\nname: native-postrenderer\nversion: 0.1.0\n")
+        (chart / "templates").mkdir()
+        (chart / "templates/resources.yaml").write_text(yaml.safe_dump_all(resources))
+        result = subprocess.run(
+            ["helm", "template", "test", str(chart), "--post-renderer", "agentos-kustomize"],
+            text=True,
+            capture_output=True,
+            check=True,
+            env={
+                **os.environ,
+                "HELM_PLUGINS": str(ROOT / "deploy/helm-plugins"),
+                "AGENTOS_KUSTOMIZE_OVERLAY": str(ROOT / "deploy/kustomize" / overlay),
+                "AGENTOS_PATCHED_IMAGE": image,
+            },
+        )
     return {item["metadata"]["name"]: item for item in yaml.safe_load_all(result.stdout)}
 
 
@@ -112,6 +122,7 @@ class PostRendererTest(unittest.TestCase):
                 }
             },
         )
+        job["metadata"]["annotations"] = {"helm.sh/hook": "pre-install,pre-upgrade"}
         atelet = resource(
             "DaemonSet",
             "atelet",
