@@ -1,5 +1,4 @@
-import { randomUUID } from "node:crypto";
-import { clone, create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { type Task, TaskSchema, TaskState, TaskStatusSchema } from "../../gen/a2a_pb.js";
 import { SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
@@ -54,27 +53,6 @@ export function pendingApprovalTasks(): Task[] {
   return fixtureTasks()
     .filter((task) => !later.has(task.id))
     .map((task) => (task.id === fixtureIds.approved ? awaitingApproval(task) : task));
-}
-
-/** Each browser scenario owns distinct native IDs, including causal references. */
-export function freshScenario() {
-  const ids = new Map<string, string>();
-  const rewrite = (value: string) =>
-    value.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => {
-      if (!ids.has(id)) ids.set(id, randomUUID());
-      return ids.get(id) ?? id;
-    });
-  return {
-    sessions: fixtureSessions().map((session) =>
-      fromJsonString(SessionSchema, rewrite(toJsonString(SessionSchema, session))),
-    ),
-    tasks: pendingApprovalTasks().map((task) => {
-      const restored = fromJsonString(TaskSchema, rewrite(toJsonString(TaskSchema, task)));
-      if (restored.status) restored.status.timestamp = timestampFromMs(Date.now());
-      return restored;
-    }),
-    ids: Object.fromEntries(Object.entries(fixtureIds).map(([key, id]) => [key, rewrite(id)])),
-  };
 }
 
 /** Recorded tasks after the decision, before the coordinator was told about it. */

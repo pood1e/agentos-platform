@@ -2,6 +2,8 @@
 
 [架构收敛重构](refactor.md)的并行计划之一，负责 Kubernetes 资源编排、方案预置、制品交付与上游收敛。设计见[总览](refactor.md#设计)，与[计划一](refactor-services.md)的分工与同步约定见[并行计划](refactor.md#并行计划)。
 
+单元 2.1、2.2 已实现；上游收敛随所选发布版本持续验证。
+
 ## 范围
 
 | 类别 | 内容 |
@@ -9,7 +11,7 @@
 | 控制器 | 新增 `controller/`（Go、controller-runtime） |
 | 服务端 | `server/management`、`server/governance`、`server/console/{roles,role-template,template-writer}.ts` |
 | 前端 | `src/features/{engineers,management}`，不含语音配置页面 |
-| 协议 | `proto/agentos/{management,governance,distribution}` 与 `console/v1/role.proto` |
+| 协议 | `proto/agentos/{management,governance}` 与 `console/v1/role.proto` |
 | Chart | `charts/agentos` 中网关、模型、Harness、Skill、嵌入模型、预置与工具分级模板；`charts/agentos-environment` 与 `charts/agentos-connections` |
 | 交付与运行时 | `environments/`、`deploy/`、`ci/`、`runtime/`、`scripts/`、`contracts/`、`third_party/`、`tests/policies` |
 

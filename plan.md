@@ -24,8 +24,8 @@
 | | 1.3 | PostgreSQL 读投影 | 已实现 |
 | | 1.4 | api、dataplane、worker 进程拆分 | 待实施 |
 | | 1.5 | 语音单链路 | 待实施 |
-| [Kubernetes 编排与交付](refactor-kubernetes.md) | 2.1 | 平台控制器：AccessPlan、连接派生与方案预置 | 待实施 |
-| | 2.2 | OCI 与注册表交付 | 待实施 |
+| [Kubernetes 编排与交付](refactor-kubernetes.md) | 2.1 | 平台控制器：AccessPlan、连接派生与方案预置 | 已实现 |
+| | 2.2 | OCI 与注册表交付 | 已实现 |
 | | 持续 | kagent、Substrate 上游能力收敛 | 按发布版本验证 |
 
 ## 后续产品能力

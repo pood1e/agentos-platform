@@ -1,8 +1,6 @@
 # 架构收敛重构
 
-状态：第三轮方案，替代第二轮未完成的阶段 12–14；前两轮方案与结果见本文件 `902eeb3` 版本。
-第二轮已完成合并门禁、容器 CI 与固定工具镜像、knip 入口检查、TokenReview、远程 JWKS 接线与授权配置 Informer 索引；阶段 11 的延迟验收并入单元 1.4，生产轮换验收不在本轮。
-本轮已删除轨迹视图与浏览器 e2e（`bd2e97c`），其余工作分为两份可同时推进的[并行计划](#并行计划)。
+执行存储、身份与前端解耦、PostgreSQL 投影、Kubernetes 编排与 OCI 交付已实现；后续为进程拆分与语音单链路，状态见[实施计划](plan.md)。
 
 ## 目标
 
@@ -23,22 +21,22 @@
 - 每个单元同步更新架构、代码导航与交付文档。
 - 测试只保留单元与集成测试，不维护浏览器 e2e。
 
-## 现状与目标
+## 实施状态
 
-| 环节 | 现状 | 目标 | 单元 |
+| 环节 | 当前实现 | 后续目标 | 单元 |
 | --- | --- | --- | --- |
 | 进程 | `server/platform/main.ts` 单进程承载 BFF、extAuth、ExtMCP、运行时持久化代理、Actor JWKS、协作 MCP、编排与读模型，固定单副本；网关以 `FailClosed` 依赖该进程 | api、dataplane、worker 分离，无状态多副本 | 1.4 |
-| 前端 | SPA、OIDC 回调、Cookie 与 Origin 校验内置于平台 API；外部前端需由方案包复制 API Deployment 接入 | 可选的 console（oauth2-proxy 与静态资源），平台 API 只认 Bearer | 1.2 |
-| 离线委派 | refresh token 只在浏览器登录回调中采集；Bearer 客户端的后台执行随 access token 过期中断 | 平台 API 自有委派流程，任意客户端可引导用户授权 | 1.2 |
-| 默认值 | `identity.mode: none` 为无认证的全权限共享访客；Ingress 固定 traefik | 访客模式改为内置密码身份源，平台只走 OIDC；Gateway API HTTPRoute | 1.2 |
-| 读模型 | 每 2 秒轮询 kagent 并维护全量内存索引；冷启动重放全部历史；部分委派关系按 prompt 文本推断 | PostgreSQL 投影：写路径驱动、定时对账、显式委派关系 | 1.3 |
-| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识 | 1.1 |
-| 工具分级 | 三个 Chart、Ansible 模板、TS 与 Rego 分别推导分级与绑定，运行时解析资源标签 | `AccessPlan` 由控制器编译一次，运行时读取编译结果 | 2.1 |
-| 派生资源 | 连接保存逐个写入派生资源并逆序补偿，无崩溃恢复；预置依赖 Helm `lookup` 与 `resource-policy: keep`，在 `helm template` 下失效 | 控制器 reconcile，API 只写父资源，预置由控制器以 SSA 维护 | 2.1 |
-| 轨迹视图 | 协作画布、MCP 调用图、时间线与执行抽屉 | 删除；系统任务执行记录复用只读会话视图 | 已完成 |
-| 续接 | 以合成用户消息回传子任务结果，结果截断为 180 字或 80 词 | 携带子任务引用与完整结果；上游支持后删除续接 | 1.3 |
+| 前端 | 独立 web 提供静态资源，oauth2-proxy 管理浏览器会话；平台 API 只接受 Bearer | 已实现 | 1.2 |
+| 离线委派 | 平台 API 提供授权流程，任意客户端可引导用户授权 | 已实现 | 1.2 |
+| 身份与入口 | 内置密码身份源或外部 OIDC；Gateway API HTTPRoute | 已实现 | 1.2 |
+| 读模型 | PostgreSQL 投影：写路径驱动、定时对账、显式委派关系 | 已实现 | 1.3 |
+| 执行存储 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识 | 已实现 | 1.1 |
+| 工具分级 | `AccessPlan` 由控制器统一编译，运行时读取编译结果 | 已实现 | 2.1 |
+| 派生资源 | API 只写父资源，控制器以 SSA 维护派生对象与预置 | 已实现 | 2.1 |
+| 任务展示 | 聊天展示个人任务，系统任务执行记录复用只读会话视图 | 已实现 | — |
+| 续接 | 携带子任务引用与完整结果 | 上游支持后删除续接 | 1.3 |
 | 语音 | WebSocket 听写与流式 TTS、LiveKit 通话两套链路；通话轮次在浏览器编排 | LiveKit 单链路，轮次在 voice worker 编排 | 1.5 |
-| 交付 | generic package、自定义发布清单与下载器、Python 后置渲染 | OCI 与 cosign、npm 与 PyPI 注册表、Ansible collection、Kustomize | 2.2 |
+| 交付 | OCI 与 cosign、npm 与 PyPI 注册表、Ansible collection、Kustomize | 已实现 | 2.2 |
 
 ## 目标架构
 

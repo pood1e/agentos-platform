@@ -25,9 +25,16 @@ mise exec -- npm run verify    # 生成、构建、静态检查与单元测试
 docker compose down
 ```
 
-本地调试参考 `.env.example`：
-`npm run dev:kagent` 启动 fake kagent，`npm run server` 启动控制台服务，`npm run dev` 启动前端。
-平台 API 只接受 Bearer 令牌：`npm run dev` 把 `AGENTOS_API_TOKEN` 注入代理请求，`AGENTOS_API_URL` 指定 API 地址（默认 `http://127.0.0.1:8080`）。
+前端开发连接已部署的平台 API。复制 `.env.example` 为 `.env`，设置 API 地址与 Bearer 令牌后启动：
+
+```sh
+set -a
+. ./.env
+set +a
+mise exec -- npm run dev
+```
+
+开发代理将 `AGENTOS_API_TOKEN` 注入 API 请求。本地 API 调试通过 `npm run server` 启动，依赖 PostgreSQL、Kubernetes、OIDC 与原生运行时；配置见 [API Deployment](charts/agentos/templates/console-deployment.yaml)。
 
 ## 文档
 

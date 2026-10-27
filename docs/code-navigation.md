@@ -2,7 +2,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `controller/api/v1alpha1` | AccessPlan / Preset 类型及生成的 CRD schema |
+| `controller/api/v1alpha1` | AccessPlan / Preset Go 类型及生成的 DeepCopy |
 | `controller/internal/compile` | 工具分级、原生资源与预置绑定的纯编译器 |
 | `controller/internal/reconcile` | SSA、所有权、连接条件与中断恢复 |
 | `controller/cmd/{controller,render}` | 控制器与离线展开验证 |

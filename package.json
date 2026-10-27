@@ -9,7 +9,6 @@
   "scripts": {
     "generate": "ci/generate-controller.sh && buf generate && buf generate --template buf.errors.gen.yaml && node scripts/generate-management.mjs && tsx scripts/generate-permissions.ts",
     "dev": "vite --host 127.0.0.1",
-    "dev:kagent": "tsx tests/fake-kagent/server.ts",
     "server": "tsx watch server/platform/main.ts",
     "start": "node build/server/platform/main.js",
     "build": "npm run generate && vite build && tsc --project tsconfig.server.json",
