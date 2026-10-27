@@ -52,7 +52,7 @@ def published(image):
 
 images = {name: published(image) for name, image in pins.items()}
 images["image"] = f"{registry}@{console_digest}"
-for name in ("automation", "voice"):
+for name in ("automation", "voice", "web"):
     built = json.loads(Path(f".cache/{name}-build-metadata.json").read_text())[
         "containerimage.digest"
     ]
@@ -64,6 +64,7 @@ values["image"] = {"repository": registry, "digest": console_digest}
 for harness in harnesses.values():
     harness["workload"]["image"] = published(harness["workload"]["image"])
 values["voice"]["image"] = images["voice"]
+values["web"]["image"] = images["web"]
 artifacts = {name: (image, image.split("@", 1)[1]) for name, image in images.items()}
 epoch = int(subprocess.check_output(["git", "show", "-s", "--format=%ct", "HEAD"], text=True))
 for source in sorted(Path("charts").iterdir()):

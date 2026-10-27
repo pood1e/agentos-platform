@@ -8,6 +8,15 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import { defineConfig } from "vitest/config";
 import { themeOptions } from "./src/app/theme.js";
 
+// The platform API accepts only bearer tokens; development forwards one from the shell.
+const api = {
+  target: process.env.AGENTOS_API_URL ?? "http://127.0.0.1:8080",
+  changeOrigin: true,
+  headers: process.env.AGENTOS_API_TOKEN
+    ? { authorization: `Bearer ${process.env.AGENTOS_API_TOKEN}` }
+    : undefined,
+};
+
 export default defineConfig({
   plugins: [
     react(),
@@ -41,10 +50,11 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     proxy: {
-      "/agentos.console.v1.ConsoleService": "http://127.0.0.1:8080",
-      "/agentos.management.v1.ManagementService": "http://127.0.0.1:8080",
-      "/pack/": "http://127.0.0.1:8080",
-      "/speech/": { target: "http://127.0.0.1:8080", ws: true },
+      "/agentos.console.v1.ConsoleService": api,
+      "/agentos.management.v1.ManagementService": api,
+      "/agentos.automation.v1.AutomationService": api,
+      "/pack/": api,
+      "/speech/": { ...api, ws: true },
     },
   },
   test: { include: ["tests/**/*.test.ts"] },

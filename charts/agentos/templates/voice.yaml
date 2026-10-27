@@ -41,7 +41,7 @@ spec:
           env:
             - {name: LIVEKIT_URL, value: {{ .Values.voice.livekitURL | quote }}}
             - name: LIVEKIT_PUBLIC_URL
-              value: {{ default (printf "wss://%s/livekit" .Values.ingress.host) .Values.voice.publicURL | quote }}
+              value: {{ default (printf "wss://%s/livekit" .Values.route.hosts.console) .Values.voice.publicURL | quote }}
             - {name: VOICE_CAPACITY, value: {{ .Values.voice.capacity | quote }}}
             - name: LIVEKIT_API_KEY
               valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-key}}

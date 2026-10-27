@@ -79,6 +79,24 @@
         argv: [/usr/local/bin/k3s, kubectl, wait, --for=condition=Ready, "node/{{ inventory_hostname }}", --timeout=300s]
       changed_when: false
 
+    - name: Enable Gateway API routing in the bundled Traefik
+      ansible.builtin.copy:
+        dest: /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+        mode: "0600"
+        content: |
+          apiVersion: helm.cattle.io/v1
+          kind: HelmChartConfig
+          metadata:
+            name: traefik
+            namespace: kube-system
+          spec:
+            valuesContent: |-
+              providers:
+                kubernetesGateway:
+                  enabled: true
+              gateway:
+                enabled: false
+
     - name: Download Agent Substrate CLI
       ansible.builtin.get_url:
         url: "https://github.com/kagent-dev/substrate/releases/download/v{{ substrate_version }}/kubectl-ate-linux-amd64"

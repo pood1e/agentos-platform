@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // Relay based on the MCP Apps reference host. AppBridge owns JSON-RPC handling.
+      (() => {
+        const consoleOrigin = "__AGENTOS_CONSOLE_ORIGIN__";
+        if (window.self === window.top || new URL(document.referrer).origin !== consoleOrigin)
+          throw new Error("Invalid MCP App embedding origin");
+        const inner = document.createElement("iframe");
+        inner.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
+        inner.style.cssText = "width:100%;height:100%;border:0";
+        document.body.append(inner);
+        window.addEventListener("message", (event) => {
+          if (event.source === window.parent && event.origin === consoleOrigin) {
+            if (event.data?.method === "ui/notifications/sandbox-resource-ready") {
+              const html = event.data.params?.html;
+              if (typeof html === "string") inner.srcdoc = html;
+            } else inner.contentWindow?.postMessage(event.data, window.location.origin);
+          } else if (event.source === inner.contentWindow && event.origin === window.location.origin) {
+            window.parent.postMessage(event.data, consoleOrigin);
+          }
+        });
+        window.parent.postMessage(
+          { jsonrpc: "2.0", method: "ui/notifications/sandbox-proxy-ready", params: {} },
+          consoleOrigin,
+        );
+      })();
+    </script>
+  </body>
+</html>

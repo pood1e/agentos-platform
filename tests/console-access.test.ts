@@ -5,39 +5,18 @@ import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { jwtIdentity } from "../server/authorization/oidc.js";
 import { accessProfile, workspaceContext } from "../server/platform/access.js";
-import { allCapabilities, capabilityRole } from "../shared/permissions.js";
+import { capabilityRole } from "../shared/permissions.js";
 
 const issuer = "https://identity.example.test/realms/site";
-const origin = "https://agentos.example.test";
 const keys = await generateKeyPair("RS256");
 const other = await generateKeyPair("RS256");
 const send = vi.fn(() => ({}));
 const update = vi.fn(() => ({}));
 let client: ReturnType<typeof createClient<typeof ConsoleService>>;
 
-it("supports open access without an OIDC provider", async () => {
-  const open = createClient(
-    ConsoleService,
-    createRouterTransport(
-      (router) =>
-        router.service(ConsoleService, {
-          getAccessProfile: (_request, context) => ({ profile: context.values.get(accessProfile) }),
-          sendMessage: () => ({}),
-        }),
-      { router: { interceptors: [workspaceContext("workspace", "assistant")] } },
-    ),
-  );
-  expect((await open.getAccessProfile({})).profile).toMatchObject({
-    subject: "console",
-    write: true,
-    capabilities: allCapabilities,
-  });
-  await open.sendMessage({});
-});
-
 beforeAll(async () => {
   const identity = jwtIdentity(
-    { issuer, audience: "platform", writerRole: "writer", origin },
+    { issuer, audience: "platform", writerRole: "writer" },
     createLocalJWKSet({ keys: [await exportJWK(keys.publicKey)] }),
   );
   client = createClient(
@@ -49,7 +28,7 @@ beforeAll(async () => {
           sendMessage: send,
           updateRole: update,
         }),
-      { router: { interceptors: [workspaceContext("workspace", "assistant", identity, origin)] } },
+      { router: { interceptors: [workspaceContext("workspace", "assistant", identity)] } },
     ),
   );
 });
@@ -63,7 +42,7 @@ async function headers(roles: string[] = [], audience = "platform", signingKey =
     .setIssuedAt()
     .setExpirationTime("2m")
     .sign(signingKey);
-  return new Headers({ authorization: `Bearer ${token}`, origin });
+  return new Headers({ authorization: `Bearer ${token}` });
 }
 
 it("rejects anonymous, forged and wrong-audience identities", async () => {
@@ -93,12 +72,10 @@ it("lets readers start executions while denying configuration writes and forged 
   expect(update).not.toHaveBeenCalled();
 });
 
-it("allows the signed writer role and rejects cross-origin writes", async () => {
+it("allows the signed writer role without granting configuration capabilities", async () => {
   const value = await headers(["writer"]);
   expect((await client.getAccessProfile({}, { headers: value })).profile?.write).toBe(true);
   await client.sendMessage({}, { headers: value });
-  await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
-  value.set("origin", "https://other.example.test");
   await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
 });
 
@@ -111,10 +88,11 @@ it("grants Agent administration independently of target-system write permissions
   await client.updateRole({}, { headers: value });
 });
 
-it("requires an origin for cookie-authenticated mutations", async () => {
+it("ignores forwarded proxy tokens without a bearer header", async () => {
   const value = await headers(["writer"]);
   value.set("x-forwarded-access-token", value.get("authorization")?.slice(7) ?? "");
   value.delete("authorization");
-  value.delete("origin");
-  await expect(client.updateRole({}, { headers: value })).rejects.toMatchObject({ code: 7 });
+  await expect(client.getAccessProfile({}, { headers: value })).rejects.toMatchObject({
+    code: 16,
+  });
 });

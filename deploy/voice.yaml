@@ -72,32 +72,18 @@
           environment:
             HELM_DIFF_USE_UPGRADE_DRY_RUN: "true"
 
-        - name: Route voice signaling through the application TLS endpoint
+        - name: Route voice signaling through the site gateway
           kubernetes.core.k8s:
             definition:
-              - apiVersion: traefik.io/v1alpha1
-                kind: Middleware
-                metadata: {name: agentos-livekit, namespace: "{{ agentos_namespace }}"}
-                spec:
-                  stripPrefix: {prefixes: [/livekit]}
-              - apiVersion: networking.k8s.io/v1
-                kind: Ingress
-                metadata:
-                  name: agentos-livekit
-                  namespace: "{{ agentos_namespace }}"
-                  annotations:
-                    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-                    traefik.ingress.kubernetes.io/router.middlewares: "{{ agentos_namespace }}-agentos-livekit@kubernetescrd"
-                spec:
-                  ingressClassName: traefik
-                  tls:
-                    - secretName: "{{ voice_platform_values.ingress.get('tlsSecret', 'agentos-ingress') }}"
-                      hosts: ["{{ voice_platform_values.ingress.host }}"]
-                  rules:
-                    - host: "{{ voice_platform_values.ingress.host }}"
-                      http:
-                        paths:
-                          - path: /livekit
-                            pathType: Prefix
-                            backend:
-                              service: {name: agentos-livekit, port: {name: http}}
+              apiVersion: gateway.networking.k8s.io/v1
+              kind: HTTPRoute
+              metadata: {name: agentos-livekit, namespace: "{{ agentos_namespace }}"}
+              spec:
+                parentRefs: "{{ voice_platform_values.route.parentRefs }}"
+                hostnames: ["{{ voice_platform_values.route.hosts.console }}"]
+                rules:
+                  - matches: [{path: {type: PathPrefix, value: /livekit}}]
+                    filters:
+                      - type: URLRewrite
+                        urlRewrite: {path: {type: ReplacePrefixMatch, replacePrefixMatch: /}}
+                    backendRefs: [{name: agentos-livekit, port: 80}]

@@ -13,6 +13,10 @@ message AccessProfile {
   kagent.api.v1.ResourceReference entry_agent = 5;
   repeated agentos.authorization.v1.Capability capabilities = 6;
   bool write = 7;
+  // An offline grant lets background work continue after the caller's access token expires.
+  bool delegated = 8;
+  // Browser address that obtains the offline grant; `return_to` names a registered front end.
+  string delegation_url = 9;
 }
 
 message GetAccessProfileRequest {}

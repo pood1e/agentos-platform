@@ -27,6 +27,7 @@ docker compose down
 
 本地调试参考 `.env.example`：
 `npm run dev:kagent` 启动 fake kagent，`npm run server` 启动控制台服务，`npm run dev` 启动前端。
+平台 API 只接受 Bearer 令牌：`npm run dev` 把 `AGENTOS_API_TOKEN` 注入代理请求，`AGENTOS_API_URL` 指定 API 地址（默认 `http://127.0.0.1:8080`）。
 
 ## 文档
 

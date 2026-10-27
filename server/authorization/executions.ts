@@ -107,9 +107,7 @@ export function executions(
         ? renew
           ? await renew(binding.subject, saved)
           : await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
-        : saved.credential.case === "service" &&
-            saved.credential.value &&
-            !(verify && saved.subject === "console")
+        : saved.credential.case === "service" && saved.credential.value
           ? saved
           : undefined;
     if (!identity || identity.subject !== binding.subject) throw denied();
@@ -195,7 +193,13 @@ export function executions(
     );
   };
 
-  return { remember, record, resolve, own, bind, delegate, revoke, history };
+  /** Background execution needs a service credential or an offline grant that outlives access tokens. */
+  const delegated = async (subject: string) => {
+    const saved = (await store.identity(subject))?.value;
+    return saved?.credential.case === "service" || Boolean(saved?.refreshToken);
+  };
+
+  return { remember, record, resolve, own, bind, delegate, revoke, history, delegated };
 }
 
 export type Executions = ReturnType<typeof executions>;
