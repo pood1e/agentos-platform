@@ -1,5 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { ExecutionStore } from "../../server/authorization/store.js";
+import type { ExecutionBinding } from "../../gen/agentos/execution/v1/identity_pb.js";
+import { chainLimit, type ExecutionStore } from "../../server/authorization/store.js";
 
 export function memoryStore(): ExecutionStore {
   const bindings = new Map(),
@@ -17,6 +18,15 @@ export function memoryStore(): ExecutionStore {
   };
   return {
     binding: (id) => read(bindings, id),
+    chain: async (id) => {
+      const chain: ExecutionBinding[] = [];
+      for (let row = bindings.get(id)?.value; row && chain.length < chainLimit; ) {
+        chain.push(structuredClone(row));
+        if (row.sessionId === row.rootSessionId) break;
+        row = bindings.get(row.parentSessionId)?.value;
+      }
+      return chain;
+    },
     bindings: async (ids) =>
       ids.flatMap((id) => {
         const row = bindings.get(id);

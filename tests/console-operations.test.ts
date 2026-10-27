@@ -7,7 +7,8 @@ import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { cancelTree } from "../server/read-model/cancel.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { taskRun } from "../server/read-model/views/run.js";
-import { listTasks, taskDetail } from "../server/read-model/views/task.js";
+import { runSummary } from "../server/read-model/views/runs.js";
+import { listTasks, taskSummary } from "../server/read-model/views/task.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
@@ -89,9 +90,9 @@ it("cancels all unfinished delegated tasks, including background work, and is re
     );
     expect(index.entry(ids.inspection)?.state).toBe(TaskState.CANCELED);
     expect(fake.task(ids.background).status?.state).toBe(TaskState.CANCELED);
-    expect(taskDetail(index, ids.dispatchRoot)?.summary?.state).toBe(ActivityState.CANCELED);
     const again = taskTree(index, ids.dispatchRoot);
     if (!again) throw new Error("missing operation");
+    expect(taskSummary(index, again).state).toBe(ActivityState.CANCELED);
     const count = cancel.mock.calls.length;
     await cancelTree(clients, sync, again);
     expect(cancel).toHaveBeenCalledTimes(count);
@@ -167,10 +168,12 @@ it("projects native run starts in summaries and full execution details", async (
   const { sync, index } = environment();
   try {
     await sync.refresh();
-    const detail = taskDetail(index, ids.dispatchRoot);
-    for (const run of detail?.runs ?? []) {
-      expect(run.startedAt && timestampMs(run.startedAt)).toBe(index.entry(run.taskId)?.createdAt);
-      const full = await taskRun(sync, run.taskId);
+    const tree = taskTree(index, ids.dispatchRoot);
+    if (!tree) throw new Error("missing operation");
+    for (const entry of tree.entries) {
+      const run = runSummary(entry, tree.background.has(entry.id));
+      expect(run.startedAt && timestampMs(run.startedAt)).toBe(entry.createdAt);
+      const full = await taskRun(sync, entry.id);
       expect(full?.startedAt).toEqual(run.startedAt);
     }
   } finally {

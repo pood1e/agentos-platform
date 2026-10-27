@@ -1,10 +1,7 @@
 import { clone, create, toJsonString } from "@bufbuild/protobuf";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  InteractionKind,
-  InteractionSchema,
-  TaskDetailSchema,
-} from "../gen/agentos/console/v1/task_pb.js";
+import { ConversationSchema } from "../gen/agentos/console/v1/conversation_pb.js";
+import { InteractionKind, InteractionSchema } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import {
   ApprovalSchema,
@@ -18,7 +15,7 @@ import { environment } from "./harness.js";
 vi.mock("../server/governance/views.js", () => ({ approvals: vi.fn() }));
 const read = vi.mocked(approvals);
 const task = () =>
-  create(TaskDetailSchema, {
+  create(ConversationSchema, {
     interactions: [
       create(InteractionSchema, {
         id: "approval",
@@ -58,8 +55,8 @@ describe("console ticket references", () => {
     const enrich = resolver();
     const original = task();
     const [first, second] = await Promise.all([
-      enrich(clone(TaskDetailSchema, original)),
-      enrich(clone(TaskDetailSchema, original)),
+      enrich(clone(ConversationSchema, original)),
+      enrich(clone(ConversationSchema, original)),
     ]);
     expect(read).toHaveBeenCalledTimes(1);
     expect(first.interactions[0]?.approvals[0]).toMatchObject({
@@ -67,7 +64,7 @@ describe("console ticket references", () => {
       state: ActivityState.AWAITING_APPROVAL,
     });
     expect(second).toEqual(first);
-    expect(toJsonString(TaskDetailSchema, first)).not.toMatch(
+    expect(toJsonString(ConversationSchema, first)).not.toMatch(
       /private-credential|private evidence/,
     );
     expect(original.interactions[0]?.approvals).toEqual([]);
@@ -76,7 +73,7 @@ describe("console ticket references", () => {
   it("keeps the original collaboration available when an environment lookup fails", async () => {
     read.mockRejectedValue(new Error("environment unavailable"));
     const original = task();
-    expect(await resolver()(clone(TaskDetailSchema, original))).toMatchObject({
+    expect(await resolver()(clone(ConversationSchema, original))).toMatchObject({
       interactions: [{ external: true, approvals: [] }],
     });
   });
@@ -89,10 +86,10 @@ describe("console ticket references", () => {
       .mockRejectedValue(new Error("temporary outage"));
     const enrich = resolver();
     const original = task();
-    const first = await enrich(clone(TaskDetailSchema, original));
+    const first = await enrich(clone(ConversationSchema, original));
     clock += 6_000;
     await new Promise((resolve) => setTimeout(resolve, 2));
-    const observed = await enrich(clone(TaskDetailSchema, original));
+    const observed = await enrich(clone(ConversationSchema, original));
     await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(observed).toEqual(first);
   });

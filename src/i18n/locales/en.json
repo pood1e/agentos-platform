@@ -6,7 +6,6 @@
   "navigation": {
     "home": "AgentOS home",
     "main": "Main navigation",
-    "tasks": "Tasks",
     "chat": "Chat",
     "agents": "Agents",
     "settings": "Settings"
@@ -14,21 +13,8 @@
   "status": {
     "live": "Live",
     "connecting": "Connecting",
-    "unreported": "Not reported",
     "summarized": "Summarized",
     "dispatched": "Dispatched"
-  },
-  "background": {
-    "working_one": "{{count}} background task running",
-    "working_other": "{{count}} background tasks running",
-    "waiting_one": "{{count}} background task awaiting input",
-    "waiting_other": "{{count}} background tasks awaiting input",
-    "failed_one": "{{count}} background task failed",
-    "failed_other": "{{count}} background tasks failed",
-    "canceled_one": "{{count}} background task canceled",
-    "canceled_other": "{{count}} background tasks canceled",
-    "completed_one": "{{count}} background task completed",
-    "completed_other": "{{count}} background tasks completed"
   },
   "connection": {
     "reconnecting": "Disconnected. Reconnecting; showing the last observation.",
@@ -55,14 +41,12 @@
   },
   "tool": {
     "calls": "Tool calls",
-    "empty": "No tool calls observed",
     "arguments": "Arguments",
     "result": "Result",
     "missingArguments": "Arguments not reported",
     "missingResult": "Result not reported",
     "awaitingResult": "Waiting for the tool…",
-    "details": "Call details",
-    "unreportedIntent": "The runtime did not state the purpose of this call"
+    "details": "Call details"
   },
   "role": {
     "coordinator": {
@@ -111,8 +95,6 @@
     "customAnswerPlaceholder": "Enter your own answer…"
   },
   "task": {
-    "prompt": "Task description",
-    "conclusion": "Task conclusion",
     "executionDetails": "View execution details for {{name}}",
     "listTitle": "Tasks",
     "searchLabel": "Search tasks",
@@ -120,8 +102,6 @@
     "noMatches": "No matching tasks",
     "noTasks": "No tasks yet",
     "notFound": "This task does not exist or is no longer visible.",
-    "expandContent": "Show full description",
-    "collapseContent": "Collapse description",
     "stop": "Stop",
     "cancelHint": "Stop every unfinished task in this conversation, including background delegations. Verify any changes already executed.",
     "cancelledHint": "All tasks stopped. Verify any changes already executed.",
@@ -131,15 +111,6 @@
     "filterEngineer": "Filter task member",
     "allStates": "All statuses",
     "allEngineers": "All members",
-    "view": "Task view",
-    "timeline": "Timeline",
-    "timelineBackground": "Background",
-    "timelineKinds": {
-      "execution": "Execution",
-      "delegation": "Delegation",
-      "approval": "Approval"
-    },
-    "fitTimeline": "Fit timeline",
     "editTags": "Edit tags",
     "tagsHint": "Choose existing tags or add your own.",
     "newTag": "New tag",
@@ -151,45 +122,6 @@
     "tagsDenied": "You cannot edit tags on this task.",
     "tagsFailed": "Could not save tags. Try again.",
     "noPending": "No tasks awaiting approval"
-  },
-  "graph": {
-    "title": "Agent collaboration",
-    "fit": "Fit to view",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out",
-    "return": "Return",
-    "transfer": "Transfer",
-    "delegate": "Delegate",
-    "backgroundDispatch": "Background dispatch",
-    "continue": "Continue",
-    "requestApproval": "Request approval",
-    "review": "Submit for review",
-    "resumeExecution": "Resume execution",
-    "requestInput": "Request input",
-    "rounds": "{{count}} rounds",
-    "join": "Join",
-    "reuseResult": "Reuse result",
-    "callCount": "{{count}} calls",
-    "executingAgent": "Executing agent",
-    "selectExecution": "Select agent execution",
-    "executionDetails": "Execution details",
-    "mcpCalls": "MCP calls",
-    "mcpTopology": "Agent and MCP services",
-    "noMcpCalls": "No MCP service calls observed."
-  },
-  "drawer": {
-    "title": "Execution details",
-    "close": "Close details",
-    "result": "Execution result",
-    "loading": "Loading execution details…",
-    "unavailable": "Unable to load execution details.",
-    "retry": "Retry",
-    "execution": "Executions",
-    "rounds": "Round trips",
-    "roundNumber": "Round {{number}}",
-    "approvals": "Approval history",
-    "executionNumber": "Execution {{number}}",
-    "waitingExecution": "Waiting for this instance to start execution."
   },
   "common": {
     "close": "Close",
@@ -219,9 +151,6 @@
     "scrollLatest": "Scroll to latest message",
     "agent": "Conversation agent",
     "executionDenied": "This identity cannot continue the task. Start a new conversation.",
-    "taskDetails": "Task details",
-    "relatedTasks": "Related tasks",
-    "closeTask": "Close task details",
     "workingAgents": "Working agents",
     "agentResult": "Result from {{name}}",
     "conversationActions": "Conversation actions",

@@ -1,9 +1,9 @@
 import { clone } from "@bufbuild/protobuf";
 import { LRUCache } from "lru-cache";
 import {
+  type Interaction,
   InteractionKind,
   InteractionSchema,
-  type TaskDetail,
 } from "../../gen/agentos/console/v1/task_pb.js";
 import type { Approval, GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
@@ -27,7 +27,7 @@ export function approvalReferences(
         .approvals;
     },
   });
-  return async <T extends Pick<TaskDetail, "interactions">>(task: T): Promise<T> => {
+  return async <T extends { interactions: Interaction[] }>(task: T): Promise<T> => {
     task.interactions = await Promise.all(
       task.interactions.map(async (interaction) => {
         if (interaction.kind !== InteractionKind.APPROVAL) return interaction;

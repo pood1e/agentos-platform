@@ -1,4 +1,3 @@
-import { DelegationKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { type AgentInfo, type SessionInfo, systemRoles } from "./agents.js";
 import type { CallEntry } from "./calls.js";
 import { Checkpoints } from "./checkpoints.js";
@@ -164,7 +163,7 @@ export class TaskIndex {
 
   private resolve(call: CallEntry): string | undefined {
     const ref = call.delegation;
-    if (!ref || ref.kind === DelegationKind.HANDOFF) return undefined;
+    if (!ref || ref.kind === "handoff") return undefined;
     if (!ref.sessionId && ref.agentName && ref.messageId) {
       const id = this.messages.get(ref.messageId);
       const target = id && this.entries.get(id);

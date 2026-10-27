@@ -11,7 +11,6 @@ import "agentos/console/v1/speech.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/console/v1/tool.proto";
 import "agentos/execution/v1/state.proto";
-import "agentos/execution/v1/task.proto";
 import "agentos/governance/v1/governance.proto";
 import "agentos/kagent/v1/wire.proto";
 import "agentos/mcp/v1/app.proto";
@@ -39,13 +38,6 @@ service ConsoleService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  // Sends the current operation tree, then again whenever it changes.
-  rpc WatchTask(WatchTaskRequest) returns (stream WatchTaskResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  rpc GetTaskRun(GetTaskRunRequest) returns (GetTaskRunResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc CancelTask(CancelTaskRequest) returns (CancelTaskResponse);
@@ -173,22 +165,6 @@ message UpdateTaskTagsRequest {
 
 message UpdateTaskTagsResponse {
   TaskSummary task = 1;
-}
-
-message WatchTaskRequest {
-  string task_id = 1 [(buf.validate.field).string.min_len = 1];
-}
-
-message WatchTaskResponse {
-  TaskDetail task = 1;
-}
-
-message GetTaskRunRequest {
-  string task_id = 1 [(buf.validate.field).string.min_len = 1];
-}
-
-message GetTaskRunResponse {
-  agentos.execution.v1.TaskRun run = 1;
 }
 
 message CancelTaskRequest {

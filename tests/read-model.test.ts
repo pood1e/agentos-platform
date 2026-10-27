@@ -2,13 +2,13 @@ import { create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { DelegationKind, InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
+import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { millis } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
+import { taskTree } from "../server/read-model/tree.js";
 import { listConversations } from "../server/read-model/views/conversation.js";
-import { engineers } from "../server/read-model/views/engineers.js";
-import { listTasks, taskDetail } from "../server/read-model/views/task.js";
+import { engineer, engineers } from "../server/read-model/views/engineers.js";
+import { listTasks, taskSummary } from "../server/read-model/views/task.js";
 import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 
 describe("task entries", () => {
@@ -62,7 +62,7 @@ describe("task entries", () => {
     const root = index.entry(ids.approvalRoot);
     const invoke = root?.calls.find((call) => call.name === "invoke_session");
     expect(invoke?.delegation).toMatchObject({
-      kind: DelegationKind.INVOKE,
+      kind: "invoke",
       taskId: ids.approved,
     });
     expect(invoke?.state).toBe(ActivityState.AWAITING_INPUT);
@@ -76,22 +76,15 @@ describe("task entries", () => {
 describe("views", () => {
   const index = fixtureIndex();
 
-  it("projects native instance identity separately from engineer configuration and execution", async () => {
-    const detail = taskDetail(index, ids.dispatchRoot);
-    expect(detail).toBeDefined();
-    for (const run of detail?.runs ?? []) {
-      expect(run.contextId).toBe(index.entry(run.taskId)?.contextId);
-      expect(detail?.sessions.find((session) => session.id === run.contextId)).toMatchObject({
-        id: run.contextId,
-        contextId: run.contextId,
-        name: index.session(run.contextId)?.name ?? "",
-        agent: { namespace: run.agentId.split("/")[0], name: run.agentId.split("/")[1] },
-      });
-    }
-    for (const delegation of detail?.delegations ?? []) {
-      expect(delegation.sourceContextId).toBe(index.entry(delegation.sourceTaskId)?.contextId);
-      expect(delegation.targetContextId).toBe(index.entry(delegation.targetTaskId)?.contextId);
-    }
+  it("projects the native session of operation roots and runs", async () => {
+    const root = index.entry(ids.dispatchRoot);
+    const summary = listTasks(index, { query: "", pageToken: "", pageSize: 20 }).tasks.find(
+      (task) => task.id === ids.dispatchRoot,
+    );
+    expect(summary).toMatchObject({
+      contextId: root?.contextId,
+      agent: { namespace: root?.agentId.split("/")[0], name: root?.agentId.split("/")[1] },
+    });
     const { taskRun } = await import("../server/read-model/views/run.js");
     const run = await taskRun(
       {
@@ -101,22 +94,6 @@ describe("views", () => {
       ids.inspection,
     );
     expect(run?.contextId).toBe(index.entry(ids.inspection)?.contextId);
-  });
-
-  it("keeps the requested Session visible when the delegated Task has not arrived", () => {
-    const source = fixtureTasks().find((task) => task.id === ids.dispatchRoot);
-    if (!source) throw new Error("missing native task");
-    const pending = fixtureIndex([source]);
-    const detail = taskDetail(pending, source.id);
-    const invocation = detail?.delegations.find((link) => link.kind === DelegationKind.INVOKE);
-    expect(invocation?.targetTaskId).toBe("");
-    expect(invocation?.targetContextId).not.toBe("");
-    expect(detail?.sessions.map((session) => session.id)).toContain(invocation?.targetContextId);
-    expect(
-      detail?.sessions.every(
-        (session) => !session.creator && !session.preparedRevision && !session.a2aAuthority,
-      ),
-    ).toBe(true);
   });
 
   it("lists operations as roots and titles chat delegations with the user's words", () => {
@@ -144,15 +121,16 @@ describe("views", () => {
     changed.upsert({ ...child, statusAt: later, version: "later" });
     const [first] = listTasks(changed, { query: "", pageToken: "", pageSize: 1 }).tasks;
     expect(first?.updatedAt && timestampMs(first.updatedAt)).toBe(later);
-    expect(taskDetail(changed, first?.id ?? "")?.runs.map((run) => run.taskId)).toContain(
+    expect(taskTree(changed, first?.id ?? "")?.entries.map((entry) => entry.id)).toContain(
       ids.inspection,
     );
   });
 
   it("projects the approval tree with continuations and the latest answer", () => {
-    const detail = taskDetail(index, ids.approvalRoot);
-    expect(detail?.summary?.state).toBe(ActivityState.SUCCEEDED);
-    expect(detail?.runs.map((run) => run.taskId)).toEqual(
+    const tree = taskTree(index, ids.approvalRoot);
+    if (!tree) throw new Error("missing operation");
+    expect(taskSummary(index, tree).state).toBe(ActivityState.SUCCEEDED);
+    expect(tree.entries.map((entry) => entry.id)).toEqual(
       expect.arrayContaining([
         ids.approvalRoot,
         ids.approved,
@@ -161,37 +139,32 @@ describe("views", () => {
         ids.approvalFinal,
       ]),
     );
-    expect(detail?.delegations.map((link) => link.kind)).toEqual(
-      expect.arrayContaining([DelegationKind.INVOKE, DelegationKind.RESUME]),
+    expect(index.relations().continuations.get(ids.approvalRoot)).toContain(
+      ids.approvalContinuation,
     );
-    const resume = detail?.delegations.find(
-      (link) => link.targetTaskId === ids.approvalContinuation,
-    );
-    expect(resume).toMatchObject({
-      kind: DelegationKind.RESUME,
-      sourceTaskId: ids.approved,
-      sourceAgentId: "agentos/remediation",
-      targetAgentId: "agentos/coordinator",
-    });
-    expect(detail?.answer).toBe(index.entry(ids.approvalFinal)?.answer);
-    expect(detail?.answer).not.toBe("");
-    expect(millis(detail?.completedAt)).toBeGreaterThan(0);
+    expect(tree.latest.answer).toBe(index.entry(ids.approvalFinal)?.answer);
+    expect(tree.latest.answer).not.toBe("");
   });
 
   it("marks dispatched knowledge as a background run", () => {
-    const detail = taskDetail(index, ids.dispatchRoot);
-    expect(detail?.runs.find((run) => run.taskId === ids.background)?.background).toBe(true);
-    expect(detail?.runs.find((run) => run.taskId === ids.inspection)?.background).toBe(false);
-    expect(detail?.delegations.find((link) => link.targetTaskId === ids.background)?.kind).toBe(
-      DelegationKind.BACKGROUND,
-    );
+    const tree = taskTree(index, ids.dispatchRoot);
+    const root = index.entry(ids.dispatchRoot);
+    expect(tree?.background.has(ids.background)).toBe(true);
+    expect(tree?.background.has(ids.inspection)).toBe(false);
+    expect(
+      root?.calls.find((call) => index.target(root, call) === ids.background)?.delegation?.kind,
+    ).toBe("background");
   });
 
   it("keeps engineers that left the namespace as observed participants", () => {
-    const detail = taskDetail(index, ids.chatRoot);
-    expect(detail?.participants.find((item) => item.id === "agentos/service-health")).toMatchObject(
-      { name: "service-health", state: ActivityState.UNOBSERVED },
-    );
+    const entries = taskTree(index, ids.chatRoot)?.entries ?? [];
+    expect(
+      engineer(
+        index,
+        "agentos/service-health",
+        entries.filter((entry) => entry.agentId === "agentos/service-health"),
+      ),
+    ).toMatchObject({ name: "service-health", state: ActivityState.UNOBSERVED });
   });
 
   it("lists engineers without system helpers", () => {

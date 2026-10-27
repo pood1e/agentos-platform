@@ -92,7 +92,7 @@ describe("localized user interface", () => {
   });
   it("uses standard plural rules", async () => {
     await i18n.changeLanguage("en-US");
-    expect(i18n.t("background.working", { count: 1 })).toBe("1 background task running");
-    expect(i18n.t("background.working", { count: 2 })).toBe("2 background tasks running");
+    expect(i18n.t("configuration.skillCount", { count: 1 })).toBe("1 skill");
+    expect(i18n.t("configuration.skillCount", { count: 2 })).toBe("2 skills");
   });
 });

@@ -8,7 +8,6 @@ import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 import { registerConsole } from "../server/console/app.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
-import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment, testBindings } from "./harness.js";
 
 it("serves typed RPC errors and separates liveness from synchronized readiness", async () => {
@@ -52,10 +51,8 @@ it("serves typed RPC errors and separates liveness from synchronized readiness",
     expect(error.code).toBe(Code.InvalidArgument);
     expect(error.findDetails(ErrorInfoSchema)[0]?.reason).toBe("chat.invalidMessage");
     const failure = vi.spyOn(app.log, "error");
-    vi.spyOn(env.clients.a2a, "getTask").mockRejectedValueOnce(new Error("internal detail"));
-    const hidden = await client
-      .getTaskRun({ taskId: ids.inspection })
-      .catch((reason: unknown) => reason);
+    vi.spyOn(env.tags, "read").mockRejectedValueOnce(new Error("internal detail"));
+    const hidden = await client.listTasks({}).catch((reason: unknown) => reason);
     if (!(hidden instanceof ConnectError)) throw new Error("expected a ConnectError");
     expect(hidden.rawMessage).toBe("request failed");
     expect(hidden.findDetails(ErrorInfoSchema)).toEqual([]);

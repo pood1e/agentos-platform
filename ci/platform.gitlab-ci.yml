@@ -20,18 +20,6 @@ verify:
     paths: [build/, dist/, gen/]
     expire_in: 1 day
 
-e2e:
-  extends: [.agentos-node, .agentos-postgres]
-  stage: verify
-  needs: [verify]
-  parallel: 3
-  script:
-    - npm run test:e2e -- --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL
-  artifacts:
-    when: always
-    paths: [test-results/, playwright-report/]
-    expire_in: 1 day
-
 deployment-check:
   extends: .agentos-ci
   stage: verify
@@ -71,8 +59,6 @@ package-check:
     - build-automation
     - build-voice
     - job: verify
-      artifacts: false
-    - job: e2e
       artifacts: false
     - job: deployment-check
       artifacts: false

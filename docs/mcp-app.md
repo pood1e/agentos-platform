@@ -175,7 +175,7 @@ AIOps 方案包示例：
 | 沙箱主机名、代理页与 CSP | 已实现；Chart 与 HTTP 隔离测试覆盖 |
 | 控制台宿主组件，聊天与子 Agent 结果中的渲染 | 已实现；覆盖无正文子结果与续跑前的 App 调用 |
 | 仅 `app` 可见工具的绑定与调用限制 | 已实现；目录、模板保存与 Actor 授权均校验 |
-| fake kagent 录制 App 调用；e2e 覆盖渲染、主题、回调、跨服务与写工具拒绝 | 已实现；官方 View SDK 经双层 iframe 验证 |
+| fake kagent 录制 App 调用；单元测试覆盖资源、回调、跨服务与写工具拒绝 | 已实现；官方 View SDK 经双层 iframe 验证 |
 | AIOps 视图服务 | 由 aiops-mvp 的 `mcp-apps-impl.md` 跟踪 |
 
 [扩展契约](extension.md#对话视图)登记对话视图扩展点，契约即 MCP Apps 规范。

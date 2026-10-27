@@ -43,7 +43,7 @@ export function PendingApprovals() {
       <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
         {pending.data?.tasks.map((task) => (
           <DropdownMenuItem key={task.id} asChild>
-            <Link to={taskLocation(task, true)} className="whitespace-normal">
+            <Link to={taskLocation(task)} className="whitespace-normal">
               {task.title}
             </Link>
           </DropdownMenuItem>

@@ -64,16 +64,30 @@ export function executionHistory(index: TaskIndex, executions?: Executions) {
   };
 }
 
+type AgentRef = Pick<ResourceReference, "namespace" | "name"> | undefined;
+
+const chatAgent = (namespace: string, entry: string, ref: AgentRef, identity: ExecutionIdentity) =>
+  ref?.namespace === namespace &&
+  (ref.name === entry || (ref.name === "role-builder" && can(identity, Capability.AGENTS_MANAGE)));
+
 export function chatTarget(
   namespace: string,
   entry: string,
-  ref: Pick<ResourceReference, "namespace" | "name"> | undefined,
+  ref: AgentRef,
   identity: ExecutionIdentity,
 ) {
-  if (
-    ref?.namespace !== namespace ||
-    (ref.name !== entry &&
-      !(ref.name === "role-builder" && can(identity, Capability.AGENTS_MANAGE)))
-  )
-    throw notFound("chat.invalidConversation");
+  if (!chatAgent(namespace, entry, ref, identity)) throw notFound("chat.invalidConversation");
+}
+
+/** Other workspace agents expose only shared service sessions, read by administrators. */
+export function systemConversation(
+  namespace: string,
+  entry: string,
+  ref: AgentRef,
+  identity: ExecutionIdentity,
+  contextId: string,
+) {
+  if (chatAgent(namespace, entry, ref, identity)) return false;
+  if (ref?.namespace === namespace && contextId && isAdministrator(identity)) return true;
+  throw notFound("chat.invalidConversation");
 }

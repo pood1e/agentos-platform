@@ -4,7 +4,6 @@ import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
-import { taskDetail } from "../server/read-model/views/task.js";
 import { fixtureIndex } from "./fixtures/kagent.js";
 
 const parent = (returned = false) =>
@@ -68,7 +67,7 @@ const child = () =>
     history: [{ messageId: "coordinator-input", role: "ROLE_USER", parts: [{ text: "验证方案" }] }],
   });
 
-it("shows the selected Agent and associates its task before the delegation returns", () => {
+it("associates the selected Agent's task with a delegation before it returns", () => {
   const index = fixtureIndex([]);
   index.setSession({
     id: "coordinator-context",
@@ -77,11 +76,7 @@ it("shows the selected Agent and associates its task before the delegation retur
   });
   const calling = ingest(parent(), "agentos/assistant");
   index.upsert(calling);
-  expect(taskDetail(index, calling.id)?.delegations[0]).toMatchObject({
-    sourceAgentId: "agentos/assistant",
-    targetAgentId: "agentos/coordinator",
-    state: ActivityState.WORKING,
-  });
+  expect(calling.calls[0]?.state).toBe(ActivityState.WORKING);
   index.upsert(ingest(child(), "agentos/coordinator"));
   expect(index.target(calling, calling.calls[0])).toBe("coordinator-task");
 });

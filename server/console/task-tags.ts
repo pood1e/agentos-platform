@@ -2,7 +2,6 @@ import { Code } from "@connectrpc/connect";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { UpdateTaskTagsRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Conversation } from "../../gen/agentos/console/v1/conversation_pb.js";
-import type { TaskDetail } from "../../gen/agentos/console/v1/task_pb.js";
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { can } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
@@ -41,12 +40,6 @@ export function taskTagCommands(
       if (!tasks.length) return;
       const metadata = await store.read(tasks.map((task) => task.id));
       for (const task of tasks) Object.assign(task, metadata.get(task.id) ?? emptyTags());
-    },
-    async detail(task: TaskDetail, view: TaskIndex, identity: ExecutionIdentity) {
-      const root = view.entry(task.summary?.id ?? "");
-      if (!root || !task.summary) throw notFound("task.notFound");
-      Object.assign(task.summary, (await store.read([root.id])).get(root.id) ?? emptyTags());
-      task.editTags = await editable(root, identity);
     },
     async update(request: UpdateTaskTagsRequest, view: TaskIndex, identity: ExecutionIdentity) {
       const root = view.operationRoot(request.taskId);

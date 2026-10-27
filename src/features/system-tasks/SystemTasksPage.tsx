@@ -19,15 +19,14 @@ import { Failure } from "../management/ResourcePage.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
 import { PageControl } from "../shared/PageControl.js";
 import { usePaging } from "../shared/paging.js";
-import { useTask } from "../tasks/use-task.js";
 import { EventTriggers } from "./EventTriggers.js";
 import { ScheduleCard } from "./ScheduleCard.js";
 import { ScheduleDetail } from "./ScheduleDetail.js";
 import { ScheduleEditor } from "./ScheduleEditor.js";
 import { SystemExecutions } from "./SystemExecutions.js";
 
-const TaskPanel = lazy(() =>
-  import("../tasks/TaskPanel.js").then((module) => ({ default: module.TaskPanel })),
+const SystemRun = lazy(() =>
+  import("./SystemRun.js").then((module) => ({ default: module.SystemRun })),
 );
 
 export function SystemTasksPage() {
@@ -38,8 +37,9 @@ export function SystemTasksPage() {
   const access = useAccess();
   const manage = can(access.data, Capability.TASKS_MANAGE);
   const allowed = isAdministrator(access.data);
-  const selected = search.get("task") ?? "";
-  const task = useTask(allowed ? selected : "");
+  const agent = search.get("agent") ?? "";
+  const session = search.get("session") ?? "";
+  const selected = Boolean(allowed && agent && session);
   const query = useQueryClient();
   const paging = usePaging();
   const [editing, setEditing] = useState<{ schedule?: ScheduledRun }>();
@@ -82,12 +82,11 @@ export function SystemTasksPage() {
   });
   const next = list.data?.page?.nextPageToken;
   const page = paging.controls(next);
-  const selectTask = (id: string) => {
+  const closeRun = () => {
     const next = new URLSearchParams(search);
-    if (id) next.set("task", id);
-    else next.delete("task");
-    next.delete("approval");
-    setSearch(next, { replace: !id });
+    next.delete("agent");
+    next.delete("session");
+    setSearch(next, { replace: true });
   };
   if (!access.data) return null;
   if (!allowed) return <Navigate to="/chat" replace />;
@@ -190,15 +189,7 @@ export function SystemTasksPage() {
         </div>
         {selected && (
           <Suspense fallback={null}>
-            <TaskPanel
-              taskId={selected}
-              detail={task.value}
-              error={task.error}
-              tasks={task.value?.summary ? [task.value.summary] : []}
-              openApproval={search.get("approval") === "1"}
-              onSelect={selectTask}
-              onClose={() => selectTask("")}
-            />
+            <SystemRun key={session} agent={agent} session={session} onClose={closeRun} />
           </Suspense>
         )}
       </div>

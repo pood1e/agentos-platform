@@ -1,9 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
-import { ToolCallSchema } from "../gen/agentos/execution/v1/task_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { toolSource } from "../src/features/shared/tool-source.js";
-import { mcpCalls } from "../src/features/tasks/flow/mcp-calls.js";
 
 it("resolves live gateway calls to the service instead of an arbitrary role credential profile", () => {
   const names = [
@@ -20,14 +18,11 @@ it("resolves live gateway calls to the service instead of an arbitrary role cred
       discoveredTools: names.map((name) => ({ name, description: "Read Kubernetes resources" })),
     }),
   );
-  for (const order of [servers, [...servers].reverse()]) {
-    const groups = mcpCalls(
-      names.map((name) => create(ToolCallSchema, { name })),
-      (name) => toolSource(order, name).server?.ref,
-    );
-    expect(groups.map((group) => group.server)).toEqual(["workspace/aiops-real-kubernetes"]);
-    expect(groups[0]?.calls).toHaveLength(2);
-  }
+  for (const order of [servers, [...servers].reverse()])
+    expect(names.map((name) => toolSource(order, name).server?.ref)).toEqual([
+      "workspace/aiops-real-kubernetes",
+      "workspace/aiops-real-kubernetes",
+    ]);
 });
 
 it("retains bare discovery names and resolves explicitly qualified wrapper names", () => {

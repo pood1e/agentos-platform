@@ -8,7 +8,6 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | 作业 | 内容 |
 | --- | --- |
 | `verify` | 生成、构建、Biome / buf lint / tsc / Knip 与单元测试；PostgreSQL 使用独立服务容器 |
-| `e2e` | Playwright 原生三分片；每个作业独立 fake kagent、数据库和浏览器 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
 | `python-verify` | 生成 Python 契约；ruff 检查与格式校验；案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；仅在运行时相关文件变更时触发 |

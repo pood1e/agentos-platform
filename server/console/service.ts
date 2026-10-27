@@ -3,7 +3,6 @@ import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 import {
   type ConsoleService,
   WatchConversationResponseSchema,
-  WatchTaskResponseSchema,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
@@ -20,8 +19,7 @@ import { ObservationScope } from "../read-model/observation.js";
 import type { KagentSync } from "../read-model/sync.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
-import { taskRun } from "../read-model/views/run.js";
-import { listTasks, taskDetail } from "../read-model/views/task.js";
+import { listTasks } from "../read-model/views/task.js";
 import { invalid, notFound, unavailable } from "../shared/errors.js";
 import { exclusiveCommands } from "../shared/exclusive.js";
 import { speechService } from "../speech/service.js";
@@ -31,7 +29,7 @@ import { approvalReferences } from "./approval-references.js";
 import { cancellationCommands } from "./cancellation.js";
 import { conversationTranscript } from "./conversation-transcript.js";
 import { conversationCommands } from "./conversations.js";
-import { chatTarget, executionHistory } from "./history.js";
+import { chatTarget, executionHistory, systemConversation } from "./history.js";
 import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
@@ -145,46 +143,6 @@ export function consoleService({
       index.invalidate(result.task.id);
       return result;
     },
-    async *watchTask(request, context) {
-      const known = index.entry(request.taskId);
-      if (!known || !index.session(known.contextId)) await sync.refresh();
-      const scope = new ObservationScope(index, { taskId: request.taskId });
-      yield* watch(
-        sync,
-        WatchTaskResponseSchema,
-        context.signal,
-        async () => {
-          const view = await history(
-            context.values.get(requestIdentity),
-            false,
-            scope.contextIds(),
-          );
-          const task = taskDetail(view, request.taskId);
-          if (!task) throw notFound("task.notFound");
-          await taskTags.detail(task, view, context.values.get(requestIdentity));
-          const entry = index.entry(request.taskId);
-          task.operate =
-            !!entry &&
-            (await canOperate(entry.contextId, context.values.get(requestIdentity).subject));
-          if (entry && task.interactions.length)
-            await approvalsFor(
-              task.interactions,
-              context.values.get(requestIdentity).subject,
-              task.operate,
-            );
-          return create(WatchTaskResponseSchema, { task: await withApprovals(task) });
-        },
-        { poll: true, scope },
-      );
-    },
-    async getTaskRun(request, context) {
-      ready();
-      const view = await history(context.values.get(requestIdentity));
-      if (!view.entry(request.taskId)) throw notFound("task.notFound");
-      const run = await taskRun(sync, request.taskId);
-      if (!run) throw notFound("task.notFound");
-      return { run };
-    },
     async cancelTask({ taskId }, context) {
       ready();
       await cancel(taskId, context.values.get(requestIdentity), context.signal);
@@ -209,8 +167,14 @@ export function consoleService({
         context.signal,
         async () => {
           const identity = context.values.get(requestIdentity);
-          chatTarget(namespace, entryAgent, request.agent, identity);
-          const visible = await history(identity, false, scope.contextIds());
+          const systemOnly = systemConversation(
+            namespace,
+            entryAgent,
+            request.agent,
+            identity,
+            request.contextId,
+          );
+          const visible = await history(identity, systemOnly, scope.contextIds());
           if (
             request.contextId &&
             visible.session(request.contextId)?.agentId !==

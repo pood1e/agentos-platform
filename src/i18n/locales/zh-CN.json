@@ -6,7 +6,6 @@
   "navigation": {
     "home": "AgentOS 工作台首页",
     "main": "主导航",
-    "tasks": "任务",
     "chat": "聊天",
     "agents": "智能体",
     "settings": "配置"
@@ -14,16 +13,8 @@
   "status": {
     "live": "实时连接",
     "connecting": "连接中",
-    "unreported": "未上报",
     "summarized": "已汇总",
     "dispatched": "已调度"
-  },
-  "background": {
-    "working": "{{count}} 个后台任务执行中",
-    "waiting": "{{count}} 个后台任务等待输入",
-    "failed": "{{count}} 个后台任务失败",
-    "canceled": "{{count}} 个后台任务已取消",
-    "completed": "{{count}} 个后台任务已完成"
   },
   "connection": {
     "reconnecting": "工作台连接已断开，正在重连；保留最后一次观测。",
@@ -50,14 +41,12 @@
   },
   "tool": {
     "calls": "工具调用",
-    "empty": "还没有观测到工具调用",
     "arguments": "输入参数",
     "result": "返回结果",
     "missingArguments": "运行时未上报输入参数",
     "missingResult": "运行时未上报返回结果",
     "awaitingResult": "等待工具返回…",
-    "details": "调用详情",
-    "unreportedIntent": "运行时未说明调用目的"
+    "details": "调用详情"
   },
   "role": {
     "coordinator": {
@@ -106,8 +95,6 @@
     "customAnswerPlaceholder": "输入自定义回答…"
   },
   "task": {
-    "prompt": "任务内容",
-    "conclusion": "任务结论",
     "executionDetails": "查看{{name}}的执行详情",
     "listTitle": "任务",
     "searchLabel": "搜索任务",
@@ -115,8 +102,6 @@
     "noMatches": "没有匹配的任务",
     "noTasks": "还没有任务",
     "notFound": "任务不存在或已不可见。",
-    "expandContent": "展开全文",
-    "collapseContent": "收起全文",
     "stop": "停止",
     "cancelHint": "停止当前会话的全部任务，包含后台委派。已执行的变更仍需核验。",
     "cancelledHint": "全部任务已停止，已执行的变更仍需核验。",
@@ -126,15 +111,6 @@
     "filterEngineer": "筛选任务成员",
     "allStates": "全部状态",
     "allEngineers": "全部成员",
-    "view": "任务视图",
-    "timeline": "时间线",
-    "timelineBackground": "后台",
-    "timelineKinds": {
-      "execution": "执行",
-      "delegation": "委派",
-      "approval": "审批"
-    },
-    "fitTimeline": "显示全部",
     "editTags": "编辑标签",
     "tagsHint": "选择已有标签，或添加自定义标签。",
     "newTag": "新标签",
@@ -146,45 +122,6 @@
     "tagsDenied": "没有权限修改此任务的标签。",
     "tagsFailed": "保存标签失败，请重试。",
     "noPending": "暂无待审批任务"
-  },
-  "graph": {
-    "title": "Agent 协作",
-    "fit": "适应画布",
-    "zoomIn": "放大",
-    "zoomOut": "缩小",
-    "return": "返回",
-    "transfer": "移交",
-    "delegate": "委派",
-    "backgroundDispatch": "后台委派",
-    "continue": "继续",
-    "requestApproval": "请求审批",
-    "review": "提交审核",
-    "resumeExecution": "继续执行",
-    "requestInput": "请求输入",
-    "rounds": "{{count}} 轮",
-    "join": "汇合",
-    "reuseResult": "复用结果",
-    "callCount": "{{count}} 次调用",
-    "executingAgent": "执行智能体",
-    "selectExecution": "选择智能体执行",
-    "executionDetails": "执行详情",
-    "mcpCalls": "MCP 调用",
-    "mcpTopology": "Agent 与 MCP 服务",
-    "noMcpCalls": "尚未观测到 MCP 服务调用。"
-  },
-  "drawer": {
-    "title": "执行详情",
-    "close": "关闭详情",
-    "result": "执行结果",
-    "loading": "正在加载执行详情…",
-    "unavailable": "暂时无法加载执行详情。",
-    "retry": "重试",
-    "execution": "执行记录",
-    "rounds": "往返记录",
-    "roundNumber": "第 {{number}} 轮",
-    "approvals": "审批记录",
-    "executionNumber": "第 {{number}} 次执行",
-    "waitingExecution": "等待实例开始执行。"
   },
   "common": {
     "close": "关闭",
@@ -214,9 +151,6 @@
     "scrollLatest": "回到最新消息",
     "agent": "对话 Agent",
     "executionDenied": "当前身份无权继续此任务，请新建对话。",
-    "taskDetails": "任务详情",
-    "relatedTasks": "相关任务",
-    "closeTask": "收起任务详情",
     "workingAgents": "正在工作",
     "agentResult": "{{name}}的任务结果",
     "conversationActions": "会话操作",

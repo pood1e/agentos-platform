@@ -57,5 +57,7 @@
   "awaitingDispatch": "等待环境判定",
   "waitingToEnable": "启用后开始调度",
   "moreActions": "更多操作",
-  "updated": "最近更新"
+  "updated": "最近更新",
+  "execution": "执行记录",
+  "closeExecution": "收起执行记录"
 }
