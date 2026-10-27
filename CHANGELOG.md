@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.40.0](https://github.com/pood1e/agentos-platform/compare/v0.39.0...v0.40.0) (2026-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **kubernetes:** 删除 ConsoleService 的 WatchTask、GetTaskRun 以及 TaskDetail、Delegation、DelegationKind；TaskSummary 新增 agent 与 context_id；系统任务执行记录的链接改为 /system-tasks?agent=<名称>&session=<会话>。
+* 以 PostgreSQL 投影替代内存读模型 ([#170](https://github.com/pood1e/agentos-platform/issues/170))
+* 平台 API 只接受 Bearer，前端与身份源独立交付 ([#169](https://github.com/pood1e/agentos-platform/issues/169))
+* 删除 ConsoleService 的 WatchTask、GetTaskRun 以及 TaskDetail、Delegation、DelegationKind；TaskSummary 新增 agent 与 context_id；系统任务执行记录的链接改为 /system-tasks?agent=<名称>&session=<会话>。
+
+### Features
+
+* **automation:** expose scoped native results and environment APIs ([#157](https://github.com/pood1e/agentos-platform/issues/157)) ([0da9697](https://github.com/pood1e/agentos-platform/commit/0da9697b487893ea72e43de0893af7ba0558c641))
+* **automation:** 支持创建会话前判定定时执行 ([#162](https://github.com/pood1e/agentos-platform/issues/162)) ([f610944](https://github.com/pood1e/agentos-platform/commit/f610944b2a073de80d60a98a4d20590a046885a7))
+
+
+### Bug Fixes
+
+* **automation:** 放行已授权的执行派发并正确显示判定超时 ([#163](https://github.com/pood1e/agentos-platform/issues/163)) ([c79912f](https://github.com/pood1e/agentos-platform/commit/c79912fe33369e71210a18cc1fa6382277696495))
+* **deploy:** derive environment RPC chart schema from Proto ([#159](https://github.com/pood1e/agentos-platform/issues/159)) ([b8fe975](https://github.com/pood1e/agentos-platform/commit/b8fe975959a67eab0759ff8f85af73ad11516d13))
+* **platform:** allow embedded app resources in environment responses ([#161](https://github.com/pood1e/agentos-platform/issues/161)) ([7c89dbe](https://github.com/pood1e/agentos-platform/commit/7c89dbe22fe008c7a910db2a4776e935ee4924d2))
+* **platform:** route environment APIs through verified gateway transport ([#160](https://github.com/pood1e/agentos-platform/issues/160)) ([50cea2b](https://github.com/pood1e/agentos-platform/commit/50cea2bcda03566620ab4f431fdfb33708e73674))
+* **runtime:** 持久化代理将传输中断报告为 Unavailable ([#165](https://github.com/pood1e/agentos-platform/issues/165)) ([e2ce530](https://github.com/pood1e/agentos-platform/commit/e2ce53006f9c3dc743aab142d63f8c39d0619ea9))
+* **sync:** 避免冷启动任务列表携带完整历史超过消息上限 ([#164](https://github.com/pood1e/agentos-platform/issues/164)) ([9a0f51f](https://github.com/pood1e/agentos-platform/commit/9a0f51faf027d13d2d1a4325ac2bd0c932768b84))
+
+
+### Code Refactoring
+
+* **kubernetes:** 统一控制器编排与 Helm 4 原生交付 ([#168](https://github.com/pood1e/agentos-platform/issues/168)) ([2ae20fd](https://github.com/pood1e/agentos-platform/commit/2ae20fd8acc905ae32c3530924fd0bfca16c3ea4))
+* 以 PostgreSQL 投影替代内存读模型 ([#170](https://github.com/pood1e/agentos-platform/issues/170)) ([c3b9cda](https://github.com/pood1e/agentos-platform/commit/c3b9cda7daf0f5225202e29c6bf3fb15348180e5))
+* 删除轨迹视图与浏览器 e2e ([#166](https://github.com/pood1e/agentos-platform/issues/166)) ([dfbc7db](https://github.com/pood1e/agentos-platform/commit/dfbc7db303ce5ca773282949ae2553e28ebded0b))
+* 平台 API 只接受 Bearer，前端与身份源独立交付 ([#169](https://github.com/pood1e/agentos-platform/issues/169)) ([9f8a6ab](https://github.com/pood1e/agentos-platform/commit/9f8a6ab7fe5f2c3857061967fd11d430be6130b5))
+
 ## [0.39.0](https://github.com/pood1e/agentos-platform/compare/v0.38.3...v0.39.0) (2026-10-26)
 
 
