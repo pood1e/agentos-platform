@@ -24,7 +24,8 @@ for archive in sorted(Path("dist").glob(f"*-{version.semver}.tgz")):
                 ["helm", "pull", "oci://" + repository + "@" + digest, "--destination", target],
                 check=True,
             )
-            if (Path(target) / archive.name).read_bytes() != archive.read_bytes():
+            (published,) = Path(target).glob("*.tgz")
+            if published.read_bytes() != archive.read_bytes():
                 raise ValueError("Published chart differs: " + name)
     else:
         subprocess.run(["helm", "push", str(archive), "oci://" + registry + "/charts"], check=True)
@@ -44,8 +45,8 @@ else:
         [
             "oras",
             "push",
-            "--artifact-type",
-            "application/vnd.ansible.collection.v1",
+            "--image-spec",
+            "v1.0",
             "--annotation",
             "org.opencontainers.image.version=" + version.semver,
             "--annotation",

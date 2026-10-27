@@ -96,7 +96,15 @@ class OCITest(unittest.TestCase):
     @classmethod
     def push(cls, tagged):
         subprocess.run(
-            ["oras", "push", "--plain-http", tagged, "artifact.txt:application/octet-stream"],
+            [
+                "oras",
+                "push",
+                "--image-spec",
+                "v1.0",
+                "--plain-http",
+                tagged,
+                "artifact.txt:application/octet-stream",
+            ],
             cwd=cls.root,
             check=True,
             capture_output=True,

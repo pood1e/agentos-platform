@@ -30,9 +30,13 @@
   changed_when: false
   check_mode: false
 
+- name: Select the chart archive by digest
+  ansible.builtin.set_fact:
+    delivery_chart_archive: "{{ agentos_cache }}/verified/{{ delivery_verified_ref | basename | replace(':', '-') }}.tgz"
+
 - name: Read native chart metadata
   ansible.builtin.command:
-    argv: ["{{ helm_binary }}", show, chart, "{{ agentos_cache }}/verified/{{ delivery_chart | basename }}-{{ delivery_chart_identity.version }}.tgz"]
+    argv: ["{{ helm_binary }}", show, chart, "{{ delivery_chart_archive }}"]
   register: delivery_metadata
   changed_when: false
   check_mode: false
@@ -47,8 +51,7 @@
 - name: Render the verified chart
   ansible.builtin.command:
     argv: >-
-      {{ [helm_binary, 'template', delivery_release,
-          agentos_cache ~ '/verified/' ~ (delivery_chart | basename) ~ '-' ~ delivery_chart_identity.version ~ '.tgz',
+      {{ [helm_binary, 'template', delivery_release, delivery_chart_archive,
           '--namespace', delivery_namespace]
          + (['--values', delivery_values_file] if delivery_values_file | default('') | length > 0 else []) }}
   register: delivery_rendered
@@ -75,7 +78,3 @@
   no_log: true
   environment:
     DOCKER_CONFIG: "{{ agentos_cache }}/registry"
-
-- name: Record the verified chart archive
-  ansible.builtin.set_fact:
-    delivery_chart_archive: "{{ agentos_cache }}/verified/{{ delivery_chart | basename }}-{{ delivery_chart_identity.version }}.tgz"
