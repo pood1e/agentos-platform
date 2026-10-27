@@ -7,13 +7,13 @@ import {
 import { TaskRunSchema } from "../../gen/agentos/execution/v1/task_pb.js";
 import { redact } from "../../shared/redact.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { taskRun } from "../read-model/views/run.js";
 
 /** Reads only the original firing's task tree, excluding later conversation turns. */
 export async function scheduledExecutionResult(
   clients: KagentClients,
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "graphOf" | "fullTask">,
   workspace: string,
   request: GetScheduledRunExecutionResultRequest,
   authorize: (scheduleId: string) => Promise<void>,
@@ -31,11 +31,13 @@ export async function scheduledExecutionResult(
   );
   if (scheduledRun?.agent?.namespace !== workspace)
     throw new ConnectError("Execution not found", Code.NotFound);
-  if (!sync.healthy()) throw new ConnectError("History is synchronizing", Code.Unavailable);
-  const root = execution.taskId ? sync.index.entry(execution.taskId) : undefined;
-  if (execution.taskId && (!root || root.contextId !== execution.sessionId))
+  const graph = execution.taskId
+    ? await projection.graphOf({ taskId: execution.taskId })
+    : undefined;
+  const root = graph?.entry(execution.taskId);
+  if (execution.taskId && (!graph || !root || root.contextId !== execution.sessionId))
     throw new ConnectError("Execution history is unavailable", Code.Unavailable);
-  const parents = sync.index.relations().causalParents;
+  const parents = graph?.relations().causalParents ?? new Map<string, string>();
   const belongs = (id: string) => {
     const seen = new Set<string>();
     for (
@@ -49,8 +51,7 @@ export async function scheduledExecutionResult(
     return false;
   };
   const ordered = root
-    ? sync.index
-        .all()
+    ? (graph?.all() ?? [])
         .filter((entry) => belongs(entry.id) && !entry.reviewOfTaskId)
         .sort((a, b) => a.id.localeCompare(b.id))
     : [];
@@ -62,7 +63,7 @@ export async function scheduledExecutionResult(
   const runs = [];
   for (const entry of page) {
     signal?.throwIfAborted();
-    const run = await taskRun(sync, entry.id);
+    const run = await taskRun(entry, projection.fullTask);
     if (!run) throw new ConnectError("Execution history is unavailable", Code.Unavailable);
     runs.push(fromJson(TaskRunSchema, redact(toJson(TaskRunSchema, run) as JsonValue)));
   }

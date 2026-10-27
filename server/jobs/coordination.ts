@@ -5,11 +5,13 @@ import {
   type CoordinationJob,
   CoordinationJobSchema,
 } from "../../gen/agentos/execution/v1/coordination_pb.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskGraph } from "../read-model/graph.js";
+import type { TaskProjection } from "../read-model/projection.js";
 
 export interface Coordinator {
   name: "approvals" | "continuations";
-  select(ids: ReadonlySet<string>): CoordinationJob[];
+  /** Work for the changed tasks of one execution tree. */
+  select(graph: TaskGraph, changed: ReadonlySet<string>): CoordinationJob[];
   run(reference: CoordinationJob): Promise<number | undefined>;
 }
 
@@ -53,23 +55,30 @@ export async function coordinationQueue(
   return { boss, queue, failed };
 }
 
+/** Work is enqueued in the projection transaction that observed it, so no change is lost. */
 export async function startCoordination(
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "hook">,
   jobs: Awaited<ReturnType<typeof coordinationQueue>>,
   coordinators: Coordinator[],
 ) {
   const { boss, queue } = jobs;
-  const send = (coordinator: Coordinator, reference: CoordinationJob) =>
-    boss.send(queue(coordinator.name), toJson(CoordinationJobSchema, reference) as object, {
-      singletonKey: key(reference),
-    });
-  const enqueue = async (ids: ReadonlySet<string>) => {
+  projection.hook(async (graph, changed, writer) => {
+    const db = {
+      executeSql: async (text: string, values: unknown[]) => ({
+        rows: await writer.tx.unsafe(text, values as never[]),
+      }),
+    };
     for (const coordinator of coordinators)
-      for (const reference of coordinator.select(ids)) await send(coordinator, reference);
-  };
-  const unsubscribe = sync.index.onCheckpoint(enqueue);
-  // Native state reconstructs work on every process start, including after a failed enqueue.
-  await enqueue(new Set(sync.index.all().map((entry) => entry.id)));
+      for (const reference of coordinator.select(graph, changed))
+        await boss.send(
+          queue(coordinator.name),
+          toJson(CoordinationJobSchema, reference) as object,
+          {
+            singletonKey: key(reference),
+            db,
+          },
+        );
+  });
   const workers: { name: string; id: string }[] = [];
   for (const coordinator of coordinators) {
     const name = queue(coordinator.name);
@@ -91,7 +100,6 @@ export async function startCoordination(
     workers.push({ name, id });
   }
   return async () => {
-    unsubscribe();
     for (const worker of workers) await boss.offWork(worker.name, { id: worker.id });
   };
 }

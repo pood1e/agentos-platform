@@ -110,7 +110,7 @@ async function workbench(
   voices = [{ languageCode: "en", model: output, voice: "multilingual" }],
   worker = "",
 ) {
-  const env = environment();
+  const env = await environment();
   const app = Fastify();
   const source = async () => ({
     resourceVersion: "1",
@@ -137,8 +137,8 @@ async function workbench(
   });
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
   onTestFinished(async () => {
-    env.sync.close();
     await app.close();
+    await env.close();
   });
   return createClient(
     ConsoleService,

@@ -14,24 +14,22 @@ import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js"
 import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { executions } from "../server/authorization/executions.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { allCapabilities } from "../shared/permissions.js";
-import { memoryStore } from "./fixtures/execution-store.js";
-import { environment, testBindings } from "./harness.js";
+import { type Environment, environment, testBindings } from "./harness.js";
 
-const workspaces: ReturnType<typeof environment>[] = [];
-afterEach(() => {
-  for (const env of workspaces.splice(0)) env.sync.close();
+const workspaces: Environment[] = [];
+afterEach(async () => {
+  for (const env of workspaces.splice(0)) await env.close();
 });
 
 async function workspace(state = TaskState.COMPLETED) {
-  const env = environment([]);
+  const env = await environment([]);
   workspaces.push(env);
-  const registry = executions(memoryStore());
+  const registry = env.executions;
   const owner = create(ExecutionIdentitySchema, {
     subject: "reader-owner",
     credential: { case: "service", value: true },
@@ -49,7 +47,7 @@ async function workspace(state = TaskState.COMPLETED) {
   });
   env.fake.update(task, state);
   await registry.bind(root, owner);
-  await env.sync.refresh();
+  await env.reconcile.refresh();
   const client = createClient(
     ConsoleService,
     createRouterTransport(
@@ -90,11 +88,10 @@ it("lets a read-only owner delete settled native history and closes its executio
   expect((await env.list()).conversations[0].state).toBe(ActivityState.SUCCEEDED);
   await env.client.deleteSession({ sessionId: env.root.id });
   expect(env.fake.sessions.has(env.root.id)).toBe(false);
-  expect(env.index.session(env.root.id)).toBeUndefined();
-  expect(env.index.entry(env.task.id)).toBeUndefined();
-  expect(await env.sync.fullTask(env.task.id)).toBeUndefined();
+  expect(await env.projection.session(env.root.id)).toBeUndefined();
+  expect(await env.projection.entry(env.task.id)).toBeUndefined();
   expect((await env.list()).totalSize).toBe(0);
-  await env.sync.refresh();
+  await env.reconcile.refresh();
   expect((await env.list()).totalSize).toBe(0);
   expect((await env.registry.record(env.root, true)).binding.revoked).toBe(true);
   await expect(
@@ -182,14 +179,18 @@ it("includes a background child in history status and deletion protection while 
     }),
   );
   env.fake.update(env.task, TaskState.COMPLETED);
-  await env.sync.refresh();
-  expect((await conversation(env.sync, env.root.agent, env.root.id)).busy).toBe(false);
+  await env.reconcile.refresh();
+  const graph = await env.projection.graphOf({ contextId: env.root.id });
+  if (!graph) throw new Error("Missing conversation tree");
+  expect((await conversation(graph, env.root.agent, env.root.id, async () => undefined)).busy).toBe(
+    false,
+  );
   expect((await env.list()).conversations[0].state).toBe(ActivityState.WORKING);
   await expect(env.client.deleteSession({ sessionId: env.root.id })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
   });
   env.fake.update(task, TaskState.COMPLETED);
-  await env.sync.refresh();
+  await env.reconcile.refresh();
   expect((await env.list()).conversations[0].state).toBe(ActivityState.SUCCEEDED);
   await env.client.deleteSession({ sessionId: env.root.id });
 });

@@ -3,11 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, onTestFinished } from "vitest";
 import { automationPresets } from "../server/automation/presets.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 it("updates pack instructions by native etag while retaining the schedule ID, cycle, enabled state and history", async () => {
-  const env = environment([]);
-  onTestFinished(() => env.sync.close());
+  const env = fakeKagent([]);
   const first = automationPresets("agentos", "tests/fixtures/pack");
   await first.seed(env.clients);
   const original = first.scheduledRuns[0];

@@ -12,7 +12,7 @@ import { MemoryService } from "../gen/kagent/runtime/v1/memory_pb.js";
 import { TaskStoreService } from "../gen/kagent/runtime/v1/task_store_pb.js";
 import { registerRuntime } from "../server/authorization/native.js";
 import type { ExecutionRuntime } from "../server/authorization/runtime.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 it("exposes only native persistence RPCs, derives workload identity and denies foreign contexts before forwarding", async () => {
   const received: Headers[] = [],
@@ -88,7 +88,7 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
       },
     },
   } as unknown as ExecutionRuntime;
-  const { fake, clients, sync } = environment([]);
+  const { fake, clients } = fakeKagent([]);
   const agent = create(AgentSchema, {
     ref: session.agent,
     resource: { kind: "Agent", value: { spec: { harnessRef: { name: "standard" } } } },
@@ -180,7 +180,6 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
     await tasks.getTask({ sessionId: "own", taskId: "task" }, { headers });
     expect(received).toHaveLength(6);
   } finally {
-    sync.close();
     for (const connection of connections) connection.destroy();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

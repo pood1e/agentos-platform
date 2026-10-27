@@ -8,18 +8,15 @@ import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js"
 import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { executions } from "../server/authorization/executions.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities } from "../shared/permissions.js";
-import { memoryStore } from "./fixtures/execution-store.js";
 import { fixtureIds } from "./fixtures/kagent.js";
-import { environment, testBindings } from "./harness.js";
+import { environment, operator, testBindings } from "./harness.js";
 
 async function taggedWorkspace() {
-  const env = environment([]);
-  const store = memoryStore();
-  const registry = executions(store);
+  const env = await environment([]);
+  const registry = env.executions;
   const alice = create(ExecutionIdentitySchema, {
     subject: "alice",
     credential: { case: "service", value: true },
@@ -57,9 +54,9 @@ async function taggedWorkspace() {
     }),
   );
   env.fake.load({ sessions, tasks });
-  await env.sync.refresh();
   for (const [position, owner] of owners.entries()) await registry.bind(sessions[position], owner);
   await registry.revoke(sessions[0], alice);
+  await env.reconcile.refresh();
   let caller = alice;
   const client = createClient(
     ConsoleService,
@@ -130,7 +127,7 @@ it("lets read-only owners tag revoked executions while keeping personal metadata
     ).toEqual(["task-alice"]);
     expect([...env.fake.tasks]).toEqual(native);
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
@@ -166,7 +163,7 @@ it("requires the dedicated capability for shared task tags and streams their cha
       client.updateTaskTags({ taskId: id, tags: [], tagsVersion: "1" }),
     ).rejects.toMatchObject({ code: Code.NotFound });
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
@@ -194,15 +191,15 @@ it("preserves concurrent edits and rejects malformed tags and missing version to
       code: Code.InvalidArgument,
     });
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
 it("stores child task edits on the operation root without changing runtime task versions", async () => {
-  const env = environment();
-  await env.sync.refresh();
+  const env = await environment();
+  await env.reconcile.refresh();
   const { taskTagCommands } = await import("../server/console/task-tags.js");
-  const command = taskTagCommands(env.clients, env.tags);
+  const command = taskTagCommands(env.clients, env.tags, env.executions);
   try {
     const result = await command.update(
       create(ConsoleService.method.updateTaskTags.input, {
@@ -210,12 +207,12 @@ it("stores child task edits on the operation root without changing runtime task 
         tags: ["maintenance"],
         tagsVersion: "0",
       }),
-      env.index,
-      create(ExecutionIdentitySchema),
+      await env.projection.graphOf({ taskId: fixtureIds.approved }),
+      operator,
     );
     expect(result.task.id).toBe(fixtureIds.approvalRoot);
     expect((await env.tags.read([fixtureIds.approved, fixtureIds.approvalRoot])).size).toBe(1);
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });

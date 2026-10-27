@@ -4,10 +4,10 @@ import { resourceStore } from "../server/management/resources.js";
 import { managementService } from "../server/management/service.js";
 import { speechSettingsStore } from "../server/speech/store.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 export async function managementEnvironment() {
-  const env = environment();
+  const env = fakeKagent();
   const server = createServer(async (request, response) => {
     if (!(await kubernetesRequest(env.fake, request, response))) {
       response.statusCode = 404;

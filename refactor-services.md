@@ -44,11 +44,11 @@
 - 密码模式下 console、CLI 与后台任务使用与外部身份提供方相同的授权路径；连续输错密码触发限速。
 - console 发版不重启平台 API。
 
-### 1.3 读投影
+### 1.3 读投影（已实现）
 
-按总览的[读投影](refactor.md#读投影)设计实施。
+按总览的[读投影](refactor.md#读投影)设计实施。投影在 `server/read-model/{store,schema,summaries,listings,projection,reconcile,streams,graph}.ts`；分页游标沿用 `page.ts`。
 
-删除：`server/read-model` 的 `sync`、`live`、`index`、`checkpoints`、`observation`、`page` 与内存视图，`decode/` 保留为投影写入的解析；`server/jobs/coordination.ts` 的启动全量入队与 checkpoint 订阅；`server/team-sessions/continuation.ts` 的结果截断与语言判断。首次对账从 kagent 回填投影。
+删除：`server/read-model` 的 `sync`、`live`、`index`、`checkpoints`、`observation`、`send` 与内存视图，`decode/` 保留为投影写入的解析；`server/jobs/coordination.ts` 的启动全量入队与 checkpoint 订阅；`server/team-sessions/continuation.ts` 的结果截断与语言判断；`executions.history`。首次对账从 kagent 回填投影。
 
 验收：
 

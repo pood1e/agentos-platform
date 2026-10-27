@@ -17,15 +17,15 @@ import { withApprovalDecisions } from "../read-model/decode/approval-decisions.j
 import { hitlReply } from "../read-model/decode/hitl.js";
 import { object } from "../read-model/decode/messages.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { awaiting, terminal } from "../read-model/state.js";
-import type { KagentSync } from "../read-model/sync.js";
 import { taskRun } from "../read-model/views/run.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { approvalClient, approvalEnvironment } from "./client.js";
 
 /** External approval operations are idempotent against the native task/tool reference. */
 export function approvalCoordinator(
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "entry" | "fullTask" | "send">,
   config: GovernanceConfig,
   authorize?: (contextId: string, tools: string[]) => Promise<void>,
   token?: EnvironmentTokens,
@@ -44,7 +44,7 @@ export function approvalCoordinator(
     } catch (error) {
       const failure = ConnectError.from(error);
       if (![Code.PermissionDenied, Code.Unauthenticated].includes(failure.code)) throw error;
-      await sync.send(
+      await projection.send(
         entry.agentId,
         withApprovalDecisions(
           hitlReply(
@@ -78,9 +78,9 @@ export function approvalCoordinator(
   }
   return {
     name: "approvals",
-    select(ids) {
+    select(graph, ids) {
       return [...ids].flatMap((id) => {
-        const entry = sync.index.entry(id);
+        const entry = graph.entry(id);
         return (
           entry?.interactions.flatMap((interaction) =>
             interaction.kind === InteractionKind.APPROVAL &&
@@ -100,7 +100,7 @@ export function approvalCoordinator(
       });
     },
     async run(reference) {
-      const entry = sync.index.entry(reference.taskId);
+      const entry = await projection.entry(reference.taskId);
       const interaction = entry?.interactions.find((item) => item.id === reference.work.value);
       if (!entry || !interaction) return;
       const pendingApproval = awaiting(interaction.state) && !terminal(entry.state);
@@ -111,7 +111,7 @@ export function approvalCoordinator(
       }));
       if (targets.some(({ connection }) => !connection?.approvalUrl))
         throw new Error("A tool pause cannot mix native and external decision authorities");
-      const run = await taskRun(sync, entry.id);
+      const run = await taskRun(entry, projection.fullTask);
       if (!run) throw new Error("Native execution is unavailable");
       const decisions = [];
       const outcomes: Approval[] = [];
@@ -196,8 +196,8 @@ export function approvalCoordinator(
       }
       if (waiting) return 2;
       if (pendingApproval) {
-        const pending = () => {
-          const current = sync.index.entry(entry.id);
+        const pending = async () => {
+          const current = await projection.entry(entry.id);
           return (
             current &&
             !terminal(current.state) &&
@@ -206,7 +206,7 @@ export function approvalCoordinator(
             )
           );
         };
-        if (!pending()) return;
+        if (!(await pending())) return;
         if (!(await permitted(entry, interaction))) return;
         for (const preparation of preparations) {
           try {
@@ -228,7 +228,7 @@ export function approvalCoordinator(
             }
           }
         }
-        if (!pending()) return;
+        if (!(await pending())) return;
         const reply = hitlReply(
           { taskId: entry.id, contextId: entry.contextId },
           messageIdentity("approval", entry.id, interaction.requestId),
@@ -242,7 +242,7 @@ export function approvalCoordinator(
           ...reply.metadata,
           "agentos.dev/approval-request": interaction.requestId,
         };
-        await sync.send(entry.agentId, withApprovalDecisions(reply, outcomes));
+        await projection.send(entry.agentId, withApprovalDecisions(reply, outcomes));
         return 2;
       }
       return;

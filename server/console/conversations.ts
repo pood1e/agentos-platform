@@ -7,21 +7,37 @@ import type {
 } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { agentKey } from "../read-model/agents.js";
+import type { TaskProjection } from "../read-model/projection.js";
+import { refreshContexts } from "../read-model/reconcile.js";
 import { awaiting } from "../read-model/state.js";
-import type { KagentSync } from "../read-model/sync.js";
 import { conversationProgress } from "../read-model/views/conversation-work.js";
 import { notFound, precondition } from "../shared/errors.js";
 import { exclusiveCommands } from "../shared/exclusive.js";
 import { chatTarget } from "./history.js";
 
 export function conversationCommands(
-  sync: KagentSync,
+  projection: TaskProjection,
   clients: KagentClients,
   namespace: string,
   entryAgent: string,
-  executions?: Executions,
+  executions: Executions,
   exclusive = exclusiveCommands(),
 ) {
+  /** Conversation state after re-reading every session of its execution tree natively. */
+  async function progress(sessionId: string, agentId: string) {
+    const known = await projection.graphOf({ contextId: sessionId });
+    const contexts = new Map([[sessionId, agentId]]);
+    for (const entry of known?.all() ?? []) contexts.set(entry.contextId, entry.agentId);
+    await refreshContexts(
+      projection,
+      clients,
+      [...contexts].map(([id, agentId]) => ({ id, agentId })),
+    );
+    const graph = await projection.graphOf({ contextId: sessionId });
+    return graph ? conversationProgress(graph, sessionId).state : ActivityState.IDLE;
+  }
+
   return {
     remove: (request: DeleteSessionRequest, identity: ExecutionIdentity) =>
       exclusive(request.sessionId, async () => {
@@ -31,16 +47,13 @@ export function conversationCommands(
         );
         if (!session) throw notFound("chat.invalidConversation");
         chatTarget(namespace, entryAgent, session.agent, identity);
-        if (executions) {
-          try {
-            const { binding } = await executions.record(session, true);
-            if (binding.subject !== identity.subject) throw new Error("Foreign conversation");
-          } catch {
-            throw notFound("chat.invalidConversation");
-          }
+        try {
+          const { binding } = await executions.record(session, true);
+          if (binding.subject !== identity.subject) throw new Error("Foreign conversation");
+        } catch {
+          throw notFound("chat.invalidConversation");
         }
-        await sync.refresh();
-        const { state } = conversationProgress(sync.index, session.id);
+        const state = await progress(session.id, agentKey(session.agent));
         if (awaiting(state) || state === ActivityState.WORKING || state === ActivityState.SUBMITTED)
           throw precondition("chat.deleteBusy");
         let result: DeleteSessionResponse;
@@ -54,8 +67,8 @@ export function conversationCommands(
             throw precondition("chat.deleteBusy");
           throw error;
         }
-        if (executions) await executions.revoke(session, identity);
-        await sync.forgetSession(session.id);
+        await executions.revoke(session, identity);
+        await projection.forgetSession(session.id);
         return result;
       }),
   };

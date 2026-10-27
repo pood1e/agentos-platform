@@ -8,101 +8,111 @@ import { cancelTree } from "../server/read-model/cancel.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { runSummary } from "../server/read-model/views/runs.js";
-import { listTasks, taskSummary } from "../server/read-model/views/task.js";
+import { taskSummary } from "../server/read-model/views/task.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment } from "./harness.js";
+import { environment, fakeKagent, operator } from "./harness.js";
 
 const page = { query: "", pageSize: 1, pageToken: "" };
+const reader = { subject: operator.subject, administrator: false };
 
 it("filters the operation state and participating member together, including paused descendants", async () => {
-  const { sync, index } = environment(pendingApprovalTasks());
+  const { projection, reconcile, close } = await environment(pendingApprovalTasks());
+  const list = (request: Parameters<typeof projection.operations>[1]) =>
+    projection.operations(reader, request);
   try {
-    await sync.refresh();
-    const pending = listTasks(index, { ...page, states: [ActivityState.AWAITING_APPROVAL] });
+    await reconcile.refresh();
+    const pending = await list({ ...page, states: [ActivityState.AWAITING_APPROVAL] });
     expect(pending.tasks.map((task) => task.id)).toEqual([ids.approvalRoot]);
     expect(pending.totalSize).toBe(1);
     expect(
-      listTasks(index, {
-        ...page,
-        states: [ActivityState.AWAITING_APPROVAL],
-        engineer: "agentos/remediation",
-      }).tasks,
+      (
+        await list({
+          ...page,
+          states: [ActivityState.AWAITING_APPROVAL],
+          engineer: "agentos/remediation",
+        })
+      ).tasks,
     ).toEqual(pending.tasks);
     expect(
-      listTasks(index, {
-        ...page,
-        states: [ActivityState.AWAITING_APPROVAL],
-        engineer: "agentos/inspection",
-      }).totalSize,
+      (
+        await list({
+          ...page,
+          states: [ActivityState.AWAITING_APPROVAL],
+          engineer: "agentos/inspection",
+        })
+      ).totalSize,
     ).toBe(0);
     expect(
-      listTasks(index, {
-        ...page,
-        states: [ActivityState.SUCCEEDED, ActivityState.AWAITING_APPROVAL],
-      }).totalSize,
+      (await list({ ...page, states: [ActivityState.SUCCEEDED, ActivityState.AWAITING_APPROVAL] }))
+        .totalSize,
     ).toBeGreaterThan(1);
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("binds cursors to normalized states and members", async () => {
-  const { sync, index } = environment(pendingApprovalTasks());
+  const { projection, reconcile, close } = await environment(pendingApprovalTasks());
+  const list = (request: Parameters<typeof projection.operations>[1]) =>
+    projection.operations(reader, request);
   try {
-    await sync.refresh();
+    await reconcile.refresh();
     const states = [ActivityState.SUCCEEDED, ActivityState.AWAITING_APPROVAL];
-    const first = listTasks(index, { ...page, states });
+    const first = await list({ ...page, states });
     expect(first.nextPageToken).not.toBe("");
     const request = { ...page, pageToken: first.nextPageToken, states };
-    expect(listTasks(index, { ...request, states: [...states].reverse() }).tasks).toEqual(
-      listTasks(index, request).tasks,
+    expect((await list({ ...request, states: [...states].reverse() })).tasks).toEqual(
+      (await list(request)).tasks,
     );
-    expect(() => listTasks(index, { ...request, states: [ActivityState.SUCCEEDED] })).toThrow(
+    await expect(list({ ...request, states: [ActivityState.SUCCEEDED] })).rejects.toThrow(
       "pagination.invalidPage",
     );
-    expect(() => listTasks(index, { ...request, engineer: "agentos/remediation" })).toThrow(
+    await expect(list({ ...request, engineer: "agentos/remediation" })).rejects.toThrow(
       "pagination.invalidPage",
     );
-    expect(() => listTasks(index, { ...request, states: [] })).toThrow("pagination.invalidPage");
+    await expect(list({ ...request, states: [] })).rejects.toThrow("pagination.invalidPage");
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 async function runningTree() {
-  const env = environment();
+  const env = await environment();
   for (const id of [ids.dispatchRoot, ids.inspection, ids.background])
     env.fake.update(env.fake.task(id), TaskState.WORKING);
-  await env.sync.refresh();
-  const tree = taskTree(env.index, ids.dispatchRoot);
+  await env.reconcile.refresh();
+  const graph = await env.projection.graphOf({ taskId: ids.dispatchRoot });
+  const tree = graph && taskTree(graph, ids.dispatchRoot);
   if (!tree) throw new Error("missing operation tree");
-  return { ...env, tree };
+  const state = async (id: string) => (await env.projection.entry(id))?.state;
+  return { ...env, tree, state };
 }
 
 it("cancels all unfinished delegated tasks, including background work, and is repeatable", async () => {
-  const { clients, sync, index, tree, fake } = await runningTree();
+  const { clients, projection, state, close, tree, fake } = await runningTree();
   const cancel = vi.spyOn(clients.a2a, "cancelTask");
   try {
-    await cancelTree(clients, sync, tree);
+    await cancelTree(clients, projection, tree);
     expect(cancel.mock.calls.map(([request]) => request.id)).toEqual(
       expect.arrayContaining([ids.dispatchRoot, ids.inspection, ids.background]),
     );
-    expect(index.entry(ids.inspection)?.state).toBe(TaskState.CANCELED);
+    expect(await state(ids.inspection)).toBe(TaskState.CANCELED);
     expect(fake.task(ids.background).status?.state).toBe(TaskState.CANCELED);
-    const again = taskTree(index, ids.dispatchRoot);
-    if (!again) throw new Error("missing operation");
-    expect(taskSummary(index, again).state).toBe(ActivityState.CANCELED);
+    const graph = await projection.graphOf({ taskId: ids.dispatchRoot });
+    const again = graph && taskTree(graph, ids.dispatchRoot);
+    if (!graph || !again) throw new Error("missing operation");
+    expect(taskSummary(graph, again).state).toBe(ActivityState.CANCELED);
     const count = cancel.mock.calls.length;
-    await cancelTree(clients, sync, again);
+    await cancelTree(clients, projection, again);
     expect(cancel).toHaveBeenCalledTimes(count);
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("attempts every cancellation and keeps native successes when one task fails", async () => {
-  const { clients, sync, index, tree } = await runningTree();
+  const { clients, projection, state, close, tree } = await runningTree();
   const native = clients.a2a.cancelTask;
   const cancel = vi
     .spyOn(clients.a2a, "cancelTask")
@@ -111,32 +121,40 @@ it("attempts every cancellation and keeps native successes when one task fails",
       return native(request, options);
     });
   try {
-    await expect(cancelTree(clients, sync, tree)).rejects.toThrow("native cancellation failed");
+    await expect(cancelTree(clients, projection, tree)).rejects.toThrow(
+      "native cancellation failed",
+    );
     expect(cancel).toHaveBeenCalledWith(
       expect.objectContaining({ id: ids.inspection }),
       expect.anything(),
     );
-    expect(index.entry(ids.inspection)?.state).toBe(TaskState.CANCELED);
-    expect(index.entry(ids.dispatchRoot)?.state).toBe(TaskState.WORKING);
+    expect(await state(ids.inspection)).toBe(TaskState.CANCELED);
+    expect(await state(ids.dispatchRoot)).toBe(TaskState.WORKING);
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("cancels unanswered tasks in one native session without overlapping its actor commands", async () => {
-  const { clients, sync, index, fake } = await runningTree();
+  const { clients, projection, reconcile, state, close, fake } = await runningTree();
   const question = fake.task(ids.inspection);
   const approval = clone(TaskSchema, question);
   approval.id = "pending-approval";
+  approval.history = approval.history.map((message) => ({
+    ...message,
+    messageId: `approval-${message.messageId}`,
+  })) as typeof approval.history;
   fake.update(question, TaskState.INPUT_REQUIRED);
   fake.update(approval, TaskState.AUTH_REQUIRED);
-  await sync.refresh();
+  await reconcile.refresh();
   const tree = {
-    entries: [ids.dispatchRoot, ids.inspection, ids.background, approval.id].map((id) => {
-      const entry = index.entry(id);
-      if (!entry) throw new Error("missing operation task");
-      return entry;
-    }),
+    entries: await Promise.all(
+      [ids.dispatchRoot, ids.inspection, ids.background, approval.id].map(async (id) => {
+        const entry = await projection.entry(id);
+        if (!entry) throw new Error("missing operation task");
+        return entry;
+      }),
+    ),
   };
   const native = clients.a2a.cancelTask;
   const sessions = new Set<string>();
@@ -155,34 +173,35 @@ it("cancels unanswered tasks in one native session without overlapping its actor
     }
   });
   try {
-    await cancelTree(clients, sync, tree);
+    await cancelTree(clients, projection, tree);
     expect(concurrency).toBeGreaterThan(1);
-    for (const entry of tree.entries) expect(index.entry(entry.id)?.state).toBe(TaskState.CANCELED);
+    for (const entry of tree.entries) expect(await state(entry.id)).toBe(TaskState.CANCELED);
     expect(fake.received).toEqual([]);
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("projects native run starts in summaries and full execution details", async () => {
-  const { sync, index } = environment();
+  const { projection, reconcile, close } = await environment();
   try {
-    await sync.refresh();
-    const tree = taskTree(index, ids.dispatchRoot);
+    await reconcile.refresh();
+    const graph = await projection.graphOf({ taskId: ids.dispatchRoot });
+    const tree = graph && taskTree(graph, ids.dispatchRoot);
     if (!tree) throw new Error("missing operation");
     for (const entry of tree.entries) {
       const run = runSummary(entry, tree.background.has(entry.id));
       expect(run.startedAt && timestampMs(run.startedAt)).toBe(entry.createdAt);
-      const full = await taskRun(sync, entry.id);
+      const full = await taskRun(entry, projection.fullTask);
       expect(full?.startedAt).toEqual(run.startedAt);
     }
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("accepts a native task that finishes between reading the tree and canceling it", async () => {
-  const { clients, sync, index, tree, fake } = await runningTree();
+  const { clients, projection, state, close, tree, fake } = await runningTree();
   const native = clients.a2a.cancelTask;
   vi.spyOn(clients.a2a, "cancelTask").mockImplementation(async (request, options) => {
     if (request.id !== ids.inspection) return native(request, options);
@@ -190,31 +209,31 @@ it("accepts a native task that finishes between reading the tree and canceling i
     throw new ConnectError("task is already complete", Code.FailedPrecondition);
   });
   try {
-    await cancelTree(clients, sync, tree);
-    expect(index.entry(ids.inspection)?.state).toBe(TaskState.COMPLETED);
-    expect(index.entry(ids.dispatchRoot)?.state).toBe(TaskState.CANCELED);
+    await cancelTree(clients, projection, tree);
+    expect(await state(ids.inspection)).toBe(TaskState.COMPLETED);
+    expect(await state(ids.dispatchRoot)).toBe(TaskState.CANCELED);
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("does not report success before native execution acknowledges cancellation", async () => {
-  const { clients, sync, tree } = await runningTree();
+  const { clients, projection, close, tree } = await runningTree();
   vi.spyOn(clients.a2a, "cancelTask").mockImplementation((request) =>
     clients.a2a.getTask({ id: request.id, tenant: request.tenant }),
   );
   try {
-    await expect(cancelTree(clients, sync, tree)).rejects.toMatchObject({
+    await expect(cancelTree(clients, projection, tree)).rejects.toMatchObject({
       code: Code.FailedPrecondition,
     });
   } finally {
-    sync.close();
+    await close();
   }
 });
 
 it("keeps a canceled fake execution from completing on its pending timer", async () => {
   vi.useFakeTimers();
-  const { fake, clients, sync } = environment();
+  const { fake, clients } = fakeKagent();
   try {
     const session = fake.createSession(
       { namespace: "agentos", name: "assistant" },
@@ -234,7 +253,6 @@ it("keeps a canceled fake execution from completing on its pending timer", async
     expect(fake.task(task.id).status?.state).toBe(TaskState.CANCELED);
     expect(task.artifacts).toHaveLength(0);
   } finally {
-    sync.close();
     vi.useRealTimers();
   }
 });

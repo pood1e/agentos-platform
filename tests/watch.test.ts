@@ -1,12 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
-import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { WatchConversationResponseSchema } from "../gen/agentos/console/v1/console_service_pb.js";
-import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { watch } from "../server/console/watch.js";
-import { ingest } from "../server/read-model/entry.js";
-import { TaskIndex } from "../server/read-model/index.js";
-import { ObservationScope } from "../server/read-model/observation.js";
+import type { ProjectionChange } from "../server/read-model/store.js";
 
 vi.mock("node:timers/promises", () => ({
   setTimeout: (ms: number, value: unknown, { signal }: { signal: AbortSignal }) =>
@@ -28,14 +24,26 @@ vi.mock("node:timers/promises", () => ({
 
 afterEach(() => vi.useRealTimers());
 
+function projection(healthy = () => true) {
+  const listeners = new Set<(change: ProjectionChange) => void>();
+  return {
+    healthy,
+    onChange(listener: (change: ProjectionChange) => void) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    commit(...roots: string[]) {
+      for (const listener of listeners) listener({ roots, ids: [] });
+    },
+  };
+}
+
 it("keeps unchanged observations alive without reloading the view and cancels pending timers", async () => {
   vi.useFakeTimers();
-  const index = new TaskIndex();
-  const sync = { index, healthy: () => true };
   const value = create(WatchConversationResponseSchema, { conversation: { title: "交换机巡检" } });
   const view = vi.fn(() => value);
   const controller = new AbortController();
-  const stream = watch(sync, WatchConversationResponseSchema, controller.signal, view);
+  const stream = watch(projection(), WatchConversationResponseSchema, controller.signal, view);
   expect((await stream.next()).value).toEqual(value);
   const heartbeat = stream.next();
   await vi.advanceTimersByTimeAsync(16_000);
@@ -50,10 +58,9 @@ it("keeps unchanged observations alive without reloading the view and cancels pe
 it("closes with a retryable error when the read model is unavailable", async () => {
   vi.useFakeTimers();
   let healthy = true;
-  const index = new TaskIndex();
   const view = vi.fn(() => create(WatchConversationResponseSchema));
   const stream = watch(
-    { index, healthy: () => healthy },
+    projection(() => healthy),
     WatchConversationResponseSchema,
     new AbortController().signal,
     view,
@@ -65,43 +72,25 @@ it("closes with a retryable error when the read model is unavailable", async () 
   await failed;
 });
 
-it("ignores unrelated work while observing changes in the selected conversation", async () => {
+it("ignores other execution trees while observing the selected conversation", async () => {
   vi.useFakeTimers();
-  const index = new TaskIndex();
-  index.upsert(
-    ingest(
-      create(TaskSchema, {
-        id: "alice-task",
-        contextId: "alice",
-        status: { state: TaskState.WORKING },
-      }),
-      "agentos/assistant",
-    ),
-  );
-  index.upsert(
-    ingest(create(TaskSchema, { id: "bob-task", contextId: "bob" }), "agentos/assistant"),
-  );
-  index.flush();
+  const changes = projection();
   const view = vi.fn(() =>
     create(WatchConversationResponseSchema, {
       conversation: { title: `update-${view.mock.calls.length}` },
     }),
   );
   const controller = new AbortController();
-  const stream = watch(
-    { index, healthy: () => true },
-    WatchConversationResponseSchema,
-    controller.signal,
-    view,
-    { scope: new ObservationScope(index, { contextId: "alice" }) },
-  );
+  const stream = watch(changes, WatchConversationResponseSchema, controller.signal, view, {
+    roots: () => new Set(["alice"]),
+  });
   await stream.next();
   const next = stream.next();
   await vi.advanceTimersByTimeAsync(300);
-  index.invalidate("bob-task");
+  changes.commit("bob");
   await vi.advanceTimersByTimeAsync(1_000);
   expect(view).toHaveBeenCalledOnce();
-  index.invalidate("alice-task");
+  changes.commit("alice");
   await vi.advanceTimersByTimeAsync(1);
   await next;
   expect(view).toHaveBeenCalledTimes(2);
@@ -109,58 +98,26 @@ it("ignores unrelated work while observing changes in the selected conversation"
   await stream.return(undefined);
 });
 
-it("retains delegation events arriving while an asynchronous projection is in progress", async () => {
+it("retains changes committed while an asynchronous view is in progress", async () => {
   vi.useFakeTimers();
-  const index = new TaskIndex();
-  const parent = ingest(
-    create(TaskSchema, { id: "parent", contextId: "chat" }),
-    "agentos/assistant",
-  );
-  index.upsert(parent);
-  index.flush();
+  const changes = projection();
+  let delegated = false;
   let resolve = () => {};
   const pause = new Promise<void>((done) => {
     resolve = done;
   });
   const view = vi.fn(async () => {
-    const title = index.entry("child") ? "delegated" : "initial";
+    const title = delegated ? "delegated" : "initial";
     await pause;
     return create(WatchConversationResponseSchema, { conversation: { title } });
   });
   const controller = new AbortController();
-  const stream = watch(
-    { index, healthy: () => true },
-    WatchConversationResponseSchema,
-    controller.signal,
-    view,
-    { scope: new ObservationScope(index, { contextId: "chat" }) },
-  );
-  const first = stream.next();
-  index.upsert({
-    ...parent,
-    version: "delegating",
-    calls: [
-      {
-        id: "dispatch",
-        name: "invoke_session",
-        intent: "",
-        returned: false,
-        state: ActivityState.WORKING,
-        delegation: {
-          kind: "invoke",
-          sessionId: "child-session",
-          messageId: "",
-          taskId: "",
-          agentName: "inspection",
-        },
-      },
-    ],
+  const stream = watch(changes, WatchConversationResponseSchema, controller.signal, view, {
+    roots: () => new Set(["chat"]),
   });
-  index.flush();
-  index.upsert(
-    ingest(create(TaskSchema, { id: "child", contextId: "child-session" }), "agentos/inspection"),
-  );
-  index.flush();
+  const first = stream.next();
+  delegated = true;
+  changes.commit("chat");
   resolve();
   expect((await first).value?.conversation?.title).toBe("initial");
   const next = stream.next();
@@ -169,4 +126,32 @@ it("retains delegation events arriving while an asynchronous projection is in pr
   expect(view).toHaveBeenCalledTimes(2);
   controller.abort();
   await stream.return(undefined);
+});
+
+it("wakes on live task deltas registered by the view", async () => {
+  vi.useFakeTimers();
+  let delta = () => {};
+  const release = vi.fn();
+  const view = vi.fn(() =>
+    create(WatchConversationResponseSchema, {
+      conversation: { title: `delta-${view.mock.calls.length}` },
+    }),
+  );
+  const controller = new AbortController();
+  const stream = watch(projection(), WatchConversationResponseSchema, controller.signal, view, {
+    roots: () => new Set(["chat"]),
+    wakes: (touch) => {
+      delta = touch;
+      return release;
+    },
+  });
+  await stream.next();
+  const next = stream.next();
+  await vi.advanceTimersByTimeAsync(300);
+  delta();
+  await vi.advanceTimersByTimeAsync(1);
+  expect((await next).value?.conversation?.title).toBe("delta-2");
+  controller.abort();
+  await stream.return(undefined);
+  expect(release).toHaveBeenCalledOnce();
 });

@@ -1,7 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { type DescMessage, equals, type MessageShape } from "@bufbuild/protobuf";
-import type { ObservationScope } from "../read-model/observation.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { unavailable } from "../shared/errors.js";
 
 const settle = 250;
@@ -15,42 +14,42 @@ const sleep = (ms: number, signal: AbortSignal) =>
     if (!signal.aborted) throw error;
   });
 
-/** Yields the current view, then a new view whenever the read model changes it. */
+export interface WatchOptions {
+  /** Execution trees the view depends on; any change wakes the view while unknown. */
+  roots?: () => ReadonlySet<string> | undefined;
+  /** Registers other change sources, such as live task streams; returns their cleanup. */
+  wakes?: (touch: () => void) => () => void;
+  poll?: boolean;
+}
+
+/** Yields the current view, then a new view whenever its execution trees change. */
 export async function* watch<Desc extends DescMessage>(
-  sync: Pick<KagentSync, "index" | "healthy">,
+  projection: Pick<TaskProjection, "onChange" | "healthy">,
   schema: Desc,
   signal: AbortSignal,
   view: () => MessageShape<Desc> | Promise<MessageShape<Desc>>,
-  options: { poll?: boolean; scope?: ObservationScope } = {},
+  options: WatchOptions = {},
 ): AsyncGenerator<MessageShape<Desc>> {
   let changed = true;
   let wake = () => {};
-  let projecting = false;
-  const pending = new Set<string>();
-  const unsubscribe = sync.index.onChange((ids) => {
-    if (projecting) {
-      for (const id of ids) pending.add(id);
-      return;
-    }
-    if (options.scope && !options.scope.affects(ids)) return;
+  const touch = () => {
     changed = true;
     wake();
+  };
+  const unsubscribe = projection.onChange((change) => {
+    const roots = options.roots?.();
+    if (!roots || change.roots.some((root) => roots.has(root))) touch();
   });
+  const release = options.wakes?.(touch);
   const deadline = Date.now() + lifetime;
   let last: MessageShape<Desc> | undefined;
   let sentAt = 0;
   try {
     while (!signal.aborted && Date.now() < deadline) {
-      if (!sync.healthy()) throw unavailable();
+      if (!projection.healthy()) throw unavailable();
       if (changed) {
         changed = false;
-        projecting = true;
-        options.scope?.refresh();
         const next = await view();
-        options.scope?.refresh();
-        projecting = false;
-        if (pending.size && (!options.scope || options.scope.affects(pending))) changed = true;
-        pending.clear();
         if (!last || !equals(schema, last, next)) {
           last = next;
           sentAt = Date.now();
@@ -63,7 +62,7 @@ export async function* watch<Desc extends DescMessage>(
       wake = () => stop.abort();
       await sleep(healthCheck, AbortSignal.any([signal, stop.signal]));
       if (!signal.aborted && last && Date.now() - sentAt >= heartbeat) {
-        if (!sync.healthy()) throw unavailable();
+        if (!projection.healthy()) throw unavailable();
         sentAt = Date.now();
         yield last;
       }
@@ -72,5 +71,6 @@ export async function* watch<Desc extends DescMessage>(
     }
   } finally {
     unsubscribe();
+    release?.();
   }
 }

@@ -13,7 +13,7 @@ import { scheduledSourceTools } from "../automation/source-tools.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { knowledgeService } from "../knowledge/service.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import type { KagentConfig } from "../shared/config.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { sessionTools } from "../team-sessions/tools.js";
@@ -23,14 +23,14 @@ export async function registerPlatformMcp(
   app: FastifyInstance,
   config: KagentConfig,
   clients: KagentClients,
-  sync: KagentSync,
+  projection: TaskProjection,
   execution: ExecutionRuntime,
   workloads: WorkloadIdentity,
   access: BindingView,
   knowledge: ReturnType<typeof knowledgeService>,
   presets: ScheduledRunPreset[] = [],
 ) {
-  const tools = sessionTools(clients, config.namespace, access, knowledge);
+  const tools = sessionTools(clients, config.namespace, access, knowledge, projection);
   await registerTeamSessions(app, tools, async (headers, method, tool) => {
     const authorization = typeof headers.authorization === "string" ? headers.authorization : "";
     const claims =
@@ -59,7 +59,7 @@ export async function registerPlatformMcp(
             ],
             handler: scheduledSourceTools(
               clients,
-              sync,
+              projection,
               config.namespace,
               presets,
               source.scheduledRunPresets,
@@ -77,7 +77,7 @@ export async function registerPlatformMcp(
           scopes: ["run_case", "observe_case", "cancel_case"],
           handler: automationTools(
             clients,
-            sync,
+            projection,
             config.namespace,
             environment,
             async (session, cancel, contexts) => {

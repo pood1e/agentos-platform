@@ -5,7 +5,7 @@ import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { agentKey } from "../read-model/agents.js";
 
-export const scheduledExecutionId = (messageId: string) =>
+const scheduledExecutionId = (messageId: string) =>
   /^scheduled-run\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(
     messageId,
   )?.[1];

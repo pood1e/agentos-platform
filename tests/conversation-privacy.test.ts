@@ -6,19 +6,17 @@ import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { executions } from "../server/authorization/executions.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
-import { memoryStore } from "./fixtures/execution-store.js";
 import { environment, testBindings } from "./harness.js";
 
 const identity = (subject: string, write = false) =>
   create(ExecutionIdentitySchema, { subject, write, credential: { case: "service", value: true } });
 
 it("isolates conversation search, counts, task payloads, approvals and streams for every user including writers", async () => {
-  const env = environment([]);
-  const registry = executions(memoryStore());
+  const env = await environment([]);
+  const registry = env.executions;
   const alice = identity("user:alice"),
     bob = identity("user:bob", true);
   const identities = [alice, bob];
@@ -70,12 +68,12 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
     ),
   );
   env.fake.load({ sessions, tasks });
-  await env.sync.refresh();
   for (const [position, owner] of identities.entries())
     await registry.bind(sessions[position], owner);
   for (const [position, owner] of identities.entries())
     await registry.bind(operations[position], owner, sessions[position]);
   await registry.revoke(sessions[0], alice);
+  await env.reconcile.refresh();
   let caller = alice;
   const client = createClient(
     ConsoleService,
@@ -150,13 +148,13 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
     ).rejects.toMatchObject({ code: Code.NotFound });
     expect(env.fake.sessions.size).toBe(5);
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
 it("interrupts a foreground run while preserving the owner's conversation and tool scope", async () => {
-  const env = environment([]);
-  const registry = executions(memoryStore());
+  const env = await environment([]);
+  const registry = env.executions;
   const owner = identity("user:voice-caller");
   const agent = { namespace: "agentos", name: "assistant" };
   const session = create(SessionSchema, { id: "voice-context", agent });
@@ -168,7 +166,7 @@ it("interrupts a foreground run while preserving the owner's conversation and to
   });
   env.fake.load({ sessions: [session], tasks: [task] });
   await registry.bind(session, owner);
-  await env.sync.refresh();
+  await env.reconcile.refresh();
   const client = createClient(
     ConsoleService,
     createRouterTransport(
@@ -205,13 +203,13 @@ it("interrupts a foreground run while preserving the owner's conversation and to
     expect(next.contextId).toBe(session.id);
     expect(next.taskId).not.toBe(task.id);
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
 it("lets administrators read shared service sessions of workspace agents without operating them", async () => {
-  const env = environment([]);
-  const registry = executions(memoryStore());
+  const env = await environment([]);
+  const registry = env.executions;
   const user = identity("user:alice");
   const administrator = create(ExecutionIdentitySchema, {
     subject: "user:administrator",
@@ -238,9 +236,9 @@ it("lets administrators read shared service sessions of workspace agents without
       }),
     ),
   });
-  await env.sync.refresh();
   await registry.bind(shared, identity("service:scheduler"));
   await registry.bind(personal, user);
+  await env.reconcile.refresh();
   let caller = administrator;
   const client = createClient(
     ConsoleService,
@@ -291,6 +289,6 @@ it("lets administrators read shared service sessions of workspace agents without
       first(client.watchConversation({ agent, contextId: shared.id })),
     ).rejects.toMatchObject({ code: Code.NotFound });
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });

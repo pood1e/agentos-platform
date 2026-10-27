@@ -7,7 +7,7 @@ import { can } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { TaskEntry } from "../read-model/entry.js";
-import type { TaskIndex } from "../read-model/index.js";
+import type { TaskGraph } from "../read-model/graph.js";
 import { taskTree } from "../read-model/tree.js";
 import { taskSummary } from "../read-model/views/task.js";
 import { fail, notFound } from "../shared/errors.js";
@@ -16,10 +16,9 @@ import { emptyTags, type TaskTagStore } from "../tasks/tags.js";
 export function taskTagCommands(
   clients: KagentClients,
   store: TaskTagStore,
-  executions?: Executions,
+  executions: Executions,
 ) {
   async function editable(root: TaskEntry, identity: ExecutionIdentity) {
-    if (!executions) return true;
     try {
       const { session } = await clients.sessions.getSession(
         { sessionId: root.contextId },
@@ -41,9 +40,13 @@ export function taskTagCommands(
       const metadata = await store.read(tasks.map((task) => task.id));
       for (const task of tasks) Object.assign(task, metadata.get(task.id) ?? emptyTags());
     },
-    async update(request: UpdateTaskTagsRequest, view: TaskIndex, identity: ExecutionIdentity) {
-      const root = view.operationRoot(request.taskId);
-      const tree = root && taskTree(view, root.id);
+    async update(
+      request: UpdateTaskTagsRequest,
+      view: TaskGraph | undefined,
+      identity: ExecutionIdentity,
+    ) {
+      const root = view?.operationRoot(request.taskId);
+      const tree = view && root && taskTree(view, root.id);
       if (!tree) throw notFound("task.notFound");
       if (!(await editable(tree.root, identity)))
         throw fail(Code.PermissionDenied, "task.tagsDenied");

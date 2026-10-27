@@ -7,10 +7,10 @@ import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { templateWriter } from "../server/console/template-writer.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 it("atomically rejects a concurrent template replacement through the official Kubernetes SDK", async () => {
-  const { fake } = environment();
+  const { fake } = fakeKagent();
   const server = createServer(async (request, response) => {
     if (!(await kubernetesRequest(fake, request, response))) {
       response.statusCode = 404;

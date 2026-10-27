@@ -1,19 +1,19 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Mutex } from "async-mutex";
 import type { KagentClients } from "../kagent/clients.js";
-import { ingest } from "./entry.js";
+import type { Native, TaskProjection } from "./projection.js";
 import { terminal } from "./state.js";
-import type { KagentSync } from "./sync.js";
 import type { TaskTree } from "./tree.js";
 
 /** Cancel every unfinished delegated task, preserving successful results on partial failure. */
 export async function cancelTree(
   clients: Pick<KagentClients, "a2a">,
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "apply">,
   tree: Pick<TaskTree, "entries">,
   signal?: AbortSignal,
 ): Promise<void> {
   const sessions = new Map<string, Mutex>();
+  const canceled: Native[] = [];
   const results = await Promise.allSettled(
     tree.entries
       .filter((entry) => !terminal(entry.state))
@@ -36,13 +36,13 @@ export async function cancelTree(
               if (!terminal(current.status?.state)) throw error;
               return current;
             });
-          sync.index.upsert(ingest(task, entry.agentId));
+          canceled.push({ task, agentId: entry.agentId });
           if (!terminal(task.status?.state))
             throw new ConnectError("Task cancellation is still pending", Code.FailedPrecondition);
         });
       }),
   );
-  sync.index.flush();
+  await projection.apply(canceled);
   const failure = results.find((result) => result.status === "rejected");
   if (failure?.status === "rejected") throw failure.reason;
 }

@@ -33,8 +33,8 @@ import { knowledgeService } from "../knowledge/service.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
 import { mcpApps } from "../mcp-apps/service.js";
-import { TaskIndex } from "../read-model/index.js";
-import { KagentSync } from "../read-model/sync.js";
+import { taskProjection } from "../read-model/projection.js";
+import { reconciler } from "../read-model/reconcile.js";
 import { kagentConfig, listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { voiceCalls } from "../speech/calls.js";
 import { speechService } from "../speech/service.js";
@@ -72,7 +72,12 @@ const app = Fastify({
   bodyLimit: 2 * 1024 * 1024,
 });
 const clients = kagentClients(kagentTransport(config));
-const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log);
+const database = {
+  uri: requiredEnv("AGENTOS_EXECUTION_DATABASE_URL"),
+  ca: process.env.AGENTOS_EXECUTION_DATABASE_CA
+    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
+    : undefined,
+};
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const configuration = await configurationClients(kubeConfig, config.namespace, clients, app.log);
@@ -105,13 +110,14 @@ await registerDelegation(app, {
   executions: execution.registry,
 });
 registerEnvironmentApis(app, operations, environmentToken, identity);
-const tags = await taskTagStore(
-  process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
-  config.namespace,
-  process.env.AGENTOS_EXECUTION_DATABASE_CA
-    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
-    : undefined,
-);
+const tags = await taskTagStore(database.uri, config.namespace, database.ca);
+const projection = await taskProjection({
+  ...database,
+  workspace: config.namespace,
+  clients,
+  executions: execution.store,
+});
+const reconcile = reconciler(projection, clients, config.namespace, app.log);
 const automation = automationPresets(config.namespace, packRoot);
 const workloads = workloadIdentity(
   workloadConfiguration(),
@@ -156,16 +162,16 @@ await registerConsole(app, {
     metadata,
     apps: mcpApps({
       clients,
-      sync,
+      projection,
+      namespace: config.namespace,
       access,
       operations,
       metadata,
       sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
-      executions: execution.registry,
       token: environmentToken,
       log: app.log,
     }),
-    sync,
+    projection,
     clients,
     namespace: config.namespace,
     access,
@@ -194,29 +200,29 @@ await registerConsole(app, {
     automation,
     operations.environments.flatMap((entry) => entry.environment?.name ?? []),
     process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
-    sync,
+    projection,
   ),
-  ready: () => sync.healthy() && configuration.healthy(),
+  ready: () => projection.healthy() && configuration.healthy(),
   packRoot,
 });
 await registerPlatformMcp(
   app,
   config,
   clients,
-  sync,
+  projection,
   execution,
   workloads,
   access,
   knowledgeService(clients, knowledge),
   automation.scheduledRuns,
 );
-const continueDelegation = continuations(sync, async (contextId, contexts) => {
+const continueDelegation = continuations(projection, async (contextId, contexts) => {
   const { session: parent } = await clients.sessions.getSession({ sessionId: contextId });
   if (!parent) throw new Error("Execution session is unavailable");
   await relatedExecutions(execution.registry, clients.sessions, parent, contexts);
 });
 const approvals = approvalCoordinator(
-  sync,
+  projection,
   operations,
   async (contextId, tools) => {
     const { session } = await clients.sessions.getSession(
@@ -228,16 +234,10 @@ const approvals = approvalCoordinator(
   },
   environmentToken,
 );
-await sync.refresh();
-const jobs = await coordinationQueue(
-  process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
-  config.namespace,
-  app.log,
-  process.env.AGENTOS_EXECUTION_DATABASE_CA
-    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
-    : undefined,
-);
-const stopCoordination = await startCoordination(sync, jobs, [continueDelegation, approvals]);
+const jobs = await coordinationQueue(database.uri, config.namespace, app.log, database.ca);
+// Coordination hooks join projection writes before the first reconciliation backfills them.
+const stopCoordination = await startCoordination(projection, jobs, [continueDelegation, approvals]);
+await reconcile.refresh();
 const processor = grpcServer(app, {
   fallback: gatewayAuthorization(
     execution.authorizeTransport,
@@ -272,18 +272,20 @@ const processor = grpcServer(app, {
   },
 });
 const runtimeProcessor = grpcServer(app, {
-  routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
+  routes: (router) =>
+    registerRuntime(router, execution, config, clients, knowledge.scope, projection.apply, app.log),
 });
 const keys = actorKeyServer(app, execution.actorKeys);
 app.addHook("onClose", async () => {
   await stopCoordination();
   await jobs.boss.stop({ graceful: true, timeout: 40_000 });
-  sync.close();
+  reconcile.close();
+  await projection.close();
   await configuration.close();
   await execution.close();
   await tags.close();
 });
-sync.start();
+reconcile.start();
 await automation.seed(clients);
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => void app.close());
 await Promise.all([

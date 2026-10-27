@@ -5,7 +5,7 @@ import type { ScheduledRun } from "../../gen/kagent/api/v1/scheduled_runs_pb.js"
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import type { automationPresets } from "./presets.js";
 import { scheduledExecutionResult } from "./results.js";
 
@@ -20,7 +20,7 @@ export function automationService(
   },
   environments: string[] = [],
   ingressEnabled = false,
-  sync?: KagentSync,
+  projection?: Pick<TaskProjection, "graphOf" | "fullTask">,
 ): ServiceImpl<typeof AutomationService> {
   const native = clients.schedules;
   const options = (context: HandlerContext) => ({ signal: context.signal, timeoutMs: 15_000 });
@@ -99,10 +99,10 @@ export function automationService(
     },
     async getScheduledRunExecutionResult(request, context) {
       read(context);
-      if (!sync) throw new ConnectError("Execution history is unavailable", Code.Unavailable);
+      if (!projection) throw new ConnectError("Execution history is unavailable", Code.Unavailable);
       return scheduledExecutionResult(
         clients,
-        sync,
+        projection,
         workspace,
         request,
         async (id) => {

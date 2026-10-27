@@ -11,63 +11,62 @@ import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { messageCommands } from "../server/console/messages.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { fixtureAgents } from "./fixtures/kagent.js";
-import { environment } from "./harness.js";
+import { bindTasks, environment, fakeKagent, operator } from "./harness.js";
 
 it("keeps cancelled tasks terminal when a late reply reaches the runtime fixture", () => {
-  const env = environment();
+  const env = fakeKagent();
   const task = [...env.fake.tasks.values()][0];
   env.fake.update(task, TaskState.CANCELED);
   const before = task.history.length;
-  try {
-    expect(() =>
-      env.fake.accept(
-        create(MessageSchema, {
-          taskId: task.id,
-          contextId: task.contextId,
-          messageId: "late-reply",
-          role: Role.USER,
-          parts: [{ content: { case: "text", value: "Late response" } }],
-        }),
-      ),
-    ).toThrowError(expect.objectContaining({ code: Code.FailedPrecondition }));
-    expect(task.status?.state).toBe(TaskState.CANCELED);
-    expect(task.history).toHaveLength(before);
-  } finally {
-    env.sync.close();
-  }
+  expect(() =>
+    env.fake.accept(
+      create(MessageSchema, {
+        taskId: task.id,
+        contextId: task.contextId,
+        messageId: "late-reply",
+        role: Role.USER,
+        parts: [{ content: { case: "text", value: "Late response" } }],
+      }),
+    ),
+  ).toThrowError(expect.objectContaining({ code: Code.FailedPrecondition }));
+  expect(task.status?.state).toBe(TaskState.CANCELED);
+  expect(task.history).toHaveLength(before);
 });
 
 it("runs a selected Agent without a coordinator, external approvals or a solution pack", async () => {
-  const { fake, sync, clients } = environment([]);
+  const { fake, clients, projection, reconcile, executions, close } = await environment([]);
   const preset = fixtureAgents().find((agent) => agent.ref?.name === "inspection");
   if (!preset) throw new Error("Agent fixture missing");
   const writer = clone((await import("../gen/kagent/api/v1/agents_pb.js")).AgentSchema, preset);
   if (writer.ref) writer.ref.name = "writer";
   fake.agents.splice(0, fake.agents.length, writer);
   fake.load({ sessions: [], tasks: [] });
-  await sync.refresh();
+  await reconcile.refresh();
+  const commands = messageCommands(projection, clients, "agentos", executions);
   try {
-    const response = await messageCommands(sync, clients).send(
+    const response = await commands.send(
       create(SendMessageRequestSchema, {
         agent: { namespace: "agentos", name: "writer" },
         messageId: "copywriting-request",
         text: "Write a concise product description",
       }),
+      operator,
     );
     expect(response.contextId).toBeTruthy();
     expect(fake.agents.map((agent) => agent.ref?.name)).toEqual(["writer"]);
-    expect(sync.index.session(response.contextId)?.agentId).toBe("agentos/writer");
+    expect((await projection.session(response.contextId))?.agentId).toBe("agentos/writer");
     await expect(
-      messageCommands(sync, clients).send(
+      commands.send(
         create(SendMessageRequestSchema, {
           agent: { namespace: "foreign", name: "writer" },
           messageId: "foreign",
           text: "Write",
         }),
+        operator,
       ),
     ).rejects.toThrow();
   } finally {
-    sync.close();
+    await close();
   }
 });
 
@@ -96,7 +95,7 @@ async function pending(external = false) {
     status: { state: TaskState.INPUT_REQUIRED, message: question },
     history: [question],
   });
-  const env = environment([task]);
+  const env = await environment([task]);
   env.fake.load({
     sessions: [
       create(SessionSchema, {
@@ -106,8 +105,9 @@ async function pending(external = false) {
     ],
     tasks: [task],
   });
-  await env.sync.refresh();
-  const interaction = env.index.entry(task.id)?.interactions[0];
+  await bindTasks(env.store, env.fake, [task]);
+  await env.reconcile.refresh();
+  const interaction = (await env.projection.entry(task.id))?.interactions[0];
   if (!interaction) throw new Error("Native confirmation is missing");
   const governance = create(GovernanceConfigSchema, {
     environments: external
@@ -119,13 +119,25 @@ async function pending(external = false) {
         ]
       : [],
   });
-  return { ...env, interaction, commands: messageCommands(env.sync, env.clients, governance) };
+  const commands = messageCommands(
+    env.projection,
+    env.clients,
+    "agentos",
+    env.executions,
+    governance,
+  );
+  return {
+    ...env,
+    interaction,
+    respond: (request: Parameters<typeof commands.respond>[0]) =>
+      commands.respond(request, operator),
+  };
 }
 
 it("resumes native tool confirmation only after an exact human decision", async () => {
   const env = await pending();
   try {
-    await env.commands.respond(
+    await env.respond(
       create(RespondInteractionRequestSchema, {
         taskId: env.interaction.taskId,
         requestId: env.interaction.requestId,
@@ -137,7 +149,7 @@ it("resumes native tool confirmation only after an exact human decision", async 
       value: { approvals: [{ id: "publish", approved: true }] },
     });
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
@@ -146,7 +158,7 @@ it("rejects mismatched tool decisions and browser overrides of an external autho
     const env = await pending(external);
     try {
       await expect(
-        env.commands.respond(
+        env.respond(
           create(RespondInteractionRequestSchema, {
             taskId: env.interaction.taskId,
             requestId: env.interaction.requestId,
@@ -159,7 +171,7 @@ it("rejects mismatched tool decisions and browser overrides of an external autho
       ).rejects.toThrow();
       expect(env.fake.received).toHaveLength(0);
     } finally {
-      env.sync.close();
+      await env.close();
     }
   }
 });
