@@ -2,7 +2,7 @@ import { create, type JsonObject } from "@bufbuild/protobuf";
 import { MCPCredentialBindingSchema } from "../../gen/agentos/management/v1/management_pb.js";
 import { type ToolServer, ToolServerSchema } from "../../gen/kagent/api/v1/tools_pb.js";
 import type { AccessPlan } from "../governance/access-plans.js";
-import { serverTargets } from "../governance/access-plans.js";
+import { serverTargets } from "../governance/bindings.js";
 import { text } from "../read-model/decode/messages.js";
 import { meta } from "./native.js";
 

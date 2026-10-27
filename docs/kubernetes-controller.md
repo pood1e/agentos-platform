@@ -15,6 +15,8 @@
 派生对象使用独立 SSA field manager、父对象 controller ownerReference 和 UID 索引；重启后从索引恢复尚未写入 status 的对象。
 `Ready=True` 且 `observedGeneration` 等于当前 generation 时，`AccessPlan.status.targets` 才可参与授权。
 Informer 断开、计划未就绪、冲突的编译结果、未知工具均拒绝授权。
+`shared/access-plans.ts` 与 `shared/tool-bindings.ts` 随 npm 契约发布，平台治理与环境审批服务共用编译结果读取接口。
+环境模式同时发布目录与各身份的工具决策，审批属性取自环境的治理模式。
 
 管理 API 每次只写一次原生连接父对象，凭据单独写入该对象拥有的 Secret。
 凭据写入失败时父对象保留，控制器记录 `AgentOSReady=False`；重试保存后继续收敛。

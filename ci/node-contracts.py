@@ -34,6 +34,7 @@ package = {
     "peerDependencies": {
         name: "^" + manifest["dependencies"][name]
         for name in (
+            "@kubernetes/client-node",
             "@assistant-ui/react",
             "@modelcontextprotocol/client",
             "@modelcontextprotocol/core",
@@ -53,6 +54,7 @@ package = {
         name: {"optional": True}
         for name in (
             "react",
+            "@kubernetes/client-node",
             "@assistant-ui/react",
             "@modelcontextprotocol/client",
             "@modelcontextprotocol/core",

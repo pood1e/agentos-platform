@@ -1,5 +1,6 @@
 environment:
   name: ''
+  governance: direct
   issuer: ''
   resource: ''
   jwksURL: ''

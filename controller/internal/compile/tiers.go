@@ -55,8 +55,8 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 			}
 			service := environment.Name + "-" + project
 			catalog := platform.CompiledTarget{Server: service, Service: service, Project: project, Environment: environment.Name, Catalog: true, Tools: tools}
+			result.Targets = append(result.Targets, catalog)
 			if plan.Spec.Mode == "platform" {
-				result.Targets = append(result.Targets, catalog)
 				if environment.Gateway != nil {
 					if plan.Spec.Platform == nil {
 						return result, fmt.Errorf("platform gateway is required")
@@ -80,6 +80,17 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 						return result, err
 					}
 					result.Resources = append(result.Resources, resources...)
+					if identity.Name != "catalog" {
+						target := catalog
+						target.Server, target.Engineer, target.Catalog = project+"-"+identity.Name, identity.Name, false
+						target.Access = "readOnly"
+						if len(write) != 0 {
+							target.Access = "write"
+						}
+						allowed := append(slices.Clone(read), write...)
+						target.Tools = slices.DeleteFunc(slices.Clone(tools), func(tool platform.CompiledTool) bool { return !slices.Contains(allowed, tool.Name) })
+						result.Targets = append(result.Targets, target)
+					}
 					continue
 				}
 				if identity.Name == "catalog" {

@@ -19,7 +19,7 @@ flowchart LR
 | `environments/deploy.yaml` | 安装固定版本控制器与 `agentos-environment` Chart，发布平台连接 release |
 | `environments/connections.yaml` | 安装 `agentos-connections` Chart，统一管理平台环境 CA、准入配置、服务目录与身份视图 |
 | `environments/connect.yaml` | 等待原生工具发现，初始化新增连接的默认工具绑定 |
-| `environments/lifecycle.yaml` | 对比原 release 的身份与服务范围，先解除退役资源的原生模板引用 |
+| `environments/lifecycle.yaml` | 对比原 release 的身份范围，识别需要撤销目标凭据的身份 |
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 只用于服务工具发现。
 
@@ -124,7 +124,7 @@ Chart 管理对象由 Helm 回收，预置连接在控制台只读。平台创�
 
 身份变更按以下顺序执行：
 
-1. 方案包调用 `lifecycle.yaml`，读取上一版环境 release，并通过原生 AgentTemplate API 解除退役工具绑定；后续执行按当前模板复验。
+1. 方案包调用 `agentos.platform.lifecycle`，读取上一版环境 release，识别退役身份。
 2. 环境通过目标系统原生 API 撤销对应 OAuth 客户端、角色、API 令牌及凭据 Secret。
 3. 更新环境 release，再更新平台连接 release；控制器回收已移除的路由、工具视图与注册，Helm 回收 CA 声明。
 4. 应用值和连接配置同步后，检查原生发现、OBO、角色工具范围与撤销结果。

@@ -35,6 +35,28 @@ func TestEnvironmentCredentialAndIdentityBoundaries(t *testing.T) {
 			t.Fatal("identity gained UI resource access")
 		}
 	}
+	plan.Spec.Environments[0].Governance = "approval"
+	result, err = Plan(&plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decisions := make(map[string]map[string]platform.CompiledTool)
+	for _, target := range result.Targets {
+		decisions[target.Server] = make(map[string]platform.CompiledTool)
+		for _, tool := range target.Tools {
+			decisions[target.Server][tool.Name] = tool
+		}
+	}
+	if len(decisions["lab-ops"]) != 4 {
+		t.Fatal("environment catalog did not publish all compiled decisions")
+	}
+	manager := decisions["ops-manager"]
+	if len(manager) != 3 || !manager["drain"].Write || !manager["drain"].RequireApproval || manager["get"].Write {
+		t.Fatalf("incorrect environment identity decisions: %v", manager)
+	}
+	if _, operationalWrite := manager["update"]; operationalWrite {
+		t.Fatal("management identity gained operational write permission")
+	}
 	connector := plan.Spec.Connectors["ops"]
 	target := connector.Targets[0]
 	target.Auth = nil

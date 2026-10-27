@@ -12,6 +12,10 @@
           "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
           "type": "string"
         },
+        "governance": {
+          "enum": ["approval", "direct"],
+          "type": "string"
+        },
         "issuer": {
           "pattern": "^https://[^/]+",
           "type": "string"
@@ -25,7 +29,7 @@
           "type": "string"
         }
       },
-      "required": ["name", "issuer", "resource", "jwksURL"]
+      "required": ["name", "governance", "issuer", "resource", "jwksURL"]
     },
     "gateway": {
       "type": "object",

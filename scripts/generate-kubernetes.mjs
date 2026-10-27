@@ -69,7 +69,7 @@ save("agentos-environment", {
     {
       environment: object(
         Object.fromEntries(
-          ["name", "issuer", "resource", "jwksURL"].map((name) => [
+          ["name", "governance", "issuer", "resource", "jwksURL"].map((name) => [
             name,
             environment.properties[name],
           ]),

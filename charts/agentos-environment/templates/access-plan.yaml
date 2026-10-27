@@ -9,7 +9,7 @@ spec:
   identities: {{ toYaml .Values.identities | nindent 4 }}
   environments:
     - name: {{ .Values.environment.name }}
-      governance: direct
+      governance: {{ .Values.environment.governance }}
       issuer: {{ .Values.environment.issuer | quote }}
       resource: {{ .Values.environment.resource | quote }}
       jwksURL: {{ .Values.environment.jwksURL | quote }}
