@@ -1,14 +1,56 @@
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it, vi } from "vitest";
-import { MessageSchema, Role, StreamResponseSchema, TaskState } from "../gen/a2a_pb.js";
+import {
+  ListTasksResponseSchema,
+  MessageSchema,
+  Role,
+  StreamResponseSchema,
+  TaskState,
+} from "../gen/a2a_pb.js";
 import { object } from "../server/read-model/decode/messages.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment, until } from "./harness.js";
 
 describe("kagent synchronization", () => {
+  it("loads large historical tasks without aggregating their payloads into one RPC response", async () => {
+    const { fake, sync, clients, index } = environment();
+    const seeded = syntheticOperations(2);
+    for (const task of seeded.tasks) {
+      task.history = [
+        create(MessageSchema, {
+          messageId: `input-${task.id}`,
+          role: Role.USER,
+          parts: [{ content: { case: "text", value: "x".repeat(9 * 1024 * 1024) } }],
+        }),
+      ];
+    }
+    fake.load({ sessions: [...fake.sessions.values(), ...seeded.sessions], tasks: seeded.tasks });
+    expect(
+      toBinary(ListTasksResponseSchema, create(ListTasksResponseSchema, { tasks: seeded.tasks }))
+        .byteLength,
+    ).toBeGreaterThan(16 * 1024 * 1024);
+    const list = clients.a2a.listTasks.bind(clients.a2a);
+    vi.spyOn(clients.a2a, "listTasks").mockImplementation(async (request, options) => {
+      const page = await list(request, options);
+      if (toBinary(ListTasksResponseSchema, page).byteLength > 16 * 1024 * 1024)
+        throw new ConnectError("response exceeds RPC limit", Code.ResourceExhausted);
+      return page;
+    });
+    try {
+      await sync.refresh();
+      expect(sync.healthy()).toBe(true);
+      for (const task of seeded.tasks) {
+        expect(fake.fetched).toContain(task.id);
+        expect(index.entry(task.id)?.messageIds).toContain(`input-${task.id}`);
+        expect((await sync.fullTask(task.id))?.history).toEqual(task.history);
+      }
+    } finally {
+      sync.close();
+    }
+  });
   it("subscribes to active work without rescanning completed history", async () => {
     const { fake, sync, clients, index } = environment();
     try {
@@ -157,6 +199,7 @@ describe("kagent synchronization", () => {
     expect(index.entry(ids.retiredMember)?.agentId).toBe("agentos/service-health");
 
     fake.listed.length = 0;
+    fake.fetched.length = 0;
     fake.update(fake.task(ids.inspection), TaskState.FAILED);
     await sync.refresh();
     expect(fake.listed.length).toBeGreaterThan(0);

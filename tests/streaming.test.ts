@@ -144,6 +144,7 @@ describe("streamed task content", () => {
       tasks: [...fake.tasks.values(), ...seeded.tasks],
     });
     await sync.refresh();
+    fake.fetched.length = 0;
     try {
       expect(index.entry("synthetic-task-0")).toBeDefined();
       expect(fake.fetched).toHaveLength(0);

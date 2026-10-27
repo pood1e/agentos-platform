@@ -110,10 +110,7 @@ export class KagentSync {
     this.sessionsLoaded = true;
   }
 
-  /**
-   * The first listing carries full tasks. Later listings carry status only, and
-   * tasks whose status changed are fetched individually.
-   */
+  /** Lists status only; full task payloads are fetched individually. */
   private async syncTenant(tenant: string) {
     const after = this.watermarks.get(tenant);
     const changed: Task[] = [];
@@ -125,8 +122,8 @@ export class KagentSync {
             tenant,
             pageSize: 100,
             pageToken,
-            includeArtifacts: after === undefined,
-            historyLength: after === undefined ? undefined : 0,
+            includeArtifacts: false,
+            historyLength: 0,
             statusTimestampAfter:
               after === undefined ? undefined : timestampFromMs(after - overlap),
           },
@@ -137,8 +134,7 @@ export class KagentSync {
       (tasks) => {
         for (const task of tasks) {
           watermark = Math.max(watermark ?? 0, statusMillis(task) ?? 0);
-          if (after === undefined) this.tasks.store(task, tenant);
-          else if (this.tasks.changed(task)) changed.push(task);
+          if (after === undefined || this.tasks.changed(task)) changed.push(task);
         }
       },
     );
