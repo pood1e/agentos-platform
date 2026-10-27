@@ -8,3 +8,5 @@
 - 首次准备策略保留技能来源的出站访问，普通会话凭据独立注入。关联的 Substrate 修复见 [启动网络](../substrate/README.md)。
 
 CI 在 PostgreSQL 18/pgvector 上验证范围隔离、删除、原生持久化、工具筛选、审批恢复及模板准备，随后执行上游 lint 并构建 controller 与三个 Harness。协议从同一份上游 proto 生成。
+
+上游提交：[Actor 身份头 #3401](https://github.com/kagent-dev/kagent/pull/3401)、[Memory 身份范围 #3402](https://github.com/kagent-dev/kagent/pull/3402)、[Harness 工具约束 #3403](https://github.com/kagent-dev/kagent/pull/3403)、[准备策略 #3404](https://github.com/kagent-dev/kagent/pull/3404)。所选发布版本包含能力并通过站点回归后移除对应补丁。

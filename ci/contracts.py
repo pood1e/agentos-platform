@@ -55,6 +55,7 @@ def wheel(name, project, sources, requirements=""):
             str(target),
         ],
         env={**os.environ, "SOURCE_DATE_EPOCH": epoch},
+        umask=0o022,
         check=True,
     )
 
