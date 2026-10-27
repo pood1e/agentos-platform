@@ -23,4 +23,5 @@ plugins:
       - agentos.automation.v1.CaseReference
       - agentos.automation.v1.ScheduledExecutionQuery
       - agentos.automation.v1.GetScheduledRunExecutionResultRequest
+      - kagent.api.v1.DispatchScheduledRunExecutionRequest
     opt: [target=json-bundle]

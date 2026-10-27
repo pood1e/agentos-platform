@@ -29,6 +29,7 @@ message AutomationSource {
   repeated kagent.api.v1.ResourceReference case_agents = 7;
   bool write = 8;
   repeated Capability capabilities = 9;
+  repeated string scheduled_run_dispatch_presets = 10;
 }
 
 // Gateway-provided HTTP context, separate from the MCP authorization protocol.

@@ -32,6 +32,7 @@ it("updates pack instructions by native etag while retaining the schedule ID, cy
   pack.scheduledRunPrompts = {
     [original.key]: "Read native incident evidence and validate the report.",
   };
+  pack.externallyDispatchedPresets = [original.key];
   await writeFile(join(directory, "automation.json"), JSON.stringify(pack));
   const updated = automationPresets("agentos", directory);
   await updated.seed(env.clients);
@@ -44,6 +45,7 @@ it("updates pack instructions by native etag while retaining the schedule ID, cy
     paused: false,
     schedule: "*/7 * * * *",
     prompt: pack.scheduledRunPrompts[original.key],
+    dispatchRequired: true,
   });
   expect(
     (await env.clients.schedules.listScheduledRunExecutions({ scheduledRunId: scheduledRun.id }))

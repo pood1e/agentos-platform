@@ -40,6 +40,7 @@ service AutomationService {
 message ScheduledExecutionQuery {
   string preset_key = 1 [(buf.validate.field).string.min_len = 1];
   kagent.api.v1.PageRequest page = 2;
+  bool active_only = 3;
 }
 
 message GetScheduledRunExecutionResultRequest {
@@ -60,6 +61,8 @@ message AutomationPresets {
   repeated CaseTrigger event_triggers = 2 [(buf.validate.field).repeated.max_items = 64];
   // Pack-owned instructions, updated with the native etag while retaining runtime settings.
   map<string, string> scheduled_run_prompts = 3;
+  // Environment-owned dispatch decisions precede Agent session creation.
+  repeated string externally_dispatched_presets = 4;
 }
 
 message ListScheduledRunPresetsRequest {}

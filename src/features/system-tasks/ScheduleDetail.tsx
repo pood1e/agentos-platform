@@ -96,7 +96,9 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
                   )}
                 </TableCell>
                 <TableCell>
-                  {t(`automation.states.${ScheduledRunExecutionState[execution.state]}`)}
+                  {execution.awaitingDispatch
+                    ? t("automation.awaitingDispatch")
+                    : t(`automation.states.${ScheduledRunExecutionState[execution.state]}`)}
                 </TableCell>
                 <TableCell>
                   {execution.taskId ? (
@@ -112,6 +114,11 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
                   {execution.failureReason && (
                     <p className="mt-1 max-w-64 whitespace-normal break-words text-xs text-muted-foreground">
                       {execution.failureReason}
+                    </p>
+                  )}
+                  {execution.dispatchReason && (
+                    <p className="mt-1 max-w-64 whitespace-normal break-words text-xs text-muted-foreground">
+                      {execution.dispatchReason}
                     </p>
                   )}
                 </TableCell>
