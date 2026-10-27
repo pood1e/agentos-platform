@@ -1,6 +1,0 @@
-dependencies:
-- name: agentos-controller
-  repository: file://../agentos-controller
-  version: 0.39.0
-digest: sha256:85dc82a46d93b87d85e78df82bc0e514699229b242b40a5d3e617587a5efd352
-generated: "2026-10-27T23:20:06.054495286+08:00"

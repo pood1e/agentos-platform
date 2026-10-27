@@ -22,6 +22,7 @@ GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执�
 release-please 使用仓库令牌管理发布 PR。创建后，同一作业通过 GitHub 原生审批 API 启动同仓库、release-please 分支的检查；普通 PR 与发布 PR 均在合并提交执行相同门禁。
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。功能 PR 保持版本文件不变。
+同仓库 library Chart 依赖由当前源码解析；发布包携带精确版本的 `Chart.lock`。
 合并发布 PR 后生成版本 tag，GitLab 的 `GitHub source sync` 定时流水线从内网同步 main 与 tag；GitLab 核对 tag、源提交和版本一致性后构建。
 同步使用项目专用部署密钥，存于受保护的文件变量 `AGENTOS_SOURCE_MIRROR_KEY`，主机公钥存于 `AGENTOS_SOURCE_MIRROR_HOST_KEYS`；两者限定 `source-sync` 环境。同步只做快进更新，拒绝覆盖已有版本 tag；GitLab 原生推送触发对应构建流水线。
 

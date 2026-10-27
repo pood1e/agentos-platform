@@ -13,5 +13,6 @@ gen/
 .ansible/
 .npm/
 charts/*/charts/
+charts/*/Chart.lock
 tests/fixtures/solution-chart/charts/
 tests/fixtures/solution-chart/Chart.lock
