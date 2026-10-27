@@ -7,27 +7,6 @@
 
 controller-verify:
   extends: .go-verify
-  rules: &controller-rules
-    - if: '$CI_COMMIT_TAG'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      changes: &controller-paths
-        - runtime/kagent/**/*
-        - runtime/harness-toolbox/**/*
-        - runtime/substrate/**/*
-        - third_party/kagent/**/*
-        - third_party/substrate/ateapi.proto
-        - ci/verify-controller.sh
-        - ci/prepare-substrate.sh
-        - ci/toolchain.gitlab-ci.yml
-        - mise.*
-        - ci/runtime.gitlab-ci.yml
-        - ci/build.gitlab-ci.yml
-        - ci/build-image.sh
-    - if: '$CI_COMMIT_BRANCH'
-      changes:
-        compare_to: refs/heads/main
-        paths: *controller-paths
   script:
     - psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
     - ci/verify-controller.sh
@@ -37,24 +16,6 @@ controller-verify:
 
 substrate-verify:
   extends: .go-verify
-  rules: &substrate-rules
-    - if: '$CI_COMMIT_TAG'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      changes: &substrate-paths
-        - runtime/substrate/**/*
-        - third_party/substrate/ateapi.proto
-        - ci/verify-substrate.sh
-        - ci/prepare-substrate.sh
-        - ci/toolchain.gitlab-ci.yml
-        - mise.*
-        - ci/runtime.gitlab-ci.yml
-        - ci/build.gitlab-ci.yml
-        - ci/build-image.sh
-    - if: '$CI_COMMIT_BRANCH'
-      changes:
-        compare_to: refs/heads/main
-        paths: *substrate-paths
   script:
     - psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
     - ci/verify-substrate.sh
@@ -64,7 +25,6 @@ substrate-verify:
 
 build-controller:
   extends: .build-image
-  rules: *controller-rules
   needs: [controller-verify]
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/controller-image
@@ -72,12 +32,11 @@ build-controller:
     AGENTOS_IMAGE_SUFFIX: /kagent-controller
     AGENTOS_BUILD_METADATA: .cache/controller-build-metadata.json
   artifacts:
-    paths: [.cache/controller-build-metadata.json]
+    paths: [.cache/controller-build-metadata.json, .cache/controller-build-metadata.ref]
     expire_in: 1 day
 
 build-substrate-api:
   extends: .build-image
-  rules: *substrate-rules
   needs: [substrate-verify]
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/substrate-image
@@ -85,7 +44,7 @@ build-substrate-api:
     AGENTOS_IMAGE_SUFFIX: /substrate/ateapi
     AGENTOS_BUILD_METADATA: .cache/substrate-api-build-metadata.json
   artifacts:
-    paths: [.cache/substrate-api-build-metadata.json]
+    paths: [.cache/substrate-api-build-metadata.json, .cache/substrate-api-build-metadata.ref]
     expire_in: 1 day
 
 build-substrate-microvm:
@@ -95,12 +54,11 @@ build-substrate-microvm:
     AGENTOS_IMAGE_SUFFIX: /substrate/ateworker-microvm
     AGENTOS_BUILD_METADATA: .cache/substrate-microvm-build-metadata.json
   artifacts:
-    paths: [.cache/substrate-microvm-build-metadata.json]
+    paths: [.cache/substrate-microvm-build-metadata.json, .cache/substrate-microvm-build-metadata.ref]
     expire_in: 1 day
 
 build-claude-harness:
   extends: .build-image
-  rules: *controller-rules
   needs: [controller-verify]
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/claude-image
@@ -108,13 +66,12 @@ build-claude-harness:
     AGENTOS_IMAGE_SUFFIX: /claude-harness
     AGENTOS_BUILD_METADATA: .cache/claude-harness-build-metadata.json
   artifacts:
-    paths: [.cache/claude-harness-build-metadata.json]
+    paths: [.cache/claude-harness-build-metadata.json, .cache/claude-harness-build-metadata.ref]
     expire_in: 1 day
 
 build-standard-harness:
   extends: .build-image
   needs: [controller-verify]
-  rules: *controller-rules
   variables:
     AGENTOS_BUILD_CONTEXT: .cache/standard-image
     AGENTOS_DOCKERFILE_DIR: runtime/harness-toolbox
@@ -122,7 +79,7 @@ build-standard-harness:
     AGENTOS_IMAGE_SUFFIX: /standard-harness
     AGENTOS_BUILD_METADATA: .cache/standard-harness-build-metadata.json
   artifacts:
-    paths: [.cache/standard-harness-build-metadata.json]
+    paths: [.cache/standard-harness-build-metadata.json, .cache/standard-harness-build-metadata.ref]
     expire_in: 1 day
 
 build-codex-harness:
@@ -133,5 +90,5 @@ build-codex-harness:
     AGENTOS_IMAGE_SUFFIX: /codex-harness
     AGENTOS_BUILD_METADATA: .cache/codex-harness-build-metadata.json
   artifacts:
-    paths: [.cache/codex-harness-build-metadata.json]
+    paths: [.cache/codex-harness-build-metadata.json, .cache/codex-harness-build-metadata.ref]
     expire_in: 1 day

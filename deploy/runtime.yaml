@@ -10,7 +10,7 @@
   gather_facts: false
   vars_files: [vars.yaml]
   vars:
-    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
     harness_defaults: "{{ (lookup('file', playbook_dir ~ '/../charts/agentos/values.yaml') | from_yaml).harnesses }}"
     identity_pools:
       - { name: service-dns-ca-pool, namespace: podcertificate-controller-system, type: ca }
@@ -29,6 +29,18 @@
     kubernetes.core.k8s_info:
       kubeconfig: "{{ kubeconfig_path }}"
   tasks:
+    - name: Verify runtime image signatures
+      ansible.builtin.include_tasks: tasks/verify-oci.yaml
+      vars:
+        delivery_artifact:
+          reference: "{{ item }}"
+          version: "{{ delivery_version }}"
+          revision: "{{ delivery_revision }}"
+          public_key: "{{ delivery_public_key }}"
+      loop: >-
+        {{ [kagent_controller_image, substrate_api_image, substrate_microvm_image]
+           + (harness_defaults.values() | map(attribute='workload.image') | list) | unique }}
+
     - name: Install Agent Substrate CRDs
       kubernetes.core.helm:
         name: substrate-crds
@@ -73,12 +85,13 @@
         chart_version: "{{ substrate_version }}"
         release_namespace: ate-system
         release_values: "{{ lookup('template', 'values/substrate.yaml.j2') | from_yaml }}"
-        post_renderer: "{{ playbook_dir }}/microvm/substrate-post-renderer.py"
+        post_renderer: "{{ playbook_dir }}/post-renderer.sh"
         wait: false
         timeout: 10m
       environment:
         PATH: "{{ ansible_python_interpreter | dirname }}:{{ lookup('env', 'PATH') }}"
-        AGENTOS_SUBSTRATE_API_IMAGE: "{{ substrate_api_image }}"
+        AGENTOS_KUSTOMIZE_OVERLAY: "{{ playbook_dir }}/kustomize/substrate"
+        AGENTOS_PATCHED_IMAGE: "{{ substrate_api_image }}"
 
     - name: Prepare certificate controller namespace
       kubernetes.core.k8s:
@@ -272,13 +285,14 @@
         chart_version: "{{ kagent_version }}"
         release_namespace: "{{ agentos_namespace }}"
         release_values: "{{ lookup('template', 'values/kagent.yaml.j2') | from_yaml }}"
-        post_renderer: "{{ playbook_dir }}/gateway/kagent-post-renderer.py"
+        post_renderer: "{{ playbook_dir }}/post-renderer.sh"
         wait: true
         timeout: 10m
 
       environment:
         PATH: "{{ ansible_python_interpreter | dirname }}:{{ lookup('env', 'PATH') }}"
-        AGENTOS_KAGENT_CONTROLLER_IMAGE: "{{ kagent_controller_image }}"
+        AGENTOS_KUSTOMIZE_OVERLAY: "{{ playbook_dir }}/kustomize/kagent"
+        AGENTOS_PATCHED_IMAGE: "{{ kagent_controller_image }}"
       tags: [kagent]
 
     - name: Verify kagent controller rollout

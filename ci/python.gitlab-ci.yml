@@ -22,7 +22,7 @@ build-automation:
     AGENTOS_IMAGE_SUFFIX: /automation
     AGENTOS_BUILD_METADATA: .cache/automation-build-metadata.json
   artifacts:
-    paths: [.cache/automation-build-metadata.json]
+    paths: [.cache/automation-build-metadata.json, .cache/automation-build-metadata.ref]
     expire_in: 7 days
 
 build-voice:
@@ -33,7 +33,7 @@ build-voice:
     AGENTOS_IMAGE_SUFFIX: /voice
     AGENTOS_BUILD_METADATA: .cache/voice-build-metadata.json
   artifacts:
-    paths: [.cache/voice-build-metadata.json]
+    paths: [.cache/voice-build-metadata.json, .cache/voice-build-metadata.ref]
     expire_in: 7 days
 
 voice-verify:

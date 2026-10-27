@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [resources.yaml]
+patches:
+  - target: {name: kagent-ui.*}
+    patch: |-
+      apiVersion: v1
+      kind: List
+      metadata: {name: unused}
+      $patch: delete
+  - target: {kind: RemoteMCPServer, name: kagent-api}
+    patch: |-
+      apiVersion: api.kagent.dev/v1alpha3
+      kind: RemoteMCPServer
+      metadata: {name: kagent-api}
+      $patch: delete
+  - target: {kind: Deployment, name: kagent-controller}
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata: {name: kagent-controller}
+      spec:
+        template:
+          spec:
+            containers:
+              - {name: controller, image: agentos-patched-image}

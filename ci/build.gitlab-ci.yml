@@ -10,5 +10,5 @@
   resource_group: agentos-image${AGENTOS_IMAGE_SUFFIX}
   script: [ci/build-image.sh]
   artifacts:
-    paths: [.cache/build-metadata.json]
+    paths: [.cache/build-metadata.json, .cache/build-metadata.ref]
     expire_in: 1 day

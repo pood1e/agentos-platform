@@ -33,6 +33,36 @@ deployment-check:
     - ansible-playbook environments/deploy.yaml --syntax-check
     - ansible-playbook environments/connect.yaml --syntax-check
     - ci/check-charts.sh
+    - python ci/test-artifacts.py
+  artifacts:
+    paths: [.cache/chart-check/*crds*.yaml]
+    expire_in: 1 day
+
+platform-controller-verify:
+  extends: .agentos-go
+  stage: verify
+  needs: [deployment-check]
+  script:
+    - ci/generate-controller.sh
+    - go -C controller test -race ./...
+    - go -C controller vet ./...
+    - mkdir -p .cache/platform-controller-image
+    - CGO_ENABLED=0 go -C controller build -trimpath -ldflags='-s -w' -o ../.cache/platform-controller-image/agentos-controller ./cmd/controller
+  artifacts:
+    paths: [.cache/platform-controller-image/]
+    expire_in: 1 day
+
+build-platform-controller:
+  extends: .build-image
+  needs: [platform-controller-verify]
+  variables:
+    AGENTOS_BUILD_CONTEXT: .cache/platform-controller-image
+    AGENTOS_DOCKERFILE_DIR: controller
+    AGENTOS_IMAGE_SUFFIX: /platform-controller
+    AGENTOS_BUILD_METADATA: .cache/platform-controller-build-metadata.json
+  artifacts:
+    paths: [.cache/platform-controller-build-metadata.json, .cache/platform-controller-build-metadata.ref]
+    expire_in: 1 day
 
 build-image:
   extends: .build-image
@@ -44,7 +74,6 @@ build-contracts:
   needs: []
   script:
     - python ci/contracts.py
-    - python ci/test-package-chart.py
     - python ci/test-release.py
   artifacts:
     paths: [dist/contracts/, gen/python/, gen/authorization.json]
@@ -58,6 +87,7 @@ package-check:
     - build-image
     - build-automation
     - build-voice
+    - build-platform-controller
     - job: verify
       artifacts: false
     - job: deployment-check
@@ -65,20 +95,14 @@ package-check:
     - job: voice-verify
       artifacts: false
     - job: build-controller
-      optional: true
     - job: build-claude-harness
-      optional: true
     - job: build-standard-harness
-      optional: true
     - job: build-codex-harness
-      optional: true
     - job: build-substrate-api
-      optional: true
     - job: build-substrate-microvm
-      optional: true
   script: [python ci/package-chart.py]
   artifacts:
-    paths: [.cache/*-metadata.json, dist/, gen/]
+    paths: [.cache/*-metadata.json, .cache/*-metadata.ref, dist/, gen/]
     expire_in: 1 day
 
 release:
@@ -91,8 +115,5 @@ release:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   resource_group: agentos-release
   script:
-    - python ci/publish-contracts.py
-    - python ci/publish-chart.py
-  artifacts:
-    paths: [dist/release.json]
-    expire_in: 30 days
+    - python ci/publish-packages.py
+    - python ci/publish-oci.py

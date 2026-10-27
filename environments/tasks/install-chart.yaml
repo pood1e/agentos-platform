@@ -7,21 +7,15 @@
   when: environment_state == 'present'
   no_log: true
 
-- name: Install the managed environment gateway release
-  kubernetes.core.helm:
-    kubeconfig: "{{ kubeconfig }}"
-    binary_path: "{{ helm_binary }}"
-    name: "{{ environment_release }}"
-    chart_ref: "{{ environment_chart_repository }}/agentos-environment"
-    chart_version: "{{ environment_chart_version }}"
-    release_namespace: "{{ gateway_namespace }}"
-    reset_values: true
-    history_max: 3
-    values_files: "{{ [environment_cache ~ '/gateway-values.json'] if environment_state == 'present' else omit }}"
-    release_state: "{{ environment_state }}"
-    wait: true
-    timeout: 10m
-  no_log: true
+- name: Install verified environment gateway release
+  ansible.builtin.include_tasks: ../../deploy/tasks/install-chart.yaml
+  vars:
+    delivery_chart: "{{ environment_chart_repository }}/agentos-environment"
+    delivery_release: "{{ environment_release }}"
+    delivery_namespace: "{{ gateway_namespace }}"
+    delivery_values_file: "{{ environment_cache }}/gateway-values.json"
+    delivery_kubeconfig: "{{ kubeconfig }}"
+  when: environment_state == 'present'
 
 - name: Wait for the gateway certificate
   kubernetes.core.k8s_info:

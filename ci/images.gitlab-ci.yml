@@ -22,5 +22,5 @@ build-ci-tools:
     - mkdir -p "$AGENTOS_BUILD_CONTEXT/ci"
     - tar -cf - mise.toml mise.lock ci/python-requirements.txt ci/requirements.txt deploy/requirements.txt deploy/requirements.yaml contracts/requirements.txt automation/requirements.in | tar -xf - -C "$AGENTOS_BUILD_CONTEXT"
   artifacts:
-    paths: [.cache/ci-tools-build-metadata.json]
+    paths: [.cache/ci-tools-build-metadata.json, .cache/ci-tools-build-metadata.ref]
     expire_in: 7 days

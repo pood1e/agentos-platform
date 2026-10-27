@@ -6,7 +6,7 @@ variables:
   CACHE_COMPRESSION_LEVEL: fastest
 
 .agentos-ci:
-  image: registry.dev-supranett.space/aiops/agentos-platform/ci/tools@sha256:8c2bcb286ba1577fb577bdb4b305859e179b039cb7e647a1127c1c5c3363d988
+  image: registry.dev-supranett.space/aiops/agentos-platform/ci/tools@sha256:f4cf619caf93128700c0df9db7e1725d28a5b042a4206eabbf6b12a421d7d527
   tags: [$AGENTOS_CI_RUNNER]
   before_script: [mkdir -p .cache]
 

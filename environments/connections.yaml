@@ -78,18 +78,12 @@
       when: inventory_hostname == groups['environments'][-1]
       no_log: true
 
-    - name: Install the platform connection release
-      kubernetes.core.helm:
-        kubeconfig: "{{ platform_kubeconfig }}"
-        binary_path: "{{ helm_binary }}"
-        name: "{{ connections_release }}"
-        chart_ref: "{{ environment_chart_repository }}/agentos-connections"
-        chart_version: "{{ environment_chart_version }}"
-        release_namespace: "{{ agentos_namespace }}"
-        reset_values: true
-        history_max: 3
-        values_files: ["{{ chart_cache }}/connections-values.json"]
-        wait: true
-        timeout: 10m
+    - name: Install verified platform connection release
+      ansible.builtin.include_tasks: ../deploy/tasks/install-chart.yaml
+      vars:
+        delivery_chart: "{{ environment_chart_repository }}/agentos-connections"
+        delivery_release: "{{ connections_release }}"
+        delivery_namespace: "{{ agentos_namespace }}"
+        delivery_values_file: "{{ chart_cache }}/connections-values.json"
+        delivery_kubeconfig: "{{ platform_kubeconfig }}"
       when: inventory_hostname == groups['environments'][-1]
-      no_log: true

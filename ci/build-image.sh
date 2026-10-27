@@ -20,8 +20,12 @@ buildctl-daemonless.sh build \
   --frontend dockerfile.v0 \
   --local context="${AGENTOS_BUILD_CONTEXT:-.}" --local dockerfile="${AGENTOS_DOCKERFILE_DIR:-.}" \
   --opt platform=linux/amd64 \
+  --opt "label:org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+  --opt "label:org.opencontainers.image.source=$CI_PROJECT_URL" \
   "$@" \
   --import-cache "type=registry,ref=$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:buildcache" \
   --export-cache "type=registry,ref=$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:buildcache,mode=max" \
   --output "type=image,name=$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:$CI_COMMIT_SHA,push=true" \
   --metadata-file "${AGENTOS_BUILD_METADATA:-.cache/build-metadata.json}"
+metadata_file=${AGENTOS_BUILD_METADATA:-.cache/build-metadata.json}
+printf '%s\n' "$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:$CI_COMMIT_SHA" > "${metadata_file%.json}.ref"

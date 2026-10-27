@@ -6,19 +6,19 @@
   tasks:
     - name: Create Helm cache
       ansible.builtin.file:
-        path: "{{ playbook_dir }}/../.cache/helm"
+        path: "{{ agentos_cache }}/helm"
         state: directory
         mode: "0755"
 
     - name: Download Helm 3
       ansible.builtin.get_url:
         url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
-        dest: "{{ playbook_dir }}/../.cache/helm.tar.gz"
+        dest: "{{ agentos_cache }}/helm.tar.gz"
         checksum: "{{ helm_checksum }}"
         mode: "0644"
 
     - name: Extract Helm
       ansible.builtin.unarchive:
-        src: "{{ playbook_dir }}/../.cache/helm.tar.gz"
-        dest: "{{ playbook_dir }}/../.cache/helm"
+        src: "{{ agentos_cache }}/helm.tar.gz"
+        dest: "{{ agentos_cache }}/helm"
         creates: "{{ helm_binary }}"
