@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, type ConnectRouter } from "@connectrpc/connect";
-import { A2AService, TaskState } from "../../gen/a2a_pb.js";
+import { A2AService, TaskSchema, TaskState } from "../../gen/a2a_pb.js";
 import {
   AgentTemplateSchema,
   AgentTemplateService,
@@ -122,7 +122,18 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
         returned: items.length,
       });
       return {
-        tasks: items,
+        tasks: items.map((task) =>
+          create(TaskSchema, {
+            ...task,
+            history:
+              request.historyLength === undefined
+                ? task.history
+                : request.historyLength === 0
+                  ? []
+                  : task.history.slice(-request.historyLength),
+            artifacts: request.includeArtifacts ? task.artifacts : [],
+          }),
+        ),
         nextPageToken: token,
         pageSize: items.length,
         totalSize: tasks.length,
