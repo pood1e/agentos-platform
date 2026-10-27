@@ -4,29 +4,36 @@ values:
 release: {name: agentos, namespace: agentos}
 templates: ['*.yaml']
 tests:
-- it: omits the optional sandbox ingress
-  template: sandbox-ingress.yaml
-  asserts:
-  - hasDocuments: {count: 0}
-- it: exposes only the proxy path on the separate TLS host
+- it: omits the optional sandbox route
   set:
-    ingress.sandbox: {host: apps.example.net, tlsSecret: apps-tls}
+    route.hosts.sandbox: ''
+  template: routes.yaml
   asserts:
-  - template: sandbox-ingress.yaml
-    equal: {path: 'spec.rules[0].host', value: apps.example.net}
-  - template: sandbox-ingress.yaml
-    equal: {path: 'spec.rules[0].http.paths[0].path', value: /mcp-app-sandbox}
-  - template: sandbox-ingress.yaml
-    equal: {path: 'spec.rules[0].http.paths[0].pathType', value: Exact}
-  - template: sandbox-ingress.yaml
-    equal: {path: 'spec.tls[0].secretName', value: apps-tls}
+  - hasDocuments: {count: 2}
+- it: exposes only the proxy path on the separate host
+  asserts:
+  - template: routes.yaml
+    documentIndex: 2
+    equal: {path: spec.hostnames, value: [sandbox.agentos.example.test]}
+  - template: routes.yaml
+    documentIndex: 2
+    equal:
+      path: spec.rules
+      value:
+      - matches: [{path: {type: Exact, value: /mcp-app-sandbox}}]
+        backendRefs: [{name: agentos-web, port: 8081}]
   - template: console-deployment.yaml
     contains:
       path: 'spec.template.spec.containers[0].env'
-      content: {name: AGENTOS_SANDBOX_ORIGIN, value: 'https://apps.example.net'}
-- it: rejects a same-origin sandbox
+      content: {name: AGENTOS_SANDBOX_ORIGIN, value: 'https://sandbox.agentos.example.test'}
+  - template: web-deployment.yaml
+    documentIndex: 0
+    contains:
+      path: 'spec.template.spec.containers[1].env'
+      content: {name: AGENTOS_FRAME_SRC, value: 'https://sandbox.agentos.example.test'}
+- it: rejects a sandbox on the console host
   set:
-    ingress.sandbox: {host: agentos.example.test, tlsSecret: apps-tls}
-  template: sandbox-ingress.yaml
+    route.hosts.sandbox: agentos.example.test
+  template: routes.yaml
   asserts:
-  - failedTemplate: {errorMessage: ingress.sandbox.host must differ from ingress.host}
+  - failedTemplate: {errorMessage: route.hosts.sandbox must be a separate host}

@@ -1,5 +1,6 @@
-import { create } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
+import { AccessProfileSchema } from "../../gen/agentos/console/v1/access_pb.js";
 import {
   type ConsoleService,
   WatchConversationResponseSchema,
@@ -20,7 +21,7 @@ import type { KagentSync } from "../read-model/sync.js";
 import { conversation, listConversations } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
 import { listTasks } from "../read-model/views/task.js";
-import { invalid, notFound, unavailable } from "../shared/errors.js";
+import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import { exclusiveCommands } from "../shared/exclusive.js";
 import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
@@ -54,6 +55,8 @@ export interface ConsoleDependencies {
   executions?: Executions;
   entryAgent?: string;
   authorizeTools?: AuthorizeTools;
+  /** Where browsers obtain the offline grant for background execution. */
+  delegationUrl?: string;
 }
 
 function required(role?: RoleDefinition): RoleDefinition {
@@ -78,6 +81,7 @@ export function consoleService({
   executions,
   entryAgent = "assistant",
   authorizeTools,
+  delegationUrl = "",
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const index = sync.index;
   const history = executionHistory(index, executions);
@@ -122,7 +126,12 @@ export function consoleService({
       if (!apps) throw unavailable();
       return apps.callTool(request, context.values.get(requestIdentity), context.signal);
     },
-    getAccessProfile: (_request, context) => ({ profile: context.values.get(accessProfile) }),
+    async getAccessProfile(_request, context) {
+      const profile = clone(AccessProfileSchema, context.values.get(accessProfile));
+      profile.delegated = executions ? await executions.delegated(profile.subject) : true;
+      profile.delegationUrl = delegationUrl;
+      return { profile };
+    },
     async listEngineers(_request, context) {
       ready();
       return { engineers: engineers(await history(context.values.get(requestIdentity))) };
@@ -200,9 +209,11 @@ export function consoleService({
         { scope },
       );
     },
-    sendMessage: (request, context) => {
+    async sendMessage(request, context) {
       const identity = context.values.get(requestIdentity);
       chatTarget(namespace, entryAgent, request.agent, identity);
+      if (executions && !(await executions.delegated(identity.subject)))
+        throw precondition("delegation.required");
       return messages.send(request, identity);
     },
     async respondInteraction(request, context) {

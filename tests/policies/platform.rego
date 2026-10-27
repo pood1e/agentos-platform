@@ -94,11 +94,6 @@ deny contains "native MCP session owner differs from the controller user" if {
 
 deny contains "missing native collaboration owner policy" if not resource_exists("AgentgatewayPolicy", "kagent-collaboration-tool-access")
 
-deny contains sprintf("obsolete runtime credential %s", [name]) if {
-	some name in {"AGENTOS_GATEWAY_TOKEN", "AGENTOS_MCP_TOKEN", "AGENTOS_AUTH_CONFIG", "AGENTOS_SPEECH_CONFIG"}
-	environment[name]
-}
-
 deny contains "workload model token is not read from the projected volume" if environment.AGENTOS_MODEL_TOKEN_FILE.value != "/var/run/agentos-model/token"
 
 deny contains "runtime origins must remain inside the cluster" if {
@@ -107,26 +102,16 @@ deny contains "runtime origins must remain inside the cluster" if {
 	not endswith(hostname(url), ".svc.cluster.local")
 }
 
-deny contains "browser OIDC credentials are exposed in the anonymous mode" if {
-	environment.AGENTOS_AUTH_MODE.value == "none"
-	environment.AGENTOS_OIDC_ISSUER
+deny contains "the API route does not target the platform HTTP service" if {
+	some route in objects
+	route.kind == "HTTPRoute"
+	endswith(route.metadata.name, "-api")
+	route.spec.rules[0].backendRefs[0] != {"name": console.metadata.name, "port": 8080}
 }
 
-deny contains "the console ingress does not target the direct HTTP service" if {
-	some ingress in objects
-	ingress.kind == "Ingress"
-	endswith(ingress.metadata.name, "-console")
-	ingress.spec.rules[0].http.paths[0].backend.service.port.name != "http"
-}
-
-deny contains sprintf("obsolete platform resource %s/%s", [resource.kind, resource.metadata.name]) if {
+deny contains sprintf("the platform chart renders site resource %s/%s", [resource.kind, resource.metadata.name]) if {
 	some resource in objects
-	resource.kind in {"Namespace", "Middleware"}
-}
-
-deny contains sprintf("obsolete platform component %s", [resource.metadata.name]) if {
-	some resource in objects
-	contains(resource.metadata.name, "oauth2-proxy")
+	resource.kind in {"Namespace", "Middleware", "Ingress"}
 }
 
 deny contains "collaboration must share the platform API process" if {
@@ -149,9 +134,8 @@ deny contains "team-sessions uses a different HTTP port" if {
 	backend.spec.mcp.targets[0].static.port != 8080
 }
 
-deny contains "OIDC requires native client and cookie secret references" if {
-	environment.AGENTOS_AUTH_MODE.value == "oidc"
-	some name, key in {"AGENTOS_OIDC_CLIENT_SECRET": "client-secret", "AGENTOS_COOKIE_SECRET": "cookie-secret"}
+deny contains "OIDC requires native client and delegation secret references" if {
+	some name, key in {"AGENTOS_OIDC_CLIENT_SECRET": "client-secret", "AGENTOS_COOKIE_SECRET": "delegation"}
 	object.get(object.get(object.get(object.get(environment, name, {}), "valueFrom", {}), "secretKeyRef", {}), "key", "") != key
 }
 
@@ -170,15 +154,8 @@ deny contains "speech credentials are mounted in the console" if {
 }
 
 deny contains sprintf("required platform environment %s is absent", [name]) if {
-	some name in {"KAGENT_USER_ID", "AGENTOS_AUTH_MODE", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_ACTOR_AUDIENCES", "AGENTOS_WORKLOAD_AUTH_CONFIG", "AGENTOS_MODEL_TOKEN_FILE", "AGENTOS_SPEECH_SECRET"}
+	some name in {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_ACTOR_AUDIENCES", "AGENTOS_WORKLOAD_AUTH_CONFIG", "AGENTOS_MODEL_TOKEN_FILE", "AGENTOS_SPEECH_SECRET"}
 	not environment[name]
-}
-
-deny contains "the console ingress has an obsolete auth middleware" if {
-	some ingress in objects
-	ingress.kind == "Ingress"
-	endswith(ingress.metadata.name, "-console")
-	ingress.metadata.annotations["traefik.ingress.kubernetes.io/router.middlewares"]
 }
 
 deny contains "gateway NetworkPolicy excludes the console" if {

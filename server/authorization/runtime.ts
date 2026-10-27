@@ -14,6 +14,7 @@ import type { KagentClients } from "../kagent/clients.js";
 import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
 import { text } from "../read-model/decode/messages.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
+import { requiredEnv } from "../shared/config.js";
 import { actorTokenHeader, actorVerifier, runtimeIdentity } from "./actor.js";
 import { agentRoles } from "./agent-role.js";
 import type { EnvironmentTokens } from "./environment-tokens.js";
@@ -24,44 +25,38 @@ import type { jwtIdentity } from "./oidc.js";
 import { executionStore } from "./store.js";
 import { authorizeToolSelection } from "./tools.js";
 
-function required(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required`);
-  return value;
-}
-
 export async function executionRuntime(
   clients: KagentClients,
   workspace: string,
   access: BindingView,
-  verify?: ReturnType<typeof jwtIdentity>,
-  nativeCreator?: string,
-  environmentToken?: EnvironmentTokens,
-  oauth?: Configuration,
+  verify: ReturnType<typeof jwtIdentity>,
+  nativeCreator: string,
+  environmentToken: EnvironmentTokens,
+  oauth: Configuration,
   metadata: ToolMetadata = toolMetadata(clients),
   log?: Pick<FastifyBaseLogger, "error">,
 ) {
   const persistent = await executionStore(
-    required("AGENTOS_EXECUTION_DATABASE_URL"),
-    Buffer.from(required("AGENTOS_EXECUTION_KEY"), "base64"),
+    requiredEnv("AGENTOS_EXECUTION_DATABASE_URL"),
+    Buffer.from(requiredEnv("AGENTOS_EXECUTION_KEY"), "base64"),
     workspace,
     process.env.AGENTOS_EXECUTION_DATABASE_CA
       ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
       : undefined,
   );
-  const background = oauth && verify ? offlineCredentials(persistent, oauth, verify) : undefined;
+  const background = offlineCredentials(persistent, oauth, verify);
   const registry = executions(
     persistent,
     verify,
-    nativeCreator ? scheduledIdentity(clients, workspace, nativeCreator) : undefined,
-    background?.resolve,
+    scheduledIdentity(clients, workspace, nativeCreator),
+    background.resolve,
   );
   const workspaces = new Set<string>(
     JSON.parse(process.env.AGENTOS_EXECUTION_WORKSPACES ?? JSON.stringify([workspace])),
   );
   if (!workspaces.has(workspace)) throw new Error("Execution workspace is missing");
-  const issuer = required("AGENTOS_ACTOR_ISSUER");
-  const audience = JSON.parse(required("AGENTOS_ACTOR_AUDIENCES")) as string[];
+  const issuer = requiredEnv("AGENTOS_ACTOR_ISSUER");
+  const audience = JSON.parse(requiredEnv("AGENTOS_ACTOR_AUDIENCES")) as string[];
   if (
     !Array.isArray(audience) ||
     !audience.length ||
@@ -71,13 +66,13 @@ export async function executionRuntime(
   const substrate = createClient(
     Control,
     createGrpcTransport({
-      baseUrl: required("AGENTOS_SUBSTRATE_URL"),
-      nodeOptions: { ca: readFileSync(required("AGENTOS_RUNTIME_CA")) },
+      baseUrl: requiredEnv("AGENTOS_SUBSTRATE_URL"),
+      nodeOptions: { ca: readFileSync(requiredEnv("AGENTOS_RUNTIME_CA")) },
       interceptors: [
         (next) => (request) => {
           request.header.set(
             "Authorization",
-            `Bearer ${readFileSync(required("AGENTOS_RUNTIME_TOKEN"), "utf8").trim()}`,
+            `Bearer ${readFileSync(requiredEnv("AGENTOS_RUNTIME_TOKEN"), "utf8").trim()}`,
           );
           return next(request);
         },
@@ -121,7 +116,7 @@ export async function executionRuntime(
     const environment = text(target.metadataContext?.environment);
     const identity = text(target.metadataContext?.identity);
     const policy = await access();
-    if (!environmentToken || !policy.connection(target.serviceNames, environment, identity))
+    if (!policy.connection(target.serviceNames, environment, identity))
       throw new ConnectError("Environment route identity is invalid", Code.PermissionDenied);
     return { environment, identity, policy, token: environmentToken };
   };

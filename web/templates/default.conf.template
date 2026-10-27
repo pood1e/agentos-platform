@@ -1,0 +1,51 @@
+map $args $sandbox_policy {
+  default "";
+  "" "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; font-src 'none'; connect-src 'none'; worker-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors ${AGENTOS_CONSOLE_ORIGIN}";
+  "data=1" "default-src 'none'; script-src 'self' 'unsafe-inline' data:; style-src 'self' 'unsafe-inline' data:; img-src 'self' data:; media-src 'self' data:; font-src data:; connect-src 'none'; worker-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors ${AGENTOS_CONSOLE_ORIGIN}";
+}
+
+server {
+  listen 8080;
+  server_tokens off;
+  root /usr/share/nginx/html;
+  charset utf-8;
+
+  location /assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    add_header X-Content-Type-Options nosniff always;
+    try_files $uri =404;
+  }
+
+  location / {
+    add_header Cache-Control "no-cache" always;
+    add_header Content-Security-Policy "frame-src ${AGENTOS_FRAME_SRC}" always;
+    add_header X-Content-Type-Options nosniff always;
+    try_files $uri /index.html;
+  }
+}
+
+# MCP App sandbox proxy, served only on its isolated origin.
+server {
+  listen 8081;
+  server_tokens off;
+  charset utf-8;
+
+  location = /mcp-app-sandbox {
+    if ($sandbox_policy = "") {
+      return 404;
+    }
+    default_type text/html;
+    alias /usr/share/nginx/sandbox/mcp-app-sandbox.html;
+    sub_filter "__AGENTOS_CONSOLE_ORIGIN__" "${AGENTOS_CONSOLE_ORIGIN}";
+    sub_filter_once on;
+    add_header Content-Security-Policy $sandbox_policy always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), clipboard-write=()" always;
+    add_header Cache-Control "no-store" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+  }
+
+  location / {
+    return 404;
+  }
+}

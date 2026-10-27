@@ -9,11 +9,11 @@ spec:
     matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: console}
   policyTypes: [Ingress]
   ingress:
+    - from: {{ toYaml .Values.route.from | nindent 8 }}
+      ports: [{port: 8080, protocol: TCP}]
     - from:
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: kube-system}
-          podSelector:
-            matchLabels: {app.kubernetes.io/name: traefik}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: web}
       ports: [{port: 8080, protocol: TCP}]
     - from:
         - podSelector:

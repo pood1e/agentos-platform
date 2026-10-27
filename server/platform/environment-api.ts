@@ -1,7 +1,5 @@
-import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { FastifyInstance } from "fastify";
-import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { jwtIdentity } from "../authorization/oidc.js";
@@ -12,8 +10,7 @@ export function registerEnvironmentApis(
   app: FastifyInstance,
   config: GovernanceConfig,
   token: EnvironmentTokens,
-  identity: ReturnType<typeof jwtIdentity> | undefined,
-  origin: string,
+  identity: ReturnType<typeof jwtIdentity>,
 ) {
   for (const connection of config.environments) {
     const services = new Set<string>();
@@ -43,17 +40,9 @@ export function registerEnvironmentApis(
         const read = api.readMethods.includes(method);
         if (!read && !api.writeMethods.includes(method))
           throw new ConnectError("Environment API not found", Code.NotFound);
-        if (identity && request.headers.origin !== origin)
-          throw new ConnectError("Request origin is invalid", Code.PermissionDenied);
         if (!request.headers["content-type"]?.startsWith("application/json"))
           throw new ConnectError("This endpoint requires unary Connect JSON", Code.InvalidArgument);
-        const principal = identity
-          ? await identity(new Headers(request.headers as Record<string, string>))
-          : create(ExecutionIdentitySchema, {
-              subject: "console",
-              write: true,
-              credential: { case: "service", value: true },
-            });
+        const principal = await identity(new Headers(request.headers as Record<string, string>));
         if (!read && !principal.write)
           throw new ConnectError("Execution has read-only permissions", Code.PermissionDenied);
         const accessToken = await token(environment, "catalog", principal);
