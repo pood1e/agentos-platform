@@ -15,7 +15,7 @@
 
 ## 原则
 
-- 每个单元一次切换：数据前向迁移，同一版本删除旧实现，不保留兼容层或双轨实现；迁移 Job 先导出受影响的 schema，回滚为导入导出数据并部署上一版本。
+- 每个单元一次切换：同一版本删除旧实现，不保留兼容层或双轨实现，不迁移存量数据。
 - 复用维护中的组件、官方 SDK 与官方资源类型，平台代码只保留业务语义。
 - 模型唯一来源：RPC 与持久化使用 proto；Kubernetes 资源使用 Go 类型生成的 CRD schema，Helm values schema 与 TS 类型由该 schema 生成。
 - 依赖方向：前端只经平台 API 访问平台；Agent 只经网关与运行时控制面访问 dataplane；控制器只写 Kubernetes 资源。
@@ -32,7 +32,7 @@
 | 离线委派 | refresh token 只在浏览器登录回调中采集；Bearer 客户端的后台执行随 access token 过期中断 | 平台 API 自有委派流程，任意客户端可引导用户授权 | 1.2 |
 | 默认值 | `identity.mode: none` 为无认证的全权限共享访客；Ingress 固定 traefik | 访客模式改为内置密码身份源，平台只走 OIDC；Gateway API HTTPRoute | 1.2 |
 | 读模型 | 每 2 秒轮询 kagent 并维护全量内存索引；冷启动重放全部历史；部分委派关系按 prompt 文本推断 | PostgreSQL 投影：写路径驱动、定时对账、显式委派关系 | 1.3 |
-| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密；进程启动时建表 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识；版本化迁移 | 1.1 |
+| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识 | 1.1 |
 | 工具分级 | 三个 Chart、Ansible 模板、TS 与 Rego 分别推导分级与绑定，运行时解析资源标签 | `AccessPlan` 由控制器编译一次，运行时读取编译结果 | 2.1 |
 | 派生资源 | 连接保存逐个写入派生资源并逆序补偿，无崩溃恢复；预置依赖 Helm `lookup` 与 `resource-policy: keep`，在 `helm template` 下失效 | 控制器 reconcile，API 只写父资源，预置由控制器以 SSA 维护 | 2.1 |
 | 轨迹视图 | 协作画布、MCP 调用图、时间线与执行抽屉 | 删除；系统任务执行记录复用只读会话视图 | 已完成 |
@@ -69,7 +69,7 @@ flowchart LR
 | agentos-worker | 审批协调、续接、投影对账、预置定时任务 | pg-boss 消费者 |
 | agentos-controller | AccessPlan 编译、连接派生、方案预置；平台与环境两种模式 | Go，controller-runtime，leader election |
 | voice worker | 听写、朗读、通话与轮次编排 | LiveKit Agents |
-| PostgreSQL | kagent 与 Substrate 状态、执行绑定与凭据、读投影、任务标签、作业队列、内置身份源的授权数据 | CNPG，版本化迁移 |
+| PostgreSQL | kagent 与 Substrate 状态、执行绑定与凭据、读投影、任务标签、作业队列、内置身份源的授权数据 | CNPG |
 
 ## 设计
 
@@ -87,9 +87,8 @@ flowchart LR
 ### 执行存储
 
 - `agentos_authorization.execution_bindings` 按列保存会话、发起人、Agent、根会话、父会话、写权限、能力与撤销时间；工具调用以一次递归查询取得完整委派链。
-- `agentos_authorization.credentials` 保存 access token 与 refresh token，由 AWS Encryption SDK 的 Raw AES keyring 信封加密：密文头携带密钥名称，multi-keyring 解密旧密钥，加密上下文包含工作空间、记录类型与主体。
-- 密钥环由站点提供的 Secret 交付，Chart 不生成密钥。
-- 表结构由 golang-migrate 版本化迁移管理，迁移 Job 先于工作负载执行，进程启动不执行 DDL。
+- `agentos_authorization.credentials` 按列保存主体、写权限与能力，access token 与 refresh token 由 AWS Encryption SDK 的 Raw AES keyring 信封加密：密文头携带密钥名称，加密上下文包含工作空间、记录类型与主体。
+- 密钥沿用现有的执行密钥 Secret；表在启动时幂等创建，旧表 `agentos_authorization.objects` 直接删除，存量绑定与凭据不迁移。
 
 ### 读投影
 
@@ -182,18 +181,18 @@ flowchart LR
 | 风险 | 处理 |
 | --- | --- |
 | 密码模式为单一共享主体，没有用户隔离 | 与原访客模式的共享语义一致；需要隔离的站点使用外部身份提供方 |
-| 离线委派增加一次授权跳转 | 沿用原机密客户端，存量离线授权直接迁移；console 登录后自动完成 |
+| 离线委派增加一次授权跳转 | 沿用原机密客户端，console 登录后自动完成 |
 | 投影遗漏 kagent 侧的状态变化 | worker 对账兜底，验收记录最大陈旧时间 |
 | 新增 Go 控制器 | 复用现有 Go 与 envtest 工具链；分级规则只在控制器中实现 |
 | oauth2-proxy alpha 配置随版本变化 | 固定版本，配置纳入 Chart 测试 |
 | LiveKit 听写的建连延迟 | 页面打开时预连，验收首个转写片段延迟 |
-| 前向迁移不可逆 | 迁移 Job 先导出受影响的 schema；回滚为导入导出数据并部署上一版本 |
+| 不迁移存量数据 | 升级后存量会话的执行绑定与离线凭据失效：用户重新登录，旧会话不再对原用户可见 |
 | 方案包与 Controller UI 依赖平台契约 | 契约变更随单元发布，消费方在同一切换窗口升级 |
 
 ## 依据
 
 - [oauth2-proxy alpha 配置](https://oauth2-proxy.github.io/oauth2-proxy/configuration/alpha-config)、[OAuth 2.0 for Browser-Based Applications](https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/)、[OIDC offline_access](https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess)、[oidc-provider](https://github.com/panva/node-oidc-provider)
-- [AWS Encryption SDK Raw AES keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-raw-aes-keyring.html)、[multi-keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-multi-keyring.html)、[golang-migrate](https://github.com/golang-migrate/migrate)
+- [AWS Encryption SDK Raw AES keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-raw-aes-keyring.html)、[multi-keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-multi-keyring.html)
 - [PostgreSQL NOTIFY](https://www.postgresql.org/docs/current/sql-notify.html)、[pg-boss](https://github.com/timgit/pg-boss)、[OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/)
 - [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)、[Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)、[垃圾回收与 ownerReferences](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)、[Helm lookup](https://helm.sh/docs/chart_template_guide/functions_and_pipelines/#using-the-lookup-function)
 - [Gateway API HTTPRoute](https://gateway-api.sigs.k8s.io/api-types/httproute/)、[LiveKit Agents](https://docs.livekit.io/agents/)
