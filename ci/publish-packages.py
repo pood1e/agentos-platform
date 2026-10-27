@@ -1,6 +1,5 @@
 """Publish contracts through the native GitLab npm and PyPI registries."""
 
-import base64
 import hashlib
 import json
 import os
@@ -54,8 +53,6 @@ with tempfile.TemporaryDirectory() as directory:
             "npm",
             "view",
             f"@agentos/contracts@{version.semver}",
-            "dist.integrity",
-            "gitHead",
             "--json",
         ],
         env=env,
@@ -64,10 +61,15 @@ with tempfile.TemporaryDirectory() as directory:
     )
     if existing.returncode == 0:
         previous = json.loads(existing.stdout)
-        integrity = (
-            "sha512-" + base64.b64encode(hashlib.sha512(package.read_bytes()).digest()).decode()
-        )
-        if previous != {"dist.integrity": integrity, "gitHead": version.revision}:
+        tarball = previous["dist"]["tarball"]
+        if not tarball.startswith(registry + "/npm/"):
+            raise ValueError("npm tarball registry differs")
+        response = requests.get(tarball, headers={"Authorization": "Bearer " + token}, timeout=60)
+        response.raise_for_status()
+        if (
+            hashlib.sha512(response.content).digest()
+            != hashlib.sha512(package.read_bytes()).digest()
+        ):
             raise ValueError("Published npm package differs")
     elif "E404" in existing.stderr:
         subprocess.run(

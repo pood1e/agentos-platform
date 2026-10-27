@@ -127,12 +127,10 @@ def sign(reference):
 
 def login():
     password = os.environ["CI_REGISTRY_PASSWORD"]
-    for tool, command in (("crane", "auth"), ("oras", "registry"), ("helm", "registry")):
+    for command in (("crane", "auth", "login"), ("oras", "login"), ("helm", "registry", "login")):
         subprocess.run(
             [
-                tool,
-                command,
-                "login",
+                *command,
                 os.environ["CI_REGISTRY"],
                 "--username",
                 os.environ["CI_REGISTRY_USER"],
