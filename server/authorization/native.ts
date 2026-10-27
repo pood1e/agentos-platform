@@ -6,6 +6,7 @@ import {
   type HandlerContext,
 } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
+import type { FastifyBaseLogger } from "fastify";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { TaskStoreService } from "../../gen/kagent/runtime/v1/task_store_pb.js";
@@ -20,6 +21,34 @@ import type { ExecutionRuntime } from "./runtime.js";
 const denied = () =>
   new ConnectError("Runtime operation is outside this execution", Code.PermissionDenied);
 
+/** Node and postgres.js codes for a connection or stream lost before a response. */
+const lostTransport = new Set([
+  "CONNECTION_CLOSED",
+  "CONNECTION_DESTROYED",
+  "CONNECTION_ENDED",
+  "CONNECT_TIMEOUT",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "EPIPE",
+  "ERR_HTTP2_GOAWAY_SESSION",
+  "ERR_HTTP2_INVALID_SESSION",
+  "ERR_HTTP2_INVALID_STREAM",
+  "ERR_HTTP2_STREAM_CANCEL",
+  "ERR_HTTP2_STREAM_ERROR",
+  "ERR_STREAM_DESTROYED",
+  "ERR_STREAM_PREMATURE_CLOSE",
+  "ETIMEDOUT",
+]);
+
+function transportLost(error: unknown) {
+  for (let cause = error, depth = 0; cause instanceof Error && depth < 8; depth++) {
+    if ("code" in cause && typeof cause.code === "string" && lostTransport.has(cause.code))
+      return true;
+    cause = cause.cause;
+  }
+  return false;
+}
+
 /** Runtime traffic exposes only official persistence RPCs, with identity supplied by the host. */
 export function registerRuntime(
   router: ConnectRouter,
@@ -27,10 +56,35 @@ export function registerRuntime(
   config: KagentConfig,
   clients: KagentClients,
   sharedKnowledge?: KnowledgeConfig["scope"],
+  log?: Pick<FastifyBaseLogger, "warn">,
 ) {
   const transport = createGrpcTransport({ baseUrl: config.url });
   const tasks = createClient(TaskStoreService, transport),
     memory = createClient(MemoryService, transport);
+
+  /** Lost transport is Unavailable, which the runtime replays with the same immutable mutation. */
+  async function forward<T>(
+    context: HandlerContext,
+    method: string,
+    call: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      // An upstream cancellation the runtime did not request means the stream was reset in transit.
+      const reset =
+        error instanceof ConnectError && error.code === Code.Canceled && !context.signal.aborted;
+      if (!reset && !transportLost(error)) throw error;
+      log?.warn({ err: error, method }, "Runtime persistence transport lost");
+      throw new ConnectError(
+        "Runtime persistence transport lost",
+        Code.Unavailable,
+        undefined,
+        undefined,
+        error,
+      );
+    }
+  }
 
   async function taskOptions(
     sessionId: string,
@@ -89,56 +143,69 @@ export function registerRuntime(
   }
 
   router.service(TaskStoreService, {
-    createTask: async (r, c) => {
-      if (r.task?.contextId !== r.sessionId) throw denied();
-      return tasks.createTask(
-        r,
-        await taskOptions(
-          r.sessionId,
-          c,
-          "create",
-          r.task.history.map((message) => message.messageId),
-        ),
-      );
-    },
-    getTask: async (r, c) => tasks.getTask(r, await taskOptions(r.sessionId, c)),
-    updateTask: async (r, c) => {
-      if (r.task?.contextId !== r.sessionId) throw denied();
-      return tasks.updateTask(r, await taskOptions(r.sessionId, c, "update"));
-    },
-    listTasks: async (r, c) => {
-      if (!r.request || (r.request.contextId && r.request.contextId !== r.sessionId))
-        throw denied();
-      r.request.contextId = r.sessionId;
-      return tasks.listTasks(r, await taskOptions(r.sessionId, c));
-    },
-    settleTask: async (r, c) => tasks.settleTask(r, await taskOptions(r.sessionId, c, "update")),
+    createTask: (r, c) =>
+      forward(c, "CreateTask", async () => {
+        if (r.task?.contextId !== r.sessionId) throw denied();
+        return tasks.createTask(
+          r,
+          await taskOptions(
+            r.sessionId,
+            c,
+            "create",
+            r.task.history.map((message) => message.messageId),
+          ),
+        );
+      }),
+    getTask: (r, c) =>
+      forward(c, "GetTask", async () => tasks.getTask(r, await taskOptions(r.sessionId, c))),
+    updateTask: (r, c) =>
+      forward(c, "UpdateTask", async () => {
+        if (r.task?.contextId !== r.sessionId) throw denied();
+        return tasks.updateTask(r, await taskOptions(r.sessionId, c, "update"));
+      }),
+    listTasks: (r, c) =>
+      forward(c, "ListTasks", async () => {
+        if (!r.request || (r.request.contextId && r.request.contextId !== r.sessionId))
+          throw denied();
+        r.request.contextId = r.sessionId;
+        return tasks.listTasks(r, await taskOptions(r.sessionId, c));
+      }),
+    settleTask: (r, c) =>
+      forward(c, "SettleTask", async () =>
+        tasks.settleTask(r, await taskOptions(r.sessionId, c, "update")),
+      ),
   });
   router.service(MemoryService, {
-    addSession: async (r, c) => {
-      if (!r.memory) throw denied();
-      const { agentName, options } = await memoryOptions(c, true, r.managementAgent);
-      return memory.addSession({ ...r, managementAgent: agentName }, options);
-    },
-    addSessionBatch: async (r, c) => {
-      const { agentName, options } = await memoryOptions(c, true, r.managementAgent);
-      return memory.addSessionBatch({ ...r, managementAgent: agentName }, options);
-    },
-    search: async (r, c) => {
-      const { agentName, options } = await memoryOptions(c, false, r.managementAgent);
-      return memory.search({ ...r, managementAgent: agentName }, options);
-    },
-    list: async (r, c) => {
-      const { agentName, options } = await memoryOptions(c, false, r.agentName);
-      return memory.list({ ...r, agentName }, options);
-    },
-    delete: async (r, c) => {
-      const { agentName, options } = await memoryOptions(c, true, r.agentName);
-      return memory.delete({ ...r, agentName }, options);
-    },
-    deleteEntry: async (r, c) => {
-      const { agentName, options } = await memoryOptions(c, true, r.agentName);
-      return memory.deleteEntry({ ...r, agentName }, options);
-    },
+    addSession: (r, c) =>
+      forward(c, "AddSession", async () => {
+        if (!r.memory) throw denied();
+        const { agentName, options } = await memoryOptions(c, true, r.managementAgent);
+        return memory.addSession({ ...r, managementAgent: agentName }, options);
+      }),
+    addSessionBatch: (r, c) =>
+      forward(c, "AddSessionBatch", async () => {
+        const { agentName, options } = await memoryOptions(c, true, r.managementAgent);
+        return memory.addSessionBatch({ ...r, managementAgent: agentName }, options);
+      }),
+    search: (r, c) =>
+      forward(c, "Search", async () => {
+        const { agentName, options } = await memoryOptions(c, false, r.managementAgent);
+        return memory.search({ ...r, managementAgent: agentName }, options);
+      }),
+    list: (r, c) =>
+      forward(c, "List", async () => {
+        const { agentName, options } = await memoryOptions(c, false, r.agentName);
+        return memory.list({ ...r, agentName }, options);
+      }),
+    delete: (r, c) =>
+      forward(c, "Delete", async () => {
+        const { agentName, options } = await memoryOptions(c, true, r.agentName);
+        return memory.delete({ ...r, agentName }, options);
+      }),
+    deleteEntry: (r, c) =>
+      forward(c, "DeleteEntry", async () => {
+        const { agentName, options } = await memoryOptions(c, true, r.agentName);
+        return memory.deleteEntry({ ...r, agentName }, options);
+      }),
   });
 }
