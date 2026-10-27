@@ -4,7 +4,7 @@ import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
-import { fixtureIndex } from "./fixtures/kagent.js";
+import { fixtureState } from "./fixtures/kagent.js";
 
 const parent = (returned = false) =>
   fromJson(TaskSchema, {
@@ -68,7 +68,7 @@ const child = () =>
   });
 
 it("associates the selected Agent's task with a delegation before it returns", () => {
-  const index = fixtureIndex([]);
+  const index = fixtureState([]);
   index.setSession({
     id: "coordinator-context",
     agentId: "agentos/coordinator",
@@ -78,11 +78,11 @@ it("associates the selected Agent's task with a delegation before it returns", (
   index.upsert(calling);
   expect(calling.calls[0]?.state).toBe(ActivityState.WORKING);
   index.upsert(ingest(child(), "agentos/coordinator"));
-  expect(index.target(calling, calling.calls[0])).toBe("coordinator-task");
+  expect(index.graph().target(calling, calling.calls[0])).toBe("coordinator-task");
 });
 
 it("does not associate another Agent with the selected session", () => {
-  const index = fixtureIndex([]);
+  const index = fixtureState([]);
   index.setSession({
     id: "coordinator-context",
     agentId: "agentos/coordinator",
@@ -91,7 +91,7 @@ it("does not associate another Agent with the selected session", () => {
   const calling = ingest(parent(), "agentos/assistant");
   index.upsert(calling);
   index.upsert(ingest(child(), "agentos/remediation"));
-  expect(index.target(calling, calling.calls[0])).toBeUndefined();
+  expect(index.graph().target(calling, calling.calls[0])).toBeUndefined();
 });
 
 it("retains native pending input for the existing approval continuation", () => {

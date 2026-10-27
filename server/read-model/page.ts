@@ -14,7 +14,7 @@ export interface PageKey {
   time: number;
 }
 
-function decode(token: string, scope: string, query: string): PageCursor {
+export function decodeCursor(token: string, scope: string, query: string): PageCursor {
   try {
     const cursor = fromBinary(PageCursorSchema, Buffer.from(token, "base64url"));
     if (cursor.scope === scope && cursor.query === query) return cursor;
@@ -22,8 +22,13 @@ function decode(token: string, scope: string, query: string): PageCursor {
   throw invalid("pagination.invalidPage");
 }
 
-const encode = (cursor: PageCursor) =>
-  Buffer.from(toBinary(PageCursorSchema, cursor)).toString("base64url");
+export const encodeCursor = (scope: string, query: string, after: PageKey) =>
+  Buffer.from(
+    toBinary(
+      PageCursorSchema,
+      create(PageCursorSchema, { scope, query, afterId: after.id, afterTime: BigInt(after.time) }),
+    ),
+  ).toString("base64url");
 
 /** Keyset pagination: items that move or disappear do not invalidate later pages. */
 export function pageOf<T>(
@@ -34,7 +39,7 @@ export function pageOf<T>(
 ) {
   let start = 0;
   if (request.pageToken) {
-    const cursor = decode(request.pageToken, scope, request.query);
+    const cursor = decodeCursor(request.pageToken, scope, request.query);
     const time = Number(cursor.afterTime);
     start = items.findIndex((item) => {
       const position = key(item);
@@ -51,15 +56,6 @@ export function pageOf<T>(
   return {
     items: selected,
     totalSize: items.length,
-    nextPageToken: position
-      ? encode(
-          create(PageCursorSchema, {
-            scope,
-            query: request.query,
-            afterId: position.id,
-            afterTime: BigInt(position.time),
-          }),
-        )
-      : "",
+    nextPageToken: position ? encodeCursor(scope, request.query, position) : "",
   };
 }

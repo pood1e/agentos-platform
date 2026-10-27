@@ -197,6 +197,7 @@ export async function executionRuntime(
   };
   return {
     registry,
+    store: persistent,
     issuer,
     actorKeys: async () => {
       await keys.reload();

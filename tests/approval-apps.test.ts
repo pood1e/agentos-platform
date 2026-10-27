@@ -11,7 +11,7 @@ import { approvalAppsEnvironment as setup } from "./fixtures/approval-apps.js";
 
 it("opens approval history without reauthorizing settled or externally reviewed interactions", async () => {
   const env = await setup();
-  const entry = env.index.entry(env.task.id);
+  const entry = await env.projection.entry(env.task.id);
   const original = entry?.interactions[0];
   if (!entry || !original) throw new Error("missing approval fixture");
   const history = [ActivityState.SUCCEEDED, ActivityState.FAILED, ActivityState.CANCELED].map(
@@ -23,7 +23,7 @@ it("opens approval history without reauthorizing settled or externally reviewed 
       return item;
     },
   );
-  env.index.upsert({ ...entry, interactions: [original, ...history], version: "history" });
+  await env.projection.applyEntries([{ ...entry, interactions: [original, ...history] }]);
   const sessions = vi.spyOn(env.clients.sessions, "getSession");
   const controller = new AbortController();
   try {
@@ -171,14 +171,14 @@ it("moves a verified decision out of the pending queue before native execution r
     totalSize: 1,
     requests: [{ taskId: "task", state: ActivityState.SUCCEEDED, approvals: [{ id: "change" }] }],
   });
-  expect(env.index.entry(env.task.id)?.interactions[0]?.state).toBe(
+  expect((await env.projection.entry(env.task.id))?.interactions[0]?.state).toBe(
     ActivityState.AWAITING_APPROVAL,
   );
 });
 
 it("paginates approval history without counting questions and binds cursors to the reviewer and state filter", async () => {
   const env = await setup();
-  const entry = env.index.entry(env.task.id);
+  const entry = await env.projection.entry(env.task.id);
   const original = entry?.interactions[0];
   if (!entry || !original) throw new Error("missing approval fixture");
   const interactions = [
@@ -196,14 +196,16 @@ it("paginates approval history without counting questions and binds cursors to t
   const question = clone(InteractionSchema, original);
   question.id = "question";
   question.kind = InteractionKind.QUESTION;
-  env.index.upsert({ ...entry, interactions: [...interactions, question], version: "queue" });
+  await env.projection.applyEntries([{ ...entry, interactions: [...interactions, question] }]);
   const first = await env.client.listApprovalRequests({ pageSize: 1 });
   expect(first).toMatchObject({ pendingCount: 2, totalSize: 4 });
   expect(first.requests.map((item) => item.id)).toEqual(["approval-0"]);
   const newer = clone(InteractionSchema, original);
   newer.id = "newer";
   newer.requestedAt = timestampFromMs(2000);
-  env.index.upsert({ ...entry, interactions: [newer, ...interactions, question], version: "new" });
+  await env.projection.applyEntries([
+    { ...entry, interactions: [newer, ...interactions, question] },
+  ]);
   const second = await env.client.listApprovalRequests({
     pageSize: 3,
     pageToken: first.nextPageToken,

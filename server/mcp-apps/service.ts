@@ -14,13 +14,14 @@ import type { ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
 import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { agentRoles } from "../authorization/agent-role.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
-import type { Executions } from "../authorization/executions.js";
-import { executionHistory } from "../console/history.js";
+import { viewer, visibleGraph } from "../console/history.js";
 import type { BindingView, ToolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { appOnly, appResource, appVisible, type ToolMetadata } from "../kagent/tool-metadata.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskGraph } from "../read-model/graph.js";
+import type { TaskProjection } from "../read-model/projection.js";
+import type { FullTask } from "../read-model/views/conversation.js";
 import { taskRun } from "../read-model/views/run.js";
 import { notFound, unavailable } from "../shared/errors.js";
 import { approvalApps } from "./approvals.js";
@@ -29,12 +30,12 @@ import { projectAppViews } from "./projection.js";
 
 interface Dependencies {
   clients: KagentClients;
-  sync: KagentSync;
+  projection: TaskProjection;
+  namespace: string;
   access: BindingView;
   operations: GovernanceConfig;
   metadata: ToolMetadata;
   sandboxOrigin: string;
-  executions?: Executions;
   token?: EnvironmentTokens;
   log?: Pick<FastifyBaseLogger, "info">;
   invoke?: typeof callEnvironmentAppTool;
@@ -56,18 +57,17 @@ function resourceResult(value: unknown): JsonObject {
 
 export function mcpApps({
   clients,
-  sync,
+  projection,
+  namespace,
   access,
   operations,
   metadata,
   sandboxOrigin,
-  executions,
   token,
   log,
   invoke = callEnvironmentAppTool,
 }: Dependencies) {
-  const history = executionHistory(sync.index, executions);
-  const approval = approvalApps(sync, clients, operations, history, token);
+  const approval = approvalApps(projection, clients, operations, token);
   const agentRole = agentRoles(clients);
   const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
   const resources = new LRUCache<
@@ -97,9 +97,7 @@ export function mcpApps({
       .find((target) => name.startsWith(`${target.service}_`));
     if (!target) return;
     const toolServers = await metadata.servers();
-    const server = toolServers.find(
-      (server) => server.ref === `${sync.namespace}/${target.server}`,
-    );
+    const server = toolServers.find((server) => server.ref === `${namespace}/${target.server}`);
     if (!server) return;
     const tools = await metadata.tools(server);
     const unprefix = (value: string) =>
@@ -115,9 +113,10 @@ export function mcpApps({
   ) {
     const reference = request.app;
     if (reference?.origin.case !== "callId") throw notFound("mcpApp.unavailable");
-    const view = await history(identity);
-    if (!view.entry(reference.taskId)) throw notFound("task.notFound");
-    const run = await taskRun(sync, reference.taskId);
+    const view = await visibleGraph(projection, viewer(identity), { taskId: reference.taskId });
+    const entry = view?.entry(reference.taskId);
+    if (!entry) throw notFound("task.notFound");
+    const run = await taskRun(entry, projection.fullTask);
     const call = run?.calls.find((call) => call.id === reference.origin.value);
     const origin = call && (await source(call));
     if (!origin) throw notFound("mcpApp.unavailable");
@@ -136,10 +135,10 @@ export function mcpApps({
     );
   }
   return {
-    async project(view: Conversation) {
+    async project(view: Conversation, graph: TaskGraph, fullTask: FullTask) {
       if (!sandboxOrigin) return;
       try {
-        await projectAppViews(sync, view, async (calls) => {
+        await projectAppViews(graph, fullTask, view, async (calls) => {
           if (!calls.length) return;
           let policy = projectionPolicy.get("catalog");
           if (!policy) {
@@ -202,7 +201,7 @@ export function mcpApps({
         (tool) => origin.unprefix(tool.name) === origin.unprefix(request.name),
       );
       if (!tool || !appVisible(tool)) throw denied();
-      const entry = sync.index.entry(request.app?.taskId ?? "");
+      const entry = await projection.entry(request.app?.taskId ?? "");
       const { session } = await clients.sessions.getSession(
         { sessionId: entry?.contextId },
         { signal, timeoutMs: 5_000 },

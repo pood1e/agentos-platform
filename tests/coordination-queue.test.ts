@@ -20,7 +20,7 @@ it("serializes a business key across replicas and recovers after an external sid
   const uri = process.env.CHANGE_TEST_DATABASE_URL ?? "";
   const first = await coordinationQueue(uri, workspace, silent);
   const second = await coordinationQueue(uri, workspace, silent);
-  const { sync } = environment([]);
+  const env = await environment();
   let active = 0,
     peak = 0,
     attempts = 0,
@@ -45,8 +45,9 @@ it("serializes a business key across replicas and recovers after an external sid
     },
   };
   await first.boss.updateQueue(first.queue("approvals"), { retryDelay: 0, retryBackoff: false });
-  const stopFirst = await startCoordination(sync, first, [processor]);
-  const stopSecond = await startCoordination(sync, second, [processor]);
+  const stopFirst = await startCoordination(env.projection, first, [processor]);
+  const stopSecond = await startCoordination(env.projection, second, [processor]);
+  await env.reconcile.refresh();
   try {
     await until(() => complete, 8_000);
     expect(peak).toBe(1);
@@ -57,7 +58,7 @@ it("serializes a business key across replicas and recovers after an external sid
     await stopSecond();
     await first.boss.stop();
     await second.boss.stop();
-    sync.close();
+    await env.close();
   }
 });
 
@@ -67,7 +68,7 @@ it("retains exhausted references and redrives them through the native dead-lette
     randomUUID(),
     silent,
   );
-  const { sync } = environment([]);
+  const env = await environment();
   let healthy = false,
     complete = false;
   const processor: Coordinator = {
@@ -80,7 +81,8 @@ it("retains exhausted references and redrives them through the native dead-lette
     },
   };
   await jobs.boss.updateQueue(jobs.queue("approvals"), { retryLimit: 0 });
-  const stop = await startCoordination(sync, jobs, [processor]);
+  const stop = await startCoordination(env.projection, jobs, [processor]);
+  await env.reconcile.refresh();
   try {
     await until(async () => (await jobs.boss.previewRedrive(jobs.failed)).total > 0);
     const preview = await jobs.boss.previewRedrive(jobs.failed);
@@ -91,7 +93,7 @@ it("retains exhausted references and redrives them through the native dead-lette
   } finally {
     await stop();
     await jobs.boss.stop();
-    sync.close();
+    await env.close();
   }
 });
 
@@ -106,9 +108,9 @@ it("recovers pending work after the producing instance stops", async () => {
   );
   await producer.boss.stop();
   const consumer = await coordinationQueue(uri, workspace, silent);
-  const { sync } = environment([]);
+  const env = await environment([]);
   let consumed = false;
-  const stop = await startCoordination(sync, consumer, [
+  const stop = await startCoordination(env.projection, consumer, [
     {
       name: "continuations",
       select: () => [],
@@ -124,6 +126,6 @@ it("recovers pending work after the producing instance stops", async () => {
   } finally {
     await stop();
     await consumer.boss.stop();
-    sync.close();
+    await env.close();
   }
 });

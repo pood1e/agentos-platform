@@ -6,19 +6,19 @@ import {
   type GovernanceConfig,
 } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { notFound } from "../shared/errors.js";
 import { approvalClient, approvalEnvironment } from "./client.js";
 
 export async function approvals(
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "entry">,
   config: GovernanceConfig,
   taskId: string,
   requestId: string,
   options?: CallOptions,
   token?: EnvironmentTokens,
 ) {
-  const entry = sync.index.entry(taskId);
+  const entry = await projection.entry(taskId);
   const interaction = entry?.interactions.find((item) => item.requestId === requestId);
   if (!entry || !interaction) throw notFound("interaction.stale");
   const records = await Promise.all(

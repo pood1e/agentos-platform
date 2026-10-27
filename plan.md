@@ -21,7 +21,7 @@
 | --- | --- | --- | --- |
 | [平台服务](refactor-services.md) | 1.1 | 执行存储：结构化绑定与凭据信封加密 | 已实现 |
 | | 1.2 | 身份与前端解耦：Bearer API、oauth2-proxy console、离线委派与密码身份源 | 已实现 |
-| | 1.3 | PostgreSQL 读投影 | 待实施 |
+| | 1.3 | PostgreSQL 读投影 | 已实现 |
 | | 1.4 | api、dataplane、worker 进程拆分 | 待实施 |
 | | 1.5 | 语音单链路 | 待实施 |
 | [Kubernetes 编排与交付](refactor-kubernetes.md) | 2.1 | 平台控制器：AccessPlan、连接派生与方案预置 | 待实施 |

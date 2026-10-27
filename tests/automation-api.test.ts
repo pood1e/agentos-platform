@@ -14,13 +14,13 @@ import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { environment } from "./harness.js";
 
-const close: (() => void)[] = [];
-afterEach(() => {
-  for (const stop of close.splice(0)) stop();
+const close: (() => Promise<void>)[] = [];
+afterEach(async () => {
+  for (const stop of close.splice(0)) await stop();
 });
 async function setup() {
-  const env = environment([]);
-  close.push(() => env.sync.close());
+  const env = await environment([]);
+  close.push(() => env.close());
   const principal = create(ExecutionIdentitySchema, {
     subject: "user:manager",
     write: false,
@@ -43,7 +43,7 @@ async function setup() {
     },
     ["test-environment"],
     false,
-    env.sync,
+    env.projection,
   );
   const client = createClient(
     AutomationService,

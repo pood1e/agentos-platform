@@ -206,7 +206,7 @@ it("delegates with authorization code, PKCE, state and nonce and returns only to
 });
 
 it("asks users without an offline grant to delegate before starting executions", async () => {
-  const env = environment([]);
+  const env = await environment([]);
   const store = memoryStore();
   const registry = executions(store, verify);
   const api = createClient(
@@ -254,6 +254,6 @@ it("asks users without an offline grant to delegate before starting executions",
     );
     expect((await api.getAccessProfile({}, { headers })).profile?.delegated).toBe(true);
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });

@@ -22,13 +22,13 @@ import dispatchSchema from "../../gen/schema/kagent.api.v1.DispatchScheduledRunE
   type: "json",
 };
 import type { KagentClients } from "../kagent/clients.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { inputSchema, result } from "../team-sessions/schema.js";
 import { scheduledExecutionResult } from "./results.js";
 
 export function scheduledSourceTools(
   clients: KagentClients,
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "graphOf" | "fullTask">,
   workspace: string,
   presets: ScheduledRunPreset[],
   allowed: string[],
@@ -104,7 +104,7 @@ export function scheduledSourceTools(
           GetScheduledRunExecutionResultResponseSchema,
           await scheduledExecutionResult(
             clients,
-            sync,
+            projection,
             workspace,
             fromJson(GetScheduledRunExecutionResultRequestSchema, args),
             async (id) => {

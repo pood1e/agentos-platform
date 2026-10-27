@@ -8,7 +8,7 @@ import {
 } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { intersectCapabilities } from "../../shared/permissions.js";
-import { type KagentClients, pool } from "../kagent/clients.js";
+import type { KagentClients } from "../kagent/clients.js";
 import type { jwtIdentity } from "./oidc.js";
 import { conflict, type ExecutionStore } from "./store.js";
 
@@ -177,29 +177,13 @@ export function executions(
     await store.saveBinding(binding, stored.version);
   }
 
-  const history = async (subject: string, contexts: string[], origins: Session[] = []) => {
-    if (!subject) return [];
-    let bindings = await store.bindings(contexts);
-    const known = new Set(bindings.map((binding) => binding.sessionId));
-    const missing = origins.filter((session) => !known.has(session.id));
-    if (missing.length) {
-      await pool(missing, 4, async (session) => {
-        await record(session, true).catch(() => {});
-      });
-      bindings = await store.bindings(contexts);
-    }
-    return bindings.filter(
-      (binding) => binding.subject === subject || binding.subject.startsWith("service:"),
-    );
-  };
-
   /** Background execution needs a service credential or an offline grant that outlives access tokens. */
   const delegated = async (subject: string) => {
     const saved = (await store.identity(subject))?.value;
     return saved?.credential.case === "service" || Boolean(saved?.refreshToken);
   };
 
-  return { remember, record, resolve, own, bind, delegate, revoke, history, delegated };
+  return { remember, record, resolve, own, bind, delegate, revoke, delegated };
 }
 
 export type Executions = ReturnType<typeof executions>;

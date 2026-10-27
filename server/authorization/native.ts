@@ -15,6 +15,7 @@ import type { KagentClients } from "../kagent/clients.js";
 import type { KnowledgeConfig } from "../knowledge/service.js";
 import { agentKey } from "../read-model/agents.js";
 import { object, text } from "../read-model/decode/messages.js";
+import type { Native } from "../read-model/projection.js";
 import type { KagentConfig } from "../shared/config.js";
 import type { ExecutionRuntime } from "./runtime.js";
 
@@ -56,6 +57,7 @@ export function registerRuntime(
   config: KagentConfig,
   clients: KagentClients,
   sharedKnowledge?: KnowledgeConfig["scope"],
+  project: (tasks: Native[]) => Promise<void> = async () => {},
   log?: Pick<FastifyBaseLogger, "warn">,
 ) {
   const transport = createGrpcTransport({ baseUrl: config.url });
@@ -97,13 +99,24 @@ export function registerRuntime(
     // Signed Actors can read their own store before the initial task establishes admission.
     if (mode !== "read") await runtime.registry.record(session, mode === "update", messageIds);
     return {
-      signal: context.signal,
-      timeoutMs: 15_000,
-      headers: {
-        authorization: context.requestHeader.get("authorization") ?? "",
+      tenant: agentKey(session.agent),
+      options: {
+        signal: context.signal,
+        timeoutMs: 15_000,
+        headers: {
+          authorization: context.requestHeader.get("authorization") ?? "",
+        },
       },
     };
   }
+  /** The projection follows successful native writes; its failures never fail the runtime. */
+  const projected = <T>(tenant: string, task: Native["task"] | undefined, response: T) => {
+    if (task)
+      void project([{ task, agentId: tenant }]).catch((error: unknown) =>
+        log?.warn({ err: error, taskId: task.id }, "Task projection write failed"),
+      );
+    return response;
+  };
 
   async function memoryOptions(context: HandlerContext, write: boolean, requested = "") {
     const { session } = await runtime.authenticatedActor(context.requestHeader);
@@ -146,33 +159,34 @@ export function registerRuntime(
     createTask: (r, c) =>
       forward(c, "CreateTask", async () => {
         if (r.task?.contextId !== r.sessionId) throw denied();
-        return tasks.createTask(
-          r,
-          await taskOptions(
-            r.sessionId,
-            c,
-            "create",
-            r.task.history.map((message) => message.messageId),
-          ),
+        const { tenant, options } = await taskOptions(
+          r.sessionId,
+          c,
+          "create",
+          r.task.history.map((message) => message.messageId),
         );
+        return projected(tenant, r.task, await tasks.createTask(r, options));
       }),
     getTask: (r, c) =>
-      forward(c, "GetTask", async () => tasks.getTask(r, await taskOptions(r.sessionId, c))),
+      forward(c, "GetTask", async () =>
+        tasks.getTask(r, (await taskOptions(r.sessionId, c)).options),
+      ),
     updateTask: (r, c) =>
       forward(c, "UpdateTask", async () => {
         if (r.task?.contextId !== r.sessionId) throw denied();
-        return tasks.updateTask(r, await taskOptions(r.sessionId, c, "update"));
+        const { tenant, options } = await taskOptions(r.sessionId, c, "update");
+        return projected(tenant, r.task, await tasks.updateTask(r, options));
       }),
     listTasks: (r, c) =>
       forward(c, "ListTasks", async () => {
         if (!r.request || (r.request.contextId && r.request.contextId !== r.sessionId))
           throw denied();
         r.request.contextId = r.sessionId;
-        return tasks.listTasks(r, await taskOptions(r.sessionId, c));
+        return tasks.listTasks(r, (await taskOptions(r.sessionId, c)).options);
       }),
     settleTask: (r, c) =>
       forward(c, "SettleTask", async () =>
-        tasks.settleTask(r, await taskOptions(r.sessionId, c, "update")),
+        tasks.settleTask(r, (await taskOptions(r.sessionId, c, "update")).options),
       ),
   });
   router.service(MemoryService, {

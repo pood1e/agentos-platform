@@ -12,20 +12,19 @@ import { mcpApps } from "../../server/mcp-apps/service.js";
 import { workspaceContext } from "../../server/platform/access.js";
 import { appScenario } from "../fake-kagent/apps.js";
 import { environment, testBindings } from "../harness.js";
-import { memoryStore } from "./execution-store.js";
 
 export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.example") {
-  const env = environment([]);
-  onTestFinished(() => env.sync.close());
+  const env = await environment([]);
+  onTestFinished(() => env.close());
   const scenario = appScenario(env.fake);
   const owner = create(ExecutionIdentitySchema, {
     subject: "alice",
     credential: { case: "accessToken", value: "latest-alice-token" },
   });
   let caller = owner;
-  const registry = executions(memoryStore(), async () => owner);
+  const registry = executions(env.store, async () => owner);
   await registry.bind(scenario.session, owner);
-  await env.sync.refresh();
+  await env.reconcile.refresh();
   const metadata = toolMetadata(env.clients);
   const access = testBindings(env.fake);
   const operations = create(GovernanceConfigSchema, {
@@ -45,10 +44,10 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
   }));
   const apps = mcpApps({
     ...env,
+    namespace: "agentos",
     access,
     operations,
     metadata,
-    executions: registry,
     sandboxOrigin,
     token,
     invoke,

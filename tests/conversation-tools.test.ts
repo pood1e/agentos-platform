@@ -8,7 +8,7 @@ import { ToolCallSchema } from "../gen/agentos/execution/v1/task_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { convertMessage } from "../src/features/chat/runtime-message.js";
-import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
+import { fixtureGraph, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
 
 const event = (kind: string, response?: JsonValue) =>
@@ -49,10 +49,12 @@ it("projects calls without narration while running, then reloads their native re
       );
       if (task.status) task.status.state = TaskState.COMPLETED;
     }
-    const env = environment([task]);
+    const env = await environment([task]);
     try {
-      await env.sync.refresh();
-      const chat = await conversation(env.sync, undefined, ids.chatContext);
+      await env.reconcile.refresh();
+      const graph = await env.projection.graphOf({ contextId: ids.chatContext });
+      if (!graph) throw new Error("Missing conversation tree");
+      const chat = await conversation(graph, undefined, ids.chatContext, env.projection.fullTask);
       const reply = chat.messages.find((message) => message.role === Role.AGENT);
       expect(reply?.id).toBe("answer:tool-only");
       expect(reply?.parts).toHaveLength(1);
@@ -72,21 +74,22 @@ it("projects calls without narration while running, then reloads their native re
           healthy: true,
         });
     } finally {
-      env.sync.close();
+      await env.close();
     }
   }
 });
 
 it("loads tool payloads only from the visible conversation entries", async () => {
-  const index = fixtureIndex();
-  const fullTask = vi.fn(async (id: string) => fixtureTasks().find((task) => task.id === id));
-  const chat = await conversation({ index, fullTask } as never, undefined, ids.chatContext);
+  const fullTask = vi.fn(async ({ id }: { id: string }) =>
+    fixtureTasks().find((task) => task.id === id),
+  );
+  const chat = await conversation(fixtureGraph(), undefined, ids.chatContext, fullTask);
   expect(
     chat.messages
       .find((message) => message.role === Role.AGENT)
       ?.parts.filter((part) => part.content.case === "toolCall").length,
   ).toBeGreaterThan(0);
-  expect(fullTask.mock.calls.map(([id]) => id)).toEqual([ids.chat]);
+  expect(fullTask.mock.calls.map(([entry]) => entry.id)).toEqual([ids.chat]);
 });
 
 it.each([

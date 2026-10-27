@@ -4,15 +4,15 @@ import { describe, expect, it } from "vitest";
 import { ArtifactSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
-import { TaskIndex } from "../server/read-model/index.js";
+import { encodeEntry, entryRevision } from "../server/read-model/record.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
-import { fixtureIds, fixtureIndex, fixtureTasks } from "./fixtures/kagent.js";
-import { environment } from "./harness.js";
+import { fixtureIds, fixtureState, fixtureTasks } from "./fixtures/kagent.js";
+import { bindTasks, environment } from "./harness.js";
 
 describe("streamed task content", () => {
   it("retains visible assistant progress during tool calls and after the final reply without changing its message ID", async () => {
-    const index = fixtureIndex();
+    const index = fixtureState();
     const task = create(TaskSchema, {
       id: "streaming-chat",
       contextId: fixtureIds.chatContext,
@@ -31,13 +31,10 @@ describe("streamed task content", () => {
     const view = async () => {
       index.upsert(ingest(task, "agentos/assistant"));
       const result = await conversation(
-        {
-          index,
-          fullTask: async (id: string) =>
-            id === task.id ? task : fixtureTasks().find((item) => item.id === id),
-        } as never,
+        index.graph(),
         { namespace: "agentos", name: "assistant" },
         task.contextId,
+        async ({ id }) => (id === task.id ? task : fixtureTasks().find((item) => item.id === id)),
       );
       return result.messages.find(
         (message) => message.taskId === task.id && message.role === Role.AGENT,
@@ -126,34 +123,35 @@ describe("streamed task content", () => {
       status: { state: TaskState.WORKING, timestamp: timestampFromMs(1000) },
       artifacts: [{ artifactId: "answer", parts: [{ content: { case: "text", value: "first" } }] }],
     });
-    const index = new TaskIndex();
-    index.upsert(ingest(task, "agentos/inspection"));
-    const previous = index.entry(task.id)?.version;
+    const revision = () => entryRevision(encodeEntry(ingest(task, "agentos/inspection")));
+    const previous = revision();
     task.artifacts[0].parts[0].content = { case: "text", value: "updated" };
-    expect(index.upsert(ingest(task, "agentos/inspection"))).toBe(true);
-    expect(index.entry(task.id)?.answer).toBe("updated");
-    expect(index.entry(task.id)?.version).not.toBe(previous);
-    expect(index.upsert(ingest(task, "agentos/inspection"))).toBe(false);
+    expect(ingest(task, "agentos/inspection").answer).toBe("updated");
+    expect(revision()).not.toBe(previous);
+    expect(revision()).toBe(revision());
   });
 
-  it("evicts old full payloads while retaining their compact history entries", async () => {
-    const { fake, index, sync } = environment();
+  it("keeps compact entries in the projection and loads finished payloads once on demand", async () => {
+    const env = await environment();
     const seeded = syntheticOperations(220);
-    fake.load({
-      sessions: [...fake.sessions.values(), ...seeded.sessions],
-      tasks: [...fake.tasks.values(), ...seeded.tasks],
+    env.fake.load({
+      sessions: [...env.fake.sessions.values(), ...seeded.sessions],
+      tasks: [...env.fake.tasks.values(), ...seeded.tasks],
     });
-    await sync.refresh();
-    fake.fetched.length = 0;
+    await bindTasks(env.store, env.fake, seeded.tasks);
     try {
-      expect(index.entry("synthetic-task-0")).toBeDefined();
-      expect(fake.fetched).toHaveLength(0);
-      expect((await sync.fullTask("synthetic-task-0"))?.id).toBe("synthetic-task-0");
-      expect(fake.fetched).toContain("synthetic-task-0");
-      await sync.fullTask("synthetic-task-0");
-      expect(fake.fetched.filter((id) => id === "synthetic-task-0")).toHaveLength(1);
+      await env.reconcile.refresh();
+      env.fake.fetched.length = 0;
+      const entry = await env.projection.entry("synthetic-task-0");
+      expect(entry).toBeDefined();
+      expect(env.fake.fetched).toHaveLength(0);
+      if (!entry) return;
+      expect((await env.projection.fullTask(entry))?.id).toBe("synthetic-task-0");
+      expect(env.fake.fetched).toContain("synthetic-task-0");
+      await env.projection.fullTask(entry);
+      expect(env.fake.fetched.filter((id) => id === "synthetic-task-0")).toHaveLength(1);
     } finally {
-      sync.close();
+      await env.close();
     }
   });
 });
