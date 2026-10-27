@@ -1,12 +1,13 @@
 apiVersion: v2
 name: agentos
-description: AgentOS platform on kagent - console, collaboration service, gateway
-  resources and team runtime
+description: >-
+  AgentOS platform on kagent - console, collaboration service, gateway resources
+  and team runtime
 type: application
-version: 0.39.0
-appVersion: 0.39.0
+version: 0.40.0
+appVersion: 0.40.0
 kubeVersion: '>=1.34.0-0'
 dependencies:
-- name: agentos-controller
-  version: 0.39.0
-  repository: file://../agentos-controller
+  - name: agentos-controller
+    version: 0.40.0
+    repository: file://../agentos-controller
