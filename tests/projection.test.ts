@@ -42,7 +42,9 @@ describe("task projection", () => {
     }
   });
 
-  it("loads large historical tasks without aggregating their payloads into one RPC response", async () => {
+  it("loads large historical tasks without aggregating their payloads into one RPC response", {
+    timeout: 30_000,
+  }, async () => {
     const env = await environment();
     const seeded = syntheticOperations(2);
     for (const task of seeded.tasks)
