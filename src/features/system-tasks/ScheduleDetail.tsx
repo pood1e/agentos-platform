@@ -96,7 +96,8 @@ export function ScheduleDetail({ id, onClose }: { id: string; onClose: () => voi
                   )}
                 </TableCell>
                 <TableCell>
-                  {execution.awaitingDispatch
+                  {execution.awaitingDispatch &&
+                  execution.state === ScheduledRunExecutionState.PENDING
                     ? t("automation.awaitingDispatch")
                     : t(`automation.states.${ScheduledRunExecutionState[execution.state]}`)}
                 </TableCell>
