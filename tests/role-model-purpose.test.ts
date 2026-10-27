@@ -5,10 +5,10 @@ import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ResourceReferenceSchema } from "../gen/kagent/api/v1/common_pb.js";
 import { roleCommands } from "../server/console/roles.js";
 import { object } from "../server/read-model/decode/messages.js";
-import { environment, testBindings } from "./harness.js";
+import { fakeKagent, testBindings } from "./harness.js";
 
 it("rejects arbitrary embedding model names on both role creation and update", async () => {
-  const { fake, clients, sync } = environment();
+  const { fake, clients } = fakeKagent();
   const commands = roleCommands(
     clients,
     "agentos",
@@ -57,6 +57,5 @@ it("rejects arbitrary embedding model names on both role creation and update", a
       { name: "default-model-config" },
     );
   } finally {
-    sync.close();
   }
 });

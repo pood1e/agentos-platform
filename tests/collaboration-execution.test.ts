@@ -7,10 +7,10 @@ import type { Executions } from "../server/authorization/executions.js";
 import { knowledgeConfig } from "../server/knowledge/config.js";
 import { knowledgeService } from "../server/knowledge/service.js";
 import { sessionTools } from "../server/team-sessions/tools.js";
-import { environment, testBindings } from "./harness.js";
+import { fakeKagent, testBindings } from "./harness.js";
 
 it("keeps two concurrent callers separate through the same MCP handler and tool factory", async () => {
-  const { fake, clients, sync } = environment([]);
+  const { fake, clients } = fakeKagent([]);
   const requestId = "scheduled-run/11111111-1111-4111-8111-111111111111";
   const reserved = fake.createSession(
     { namespace: "agentos", name: "inspection" },
@@ -87,7 +87,6 @@ it("keeps two concurrent callers separate through the same MCP handler and tool 
     expect(fake.sessions.size).toBe(existing + 2);
     expect(fake.sessions.get(reserved.id)?.name).toBe("System task");
   } finally {
-    sync.close();
     await shared.close();
   }
 });

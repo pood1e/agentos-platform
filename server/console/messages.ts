@@ -22,55 +22,56 @@ import { agentKey, sessionInfo } from "../read-model/agents.js";
 import { hitlExtension, hitlReply } from "../read-model/decode/hitl.js";
 import { timelineKey } from "../read-model/decode/messages.js";
 import { ingest } from "../read-model/entry.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { awaiting } from "../read-model/state.js";
-import type { KagentSync } from "../read-model/sync.js";
 import { conversation } from "../read-model/views/conversation.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import { exclusiveCommands } from "../shared/exclusive.js";
 import { messageIdentity } from "../shared/idempotency.js";
 
 export function messageCommands(
-  sync: KagentSync,
+  projection: TaskProjection,
   clients: KagentClients,
+  namespace: string,
+  executions: Executions,
   governance?: GovernanceConfig,
-  executions?: Executions,
   authorizeTools?: (
     session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
     tools: string[],
   ) => Promise<void>,
   exclusive = exclusiveCommands(),
 ) {
-  const index = sync.index;
-
-  async function target(request: SendMessageRequest, identity?: ExecutionIdentity) {
+  async function target(request: SendMessageRequest, identity: ExecutionIdentity) {
     const ref = request.agent;
-    if (!ref?.name || ref.namespace !== sync.namespace) throw invalid("chat.invalidConversation");
+    if (!ref?.name || ref.namespace !== namespace) throw invalid("chat.invalidConversation");
     const id = agentKey(ref);
     if (request.contextId) {
-      if (executions) {
-        const { session } = await clients.sessions.getSession({ sessionId: request.contextId });
-        if (!session || !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
-        await executions.own(session, identity);
-      }
-      const session = index.session(request.contextId);
-      if (!session || session.agentId !== id) throw precondition("chat.invalidConversation");
-      const view = await conversation(sync, ref, request.contextId);
+      const { session: native } = await clients.sessions.getSession({
+        sessionId: request.contextId,
+      });
+      if (!native) throw fail(Code.PermissionDenied, "chat.executionDenied");
+      await executions.own(native, identity);
+      const session = await projection.session(request.contextId);
+      const graph = await projection.graphOf({ contextId: request.contextId });
+      if (!session || !graph || session.agentId !== id)
+        throw precondition("chat.invalidConversation");
+      // Composer state needs only the projected tree, not complete task payloads.
+      const view = await conversation(graph, ref, request.contextId, async () => undefined);
       if (pendingInteractions(view).length) throw precondition("chat.pendingApproval");
       if (view.busy) throw conflict("chat.busy");
       return { agentId: session.agentId, contextId: session.id };
     }
-    const agent = index.agent(id);
+    const agent = await projection.agent(id);
     if (!agent?.ready) throw fail(Code.Unavailable, "chat.notReady");
-    const [namespace = "", name = ""] = agent.id.split("/");
-    if (executions && !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
+    const [agentNamespace = "", name = ""] = agent.id.split("/");
     const { session } = await clients.sessions.createSession(
       {
-        agent: { namespace, name },
+        agent: { namespace: agentNamespace, name },
         requestId: messageIdentity(
           "chat",
-          namespace,
+          agentNamespace,
           name,
-          identity?.subject ?? "console",
+          identity.subject,
           request.messageId,
         ),
         name: shortTitle(request.text),
@@ -78,30 +79,25 @@ export function messageCommands(
       { timeoutMs: 30_000 },
     );
     if (!session) throw unavailable();
-    if (executions) {
-      if (!identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
-      await executions.bind(session, identity);
-    }
-    index.setSession(sessionInfo(session));
+    await executions.bind(session, identity);
+    await projection.apply([], [sessionInfo(session)]);
     return { agentId: agentKey(session.agent), contextId: session.id };
   }
 
-  async function send(request: SendMessageRequest, identity?: ExecutionIdentity) {
+  async function send(request: SendMessageRequest, identity: ExecutionIdentity) {
     const text = request.text.trim();
     if (!text) throw invalid("chat.invalidMessage");
     return exclusive(request.contextId || request.messageId, async () => {
-      const accepted = index.taskOfMessage(request.messageId);
+      const accepted = await projection.taskOfMessage(request.messageId);
       if (accepted) {
-        if (executions) {
-          const { session } = await clients.sessions.getSession({ sessionId: accepted.contextId });
-          if (!session || !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
-          await executions.own(session, identity);
-        }
+        const { session } = await clients.sessions.getSession({ sessionId: accepted.contextId });
+        if (!session) throw fail(Code.PermissionDenied, "chat.executionDenied");
+        await executions.own(session, identity);
         return { contextId: accepted.contextId, taskId: accepted.id };
       }
       const { agentId, contextId } = await target(request, identity);
       const dispatch = () =>
-        sync.send(
+        projection.send(
           agentId,
           create(MessageSchema, {
             messageId: request.messageId,
@@ -111,7 +107,7 @@ export function messageCommands(
             extensions: [hitlExtension],
             metadata: {
               [timelineKey]: new Date().toISOString(),
-              ...(identity ? { "agentos.initiator": identity.subject } : {}),
+              "agentos.initiator": identity.subject,
             },
           }),
         );
@@ -120,22 +116,19 @@ export function messageCommands(
     });
   }
 
-  async function respond(request: RespondInteractionRequest, identity?: ExecutionIdentity) {
-    const entry = index.entry(request.taskId);
+  async function respond(request: RespondInteractionRequest, identity: ExecutionIdentity) {
+    const entry = await projection.entry(request.taskId);
     if (!entry) throw notFound("interaction.stale");
-    if (executions) {
-      const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
-      if (!session || !identity) throw fail(Code.PermissionDenied, "chat.executionDenied");
-      await executions.own(session, identity);
-    }
+    const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
+    if (!session) throw fail(Code.PermissionDenied, "chat.executionDenied");
+    await executions.own(session, identity);
     return exclusive(request.taskId, async () => {
       const task = await clients.a2a.getTask(
         { tenant: entry.agentId, id: request.taskId },
         { timeoutMs: 10_000 },
       );
       const fresh = ingest(task, entry.agentId);
-      index.upsert(fresh);
-      index.flush();
+      await projection.apply([{ task, agentId: entry.agentId }]);
       const pending = fresh.interactions.find(
         (item) => item.requestId === request.requestId && awaiting(item.state),
       );
@@ -169,7 +162,7 @@ export function messageCommands(
           pending.tools.some((tool) => !ids.has(tool.id))
         )
           throw invalid("interaction.invalidAnswer");
-        await sync.send(
+        await projection.send(
           entry.agentId,
           hitlReply(
             target,
@@ -194,7 +187,7 @@ export function messageCommands(
               (pending.questions[position]?.multiple || answer.values.length === 1),
           );
         if (!valid) throw invalid("interaction.invalidAnswer");
-        await sync.send(
+        await projection.send(
           entry.agentId,
           hitlReply(
             target,

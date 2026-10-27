@@ -15,7 +15,7 @@ import { approvalCoordinator } from "../server/governance/coordinator.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { ingest } from "../server/read-model/entry.js";
 import { startJobs } from "./fixtures/coordination.js";
-import { environment, silent, until } from "./harness.js";
+import { bindTasks, environment, silent, until } from "./harness.js";
 
 const it = test.skipIf(!process.env.CHANGE_TEST_DATABASE_URL);
 
@@ -53,7 +53,7 @@ async function setup(
     status: { state: TaskState.INPUT_REQUIRED, message },
     history: [message],
   });
-  const env = environment([task]);
+  const env = await environment([task]);
   env.fake.load({
     sessions: [
       create(SessionSchema, {
@@ -63,21 +63,22 @@ async function setup(
     ],
     tasks: [task],
   });
-  await env.sync.refresh();
+  await bindTasks(env.store, env.fake, [task]);
   const config = create(GovernanceConfigSchema, {
     environments: [
       { environment: { name: "publishing" }, approvalUrl: `http://127.0.0.1:${address.port}` },
     ],
   });
-  const stop = await startJobs(env.sync, silent, [
-    approvalCoordinator(env.sync, config, authorize),
+  const stop = await startJobs(env.projection, silent, [
+    approvalCoordinator(env.projection, config, authorize),
   ]);
+  await env.reconcile.refresh();
   return {
     ...env,
     task,
     close: async () => {
       await stop();
-      env.sync.close();
+      await env.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };
@@ -187,7 +188,7 @@ it("does not resume a task canceled while its external authorization is being pr
   try {
     await until(() => preparing);
     if (env.task.status) env.task.status.state = TaskState.CANCELED;
-    env.index.upsert(ingest(env.task, "agentos/inspection"));
+    await env.projection.apply([{ task: env.task, agentId: "agentos/inspection" }]);
     release();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(env.fake.received).toHaveLength(0);

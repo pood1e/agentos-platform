@@ -15,7 +15,6 @@ beforeEach(async () => {
   env = await managementEnvironment();
 });
 afterEach(async () => {
-  env.sync.close();
   await env.close();
 });
 const draft = () =>

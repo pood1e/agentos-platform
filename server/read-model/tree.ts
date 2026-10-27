@@ -1,6 +1,6 @@
 import { TaskState } from "../../gen/a2a_pb.js";
 import type { TaskEntry } from "./entry.js";
-import type { TaskIndex } from "./index.js";
+import type { TaskGraph } from "./graph.js";
 import { terminal } from "./state.js";
 import { waitingDelegations } from "./waiting.js";
 
@@ -15,37 +15,37 @@ export interface TaskTree {
   updatedAt?: number;
 }
 
-function children(index: TaskIndex, entry: TaskEntry): string[] {
-  const relations = index.relations();
+function children(graph: TaskGraph, entry: TaskEntry): string[] {
+  const relations = graph.relations();
   return [
-    ...entry.calls.flatMap((call) => index.target(entry, call) ?? []),
+    ...entry.calls.flatMap((call) => graph.target(entry, call) ?? []),
     ...(relations.continuations.get(entry.id) ?? []),
     ...(relations.reviews.get(entry.id) ?? []),
   ];
 }
 
-function reach(index: TaskIndex, start: string[]): Set<string> {
+function reach(graph: TaskGraph, start: string[]): Set<string> {
   const seen = new Set<string>();
   for (let pending = [...start], id = pending.pop(); id; id = pending.pop()) {
     if (seen.has(id)) continue;
-    const entry = index.entry(id);
+    const entry = graph.entry(id);
     if (!entry) continue;
     seen.add(id);
-    pending.push(...children(index, entry));
+    pending.push(...children(graph, entry));
   }
   return seen;
 }
 
-export function taskTree(index: TaskIndex, rootId: string): TaskTree | undefined {
-  const root = index.entry(rootId);
+export function taskTree(graph: TaskGraph, rootId: string): TaskTree | undefined {
+  const root = graph.entry(rootId);
   if (!root) return undefined;
-  const ids = reach(index, [rootId]);
-  const entries = [...ids].flatMap((id) => index.entry(id) ?? []);
+  const ids = reach(graph, [rootId]);
+  const entries = [...ids].flatMap((id) => graph.entry(id) ?? []);
   const background = reach(
-    index,
+    graph,
     entries.flatMap((entry) =>
       entry.calls.flatMap((call) =>
-        call.delegation?.kind === "background" ? (index.target(entry, call) ?? []) : [],
+        call.delegation?.kind === "background" ? (graph.target(entry, call) ?? []) : [],
       ),
     ),
   );
@@ -55,10 +55,10 @@ export function taskTree(index: TaskIndex, rootId: string): TaskTree | undefined
       .sort((a, b) => (b.statusAt ?? 0) - (a.statusAt ?? 0))[0] ?? root;
   const times = entries.flatMap((entry) => entry.statusAt ?? []);
   const updatedAt = times.length ? Math.max(...times) : undefined;
-  const resumed = index.relations().resumed;
+  const resumed = graph.relations().resumed;
   const pending = entries.some(
     (entry) =>
-      !background.has(entry.id) && waitingDelegations(index, entry).some((id) => !resumed.has(id)),
+      !background.has(entry.id) && waitingDelegations(graph, entry).some((id) => !resumed.has(id)),
   );
   return { root, entries, background, latest, updatedAt, pending };
 }

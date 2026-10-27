@@ -2,13 +2,13 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { AgentSchema } from "../gen/kagent/api/v1/agents_pb.js";
 import { builtinTools, engineerTools } from "../server/kagent/builtin-tools.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 const filesystem = ["read_file", "write_file", "edit_file", "bash", "list_files", "grep_file"];
 
 describe("runtime-provided tools", () => {
   it("resolves memory per engineer even when they share a role", async () => {
-    const { fake, clients } = environment();
+    const { fake, clients } = fakeKagent();
     const { harnesses } = await clients.harnesses.listHarnesses({ namespace: "agentos" });
     const agents = ["standard", "memory"].map((harness) =>
       create(AgentSchema, {
@@ -32,7 +32,7 @@ describe("runtime-provided tools", () => {
   });
 
   it("resolves inline templates through their referenced Harness", async () => {
-    const { clients } = environment();
+    const { clients } = fakeKagent();
     const { harnesses } = await clients.harnesses.listHarnesses({ namespace: "agentos" });
     const makeAgent = (harness: string) =>
       create(AgentSchema, {

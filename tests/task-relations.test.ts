@@ -4,26 +4,33 @@ import { TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { conversation } from "../server/read-model/views/conversation.js";
-import { listTasks, taskSummary } from "../server/read-model/views/task.js";
+import { taskSummary } from "../server/read-model/views/task.js";
 import { decidedTasks } from "./fake-kagent/scenario.js";
-import { fixtureIndex, fixtureIds as ids } from "./fixtures/kagent.js";
+import { fixtureState, fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
+
+const roots = (index: ReturnType<typeof fixtureState>) =>
+  index
+    .graph()
+    .relations()
+    .roots.map((root) => root.id);
 
 describe("operation ownership", () => {
   it("keeps a completed worker's caller active until its native continuation arrives", async () => {
-    const { sync, index } = environment(decidedTasks());
-    await sync.refresh();
+    const env = await environment(decidedTasks());
     try {
-      const tree = taskTree(index, ids.approvalRoot);
-      assert(tree);
-      expect(taskSummary(index, tree).state).toBe(ActivityState.WORKING);
+      await env.reconcile.refresh();
+      const graph = await env.projection.graphOf({ taskId: ids.approvalRoot });
+      const tree = graph && taskTree(graph, ids.approvalRoot);
+      assert(graph && tree);
+      expect(taskSummary(graph, tree).state).toBe(ActivityState.WORKING);
     } finally {
-      sync.close();
+      await env.close();
     }
   });
 
   it("keeps a failed native continuation in its operation", () => {
-    const index = fixtureIndex();
+    const index = fixtureState();
     const root = index.entry(ids.chatRoot);
     assert(root);
     index.upsert({
@@ -40,14 +47,15 @@ describe("operation ownership", () => {
       parentTaskId: root.id,
       resumedTaskId: root.id,
     });
-    expect(index.relations().continuations.get(root.id)).toContain("failed-continuation");
-    expect(taskTree(index, root.id)?.entries.map((entry) => entry.id)).toContain(
+    const graph = index.graph();
+    expect(graph.relations().continuations.get(root.id)).toContain("failed-continuation");
+    expect(taskTree(graph, root.id)?.entries.map((entry) => entry.id)).toContain(
       "failed-continuation",
     );
   });
 
-  it("links a running invocation in a reused session before its response arrives", () => {
-    const index = fixtureIndex();
+  it("links a running invocation in a reused session by its message ID before the response arrives", () => {
+    const index = fixtureState();
     const source = index.entry(ids.approved);
     const parent = index.entry(ids.approvalRoot);
     const call = parent?.calls.find((item) => item.delegation);
@@ -78,7 +86,7 @@ describe("operation ownership", () => {
         kind: "invoke" as const,
         sessionId: worker.contextId,
         agentName: "",
-        messageId: "",
+        messageId: "current-message",
         taskId: "",
         message: worker.prompt,
       },
@@ -91,25 +99,21 @@ describe("operation ownership", () => {
       calls: [pending],
     };
     index.upsert(operation);
-    expect(index.target(operation, pending)).toBe(worker.id);
-    const tasks = listTasks(index, { query: "", pageToken: "", pageSize: 100 }).tasks;
-    expect(tasks.map((task) => task.id)).not.toContain(worker.id);
-    expect(index.operationRoot(worker.id)?.id).toBe(operation.id);
-    const members = taskTree(index, operation.id)?.entries.map((entry) => entry.id);
+    const graph = index.graph();
+    expect(graph.target(operation, pending)).toBe(worker.id);
+    expect(roots(index)).not.toContain(worker.id);
+    expect(graph.operationRoot(worker.id)?.id).toBe(operation.id);
+    const members = taskTree(graph, operation.id)?.entries.map((entry) => entry.id);
     expect(members).toContain(worker.id);
     expect(members).not.toContain("old-worker");
 
-    index.upsert({
-      ...worker,
-      id: "ambiguous-worker",
-      version: "ambiguous-worker",
-      createdAt: 2150,
-    });
-    expect(index.target(operation, pending)).toBeUndefined();
+    const unidentified = { ...pending, delegation: { ...pending.delegation, messageId: "" } };
+    index.upsert({ ...operation, calls: [unidentified] });
+    expect(index.graph().target(operation, unidentified)).toBeUndefined();
   });
 
   it("keeps coordinator follow-ups in one operation and preserves separate sessions", async () => {
-    const index = fixtureIndex();
+    const index = fixtureState();
     const root = index.entry(ids.chatRoot);
     const chat = index.entry(ids.chat);
     const call = chat?.calls.find((item) => item.delegation);
@@ -159,16 +163,17 @@ describe("operation ownership", () => {
         },
       ],
     });
-    const tasks = listTasks(index, { query: "", pageToken: "", pageSize: 100 }).tasks;
-    expect(tasks.map((task) => task.id)).toContain(root.id);
-    expect(tasks.map((task) => task.id)).toContain("separate-operation");
-    expect(tasks.map((task) => task.id)).not.toContain(follow.id);
-    expect(index.operationRoot(follow.id)?.id).toBe(root.id);
-    expect(taskTree(index, root.id)?.latest.answer).toBe(follow.answer);
+    const graph = index.graph();
+    expect(roots(index)).toContain(root.id);
+    expect(roots(index)).toContain("separate-operation");
+    expect(roots(index)).not.toContain(follow.id);
+    expect(graph.operationRoot(follow.id)?.id).toBe(root.id);
+    expect(taskTree(graph, root.id)?.latest.answer).toBe(follow.answer);
     const view = await conversation(
-      { index, fullTask: async () => undefined } as never,
+      graph,
       { namespace: "agentos", name: "assistant" },
       ids.chatContext,
+      async () => undefined,
     );
     const turn = view.messages.find((message) => message.id === "follow-up-chat-message");
     expect(turn?.tasks.map((task) => task.id)).toEqual([root.id]);

@@ -8,19 +8,19 @@ import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { executions } from "../server/authorization/executions.js";
 import { scheduledIdentity } from "../server/automation/identity.js";
-import { executionHistory } from "../server/console/history.js";
+import { viewer, visibleGraph } from "../server/console/history.js";
 import { messageCommands } from "../server/console/messages.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { memoryStore } from "./fixtures/execution-store.js";
 import { environment } from "./harness.js";
 
-const stops: (() => void)[] = [];
-afterEach(() => {
-  for (const stop of stops.splice(0)) stop();
+const stops: (() => Promise<void>)[] = [];
+afterEach(async () => {
+  for (const stop of stops.splice(0)) await stop();
 });
 async function setup() {
-  const env = environment([]);
-  stops.push(() => env.sync.close());
+  const env = await environment([]);
+  stops.push(() => env.close());
   const schedule = (await env.clients.schedules.listScheduledRuns({})).scheduledRuns[0];
   const execution = (
     await env.clients.schedules.triggerScheduledRun({
@@ -32,7 +32,7 @@ async function setup() {
   const session = env.fake.sessions.get(execution.sessionId);
   if (!session) throw new Error("Missing scheduled session");
   const registry = executions(
-    memoryStore(),
+    env.store,
     undefined,
     scheduledIdentity(env.clients, "agentos", "agentos"),
   );
@@ -96,7 +96,7 @@ it("rejects forged message IDs, foreign sessions, wrong creators and Agent subst
 });
 
 it("keeps personal bindings immutable even when a message claims a scheduled origin", async () => {
-  const { registry, session, execution } = await setup();
+  const { registry, session, execution, reconcile, projection } = await setup();
   const owner = create(ExecutionIdentitySchema, {
     subject: "user:alice",
     write: false,
@@ -106,20 +106,22 @@ it("keeps personal bindings immutable even when a message claims a scheduled ori
   expect(
     (await registry.record(session, false, [`scheduled-run/${execution.id}`])).binding.subject,
   ).toBe(owner.subject);
-  expect(await registry.history("user:bob", [session.id])).toEqual([]);
+  await reconcile.refresh();
+  const bob = create(ExecutionIdentitySchema, { subject: "user:bob" });
+  expect(await visibleGraph(projection, viewer(bob), { contextId: session.id })).toBeUndefined();
 });
 
 it("keeps chat creation retries from claiming a reserved scheduled session", async () => {
-  const { fake, clients, sync, registry, session, execution } = await setup();
+  const { fake, clients, projection, reconcile, registry, session, execution } = await setup();
   fake.tasks.delete(execution.taskId);
-  await sync.refresh();
+  await reconcile.refresh();
   const identity = create(ExecutionIdentitySchema, {
     subject: "user:alice",
     write: true,
     credential: { case: "service", value: true },
   });
   const messageId = `scheduled-run/${execution.id}`;
-  const response = await messageCommands(sync, clients, undefined, registry).send(
+  const response = await messageCommands(projection, clients, "agentos", registry).send(
     create(SendMessageRequestSchema, {
       agent: session.agent,
       messageId,
@@ -135,7 +137,8 @@ it("keeps chat creation retries from claiming a reserved scheduled session", asy
 });
 
 it("shares native system executions with every administrator while preserving personal history isolation", async () => {
-  const { fake, sync, index, registry, session } = await setup();
+  const { fake, projection, reconcile, registry, session, execution } = await setup();
+  await registry.record(session, false, [`scheduled-run/${execution.id}`]);
   const privateSession = fake.createSession(
     { namespace: "agentos", name: "inspection" },
     randomUUID(),
@@ -161,25 +164,27 @@ it("shares native system executions with every administrator while preserving pe
       ],
     }),
   );
-  await sync.refresh();
+  await reconcile.refresh();
+  const page = { query: "", pageToken: "", pageSize: 100 };
+  const roots = async (identity: typeof alice, systemOnly = false) =>
+    (await projection.operations(viewer(identity, systemOnly), page)).tasks.map((task) => [
+      task.contextId,
+      task.id,
+    ]);
   const reader = create(ExecutionIdentitySchema, {
     subject: "user:bob",
     credential: { case: "service", value: true },
   });
-  const view = await executionHistory(index, registry)(reader);
-  expect(view.all().map((entry) => entry.contextId)).not.toContain(session.id);
-  expect(view.all().map((entry) => entry.id)).not.toContain("personal-task");
+  expect((await roots(reader)).flat()).not.toContain(session.id);
+  expect((await roots(reader)).flat()).not.toContain("personal-task");
   for (const capability of allCapabilities) {
     reader.capabilities = [capability];
-    const shared = await executionHistory(index, registry)(reader);
-    expect(shared.all().map((entry) => entry.contextId)).toContain(session.id);
-    expect(shared.all().map((entry) => entry.id)).not.toContain("personal-task");
+    expect((await roots(reader)).flat()).toContain(session.id);
+    expect((await roots(reader)).flat()).not.toContain("personal-task");
   }
   alice.capabilities = allCapabilities;
-  const own = await executionHistory(index, registry)(alice);
-  expect(own.all().map((entry) => entry.id)).toContain("personal-task");
-  const system = await executionHistory(index, registry)(alice, true);
-  expect(system.all().map((entry) => entry.contextId)).toContain(session.id);
-  expect(system.all().map((entry) => entry.id)).not.toContain("personal-task");
+  expect((await roots(alice)).flat()).toContain("personal-task");
+  expect((await roots(alice, true)).flat()).toContain(session.id);
+  expect((await roots(alice, true)).flat()).not.toContain("personal-task");
   expect((await registry.resolve(session)).write).toBe(false);
 });

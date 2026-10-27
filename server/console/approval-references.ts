@@ -9,10 +9,10 @@ import type { Approval, GovernanceConfig } from "../../gen/agentos/governance/v1
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import { approvalEnvironment } from "../governance/client.js";
 import { approvals } from "../governance/views.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 
 export function approvalReferences(
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "entry">,
   governance: GovernanceConfig,
   token?: EnvironmentTokens,
 ) {
@@ -23,8 +23,9 @@ export function approvalReferences(
     noDeleteOnFetchRejection: true,
     fetchMethod: async (key) => {
       const [taskId = "", requestId = ""] = key.split("\0");
-      return (await approvals(sync, governance, taskId, requestId, { timeoutMs: 2_000 }, token))
-        .approvals;
+      return (
+        await approvals(projection, governance, taskId, requestId, { timeoutMs: 2_000 }, token)
+      ).approvals;
     },
   });
   return async <T extends { interactions: Interaction[] }>(task: T): Promise<T> => {

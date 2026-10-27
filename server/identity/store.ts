@@ -12,6 +12,10 @@ export async function artifactStore(uri: string, ca?: string) {
   });
   await sql.begin(async (transaction) => {
     await transaction`select pg_advisory_xact_lock(hashtext('agentos_identity'))`;
+    // Existing schemas are left untouched so startup never locks tables that writers use.
+    const [present] =
+      await transaction`select to_regclass('agentos_identity.artifacts_grant') is not null as ok`;
+    if (present?.ok) return;
     await transaction`create schema if not exists agentos_identity`;
     await transaction`create table if not exists agentos_identity.artifacts (
       model text not null,

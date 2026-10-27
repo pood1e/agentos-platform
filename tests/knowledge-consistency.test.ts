@@ -13,7 +13,6 @@ beforeEach(async () => {
   );
 });
 afterEach(async () => {
-  env.sync.close();
   await env.close();
 });
 

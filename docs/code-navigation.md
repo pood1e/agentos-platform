@@ -11,8 +11,8 @@
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/console` | 控制台服务：Connect RPC、方案包加载与资源、角色模板读写 |
 | `server/jobs` | pg-boss 协调队列、消费注册与死信重放 |
-| `server/read-model` | kagent 任务与事件的读模型：会话、操作树、调用与交互 |
-| `server/read-model/observation.ts`、`server/console/watch.ts` | 会话与操作树的变更筛选、订阅心跳和健康检查 |
+| `server/read-model` | kagent 任务的 PostgreSQL 投影：紧凑记录、执行树、写时摘要与 SQL 列表，水位对账与查看时的 A2A 订阅 |
+| `server/read-model/graph.ts`、`server/console/watch.ts` | 单棵执行树的委派关系，按执行树唤醒的订阅、心跳和健康检查 |
 | `server/authorization` | Bearer 令牌校验、离线委派端点、执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
 | `server/automation` | 原生定时任务的工作空间授权、方案预置与只读执行身份绑定 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |

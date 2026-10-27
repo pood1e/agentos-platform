@@ -14,28 +14,30 @@ import type { AppReference } from "../../gen/agentos/mcp/v1/app_pb.js";
 import { approvalAppReferenceKey } from "../../shared/mcp-apps.js";
 import { isAdministrator } from "../../shared/permissions.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
-import type { executionHistory } from "../console/history.js";
+import { viewer, visibleGraph } from "../console/history.js";
 import { approvalClient, approvalEnvironment } from "../governance/client.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { ingest } from "../read-model/entry.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { awaiting, terminal } from "../read-model/state.js";
-import type { KagentSync } from "../read-model/sync.js";
 import { notFound, unavailable } from "../shared/errors.js";
 import { withEnvironmentMcpClient } from "./client.js";
 
 export function approvalApps(
-  sync: KagentSync,
+  projection: Pick<TaskProjection, "entry" | "session" | "graph">,
   clients: KagentClients,
   config: GovernanceConfig,
-  history: ReturnType<typeof executionHistory>,
   token?: EnvironmentTokens,
 ) {
   const denied = () => new ConnectError("Approval App access denied", Code.PermissionDenied);
   async function origin(app: AppReference, identity: ExecutionIdentity, signal: AbortSignal) {
     if (app.origin.case !== "approvalToolId") throw denied();
-    if (!isAdministrator(identity) && !(await history(identity)).entry(app.taskId))
+    if (
+      !isAdministrator(identity) &&
+      !(await visibleGraph(projection, viewer(identity), { taskId: app.taskId }))
+    )
       throw notFound("task.notFound");
-    const entry = sync.index.entry(app.taskId);
+    const entry = await projection.entry(app.taskId);
     const toolId = app.origin.value;
     const tool = entry?.interactions
       .flatMap((item) => item.tools)

@@ -5,10 +5,10 @@ import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { platformToolAuthorization } from "../server/authorization/platform-tools.js";
 import type { ExecutionRuntime } from "../server/authorization/runtime.js";
 import type { WorkloadIdentity } from "../server/authorization/workloads.js";
-import { environment, testBindings } from "./harness.js";
+import { fakeKagent, testBindings } from "./harness.js";
 
 it("intersects the verified Actor, service binding and original user's write ceiling", async () => {
-  const { fake, sync } = environment();
+  const { fake } = fakeKagent();
   const session = create(SessionSchema, { id: "actor-session" });
   const actor = vi.fn(async () => session);
   let write = false;
@@ -55,6 +55,5 @@ it("intersects the verified Actor, service binding and original user's write cei
     actor.mockRejectedValueOnce(new Error("Stale Actor UID"));
     expect((await check()).result?.case).toBe("error");
   } finally {
-    sync.close();
   }
 });

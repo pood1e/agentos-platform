@@ -15,9 +15,10 @@ import requestSchema from "../../gen/schema/agentos.automation.v1.CaseRequest.js
   type: "json",
 };
 import type { KagentClients } from "../kagent/clients.js";
+import { sessionInfo } from "../read-model/agents.js";
 import { cancelTree } from "../read-model/cancel.js";
 import { taskOutput } from "../read-model/decode/output.js";
-import type { KagentSync } from "../read-model/sync.js";
+import type { TaskProjection } from "../read-model/projection.js";
 import { busy, outcomeState, taskTree } from "../read-model/tree.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { inputSchema, result, validator } from "../team-sessions/schema.js";
@@ -25,7 +26,7 @@ import { inputSchema, result, validator } from "../team-sessions/schema.js";
 /** Source identities address cases; native session and task IDs are never accepted as inputs. */
 export function automationTools(
   clients: KagentClients,
-  sync: KagentSync,
+  projection: TaskProjection,
   workspace: string,
   environment: string,
   authorize?: (session: Session, cancel?: boolean, contexts?: string[]) => Promise<void>,
@@ -52,13 +53,14 @@ export function automationTools(
     );
     if (!session) throw new Error("Native case session is missing");
     await authorize?.(session);
+    await projection.apply([], [sessionInfo(session)]);
     return session;
   }
-  function observed(ref: CaseReference, sessionId: string) {
-    if (!sync.healthy()) throw new Error("Native case history is rebuilding");
-    const root = sync.index.taskOfMessage(messageId(ref));
+  async function observed(ref: CaseReference, sessionId: string) {
+    const root = await projection.taskOfMessage(messageId(ref));
     if (root && root.contextId !== sessionId) throw new Error("Native case context differs");
-    const tree = root && taskTree(sync.index, root.id);
+    const graph = root?.root ? await projection.graph([root.root]) : undefined;
+    const tree = root && graph && taskTree(graph, root.id);
     const latest = tree?.latest ?? root;
     return {
       tree,
@@ -90,7 +92,7 @@ export function automationTools(
         if (validator.validate(CaseRequestSchema, request).kind !== "valid" || !request.case)
           throw new Error("A versioned source case and concise task are required");
         const own = await session(request.case);
-        const task = await sync.send(
+        const task = await projection.send(
           `${own.agent?.namespace}/${own.agent?.name}`,
           create(MessageSchema, {
             contextId: own.id,
@@ -128,7 +130,7 @@ export function automationTools(
       async (args) => {
         const ref = fromJson(CaseReferenceSchema, args),
           own = await session(ref);
-        return result(InvokeSessionOutputSchema, observed(ref, own.id).output);
+        return result(InvokeSessionOutputSchema, (await observed(ref, own.id)).output);
       },
     );
     server.registerTool(
@@ -142,14 +144,15 @@ export function automationTools(
       async (args, context) => {
         const ref = fromJson(CaseReferenceSchema, args),
           own = await session(ref);
-        const current = observed(ref, own.id);
+        const current = await observed(ref, own.id);
         await authorize?.(
           own,
           true,
           current.tree?.entries.map((entry) => entry.contextId),
         );
-        if (current.tree) await cancelTree(clients, sync, current.tree, context.mcpReq.signal);
-        return result(InvokeSessionOutputSchema, observed(ref, own.id).output);
+        if (current.tree)
+          await cancelTree(clients, projection, current.tree, context.mcpReq.signal);
+        return result(InvokeSessionOutputSchema, (await observed(ref, own.id)).output);
       },
     );
     return server;
