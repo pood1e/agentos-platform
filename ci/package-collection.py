@@ -18,6 +18,8 @@ for name in ("deploy", "environments"):
 shutil.copytree("roles", root / "roles")
 shutil.copyfile("LICENSE", root / "LICENSE")
 shutil.copyfile("deploy/collection-README.md", root / "README.md")
+(root / "meta").mkdir()
+(root / "meta/runtime.yml").write_text('requires_ansible: ">=2.21.4"\n')
 (root / "playbooks/gen").mkdir(parents=True)
 shutil.copyfile("gen/authorization.json", root / "playbooks/gen/authorization.json")
 for name in ("deploy", "environments"):
@@ -68,7 +70,7 @@ for name in ("deploy", "environments", "connections", "lifecycle"):
             "dependencies": {
                 "kubernetes.core": "==6.6.0",
                 "ansible.posix": "==2.2.2",
-                "community.library_inventory_filtering": "==1.1.5",
+                "community.library_inventory_filtering_v1": "==1.1.5",
                 "community.general": "==13.4.0",
             },
         },
