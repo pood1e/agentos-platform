@@ -4,7 +4,7 @@ import { AuthenticationV1Api, CoreV1Api, KubeConfig } from "@kubernetes/client-n
 import Fastify, { LogController } from "fastify";
 import { discovery } from "openid-client";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { registerBrowserIdentity } from "../authorization/browser.js";
+import { registerDelegation } from "../authorization/delegation.js";
 import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { relatedExecutions } from "../authorization/executions.js";
 import { actorKeyServer } from "../authorization/keys.js";
@@ -32,11 +32,10 @@ import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
-import { registerAppSandbox } from "../mcp-apps/sandbox.js";
 import { mcpApps } from "../mcp-apps/service.js";
 import { TaskIndex } from "../read-model/index.js";
 import { KagentSync } from "../read-model/sync.js";
-import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
+import { kagentConfig, listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { voiceCalls } from "../speech/calls.js";
 import { speechService } from "../speech/service.js";
 import { speechSettingsStore } from "../speech/store.js";
@@ -50,36 +49,28 @@ import { collaborationGuardrails } from "./guardrails.js";
 import { registerPlatformMcp } from "./mcp.js";
 
 const config = kagentConfig();
-const authentication = process.env.AGENTOS_AUTH_MODE ?? "none";
-if (!["none", "oidc"].includes(authentication)) throw new Error("Unknown authentication mode");
-const oauth =
-  authentication === "oidc"
-    ? await discovery(
-        new URL(process.env.AGENTOS_OIDC_ISSUER ?? ""),
-        process.env.AGENTOS_OIDC_CLIENT_ID ?? "",
-        process.env.AGENTOS_OIDC_CLIENT_SECRET ?? "",
-      )
-    : undefined;
-if (oauth) oauth.timeout = 10;
-const identity =
-  authentication === "oidc"
-    ? await oidcIdentity(
-        {
-          issuer: process.env.AGENTOS_OIDC_ISSUER ?? "",
-          audience: process.env.AGENTOS_OIDC_AUDIENCE ?? "",
-          writerRole: process.env.AGENTOS_OIDC_WRITER_ROLE ?? "",
-          origin: process.env.AGENTOS_ORIGIN ?? "",
-        },
-        oauth,
-      )
-    : undefined;
+const issuer = requiredEnv("AGENTOS_OIDC_ISSUER");
+const oauth = await discovery(
+  new URL(issuer),
+  requiredEnv("AGENTOS_OIDC_CLIENT_ID"),
+  requiredEnv("AGENTOS_OIDC_CLIENT_SECRET"),
+);
+oauth.timeout = 10;
+const identity = await oidcIdentity(
+  {
+    issuer,
+    audience: requiredEnv("AGENTOS_OIDC_AUDIENCE"),
+    writerRole: requiredEnv("AGENTOS_OIDC_WRITER_ROLE"),
+  },
+  oauth,
+);
+const origin = requiredEnv("AGENTOS_API_ORIGIN");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
 const app = Fastify({
   logger: true,
   logController: new LogController({ disableRequestLogging: true }),
   bodyLimit: 2 * 1024 * 1024,
 });
-registerAppSandbox(app, process.env.AGENTOS_ORIGIN ?? "", process.env.AGENTOS_SANDBOX_ORIGIN ?? "");
 const clients = kagentClients(kagentTransport(config));
 const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log);
 const kubeConfig = new KubeConfig();
@@ -90,6 +81,7 @@ const operations = governanceConfig();
 const environmentToken = environmentTokens(
   operations,
   environmentCredentials(kubeConfig, config.namespace),
+  process.env.AGENTOS_USER_TOKEN_EXCHANGE !== "false",
 );
 
 const metadata = toolMetadata(clients);
@@ -104,21 +96,15 @@ const execution = await executionRuntime(
   metadata,
   app.log,
 );
-if (oauth && execution.background)
-  await registerBrowserIdentity(app, {
-    origin: process.env.AGENTOS_ORIGIN ?? "",
-    client: oauth,
-    key: Buffer.from(process.env.AGENTOS_COOKIE_SECRET ?? "", "base64"),
-    grants: execution.background,
-    executions: execution.registry,
-  });
-registerEnvironmentApis(
-  app,
-  operations,
-  environmentToken,
-  identity,
-  process.env.AGENTOS_ORIGIN ?? "",
-);
+await registerDelegation(app, {
+  origin,
+  returnOrigins: JSON.parse(requiredEnv("AGENTOS_DELEGATION_ORIGINS")),
+  client: oauth,
+  key: Buffer.from(requiredEnv("AGENTOS_COOKIE_SECRET"), "base64"),
+  grants: execution.background,
+  executions: execution.registry,
+});
+registerEnvironmentApis(app, operations, environmentToken, identity);
 const tags = await taskTagStore(
   process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
   config.namespace,
@@ -142,9 +128,7 @@ const speech = speechService(
   voiceCalls(speechSettings.load, process.env.AGENTOS_VOICE_URL, process.env.AGENTOS_VOICE_TOKEN),
 );
 await registerTranscription(app, speechSettings.load, async (headers) => {
-  const origin = process.env.AGENTOS_ORIGIN;
-  if (origin && headers.get("origin") !== origin) throw new Error("Invalid origin");
-  if (identity) await identity(headers);
+  await identity(headers);
 });
 const replaceTemplate = templateWriter(kubeConfig);
 const pack = loadPack(packRoot),
@@ -165,7 +149,6 @@ await registerConsole(app, {
     config.namespace,
     process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
     identity,
-    process.env.AGENTOS_ORIGIN ?? "",
     execution.registry.remember,
   ),
 
@@ -196,6 +179,7 @@ await registerConsole(app, {
     executions: execution.registry,
     entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
     authorizeTools: execution.authorizeTools,
+    delegationUrl: `${origin}/delegation/start`,
   }),
   management: managementService({
     clients,
@@ -213,7 +197,6 @@ await registerConsole(app, {
     sync,
   ),
   ready: () => sync.healthy() && configuration.healthy(),
-  staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
   packRoot,
 });
 await registerPlatformMcp(

@@ -56,6 +56,9 @@ global:
 agentos:
   image:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  ingress:
-    host: agentos.example.test
+  route:
+    parentRefs: [{name: site, sectionName: https}]
+    hosts: {console: agentos.example.test, api: api.agentos.example.test, sandbox: ''}
+  web:
+    image: registry.example.com/agentos/web@sha256:1111111111111111111111111111111111111111111111111111111111111111
   execution: {}

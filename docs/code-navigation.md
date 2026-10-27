@@ -9,15 +9,16 @@
 | `proto/agentos/governance/v1` | 环境、可选外部审批协议 |
 | `proto/agentos/automation/v1` | 自动化 RPC、方案预置、案例 MCP 入参、worker 配置与案例事实；定时任务复用 kagent 官方协议 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
-| `server/console` | 控制台服务：Connect RPC、静态资源、方案包加载、角色模板读写 |
+| `server/console` | 控制台服务：Connect RPC、方案包加载与资源、角色模板读写 |
 | `server/jobs` | pg-boss 协调队列、消费注册与死信重放 |
 | `server/read-model` | kagent 任务与事件的读模型：会话、操作树、调用与交互 |
 | `server/read-model/observation.ts`、`server/console/watch.ts` | 会话与操作树的变更筛选、订阅心跳和健康检查 |
-| `server/authorization` | 执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
+| `server/authorization` | Bearer 令牌校验、离线委派端点、执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
 | `server/automation` | 原生定时任务的工作空间授权、方案预置与只读执行身份绑定 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
 | `server/kagent/configuration.ts` | 官方 Kubernetes Informer 配置索引与运行时授权读取 |
-| `server/mcp-apps` | MCP Apps 元数据投影、资源缓存、当前用户的只读工具回调与独立源沙箱代理 |
+| `server/mcp-apps` | MCP Apps 元数据投影、资源缓存与当前用户的只读工具回调 |
+| `server/identity` | 密码模式的内置身份源：oidc-provider 配置、站点密码登录与限速、PostgreSQL 存储 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/management/changes.ts` | 连接更新的原生预检与版本约束回滚 |
 | `server/knowledge` | 团队知识检索 |
@@ -35,7 +36,8 @@
 | `src/features/system-tasks` | 管理员共享的系统任务页面：定时任务管理、运行历史、只读执行会话和环境事件入口 |
 | `src/lib` | RPC 客户端、方案包展示（`pack.ts`）与通用工具 |
 | `src/i18n` | 平台通用文案 |
-| `charts/agentos` | 平台 Chart：单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent |
+| `web` | web 镜像：前端产物与 MCP App 沙箱页的 nginx 配置 |
+| `charts/agentos` | 平台 Chart：平台 API、web、密码模式身份源、HTTPRoute、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent |
 | `tests` | 单元与集成测试；`tests/fake-kagent` 是录制驱动的 kagent 替身 |
 | `tests/fixtures/pack` | 示例方案包，供测试使用 |
 | `tests/fixtures/solution-chart` | 依赖平台 Chart 的示例方案 Chart，供 Chart 校验使用 |

@@ -1,3 +1,5 @@
+{{- $origins := include "agentos.origins" . | fromJson -}}
+{{- $identity := include "agentos.identity" . | fromJson -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -58,23 +60,26 @@ spec:
           env:
             {{- include "agentos.executionEnv" . | nindent 12 }}
             - {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}
-            - {name: AGENTOS_AUTH_MODE, value: {{ .Values.identity.mode | quote }}}
-            {{- if eq .Values.identity.mode "oidc" }}
-            - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" .Values.identity.issuer | quote }}}
-            - {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" .Values.identity.clientId | quote }}}
-            - {name: AGENTOS_OIDC_AUDIENCE, value: {{ required "identity.audience is required" .Values.identity.audience | quote }}}
-            - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" .Values.identity.writerRole | quote }}}
+            - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" $identity.issuer | quote }}}
+            - {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" $identity.clientId | quote }}}
+            - {name: AGENTOS_OIDC_AUDIENCE, value: {{ required "identity.audience is required" $identity.audience | quote }}}
+            - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" $identity.writerRole | quote }}}
             - name: AGENTOS_OIDC_CLIENT_SECRET
               valueFrom:
-                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: client-secret}
+                secretKeyRef: {name: {{ $identity.secret }}, key: client-secret}
             - name: AGENTOS_COOKIE_SECRET
               valueFrom:
-                secretKeyRef: {name: {{ .Values.identity.secretRef }}, key: cookie-secret}
+                secretKeyRef: {name: {{ include "agentos.name" . }}-sessions, key: delegation}
+            - {name: AGENTOS_API_ORIGIN, value: {{ $origins.api | quote }}}
+            {{- if eq .Values.identity.mode "password" }}
+            # Environment identity providers do not federate the built-in password source.
+            - {name: AGENTOS_USER_TOKEN_EXCHANGE, value: 'false'}
             {{- end }}
-            {{- if .Values.ingress.sandbox.host }}
-            - {name: AGENTOS_SANDBOX_ORIGIN, value: {{ printf "https://%s" .Values.ingress.sandbox.host | quote }}}
+            - name: AGENTOS_DELEGATION_ORIGINS
+              value: {{ prepend .Values.identity.returnOrigins $origins.console | uniq | toJson | quote }}
+            {{- with $origins.sandbox }}
+            - {name: AGENTOS_SANDBOX_ORIGIN, value: {{ . | quote }}}
             {{- end }}
-            - {name: AGENTOS_ORIGIN, value: {{ printf "https://%s" .Values.ingress.host | quote }}}
             - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
             - {name: AGENTOS_EVENT_AUTOMATION_ENABLED, value: {{ .Values.automation.enabled | quote }}}
             - {name: AGENTOS_SPEECH_SECRET, value: {{ include "agentos.name" . }}-speech}

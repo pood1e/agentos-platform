@@ -1,0 +1,124 @@
+{{- $name := include "agentos.name" . -}}
+{{- $origins := include "agentos.origins" . | fromJson -}}
+{{- $identity := include "agentos.identity" . | fromJson -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}-web
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: web
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/web-config.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        {{- include "agentos.securityContext" . | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: proxy
+          image: {{ .Values.web.proxyImage | quote }}
+          args:
+            - --alpha-config=/etc/oauth2-proxy/oauth2-proxy.yaml
+            - --cookie-name=__Host-agentos
+            - --cookie-secure=true
+            - --cookie-samesite=lax
+            - --cookie-refresh=4m
+            - --email-domain=*
+            - --redirect-url={{ $origins.console }}/oauth2/callback
+            - --reverse-proxy=true
+            - --skip-provider-button=true
+            - --api-route=^/agentos\.
+            - --api-route=^/pack/
+            - --api-route=^/speech/
+            - --request-logging=false
+            - --silence-ping-logging=true
+          env:
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom: {secretKeyRef: {name: {{ $name }}-sessions, key: web}}
+          ports: [{name: http, containerPort: 4180}]
+          readinessProbe:
+            httpGet: {path: /ping, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /ping, port: http}
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: proxy-config, mountPath: /etc/oauth2-proxy, readOnly: true}
+        - name: web
+          image: {{ required "web.image is required" .Values.web.image | quote }}
+          env:
+            - {name: NGINX_ENVSUBST_FILTER, value: ^AGENTOS_}
+            - {name: AGENTOS_CONSOLE_ORIGIN, value: {{ $origins.console | quote }}}
+            - {name: AGENTOS_FRAME_SRC, value: {{ $origins.sandbox | default "'none'" | quote }}}
+          ports: [{name: static, containerPort: 8080}, {name: sandbox, containerPort: 8081}]
+          readinessProbe:
+            httpGet: {path: /, port: static}
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: nginx-config, mountPath: /etc/nginx/conf.d}
+            - {name: nginx-runtime, mountPath: /tmp}
+      volumes:
+        - name: proxy-config
+          projected:
+            sources:
+              - configMap: {name: {{ $name }}-web}
+              - secret:
+                  name: {{ $identity.secret }}
+                  items: [{key: client-secret, path: client-secret}]
+        - {name: nginx-config, emptyDir: {sizeLimit: 1Mi}}
+        - {name: nginx-runtime, emptyDir: {sizeLimit: 64Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-web
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: web
+  ports:
+    - {name: http, port: 4180, targetPort: http}
+    - {name: sandbox, port: 8081, targetPort: sandbox}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}-web
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: web}
+  policyTypes: [Ingress]
+  ingress:
+    - from: {{ toYaml .Values.route.from | nindent 8 }}
+      ports: [{port: 4180, protocol: TCP}, {port: 8081, protocol: TCP}]

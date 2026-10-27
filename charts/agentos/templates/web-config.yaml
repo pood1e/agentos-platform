@@ -1,0 +1,41 @@
+{{- $name := include "agentos.name" . -}}
+{{- $identity := include "agentos.identity" . | fromJson -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-web
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+data:
+  oauth2-proxy.yaml: |
+    upstreamConfig:
+      upstreams:
+        {{- range $index, $path := list "/agentos.console.v1.ConsoleService/" "/agentos.management.v1.ManagementService/" "/agentos.automation.v1.AutomationService/" "/pack/" "/speech/" }}
+        - id: api-{{ $index }}
+          path: {{ $path }}
+          uri: http://{{ $name }}-console:8080
+          timeout: 5m
+        {{- end }}
+        - id: web
+          path: /
+          uri: http://127.0.0.1:8080
+    injectRequestHeaders:
+      - name: Authorization
+        values:
+          - claimSource:
+              claim: access_token
+              prefix: "Bearer "
+    providers:
+      - id: agentos
+        provider: oidc
+        clientID: {{ $identity.clientId | quote }}
+        clientSecretFile: /etc/oauth2-proxy/client-secret
+        code_challenge_method: S256
+        scope: openid
+        oidcConfig:
+          issuerURL: {{ $identity.issuer | quote }}
+          emailClaim: sub
+          userIDClaim: sub
+          insecureSkipNonce: false
+    server:
+      bindAddress: 0.0.0.0:4180

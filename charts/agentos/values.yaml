@@ -49,17 +49,27 @@ voice:
     requests: {cpu: 250m, memory: 512Mi}
     limits: {cpu: '2', memory: 2Gi}
 identity:
-  mode: none
+  mode: password
   issuer: ''
   clientId: ''
   audience: ''
   writerRole: ''
   secretRef: agentos-identity
-
-ingress:
-  host: ''
-  tlsSecret: agentos-ingress
-  sandbox: {host: '', tlsSecret: ''}
+  returnOrigins: []
+route:
+  parentRefs: []
+  hosts: {console: '', api: '', sandbox: ''}
+  from:
+  - namespaceSelector:
+      matchLabels: {kubernetes.io/metadata.name: kube-system}
+    podSelector:
+      matchLabels: {app.kubernetes.io/name: traefik}
+web:
+  image: ''
+  proxyImage: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5@sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916
+  resources:
+    requests: {cpu: 20m, memory: 32Mi}
+    limits: {cpu: 500m, memory: 128Mi}
 modelConfig:
   spec:
     provider: OpenAI

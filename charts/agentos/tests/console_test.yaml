@@ -41,36 +41,3 @@ tests:
       path: spec.template.spec.containers
       count: 1
     template: console-deployment.yaml
-- it: uses native OIDC and server-side secrets
-  asserts:
-  - contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_AUTH_MODE
-        value: oidc
-    template: console-deployment.yaml
-  - contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_OIDC_CLIENT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: agentos-identity
-            key: client-secret
-    template: console-deployment.yaml
-- it: supports the mode without browser OIDC
-  set:
-    identity.mode: none
-  asserts:
-  - contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_AUTH_MODE
-        value: none
-    template: console-deployment.yaml
-  - notContains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_OIDC_ISSUER
-        value: https://identity.example.test/realms/operations
-    template: console-deployment.yaml

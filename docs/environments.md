@@ -128,6 +128,3 @@ AgentTemplate 仅在首次安装时初始化并保留，后续升级保留用户
 4. 应用值和连接配置同步后，检查原生发现、OBO、角色工具范围与撤销结果。
 
 回退使用已发布 Chart 及完整站点值，Helm 处理其管理资源。原生身份权限与平台模板按目标版本的明确配置恢复。
-一次性接管旧资源时核对 release 清单、Helm 所有权及 ownerReferences，再移交给目标 release。
-从旧应用 release 移出可编辑 AgentTemplate 前，先在存量对象及上一版 release 清单中设置 `helm.sh/resource-policy: keep`，再升级 release 并移交平台管理。
-切换前后核对模板配置及执行加密密钥摘要，保持现有会话和离线授权可用。

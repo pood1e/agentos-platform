@@ -6,6 +6,8 @@
   vars:
     ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
     chart_user: "{{ lookup('env', 'AGENTOS_CHART_USER') }}"
+    site_identity: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('identity', {}) }}"
+    site_password_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"
   module_defaults:
     kubernetes.core.k8s:
       kubeconfig: "{{ kubeconfig_path }}"
@@ -41,6 +43,29 @@
         that: item.resources | length > 0 or ansible_check_mode
       loop: "{{ application_credentials.results }}"
       no_log: true
+
+    - name: Discover the site password
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ site_password_secret }}"
+        namespace: "{{ agentos_namespace }}"
+      register: site_password
+      when: site_identity.get('mode', 'password') == 'password'
+      no_log: true
+
+    - name: Generate the site password
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata: {name: "{{ site_password_secret }}", namespace: "{{ agentos_namespace }}"}
+          type: Opaque
+          stringData:
+            password: "{{ lookup('ansible.builtin.password', '/dev/null', length=24, chars=['ascii_letters', 'digits']) }}"
+      when: site_identity.get('mode', 'password') == 'password' and site_password.resources | length == 0
+      no_log: true
+      diff: false
 
     - name: Authenticate application chart registry
       ansible.builtin.command:
@@ -85,14 +110,3 @@
     - name: Publish the current collaboration tool catalog
       ansible.builtin.include_tasks: mcp-discovery.yaml
       when: not ansible_check_mode
-
-    - name: Retire console OIDC credentials
-      kubernetes.core.k8s:
-        api_version: v1
-        kind: Secret
-        name: "{{ item }}"
-        namespace: "{{ agentos_namespace }}"
-        state: absent
-      loop: "{{ ['agentos-oidc', app_release_name ~ '-oidc'] | unique }}"
-      no_log: true
-      diff: false

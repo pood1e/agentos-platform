@@ -1,23 +1,29 @@
 import { randomBytes } from "node:crypto";
 import { create } from "@bufbuild/protobuf";
-import { Code } from "@connectrpc/connect";
+import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import Fastify from "fastify";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import * as oidc from "openid-client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
+import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { registerBrowserIdentity } from "../server/authorization/browser.js";
+import { registerDelegation } from "../server/authorization/delegation.js";
 import { executions } from "../server/authorization/executions.js";
 import { offlineCredentials } from "../server/authorization/offline.js";
 import { jwtIdentity } from "../server/authorization/oidc.js";
+import { consoleService } from "../server/console/service.js";
+import { workspaceContext } from "../server/platform/access.js";
 import { memoryStore } from "./fixtures/execution-store.js";
+import { environment, testBindings } from "./harness.js";
 
 const issuer = "https://identity.test/realm";
-const origin = "https://console.test";
+const origin = "https://api.test";
+const consoleOrigin = "https://console.test";
 const keys = await generateKeyPair("RS256");
 const jwk = { ...(await exportJWK(keys.publicKey)), kid: "test", alg: "RS256" };
 const verify = jwtIdentity(
-  { issuer, audience: "platform", writerRole: "writer", origin },
+  { issuer, audience: "platform", writerRole: "writer" },
   createLocalJWKSet({ keys: [jwk] }),
 );
 const session = (id: string) =>
@@ -95,47 +101,26 @@ async function setup() {
   return { store, oauth, grants, registry, identity };
 }
 
-it("keeps background delegation after browser logout and access-token expiry without elevating the original ceiling", async () => {
+it("keeps background delegation after access-token expiry without elevating the original ceiling", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
-  const { store, grants, registry, oauth } = await setup();
-  const app = Fastify();
-  await registerBrowserIdentity(app, {
-    origin,
-    client: oauth,
-    key: randomBytes(32),
-    grants,
-    executions: registry,
+  const { store, oauth } = await setup();
+  writes = true;
+  vi.setSystemTime(Date.now() + 180_000);
+  const restarted = executions(
+    store,
+    verify,
+    undefined,
+    offlineCredentials(store, oauth, verify).resolve,
+  );
+  const execution = await restarted.resolve(session("child"));
+  expect(execution.identity.subject).toBe(`${issuer}#alice`);
+  expect(execution.write).toBe(false);
+  expect(refreshes).toBe(1);
+  await restarted.revoke(session("root"), execution.identity);
+  await expect(restarted.resolve(session("child"))).rejects.toMatchObject({
+    code: Code.PermissionDenied,
   });
-  await app.ready();
-  try {
-    const cookie = `__Host-agentos=${encodeURIComponent(app.encodeSecureSession(app.createSecureSession({ subject: `${issuer}#alice` })))}`;
-    const result = await app.inject({
-      method: "POST",
-      url: "/auth/logout",
-      headers: { origin, cookie },
-    });
-    expect(result.statusCode).toBe(204);
-    expect(result.headers["set-cookie"]).toContain("Max-Age=0");
-    writes = true;
-    vi.setSystemTime(Date.now() + 180_000);
-    const restarted = executions(
-      store,
-      verify,
-      undefined,
-      offlineCredentials(store, oauth, verify).resolve,
-    );
-    const execution = await restarted.resolve(session("child"));
-    expect(execution.identity.subject).toBe(`${issuer}#alice`);
-    expect(execution.write).toBe(false);
-    expect(refreshes).toBe(1);
-    await restarted.revoke(session("root"), execution.identity);
-    await expect(restarted.resolve(session("child"))).rejects.toMatchObject({
-      code: Code.PermissionDenied,
-    });
-    expect(refreshes).toBe(1);
-  } finally {
-    await app.close();
-  }
+  expect(refreshes).toBe(1);
 });
 
 it("rejects revoked offline grants and changed subjects without substituting a service account", async () => {
@@ -165,48 +150,110 @@ it("does not lock valid credentials and coalesces concurrent refreshes", async (
   expect(update).toHaveBeenCalledOnce();
 });
 
-it("uses authorization code with PKCE, state and nonce and keeps the offline credential outside cookies", async () => {
-  const { grants, registry, oauth } = await setup();
+it("delegates with authorization code, PKCE, state and nonce and returns only to registered clients", async () => {
+  const store = memoryStore();
+  const oauth = client();
+  const grants = offlineCredentials(store, oauth, verify);
+  const registry = executions(store, verify, undefined, grants.resolve);
   const app = Fastify();
-  await registerBrowserIdentity(app, {
+  await registerDelegation(app, {
     origin,
+    returnOrigins: [consoleOrigin],
     client: oauth,
     key: randomBytes(32),
     grants,
     executions: registry,
   });
-  app.get("/private", async (request) => ({ token: request.headers["x-forwarded-access-token"] }));
   try {
-    const start = await app.inject({ url: "/auth/start" });
+    const foreign = await app.inject({
+      url: `/delegation/start?return_to=${encodeURIComponent("https://evil.test/")}`,
+    });
+    expect(foreign.statusCode).toBe(400);
+    const returnTo = `${consoleOrigin}/tasks?id=1`;
+    const start = await app.inject({
+      url: `/delegation/start?return_to=${encodeURIComponent(returnTo)}`,
+    });
     const url = new URL(String(start.headers.location));
     expect(url.searchParams.get("scope")).toContain("offline_access");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(url.searchParams.get("prompt")).toBe("consent");
+    expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/delegation/callback`);
     nonce = url.searchParams.get("nonce") ?? "";
     const cookie = String(start.headers["set-cookie"]).split(";")[0];
-    const callback = await app.inject({
-      url: `/auth/callback?code=one&state=${url.searchParams.get("state")}`,
-      headers: { cookie },
-    });
-    expect(callback.statusCode).toBe(302);
-    const value = callback.cookies[0].value;
-    const data = app.decodeSecureSession(value)?.data();
-    expect(data).toMatchObject({ subject: `${issuer}#alice` });
-    expect(JSON.stringify(data)).not.toContain("offline-");
-    const privateResponse = await app.inject({
-      url: "/private",
-      headers: {
-        cookie: `__Host-agentos=${encodeURIComponent(value)}`,
-        "x-forwarded-access-token": "forged",
-      },
-    });
-    expect(privateResponse.statusCode).toBe(200);
-    expect(privateResponse.json().token).not.toBe("forged");
+    expect(cookie).toMatch(/^__Host-agentos-delegation=/);
+    expect(await registry.delegated(`${issuer}#alice`)).toBe(false);
     const forged = await app.inject({
-      url: "/auth/callback?code=two&state=forged",
+      url: "/delegation/callback?code=two&state=forged",
       headers: { cookie },
     });
     expect(forged.statusCode).toBe(401);
+    const restarted = await app.inject({
+      url: `/delegation/start?return_to=${encodeURIComponent(returnTo)}`,
+    });
+    const state = new URL(String(restarted.headers.location)).searchParams;
+    nonce = state.get("nonce") ?? "";
+    const callback = await app.inject({
+      url: `/delegation/callback?code=one&state=${state.get("state")}`,
+      headers: { cookie: String(restarted.headers["set-cookie"]).split(";")[0] },
+    });
+    expect(callback.statusCode).toBe(302);
+    expect(callback.headers.location).toBe(returnTo);
+    expect(String(callback.headers["set-cookie"])).not.toContain("offline-");
+    expect(await registry.delegated(`${issuer}#alice`)).toBe(true);
   } finally {
     await app.close();
+  }
+});
+
+it("asks users without an offline grant to delegate before starting executions", async () => {
+  const env = environment([]);
+  const store = memoryStore();
+  const registry = executions(store, verify);
+  const api = createClient(
+    ConsoleService,
+    createRouterTransport(
+      (router) =>
+        router.service(
+          ConsoleService,
+          consoleService({
+            ...env,
+            namespace: "workspace",
+            access: testBindings(env.fake),
+            executions: registry,
+            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
+            roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
+            replaceTemplate: async (value) => env.fake.replaceTemplate(value),
+            pack: create(PackSchema),
+            delegationUrl: `${origin}/delegation/start`,
+          }),
+        ),
+      {
+        router: {
+          interceptors: [workspaceContext("workspace", "assistant", verify, registry.remember)],
+        },
+      },
+    ),
+  );
+  const headers = { authorization: `Bearer ${await accessToken()}` };
+  try {
+    expect((await api.getAccessProfile({}, { headers })).profile).toMatchObject({
+      delegated: false,
+      delegationUrl: `${origin}/delegation/start`,
+    });
+    await expect(
+      api.sendMessage({ agent: { namespace: "workspace", name: "assistant" } }, { headers }),
+    ).rejects.toMatchObject({ code: Code.FailedPrecondition, rawMessage: "delegation.required" });
+    await registry.remember(
+      await offlineCredentials(store, client(), verify).accept({
+        access_token: await accessToken(),
+        token_type: "bearer",
+        refresh_token: "offline-initial",
+        scope: "offline_access",
+      }),
+      true,
+    );
+    expect((await api.getAccessProfile({}, { headers })).profile?.delegated).toBe(true);
+  } finally {
+    env.sync.close();
   }
 });

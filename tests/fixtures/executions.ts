@@ -30,7 +30,6 @@ export async function fixtureExecutions() {
         issuer: identityIssuer,
         audience: "console",
         writerRole: "writer",
-        origin: "http://127.0.0.1:8090",
       },
       createLocalJWKSet({ keys: [key] }),
     ),

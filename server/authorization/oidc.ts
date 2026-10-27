@@ -9,14 +9,11 @@ export interface OIDCIdentityConfig {
   issuer: string;
   audience: string;
   writerRole: string;
-  origin: string;
 }
 
 export function jwtIdentity(config: OIDCIdentityConfig, keys: JWTVerifyGetKey) {
   return async (headers: Headers) => {
-    const forwarded = headers.get("x-forwarded-access-token");
-    const authorization = headers.get("authorization");
-    const token = forwarded ?? authorization?.match(/^Bearer ([^\s,]+)$/)?.[1];
+    const token = headers.get("authorization")?.match(/^Bearer ([^\s,]+)$/)?.[1];
     if (!token || /[\s,]/.test(token))
       throw new ConnectError("Authentication required", Code.Unauthenticated);
     try {
@@ -42,8 +39,6 @@ export function jwtIdentity(config: OIDCIdentityConfig, keys: JWTVerifyGetKey) {
 
 export async function oidcIdentity(config: OIDCIdentityConfig, client?: Configuration) {
   if (new URL(config.issuer).protocol !== "https:") throw new Error("OIDC requires HTTPS");
-  if (new URL(config.origin).origin !== config.origin)
-    throw new Error("A browser origin is required");
   if (!config.audience || !config.writerRole)
     throw new Error("OIDC audience and writer role required");
   const metadata = (

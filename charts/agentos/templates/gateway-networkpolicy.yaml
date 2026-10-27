@@ -23,10 +23,6 @@ spec:
             matchLabels: {ate.dev/worker-pool: kagent-default}
       ports: [{port: 8080, protocol: TCP}]
     {{- if .Values.automation.enabled }}
-    - from:
-        - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: kube-system}
-          podSelector:
-            matchLabels: {app.kubernetes.io/name: traefik}
+    - from: {{ toYaml .Values.route.from | nindent 8 }}
       ports: [{port: 8080, protocol: TCP}]
     {{- end }}

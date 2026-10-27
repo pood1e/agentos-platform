@@ -44,7 +44,7 @@
 
 ```mermaid
 flowchart LR
-    Browser[浏览器] --> Console[agentos-console]
+    Browser[浏览器] --> Console[agentos-web]
     Console -->|OIDC 登录| IdP[外部身份提供方 / agentos-identity]
     Console -->|Bearer| API[agentos-api]
     API -->|离线委派| IdP
@@ -62,7 +62,7 @@ flowchart LR
 
 | 组件 | 职责 | 形态 |
 | --- | --- | --- |
-| agentos-console | oauth2-proxy 浏览器会话、静态 SPA、MCP App 沙箱页 | 可选，独立镜像，可部署多份 |
+| agentos-web | oauth2-proxy 浏览器会话、静态 SPA、MCP App 沙箱页 | 可选，独立镜像，可部署多份 |
 | agentos-api | Connect RPC、离线委派端点、方案包资源、语音会话签发 | 无状态，多副本 |
 | agentos-identity | 内置密码身份源（oidc-provider） | 可选，仅密码模式部署 |
 | agentos-dataplane | extAuth、ExtMCP、TaskStore 与 Memory 代理及投影写入、协作 MCP、Actor JWKS | 无状态，多副本，PodDisruptionBudget |
@@ -76,13 +76,12 @@ flowchart LR
 ### 身份与委派
 
 - 平台 API 只接受 `Authorization: Bearer`，校验签名、issuer、audience 与应用角色，不处理浏览器会话与 Origin。
-- console 以 oauth2-proxy 承担浏览器会话：授权码与 PKCE，会话 Cookie 为 `SameSite=Lax`，alpha 配置的 `injectRequestHeaders` 把 access token 注入 `Authorization`。跨站写请求不携带会话，Connect 仅对无副作用方法使用 GET。
-- 离线委派由平台 API 的 `/delegation/start` 与 `/delegation/callback` 完成：沿用现有机密客户端请求 `offline_access`，`return_to` 限定为登记的前端地址，授权事务保存在短期签名 Cookie 中。凭据按用户主体保存，与发起请求的客户端无关。
+- console 由 web 组件交付：nginx 提供前端产物，oauth2-proxy 承担浏览器会话：授权码与 PKCE，会话 Cookie 为 `SameSite=Lax`，alpha 配置的 `injectRequestHeaders` 把 access token 注入 `Authorization`。跨站写请求不携带会话，Connect 仅对无副作用方法使用 GET。
+- 离线委派由平台 API 的 `/delegation/start` 与 `/delegation/callback` 完成：沿用现有机密客户端以 `prompt=consent` 请求 `offline_access`，`return_to` 限定为登记的前端地址，授权事务保存在短期签名 Cookie 中。凭据按用户主体保存，与发起请求的客户端无关。
 - `GetAccessProfile` 返回委派状态与授权地址；无有效委派时 `SendMessage` 返回 `FAILED_PRECONDITION`。console 登录后自动完成委派跳转，CLI 与机器人向用户展示授权地址。
-- 访客模式改为内置密码身份源：`identity.mode: password` 时部署 agentos-identity，以 oidc-provider 签发标准令牌。登录页只校验站点密码，令牌主体为单一共享用户并携带全部应用角色与写角色；签名密钥与密码哈希来自 Secret，登录失败限速，授权数据保存在 PostgreSQL。平台 API、console 与离线委派对两种模式使用同一路径。
-- 本地开发使用密码模式；多用户隔离用例使用 compose 中的 Keycloak。
-- MCP App 沙箱页属于宿主，随 console 交付；平台 API 提供资源读取与工具回调。
-- console 与平台 API 以 Gateway API HTTPRoute 暴露，`parentRefs` 由站点提供。
+- 访客模式改为内置密码身份源：`identity.mode: password` 时部署 identity，挂载于 console 主机的 `/identity`，以 oidc-provider 签发标准令牌。登录页只校验站点密码，令牌主体为单一共享用户并携带全部应用角色与写角色；站点密码与签名密钥来自 Secret，登录失败限速，授权数据保存在 PostgreSQL。平台 API、console 与离线委派对两种模式使用同一路径；环境身份提供方不信任内置签发者，用户执行在环境侧以服务身份桥接。
+- MCP App 沙箱页属于宿主，随 web 镜像交付；平台 API 提供资源读取与工具回调。
+- console、平台 API 与沙箱以 Gateway API HTTPRoute 分主机名暴露，`parentRefs` 由站点提供；参考部署启用 K3s 内置 Traefik 的 Gateway API 支持。
 
 ### 执行存储
 

@@ -26,6 +26,13 @@ export function Layout({ children }: { children?: ReactNode }) {
     if (access.error instanceof ConnectError && access.error.code === Code.Unauthenticated)
       window.location.reload();
   }, [access.error]);
+  useEffect(() => {
+    // Background execution needs the user's offline grant; the API origin completes it.
+    if (!access.data || access.data.delegated || !access.data.delegationUrl) return;
+    const delegation = new URL(access.data.delegationUrl);
+    delegation.searchParams.set("return_to", window.location.href);
+    window.location.assign(delegation);
+  }, [access.data]);
   const transport = useTransport();
   const scope = JSON.stringify([access.data?.workspace, access.data?.subject]);
   const scopedTransport = useMemo(

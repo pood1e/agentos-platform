@@ -72,7 +72,8 @@ class PackageChartTest(unittest.TestCase):
         self.digest = "sha256:" + "a" * 64
         self.metadata("build", self.digest)
         self.workers = {
-            name: f"sha256:{index}" + "c" * 63 for index, name in enumerate(["automation", "voice"])
+            name: f"sha256:{index}" + "c" * 63
+            for index, name in enumerate(["automation", "voice", "web"])
         }
         for name, digest in self.workers.items():
             self.metadata(name + "-build", digest)
