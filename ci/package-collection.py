@@ -45,12 +45,12 @@ hashes = [
 if len(hashes) != 1:
     raise ValueError("Exactly one contracts wheel is required")
 (root / "requirements-contracts.txt").write_text("\n".join(hashes) + "\n")
-for name in ("deploy", "environments", "connections", "lifecycle"):
-    target = (
-        "deploy/deploy.yaml"
-        if name == "deploy"
-        else "environments/" + ("deploy.yaml" if name == "environments" else name + ".yaml")
-    )
+for name, target in {
+    "install": "deploy/deploy.yaml",
+    "access": "environments/deploy.yaml",
+    "connections": "environments/connections.yaml",
+    "lifecycle": "environments/lifecycle.yaml",
+}.items():
     (root / "playbooks" / (name + ".yaml")).write_text(
         yaml.safe_dump([{"name": "AgentOS " + name, "ansible.builtin.import_playbook": target}])
     )
