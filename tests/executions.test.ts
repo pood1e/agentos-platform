@@ -17,7 +17,7 @@ import { memoryStore } from "./fixtures/execution-store.js";
 const issuer = "https://identity.test/realms/workspace";
 const keys = await generateKeyPair("RS256");
 const verify = jwtIdentity(
-  { issuer, audience: "platform", writerRole: "writer", origin: "https://console.test" },
+  { issuer, audience: "platform", writerRole: "writer" },
   createLocalJWKSet({ keys: [await exportJWK(keys.publicKey)] }),
 );
 const session = (id: string, name = "assistant") =>
@@ -163,19 +163,6 @@ it("rejects cycles, missing parents and subject changes in the authoritative cha
   value.parentSessionId = child.id;
   await store.saveBinding(value, saved.version);
   await expect(registry.resolve(child)).rejects.toMatchObject({ code: Code.PermissionDenied });
-});
-
-it("retires shared console execution authority when OIDC is enabled", async () => {
-  const shared = create(ExecutionIdentitySchema, {
-    subject: "console",
-    write: true,
-    credential: { case: "service", value: true },
-  });
-  await executions(store).bind(session("open-console"), shared);
-  expect((await executions(store).resolve(session("open-console"))).write).toBe(true);
-  await expect(registry.resolve(session("open-console"))).rejects.toMatchObject({
-    code: Code.PermissionDenied,
-  });
 });
 
 it("captures platform capability ceilings through delegation without lowering the user's new roots", async () => {

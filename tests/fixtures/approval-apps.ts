@@ -27,7 +27,6 @@ import { mcpApps } from "../../server/mcp-apps/service.js";
 import { workspaceContext } from "../../server/platform/access.js";
 import { hitlExtension } from "../../server/read-model/decode/hitl.js";
 import { environment, testBindings } from "../harness.js";
-import { memoryStore } from "./execution-store.js";
 
 export async function approvalAppsEnvironment(approvalState = ActivityState.UNOBSERVED) {
   const calls: { name: string; meta: unknown; authorization: string }[] = [];
@@ -123,17 +122,17 @@ export async function approvalAppsEnvironment(approvalState = ActivityState.UNOB
     id: "context",
     agent: { namespace: "agentos", name: "assistant" },
   });
-  const env = environment([task]);
+  const env = await environment([task]);
   env.fake.load({ sessions: [session], tasks: [task] });
-  await env.sync.refresh();
   const owner = create(ExecutionIdentitySchema, {
     subject: "alice",
     write: true,
     credential: { case: "accessToken", value: "alice-token" },
   });
   let caller = owner;
-  const registry = executions(memoryStore(), async () => owner);
+  const registry = executions(env.store, async () => owner);
   await registry.bind(session, owner);
+  await env.reconcile.refresh();
   const token = vi.fn(async (_environment: string, _role: string, identity?: typeof owner) =>
     identity ? `human-${identity.subject}` : "catalog",
   );
@@ -144,11 +143,11 @@ export async function approvalAppsEnvironment(approvalState = ActivityState.UNOB
   const metadata = toolMetadata(env.clients);
   const apps = mcpApps({
     ...env,
+    namespace: "agentos",
     access,
     metadata,
     operations,
     token,
-    executions: registry,
     sandboxOrigin: "https://sandbox.example",
   });
   const service = consoleService({
@@ -171,8 +170,8 @@ export async function approvalAppsEnvironment(approvalState = ActivityState.UNOB
     }),
   );
   onTestFinished(async () => {
-    env.sync.close();
     await provider.close();
+    await env.close();
   });
   return {
     ...env,

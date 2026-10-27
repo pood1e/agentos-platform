@@ -5,7 +5,7 @@ export interface KagentConfig {
   token?: string;
 }
 
-function required(env: NodeJS.ProcessEnv, name: string): string {
+export function requiredEnv(name: string, env = process.env): string {
   const value = env[name];
   if (!value) throw new Error(`${name} is required`);
   return value;
@@ -13,7 +13,7 @@ function required(env: NodeJS.ProcessEnv, name: string): string {
 
 export function kagentConfig(env = process.env): KagentConfig {
   return {
-    url: required(env, "KAGENT_URL"),
+    url: requiredEnv("KAGENT_URL", env),
     namespace: env.KAGENT_NAMESPACE ?? "agentos",
     userId: env.KAGENT_USER_ID ?? "agentos",
     token: env.KAGENT_TOKEN || undefined,

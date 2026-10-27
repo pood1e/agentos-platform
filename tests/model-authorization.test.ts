@@ -10,10 +10,10 @@ import { modelAuthorization } from "../server/authorization/models.js";
 import type { ExecutionRuntime } from "../server/authorization/runtime.js";
 import { workloadIdentity } from "../server/authorization/workloads.js";
 import { object } from "../server/read-model/decode/messages.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 it("checks the Actor audience, execution binding, current model and API for every model request", async () => {
-  const { clients, sync, fake } = environment();
+  const { clients, fake } = fakeKagent();
   const trust = fromJsonString(
     WorkloadAuthenticationSchema,
     readFileSync("tests/fixtures/identity/workloads.json", "utf8"),
@@ -74,6 +74,5 @@ it("checks the Actor audience, execution binding, current model and API for ever
       code: Code.PermissionDenied,
     });
   } finally {
-    sync.close();
   }
 });

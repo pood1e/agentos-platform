@@ -1,4 +1,4 @@
-suite: reject obsolete and invalid platform values
+suite: reject invalid platform values
 values:
 - ../../../tests/fixtures/chart-values.yaml
 templates:
@@ -14,34 +14,18 @@ tests:
     pack.image: latest
   asserts:
   - failedTemplate: {}
-- it: rejects managedEnvironments
+- it: rejects unknown values
   set:
-    managedEnvironments:
-    - env
+    unrecognized: true
   asserts:
   - failedTemplate: {}
-- it: rejects gateway.skillRepository.host
+- it: rejects routes without a site gateway
   set:
-    gateway.skillRepository.host: git.example.test
+    route.parentRefs: []
   asserts:
   - failedTemplate: {}
-- it: rejects evaluation.enabled
+- it: rejects return origins outside HTTPS
   set:
-    evaluation.enabled: true
-  asserts:
-  - failedTemplate: {}
-- it: rejects evaluation.unrecognized
-  set:
-    evaluation.unrecognized: true
-  asserts:
-  - failedTemplate: {}
-- it: rejects authorization.jwksUrl
-  set:
-    authorization.jwksUrl: https://id.example.test
-  asserts:
-  - failedTemplate: {}
-- it: rejects oauth2-proxy.extraArgs.provider
-  set:
-    oauth2-proxy.extraArgs.provider: oidc
+    identity.returnOrigins: [http://controller.example.test]
   asserts:
   - failedTemplate: {}

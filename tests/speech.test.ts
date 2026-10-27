@@ -22,13 +22,12 @@ import { identityIssuer, identityToken } from "./fixtures/identity.js";
 import { environment, testBindings, until } from "./harness.js";
 
 const provider = Fastify({ forceCloseConnections: true });
-const origin = "https://agentos.example.test";
 const token = await identityToken([], "speech-reader");
 const publicKey = createPublicKey(readFileSync("tests/fixtures/identity/tls.key")).export({
   format: "jwk",
 });
 const identity = jwtIdentity(
-  { issuer: identityIssuer, audience: "console", writerRole: "writer", origin },
+  { issuer: identityIssuer, audience: "console", writerRole: "writer" },
   createLocalJWKSet({ keys: [publicKey] }),
 );
 const calls: { transcription?: FormData; synthesis?: OpenAI.Audio.SpeechCreateParams } = {};
@@ -108,11 +107,10 @@ afterAll(() => provider.close());
 async function workbench(
   input = "",
   output = "",
-  authenticated = true,
   voices = [{ languageCode: "en", model: output, voice: "multilingual" }],
   worker = "",
 ) {
-  const env = environment();
+  const env = await environment();
   const app = Fastify();
   const source = async () => ({
     resourceVersion: "1",
@@ -124,7 +122,7 @@ async function workbench(
     synthesisCredential: "private-tts",
   });
   await registerConsole(app, {
-    context: workspaceContext("agentos", "assistant", authenticated ? identity : undefined, origin),
+    context: workspaceContext("agentos", "assistant", identity),
     service: consoleService({
       ...env,
       namespace: "agentos",
@@ -139,8 +137,8 @@ async function workbench(
   });
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
   onTestFinished(async () => {
-    env.sync.close();
     await app.close();
+    await env.close();
   });
   return createClient(
     ConsoleService,
@@ -148,11 +146,11 @@ async function workbench(
   );
 }
 
-const headers = { authorization: `Bearer ${token}`, origin };
+const headers = { authorization: `Bearer ${token}` };
 const audio = { contentType: "audio/webm;codecs=opus", data: new Uint8Array([1, 2, 3]) };
 
 it("keeps voice calls owned by the signed-in reader and provider credentials on the server", async () => {
-  const client = await workbench("asr", "tts", true, undefined, providerURL.replace(/\/v1$/, ""));
+  const client = await workbench("asr", "tts", undefined, providerURL.replace(/\/v1$/, ""));
   expect((await client.getSpeechCapabilities({}, { headers })).voiceCalls).toBe(true);
   const callId = crypto.randomUUID();
   const result = await client.startVoiceCall({ callId }, { headers });
@@ -163,19 +161,13 @@ it("keeps voice calls owned by the signed-in reader and provider credentials on 
     synthesisCredential: "private-tts",
   });
   expect(voiceRequest?.owner).toMatch(/^[a-f0-9]{64}$/);
-  const other = { authorization: `Bearer ${await identityToken([], "another-reader")}`, origin };
+  const other = { authorization: `Bearer ${await identityToken([], "another-reader")}` };
   await expect(client.startVoiceCall({ callId }, { headers: other })).rejects.toMatchObject({
     code: Code.PermissionDenied,
   });
   await expect(client.endVoiceCall({ callId }, { headers: other })).rejects.toMatchObject({
     code: Code.PermissionDenied,
   });
-  await expect(
-    client.startVoiceCall(
-      { callId: crypto.randomUUID() },
-      { headers: { ...headers, origin: "https://foreign.test" } },
-    ),
-  ).rejects.toMatchObject({ code: Code.PermissionDenied });
   await client.endVoiceCall({ callId }, { headers });
   expect((await client.getAccessProfile({}, { headers })).profile?.write).toBe(false);
   voiceReady = false;
@@ -220,16 +212,16 @@ async function synthesize(
   return { audio: { contentType, data: Buffer.concat(data) } };
 }
 
-it("keeps unconfigured speech unavailable while open access remains supported", async () => {
-  const client = await workbench("", "", false);
-  expect(await client.getSpeechCapabilities({})).toMatchObject({
+it("keeps unconfigured speech unavailable", async () => {
+  const client = await workbench("", "");
+  expect(await client.getSpeechCapabilities({}, { headers })).toMatchObject({
     transcription: false,
     synthesis: false,
   });
-  await expect(client.transcribeAudio({ audio })).rejects.toMatchObject({
+  await expect(client.transcribeAudio({ audio }, { headers })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
   });
-  await expect(synthesize(client, { text: "你好" })).rejects.toMatchObject({
+  await expect(synthesize(client, { text: "你好" }, { headers })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
   });
 });
@@ -260,21 +252,14 @@ it("allows a reader to transcribe and synthesize multilingual text without gaini
   expect((await client.getAccessProfile({}, { headers })).profile?.write).toBe(false);
 });
 
-it("requires authentication and same-origin access for speech requests", async () => {
+it("requires a bearer token for speech requests", async () => {
   const client = await workbench("asr", "tts");
   await expect(client.getSpeechCapabilities({})).rejects.toMatchObject({
     code: Code.Unauthenticated,
   });
-  const foreign = { ...headers, origin: "https://other.example.test" };
-  await expect(client.transcribeAudio({ audio }, { headers: foreign })).rejects.toMatchObject({
-    code: Code.PermissionDenied,
-  });
-  await expect(synthesize(client, { text: "test" }, { headers: foreign })).rejects.toMatchObject({
-    code: Code.PermissionDenied,
-  });
   await expect(
     synthesize(client, { text: "test" }, { headers: { "x-forwarded-access-token": token } }),
-  ).rejects.toMatchObject({ code: Code.PermissionDenied });
+  ).rejects.toMatchObject({ code: Code.Unauthenticated });
 });
 
 it.each([
@@ -294,18 +279,11 @@ it.each([
       model: `tts-${code}`,
       voice: `voice-${code}`,
     }));
-    const client = await workbench("", "tts", true, voices);
+    const client = await workbench("", "tts", voices);
     await synthesize(client, { text }, { headers });
     expect(calls.synthesis).toMatchObject({ model: `tts-${language}`, voice: `voice-${language}` });
   },
 );
-
-it("supports configured speech without an OIDC provider", async () => {
-  const client = await workbench("asr", "tts", false);
-  const result = await client.transcribeAudio({ audio });
-  expect(result.text).toContain("افحص المحول");
-  expect((await synthesize(client, { text: result.text })).audio?.data.length).toBeGreaterThan(0);
-});
 
 it("normalizes an upstream MP3 MIME alias for browser playback and audio uploads", async () => {
   const client = await workbench("", "mp3");

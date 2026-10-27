@@ -37,6 +37,7 @@ for chart in sorted(root.iterdir()):
     if chart.name == "agentos":
         repository, digest = built[""].split("@", 1)
         values["image"] = {"repository": repository, "digest": digest}
+        values["web"]["image"] = built["/web"]
     values_file.write_text(yaml.safe_dump(values, sort_keys=False))
     (chart / "Chart.lock").unlink(missing_ok=True)
 for chart in sorted(root.iterdir()):

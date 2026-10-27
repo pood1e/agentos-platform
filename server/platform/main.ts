@@ -4,7 +4,7 @@ import { AuthenticationV1Api, CoreV1Api, KubeConfig } from "@kubernetes/client-n
 import Fastify, { LogController } from "fastify";
 import { discovery } from "openid-client";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { registerBrowserIdentity } from "../authorization/browser.js";
+import { registerDelegation } from "../authorization/delegation.js";
 import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { relatedExecutions } from "../authorization/executions.js";
 import { actorKeyServer } from "../authorization/keys.js";
@@ -32,11 +32,10 @@ import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
-import { registerAppSandbox } from "../mcp-apps/sandbox.js";
 import { mcpApps } from "../mcp-apps/service.js";
-import { TaskIndex } from "../read-model/index.js";
-import { KagentSync } from "../read-model/sync.js";
-import { kagentConfig, listenConfig, roleDefaults } from "../shared/config.js";
+import { taskProjection } from "../read-model/projection.js";
+import { reconciler } from "../read-model/reconcile.js";
+import { kagentConfig, listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { voiceCalls } from "../speech/calls.js";
 import { speechService } from "../speech/service.js";
 import { speechSettingsStore } from "../speech/store.js";
@@ -50,38 +49,35 @@ import { collaborationGuardrails } from "./guardrails.js";
 import { registerPlatformMcp } from "./mcp.js";
 
 const config = kagentConfig();
-const authentication = process.env.AGENTOS_AUTH_MODE ?? "none";
-if (!["none", "oidc"].includes(authentication)) throw new Error("Unknown authentication mode");
-const oauth =
-  authentication === "oidc"
-    ? await discovery(
-        new URL(process.env.AGENTOS_OIDC_ISSUER ?? ""),
-        process.env.AGENTOS_OIDC_CLIENT_ID ?? "",
-        process.env.AGENTOS_OIDC_CLIENT_SECRET ?? "",
-      )
-    : undefined;
-if (oauth) oauth.timeout = 10;
-const identity =
-  authentication === "oidc"
-    ? await oidcIdentity(
-        {
-          issuer: process.env.AGENTOS_OIDC_ISSUER ?? "",
-          audience: process.env.AGENTOS_OIDC_AUDIENCE ?? "",
-          writerRole: process.env.AGENTOS_OIDC_WRITER_ROLE ?? "",
-          origin: process.env.AGENTOS_ORIGIN ?? "",
-        },
-        oauth,
-      )
-    : undefined;
+const issuer = requiredEnv("AGENTOS_OIDC_ISSUER");
+const oauth = await discovery(
+  new URL(issuer),
+  requiredEnv("AGENTOS_OIDC_CLIENT_ID"),
+  requiredEnv("AGENTOS_OIDC_CLIENT_SECRET"),
+);
+oauth.timeout = 10;
+const identity = await oidcIdentity(
+  {
+    issuer,
+    audience: requiredEnv("AGENTOS_OIDC_AUDIENCE"),
+    writerRole: requiredEnv("AGENTOS_OIDC_WRITER_ROLE"),
+  },
+  oauth,
+);
+const origin = requiredEnv("AGENTOS_API_ORIGIN");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
 const app = Fastify({
   logger: true,
   logController: new LogController({ disableRequestLogging: true }),
   bodyLimit: 2 * 1024 * 1024,
 });
-registerAppSandbox(app, process.env.AGENTOS_ORIGIN ?? "", process.env.AGENTOS_SANDBOX_ORIGIN ?? "");
 const clients = kagentClients(kagentTransport(config));
-const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log);
+const database = {
+  uri: requiredEnv("AGENTOS_EXECUTION_DATABASE_URL"),
+  ca: process.env.AGENTOS_EXECUTION_DATABASE_CA
+    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
+    : undefined,
+};
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const configuration = await configurationClients(kubeConfig, config.namespace, clients, app.log);
@@ -90,6 +86,7 @@ const operations = governanceConfig();
 const environmentToken = environmentTokens(
   operations,
   environmentCredentials(kubeConfig, config.namespace),
+  process.env.AGENTOS_USER_TOKEN_EXCHANGE !== "false",
 );
 
 const metadata = toolMetadata(clients);
@@ -104,28 +101,23 @@ const execution = await executionRuntime(
   metadata,
   app.log,
 );
-if (oauth && execution.background)
-  await registerBrowserIdentity(app, {
-    origin: process.env.AGENTOS_ORIGIN ?? "",
-    client: oauth,
-    key: Buffer.from(process.env.AGENTOS_COOKIE_SECRET ?? "", "base64"),
-    grants: execution.background,
-    executions: execution.registry,
-  });
-registerEnvironmentApis(
-  app,
-  operations,
-  environmentToken,
-  identity,
-  process.env.AGENTOS_ORIGIN ?? "",
-);
-const tags = await taskTagStore(
-  process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
-  config.namespace,
-  process.env.AGENTOS_EXECUTION_DATABASE_CA
-    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
-    : undefined,
-);
+await registerDelegation(app, {
+  origin,
+  returnOrigins: JSON.parse(requiredEnv("AGENTOS_DELEGATION_ORIGINS")),
+  client: oauth,
+  key: Buffer.from(requiredEnv("AGENTOS_COOKIE_SECRET"), "base64"),
+  grants: execution.background,
+  executions: execution.registry,
+});
+registerEnvironmentApis(app, operations, environmentToken, identity);
+const tags = await taskTagStore(database.uri, config.namespace, database.ca);
+const projection = await taskProjection({
+  ...database,
+  workspace: config.namespace,
+  clients,
+  executions: execution.store,
+});
+const reconcile = reconciler(projection, clients, config.namespace, app.log);
 const automation = automationPresets(config.namespace, packRoot);
 const workloads = workloadIdentity(
   workloadConfiguration(),
@@ -142,9 +134,7 @@ const speech = speechService(
   voiceCalls(speechSettings.load, process.env.AGENTOS_VOICE_URL, process.env.AGENTOS_VOICE_TOKEN),
 );
 await registerTranscription(app, speechSettings.load, async (headers) => {
-  const origin = process.env.AGENTOS_ORIGIN;
-  if (origin && headers.get("origin") !== origin) throw new Error("Invalid origin");
-  if (identity) await identity(headers);
+  await identity(headers);
 });
 const replaceTemplate = templateWriter(kubeConfig);
 const pack = loadPack(packRoot),
@@ -165,7 +155,6 @@ await registerConsole(app, {
     config.namespace,
     process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
     identity,
-    process.env.AGENTOS_ORIGIN ?? "",
     execution.registry.remember,
   ),
 
@@ -173,16 +162,16 @@ await registerConsole(app, {
     metadata,
     apps: mcpApps({
       clients,
-      sync,
+      projection,
+      namespace: config.namespace,
       access,
       operations,
       metadata,
       sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
-      executions: execution.registry,
       token: environmentToken,
       log: app.log,
     }),
-    sync,
+    projection,
     clients,
     namespace: config.namespace,
     access,
@@ -196,6 +185,7 @@ await registerConsole(app, {
     executions: execution.registry,
     entryAgent: process.env.AGENTOS_ENTRY_AGENT ?? "assistant",
     authorizeTools: execution.authorizeTools,
+    delegationUrl: `${origin}/delegation/start`,
   }),
   management: managementService({
     clients,
@@ -210,30 +200,29 @@ await registerConsole(app, {
     automation,
     operations.environments.flatMap((entry) => entry.environment?.name ?? []),
     process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
-    sync,
+    projection,
   ),
-  ready: () => sync.healthy() && configuration.healthy() && access.healthy(),
-  staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
+  ready: () => projection.healthy() && configuration.healthy() && access.healthy(),
   packRoot,
 });
 await registerPlatformMcp(
   app,
   config,
   clients,
-  sync,
+  projection,
   execution,
   workloads,
   access,
   knowledgeService(clients, knowledge),
   automation.scheduledRuns,
 );
-const continueDelegation = continuations(sync, async (contextId, contexts) => {
+const continueDelegation = continuations(projection, async (contextId, contexts) => {
   const { session: parent } = await clients.sessions.getSession({ sessionId: contextId });
   if (!parent) throw new Error("Execution session is unavailable");
   await relatedExecutions(execution.registry, clients.sessions, parent, contexts);
 });
 const approvals = approvalCoordinator(
-  sync,
+  projection,
   operations,
   async (contextId, tools) => {
     const { session } = await clients.sessions.getSession(
@@ -245,16 +234,10 @@ const approvals = approvalCoordinator(
   },
   environmentToken,
 );
-await sync.refresh();
-const jobs = await coordinationQueue(
-  process.env.AGENTOS_EXECUTION_DATABASE_URL ?? "",
-  config.namespace,
-  app.log,
-  process.env.AGENTOS_EXECUTION_DATABASE_CA
-    ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
-    : undefined,
-);
-const stopCoordination = await startCoordination(sync, jobs, [continueDelegation, approvals]);
+const jobs = await coordinationQueue(database.uri, config.namespace, app.log, database.ca);
+// Coordination hooks join projection writes before the first reconciliation backfills them.
+const stopCoordination = await startCoordination(projection, jobs, [continueDelegation, approvals]);
+await reconcile.refresh();
 const processor = grpcServer(app, {
   fallback: gatewayAuthorization(
     execution.authorizeTransport,
@@ -289,19 +272,21 @@ const processor = grpcServer(app, {
   },
 });
 const runtimeProcessor = grpcServer(app, {
-  routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope, app.log),
+  routes: (router) =>
+    registerRuntime(router, execution, config, clients, knowledge.scope, projection.apply, app.log),
 });
 const keys = actorKeyServer(app, execution.actorKeys);
 app.addHook("onClose", async () => {
   await stopCoordination();
   await jobs.boss.stop({ graceful: true, timeout: 40_000 });
-  sync.close();
+  reconcile.close();
+  await projection.close();
   await configuration.close();
   await access.close();
   await execution.close();
   await tags.close();
 });
-sync.start();
+reconcile.start();
 await automation.seed(clients);
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => void app.close());
 await Promise.all([

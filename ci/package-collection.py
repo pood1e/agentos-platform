@@ -72,6 +72,7 @@ for name, target in {
                 "ansible.posix": "==2.2.2",
                 "community.library_inventory_filtering_v1": "==1.1.5",
                 "community.general": "==13.4.0",
+                "community.crypto": "==3.5.0",
             },
         },
         sort_keys=False,

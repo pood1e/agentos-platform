@@ -8,7 +8,7 @@ import {
 } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { intersectCapabilities } from "../../shared/permissions.js";
-import { type KagentClients, pool } from "../kagent/clients.js";
+import type { KagentClients } from "../kagent/clients.js";
 import type { jwtIdentity } from "./oidc.js";
 import { conflict, type ExecutionStore } from "./store.js";
 
@@ -64,42 +64,36 @@ export function executions(
   }
 
   async function record(session: Session, allowRevoked = false, messageIds: string[] = []) {
-    let stored = await store.binding(session.id);
-    if (!stored && adopt) {
+    let chain = await store.chain(session.id);
+    if (!chain.length && adopt) {
       const identity = await adopt(session, messageIds);
       if (identity) {
         await bind(session, identity);
-        stored = await store.binding(session.id);
+        chain = await store.chain(session.id);
       }
     }
-    const binding = stored?.value;
+    const [binding] = chain;
     if (
       !binding ||
-      (!allowRevoked && binding.revoked) ||
       binding.agent?.namespace !== session.agent?.namespace ||
-      binding.agent?.name !== session.agent?.name
+      binding.agent?.name !== session.agent?.name ||
+      chain.at(-1)?.sessionId !== binding.rootSessionId
     )
       throw denied();
-    let ancestor = binding,
-      write = binding.write,
+    let write = binding.write,
       capabilities = binding.capabilities;
     const seen = new Set<string>();
-    for (;;) {
+    for (const ancestor of chain) {
       if (
         (!allowRevoked && ancestor.revoked) ||
         ancestor.subject !== binding.subject ||
         ancestor.rootSessionId !== binding.rootSessionId ||
-        seen.has(ancestor.sessionId) ||
-        seen.size >= 32
+        seen.has(ancestor.sessionId)
       )
         throw denied();
       seen.add(ancestor.sessionId);
       write &&= ancestor.write;
       capabilities = intersectCapabilities(capabilities, ancestor.capabilities);
-      if (ancestor.sessionId === binding.rootSessionId) break;
-      const parent = (await store.binding(ancestor.parentSessionId))?.value;
-      if (!parent) throw denied();
-      ancestor = parent;
     }
     return { binding, write, capabilities };
   }
@@ -113,9 +107,7 @@ export function executions(
         ? renew
           ? await renew(binding.subject, saved)
           : await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
-        : saved.credential.case === "service" &&
-            saved.credential.value &&
-            !(verify && saved.subject === "console")
+        : saved.credential.case === "service" && saved.credential.value
           ? saved
           : undefined;
     if (!identity || identity.subject !== binding.subject) throw denied();
@@ -185,23 +177,13 @@ export function executions(
     await store.saveBinding(binding, stored.version);
   }
 
-  const history = async (subject: string, contexts: string[], origins: Session[] = []) => {
-    if (!subject) return [];
-    let bindings = await store.bindings(contexts);
-    const known = new Set(bindings.map((binding) => binding.sessionId));
-    const missing = origins.filter((session) => !known.has(session.id));
-    if (missing.length) {
-      await pool(missing, 4, async (session) => {
-        await record(session, true).catch(() => {});
-      });
-      bindings = await store.bindings(contexts);
-    }
-    return bindings.filter(
-      (binding) => binding.subject === subject || binding.subject.startsWith("service:"),
-    );
+  /** Background execution needs a service credential or an offline grant that outlives access tokens. */
+  const delegated = async (subject: string) => {
+    const saved = (await store.identity(subject))?.value;
+    return saved?.credential.case === "service" || Boolean(saved?.refreshToken);
   };
 
-  return { remember, record, resolve, own, bind, delegate, revoke, history };
+  return { remember, record, resolve, own, bind, delegate, revoke, delegated };
 }
 
 export type Executions = ReturnType<typeof executions>;

@@ -27,7 +27,7 @@
 卡片默认折叠，展开后加载 View。宿主使用当前查看者凭证，经原调用 Agent 的环境身份调用同一服务的只读工具；
 写操作、跨服务访问与仅模型可见工具均拒绝。`ui/message` 只预填聊天输入框；链接限 `http(s)`。
 
-站点在平台 Chart 配置 `ingress.sandbox.host` 与 `ingress.sandbox.tlsSecret`，准备对应 DNS 与 TLS Secret。
+站点在平台 Chart 配置 `route.hosts.sandbox`，并在站点 Gateway 上准备对应 DNS 与证书。
 View 使用规范默认 CSP，仅可显式申请 `data:` 静态资源，无直接网络出口。接入与验证见[对话视图](mcp-app.md)。
 
 ## 系统任务
@@ -185,7 +185,7 @@ Harness 列表、选择器与编辑器共用运行时图标。kagent 沿用仓�
 重试以确定性 messageId 幂等；超过 `timeoutSeconds` 取消前台任务并升级。`resolvedStates` 记为来源已恢复，其余状态只登记。
 事实发布为 `<namespace>.cases.updated`、`<namespace>.findings.proposed`、`<namespace>.findings.escalated`与 `<namespace>.feedback.recorded`，源为 `/<namespace>/<environment>`。
 
-worker 以环境提供的 client credentials 令牌调用 `/mcp/automation`，平台通过 `automation.enabled` 启用入口。`/feedback` 与 `/metrics`
+worker 以环境提供的 client credentials 令牌调用平台 API 主机的 `/mcp/automation`，平台通过 `automation.enabled` 启用入口。`/feedback` 与 `/metrics`
 只接受配置的 OIDC 签发者与受众、`roleClaim` 中含 `feedbackRole` 的人员令牌，签名密钥经 OpenID Connect 发现获取。
 
 自动化 worker 的 `platform_oauth` 指定令牌端点、客户端 ID 和客户端密钥文件；每次连接读取当前密钥并由 OAuthLib 获取 client credentials 令牌。平台 Chart 的 `automation.sources` 登记该客户端的环境、issuer、audience、clientId 和 subject。案例调用直接使用原生 A2A 并复用确定性 messageId。

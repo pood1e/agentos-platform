@@ -5,20 +5,19 @@ import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { Executions } from "../authorization/executions.js";
 import { approvalEnvironment } from "../governance/client.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { TaskIndex } from "../read-model/index.js";
+import type { TaskProjection } from "../read-model/projection.js";
 
 export type AuthorizeTools = (session: Session, tools: string[]) => Promise<void>;
 
 /** Readable history is independent from current execution and approval authority. */
 export function interactionPermissions(
-  index: TaskIndex,
+  projection: Pick<TaskProjection, "entry">,
   clients: KagentClients,
   operations: GovernanceConfig,
-  executions?: Executions,
+  executions: Executions,
   authorizeTools?: AuthorizeTools,
 ) {
   const canOperate = async (contextId: string, subject: string) => {
-    if (!executions) return true;
     try {
       const { session } = await clients.sessions.getSession({ sessionId: contextId });
       if (!session) return false;
@@ -40,7 +39,7 @@ export function interactionPermissions(
       )
         continue;
       try {
-        const entry = index.entry(interaction.taskId);
+        const entry = await projection.entry(interaction.taskId);
         if (!entry || !(await canOperate(entry.contextId, subject))) continue;
         const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
         if (authorizeTools) {

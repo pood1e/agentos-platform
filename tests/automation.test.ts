@@ -23,11 +23,11 @@ async function run(handler: ReturnType<typeof automationTools>, args: object) {
 }
 
 it("reuses one native context per source case and isolates identical case keys in different environments", async () => {
-  const { clients, sync } = environment();
+  const { clients, projection, close } = await environment();
   const create = vi.spyOn(clients.sessions, "createSession");
-  const invoke = vi.spyOn(sync, "send");
-  const first = automationTools(clients, sync, "agentos", "first");
-  const second = automationTools(clients, sync, "agentos", "second");
+  const invoke = vi.spyOn(projection, "send");
+  const first = automationTools(clients, projection, "agentos", "first");
+  const second = automationTools(clients, projection, "agentos", "second");
   const request = {
     case: {
       key: "alerts/incident",
@@ -51,14 +51,14 @@ it("reuses one native context per source case and isolates identical case keys i
   expect(invoke.mock.calls[2]?.[1].messageId).not.toBe(invoke.mock.calls[0]?.[1].messageId);
   expect(invoke.mock.calls[3]?.[1].contextId).not.toBe(invoke.mock.calls[0]?.[1].contextId);
   expect(JSON.stringify(invoke.mock.calls[3]?.[1])).toContain("Environment: second");
-  sync.close();
+  await close();
 });
 
 it("rejects caller-selected sessions, destinations and environments before native creation", async () => {
-  const { clients, sync } = environment();
+  const { clients, projection, close } = await environment();
   const create = vi.spyOn(clients.sessions, "createSession");
-  const invoke = vi.spyOn(sync, "send");
-  const handler = automationTools(clients, sync, "agentos", "owned");
+  const invoke = vi.spyOn(projection, "send");
+  const handler = automationTools(clients, projection, "agentos", "owned");
   const request = {
     case: { key: "incident", version: "1", agent: { namespace: "agentos", name: "inspection" } },
     message: "Inspect this incident.",
@@ -73,5 +73,5 @@ it("rejects caller-selected sessions, destinations and environments before nativ
   }
   expect(create).not.toHaveBeenCalled();
   expect(invoke).not.toHaveBeenCalled();
-  sync.close();
+  await close();
 });

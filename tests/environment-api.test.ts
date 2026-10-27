@@ -66,13 +66,12 @@ async function setup(write = false, tls = false, result: unknown = { native: tru
       return "human-exchanged-token";
     },
     async () => principal,
-    "https://market.example",
   );
   const request = (method = "ListIncidents", headers: Record<string, string> = {}) =>
     app.inject({
       method: "POST",
       url: `/environments/lab/rpc/example.incidents.v1.IncidentService/${method}`,
-      headers: { origin: "https://market.example", "content-type": "application/json", ...headers },
+      headers: { "content-type": "application/json", ...headers },
       payload: { id: "native-id" },
     });
   return { request, principal, received, exchanges, app };
@@ -95,12 +94,9 @@ it("forwards only configured unary environment methods with the current human's 
   ]);
 });
 
-it("rejects unknown methods, cross-origin requests and writes by a read-only user before token exchange", async () => {
+it("rejects unknown methods and writes by a read-only user before token exchange", async () => {
   const f = await setup();
   expect((await f.request("DeleteIncident")).statusCode).toBe(404);
-  expect((await f.request("ListIncidents", { origin: "https://evil.example" })).statusCode).toBe(
-    403,
-  );
   expect((await f.request("AcknowledgeIncident")).statusCode).toBe(403);
   expect(f.exchanges).toEqual([]);
   expect(f.received).toEqual([]);
@@ -151,8 +147,9 @@ it("rejects overlapping read and write methods at startup", () => {
         ],
       }),
       async () => "",
-      undefined,
-      "https://market.example",
+      async () => {
+        throw new Error("unused");
+      },
     ),
   ).toThrow("disjoint");
 });

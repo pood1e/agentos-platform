@@ -79,7 +79,7 @@ const credentials = vi.fn(async (_environment: string, identity: string) => ({
   clientId: `agentos-${identity}`,
   clientSecret: `secret-${identity}`,
 }));
-function provider() {
+function provider(exchange = true) {
   return environmentTokens(
     create(GovernanceConfigSchema, {
       environments: ["one", "two"].map((name) => ({
@@ -89,6 +89,7 @@ function provider() {
       })),
     }),
     credentials,
+    exchange,
   );
 }
 const user = (subject: string) =>
@@ -120,6 +121,12 @@ it("uses RFC 8693 for users and client credentials for native services and disco
   expect(issued.slice(1).every((form) => form.get("grant_type") === "client_credentials")).toBe(
     true,
   );
+});
+
+it("bridges users with service credentials when environments do not trust the identity source", async () => {
+  await provider(false)("one", "diagnosis", user("alice"));
+  expect(issued.map((form) => form.get("grant_type"))).toEqual(["client_credentials"]);
+  expect(issued[0].get("subject_token")).toBeNull();
 });
 
 it("coalesces concurrent grants and isolates users, identities and environments", async () => {

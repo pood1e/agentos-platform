@@ -10,7 +10,6 @@ import {
 } from "../gen/agentos/governance/v1/governance_pb.js";
 import { approvalReferences } from "../server/console/approval-references.js";
 import { approvals } from "../server/governance/views.js";
-import { environment } from "./harness.js";
 
 vi.mock("../server/governance/views.js", () => ({ approvals: vi.fn() }));
 const read = vi.mocked(approvals);
@@ -34,7 +33,7 @@ const change = () =>
   });
 const resolver = () =>
   approvalReferences(
-    environment([]).sync,
+    { entry: async () => undefined },
     create(GovernanceConfigSchema, {
       environments: [
         {

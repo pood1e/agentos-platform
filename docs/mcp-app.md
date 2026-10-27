@@ -78,7 +78,7 @@ kagent 会把带 `resourceUri` 的工具结果对模型替换为已展示提示�
 
 - `shared/browser/mcp-app-host.ts` 使用官方 `AppBridge` 与 `PostMessageTransport` 管理桥接生命周期。代理就绪后下发模板，View 初始化后依次推送 `tool-input` 与 `tool-result`，调用终止时推送 `tool-cancelled`。
 - 折叠卡片展开后才加载资源。浏览器以任务和调用引用缓存资源 1 分钟，RPC 超时为 20 秒，暂时故障自动重试一次；沙箱初始化超时为 10 秒，失败后关闭桥接并提供重试按钮。
-- 沙箱代理部署在独立源。平台 Chart 增加 `ingress.sandbox.host` 与 `ingress.sandbox.tlsSecret`，控制台仅在该主机名下提供代理页；建议使用与控制台不同的注册域。
+- 沙箱代理部署在独立源。平台 Chart 的 `route.hosts.sandbox` 指定主机名，web 镜像的 nginx 仅在该主机名下提供 `/mcp-app-sandbox`；建议使用与控制台不同的注册域。
 - 代理页参照 ext-apps 参考宿主：校验嵌入方为控制台源，创建内层 iframe（`allow-scripts allow-same-origin allow-forms`），双向转发并校验消息来源。
 - 代理页以 HTTP 头下发 CSP，取规范的限制性默认值并附加 `frame-ancestors <控制台源>`。`_meta.ui.csp` 只接受 `resourceDomains` 中的 `data:`，不授予网络来源、`permissions` 与 `domain`。
 - 未配置沙箱主机名时不渲染 View，工具调用按现有图标展示。
@@ -103,7 +103,7 @@ kagent 会把带 `resourceUri` 的工具结果对模型替换为已展示提示�
 
 执行时以当前用户的最新凭证经 RFC 8693 换取原调用 Agent 身份的环境令牌，直接调用环境网关 `/mcp/<identity>/<service>`。
 环境网关端点（地址、端口与 TLS 服务名）加入 `EnvironmentConnection`，由 `agentos-connections` 从同一份 `environments[].gateway` 生成；
-TLS 复用控制台已挂载的 `<environment>-gateway-ca`。无用户访问令牌时（`identity.mode: none`）使用环境身份的服务凭证，与该模式下的 Agent 调用一致。
+TLS 复用控制台已挂载的 `<environment>-gateway-ca`。服务主体与密码模式的共享主体使用环境身份的服务凭证，与同一主体的 Agent 调用一致。
 目标系统支持 OBO 时记录实际用户，其余目标由平台记录发起人、服务与工具。
 
 kagent 的 `CallMCPAppTool` 经平台网关以控制器发现身份调用，ExtMCP 拒绝无 Actor 的 `tools/call`；放开该路径会绕过逐用户授权。

@@ -32,7 +32,7 @@
 | 离线委派 | refresh token 只在浏览器登录回调中采集；Bearer 客户端的后台执行随 access token 过期中断 | 平台 API 自有委派流程，任意客户端可引导用户授权 | 1.2 |
 | 默认值 | `identity.mode: none` 为无认证的全权限共享访客；Ingress 固定 traefik | 访客模式改为内置密码身份源，平台只走 OIDC；Gateway API HTTPRoute | 1.2 |
 | 读模型 | 每 2 秒轮询 kagent 并维护全量内存索引；冷启动重放全部历史；部分委派关系按 prompt 文本推断 | PostgreSQL 投影：写路径驱动、定时对账、显式委派关系 | 1.3 |
-| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密；进程启动时建表 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识；版本化迁移 | 1.1 |
+| 执行存储 | protobuf 整行 AES-GCM，单一密钥且密文无密钥标识；委派链逐条读取并解密 | 绑定按列存储并单次查询取链；凭据信封加密，密文携带密钥标识 | 1.1 |
 | 工具分级 | 三个 Chart、Ansible 模板、TS 与 Rego 分别推导分级与绑定，运行时解析资源标签 | `AccessPlan` 由控制器编译一次，运行时读取编译结果 | 2.1 |
 | 派生资源 | 连接保存逐个写入派生资源并逆序补偿，无崩溃恢复；预置依赖 Helm `lookup` 与 `resource-policy: keep`，在 `helm template` 下失效 | 控制器 reconcile，API 只写父资源，预置由控制器以 SSA 维护 | 2.1 |
 | 轨迹视图 | 协作画布、MCP 调用图、时间线与执行抽屉 | 删除；系统任务执行记录复用只读会话视图 | 已完成 |
@@ -44,7 +44,7 @@
 
 ```mermaid
 flowchart LR
-    Browser[浏览器] --> Console[agentos-console]
+    Browser[浏览器] --> Console[agentos-web]
     Console -->|OIDC 登录| IdP[外部身份提供方 / agentos-identity]
     Console -->|Bearer| API[agentos-api]
     API -->|离线委派| IdP
@@ -62,44 +62,44 @@ flowchart LR
 
 | 组件 | 职责 | 形态 |
 | --- | --- | --- |
-| agentos-console | oauth2-proxy 浏览器会话、静态 SPA、MCP App 沙箱页 | 可选，独立镜像，可部署多份 |
+| agentos-web | oauth2-proxy 浏览器会话、静态 SPA、MCP App 沙箱页 | 可选，独立镜像，可部署多份 |
 | agentos-api | Connect RPC、离线委派端点、方案包资源、语音会话签发 | 无状态，多副本 |
 | agentos-identity | 内置密码身份源（oidc-provider） | 可选，仅密码模式部署 |
 | agentos-dataplane | extAuth、ExtMCP、TaskStore 与 Memory 代理及投影写入、协作 MCP、Actor JWKS | 无状态，多副本，PodDisruptionBudget |
 | agentos-worker | 审批协调、续接、投影对账、预置定时任务 | pg-boss 消费者 |
 | agentos-controller | AccessPlan 编译、连接派生、方案预置；平台与环境两种模式 | Go，controller-runtime，leader election |
 | voice worker | 听写、朗读、通话与轮次编排 | LiveKit Agents |
-| PostgreSQL | kagent 与 Substrate 状态、执行绑定与凭据、读投影、任务标签、作业队列、内置身份源的授权数据 | CNPG，版本化迁移 |
+| PostgreSQL | kagent 与 Substrate 状态、执行绑定与凭据、读投影、任务标签、作业队列、内置身份源的授权数据 | CNPG |
 
 ## 设计
 
 ### 身份与委派
 
 - 平台 API 只接受 `Authorization: Bearer`，校验签名、issuer、audience 与应用角色，不处理浏览器会话与 Origin。
-- console 以 oauth2-proxy 承担浏览器会话：授权码与 PKCE，会话 Cookie 为 `SameSite=Lax`，alpha 配置的 `injectRequestHeaders` 把 access token 注入 `Authorization`。跨站写请求不携带会话，Connect 仅对无副作用方法使用 GET。
-- 离线委派由平台 API 的 `/delegation/start` 与 `/delegation/callback` 完成：沿用现有机密客户端请求 `offline_access`，`return_to` 限定为登记的前端地址，授权事务保存在短期签名 Cookie 中。凭据按用户主体保存，与发起请求的客户端无关。
+- console 由 web 组件交付：nginx 提供前端产物，oauth2-proxy 承担浏览器会话：授权码与 PKCE，会话 Cookie 为 `SameSite=Lax`，alpha 配置的 `injectRequestHeaders` 把 access token 注入 `Authorization`。跨站写请求不携带会话，Connect 仅对无副作用方法使用 GET。
+- 离线委派由平台 API 的 `/delegation/start` 与 `/delegation/callback` 完成：沿用现有机密客户端以 `prompt=consent` 请求 `offline_access`，`return_to` 限定为登记的前端地址，授权事务保存在短期签名 Cookie 中。凭据按用户主体保存，与发起请求的客户端无关。
 - `GetAccessProfile` 返回委派状态与授权地址；无有效委派时 `SendMessage` 返回 `FAILED_PRECONDITION`。console 登录后自动完成委派跳转，CLI 与机器人向用户展示授权地址。
-- 访客模式改为内置密码身份源：`identity.mode: password` 时部署 agentos-identity，以 oidc-provider 签发标准令牌。登录页只校验站点密码，令牌主体为单一共享用户并携带全部应用角色与写角色；签名密钥与密码哈希来自 Secret，登录失败限速，授权数据保存在 PostgreSQL。平台 API、console 与离线委派对两种模式使用同一路径。
-- 本地开发使用密码模式；多用户隔离用例使用 compose 中的 Keycloak。
-- MCP App 沙箱页属于宿主，随 console 交付；平台 API 提供资源读取与工具回调。
-- console 与平台 API 以 Gateway API HTTPRoute 暴露，`parentRefs` 由站点提供。
+- 访客模式改为内置密码身份源：`identity.mode: password` 时部署 identity，挂载于 console 主机的 `/identity`，以 oidc-provider 签发标准令牌。登录页只校验站点密码，令牌主体为单一共享用户并携带全部应用角色与写角色；站点密码与签名密钥来自 Secret，登录失败限速，授权数据保存在 PostgreSQL。平台 API、console 与离线委派对两种模式使用同一路径；环境身份提供方不信任内置签发者，用户执行在环境侧以服务身份桥接。
+- MCP App 沙箱页属于宿主，随 web 镜像交付；平台 API 提供资源读取与工具回调。
+- console、平台 API 与沙箱以 Gateway API HTTPRoute 分主机名暴露，`parentRefs` 由站点提供；参考部署启用 K3s 内置 Traefik 的 Gateway API 支持。
 
 ### 执行存储
 
 - `agentos_authorization.execution_bindings` 按列保存会话、发起人、Agent、根会话、父会话、写权限、能力与撤销时间；工具调用以一次递归查询取得完整委派链。
-- `agentos_authorization.credentials` 保存 access token 与 refresh token，由 AWS Encryption SDK 的 Raw AES keyring 信封加密：密文头携带密钥名称，multi-keyring 解密旧密钥，加密上下文包含工作空间、记录类型与主体。
-- 密钥环由站点提供的 Secret 交付，Chart 不生成密钥。
-- 表结构由 golang-migrate 版本化迁移管理，迁移 Job 先于工作负载执行，进程启动不执行 DDL。
+- `agentos_authorization.credentials` 按列保存主体、写权限与能力，access token 与 refresh token 由 AWS Encryption SDK 的 Raw AES keyring 信封加密：密文头携带密钥名称，加密上下文包含工作空间、记录类型与主体。
+- 密钥沿用现有的执行密钥 Secret；表在启动时幂等创建。
 
 ### 读投影
 
-- `agentos_read` 保存会话、任务、委派关系与待处理交互，归属过滤、分页与标签筛选在 SQL 中完成。
+- `agentos_read` 按列保存任务的紧凑记录、会话与消息索引，执行树（执行绑定的根会话）与发起人随写入从执行绑定取得；未绑定的会话不进入任何视图。
+- 委派关系只按任务 ID 与确定性 messageId 解析，不按提示词或会话内唯一候选推断。
+- 每次写入在执行树的咨询锁内重算该树的会话、操作与审批摘要，列表的归属过滤、搜索、分页与标签筛选在 SQL 中完成；详情视图只加载所需的一棵执行树。
 - 写入来源：
-  - dataplane 的 TaskStore 代理在原生写入成功后按任务版本 upsert，只记录状态、调用与交互变化；投影写入失败不影响原生写入。
-  - 协作 MCP 在委派时记录父任务、调用与子会话的显式关系，子任务按确定性 messageId 关联。
-  - api 记录自身发起的发送、响应、取消与删除。
-  - worker 以持久化水位对账 kagent，覆盖 kagent 侧的状态变化。
-- 变更经 `pg_notify` 通知各 api 副本的订阅；文本增量只在会话被查看时经 A2A 订阅获取。
+  - dataplane 的 TaskStore 代理在原生写入成功后写入，紧凑记录未变时跳过，旧状态不覆盖新状态；投影写入失败不影响原生写入。
+  - 协作 MCP 写入委派创建的会话与派发的任务。
+  - api 写入自身发起的会话、发送、响应、取消与删除，并在取消、删除前按会话重读原生状态。
+  - worker 以持久化水位对账 kagent，覆盖 kagent 侧的状态变化；首次对账回填会话与任务。
+- 变更随事务经 `pg_notify` 通知各 api 副本，按执行树唤醒订阅；文本增量只在会话被查看时由该订阅经 A2A 获取，不写入投影。
 - 审批协调与续接作业在投影写入的同一事务内入队 pg-boss。
 - 续接消息携带子任务引用与完整结果；kagent [#3244](https://github.com/kagent-dev/kagent/issues/3244) 发布后删除续接协调。
 
@@ -192,7 +192,7 @@ flowchart LR
 ## 依据
 
 - [oauth2-proxy alpha 配置](https://oauth2-proxy.github.io/oauth2-proxy/configuration/alpha-config)、[OAuth 2.0 for Browser-Based Applications](https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/)、[OIDC offline_access](https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess)、[oidc-provider](https://github.com/panva/node-oidc-provider)
-- [AWS Encryption SDK Raw AES keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-raw-aes-keyring.html)、[multi-keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-multi-keyring.html)、[golang-migrate](https://github.com/golang-migrate/migrate)
+- [AWS Encryption SDK Raw AES keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-raw-aes-keyring.html)、[multi-keyring](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/use-multi-keyring.html)
 - [PostgreSQL NOTIFY](https://www.postgresql.org/docs/current/sql-notify.html)、[pg-boss](https://github.com/timgit/pg-boss)、[OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/)
 - [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)、[Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)、[垃圾回收与 ownerReferences](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)、[Helm lookup](https://helm.sh/docs/chart_template_guide/functions_and_pipelines/#using-the-lookup-function)
 - [Gateway API HTTPRoute](https://gateway-api.sigs.k8s.io/api-types/httproute/)、[LiveKit Agents](https://docs.livekit.io/agents/)

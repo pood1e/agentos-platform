@@ -5,6 +5,9 @@
   vars_files: [vars.yaml]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    site_identity: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('identity', {}) }}"
+    site_password_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"
+    site_application_name: "{{ app_release_name[:44] | regex_replace('-$', '') }}"
   module_defaults:
     kubernetes.core.k8s:
       kubeconfig: "{{ kubeconfig_path }}"
@@ -40,6 +43,9 @@
         that: item.resources | length > 0 or ansible_check_mode
       loop: "{{ application_credentials.results }}"
       no_log: true
+
+    - name: Provision site authentication credentials
+      ansible.builtin.include_tasks: tasks/site-credentials.yaml
 
     - name: Write application Helm values
       ansible.builtin.copy:

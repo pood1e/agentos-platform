@@ -1,9 +1,9 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it, vi } from "vitest";
-import { StreamResponseSchema } from "../gen/a2a_pb.js";
+import { MessageSchema, SendMessageResponseSchema, TaskSchema } from "../gen/a2a_pb.js";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
-import { sendMessageStream } from "../server/kagent/send.js";
+import { acceptMessage } from "../server/kagent/send.js";
 
 function rejection(domain = "a2a-protocol.org") {
   return new ConnectError("not accepted", Code.FailedPrecondition, undefined, [
@@ -18,64 +18,49 @@ function rejection(domain = "a2a-protocol.org") {
   ]);
 }
 
-const request = { tenant: "team/assistant", message: { messageId: "message" } };
-
-async function* failedStream(error: unknown) {
-  yield await Promise.reject<never>(error);
-}
-
-async function collect<T>(stream: AsyncIterable<T>) {
-  const events: T[] = [];
-  for await (const event of stream) events.push(event);
-  return events;
-}
+const message = create(MessageSchema, { messageId: "message", contextId: "session" });
+const accepted = create(SendMessageResponseSchema, {
+  payload: { case: "task", value: create(TaskSchema, { id: "task", contextId: "session" }) },
+});
 
 describe("native message admission", () => {
   it("reuses the original input when native admission proves rejection", async () => {
-    const event = create(StreamResponseSchema);
-    const sendStreamingMessage = vi
-      .fn()
-      .mockImplementationOnce(() => failedStream(rejection()))
-      .mockImplementationOnce(async function* () {
-        yield event;
-      });
-    const events = await collect(sendMessageStream({ sendStreamingMessage }, request, {}));
-    expect(events).toEqual([event]);
-    expect(sendStreamingMessage.mock.calls.map(([input]) => input)).toEqual([request, request]);
+    const sendMessage = vi.fn().mockRejectedValueOnce(rejection()).mockResolvedValueOnce(accepted);
+    const task = await acceptMessage({ sendMessage }, "team/assistant", message);
+    expect(task.history.map((item) => item.messageId)).toEqual(["message"]);
+    expect(sendMessage.mock.calls.map(([input]) => input.message)).toEqual([message, message]);
+    expect(sendMessage.mock.calls[0]?.[0].configuration.returnImmediately).toBe(true);
   });
 
   it.each([rejection("another.domain"), new ConnectError("lost", Code.Unavailable)])(
     "preserves errors without native rejection proof",
     async (error) => {
-      const sendStreamingMessage = vi.fn(() => failedStream(error));
-      await expect(collect(sendMessageStream({ sendStreamingMessage }, request, {}))).rejects.toBe(
-        error,
-      );
-      expect(sendStreamingMessage).toHaveBeenCalledTimes(1);
+      const sendMessage = vi.fn().mockRejectedValue(error);
+      await expect(acceptMessage({ sendMessage }, "team/assistant", message)).rejects.toBe(error);
+      expect(sendMessage).toHaveBeenCalledTimes(1);
     },
   );
 
-  it("keeps partial execution from being replayed", async () => {
-    const error = rejection();
-    const sendStreamingMessage = vi.fn(async function* () {
-      yield create(StreamResponseSchema);
-      throw error;
-    });
-    await expect(collect(sendMessageStream({ sendStreamingMessage }, request, {}))).rejects.toBe(
-      error,
+  it("rejects a response for another conversation", async () => {
+    const sendMessage = vi.fn().mockResolvedValue(
+      create(SendMessageResponseSchema, {
+        payload: { case: "task", value: create(TaskSchema, { id: "task", contextId: "other" }) },
+      }),
     );
-    expect(sendStreamingMessage).toHaveBeenCalledTimes(1);
+    await expect(acceptMessage({ sendMessage }, "team/assistant", message)).rejects.toThrow(
+      "traceable",
+    );
   });
 
   it("stops retrying when its caller aborts", async () => {
     const controller = new AbortController();
-    const sendStreamingMessage = vi.fn(() => {
+    const sendMessage = vi.fn(async () => {
       controller.abort();
-      return failedStream(rejection());
+      throw rejection();
     });
     await expect(
-      collect(sendMessageStream({ sendStreamingMessage }, request, { signal: controller.signal })),
+      acceptMessage({ sendMessage }, "team/assistant", message, {}, controller.signal),
     ).rejects.toHaveProperty("code", Code.FailedPrecondition);
-    expect(sendStreamingMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 });

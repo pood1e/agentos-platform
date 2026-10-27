@@ -6,10 +6,10 @@ import { Role, SendMessageResponseSchema } from "../gen/a2a_pb.js";
 import { knowledgeConfig } from "../server/knowledge/config.js";
 import { knowledgeService } from "../server/knowledge/service.js";
 import { sessionTools } from "../server/team-sessions/tools.js";
-import { environment, testBindings } from "./harness.js";
+import { fakeKagent, testBindings } from "./harness.js";
 
 it("discovers and dispatches the same concise input as native invocation through the MCP SDK", async () => {
-  const { clients, fake, sync } = environment([]);
+  const { clients, fake } = fakeKagent([]);
   const handler = sessionTools(
     clients,
     "agentos",
@@ -74,7 +74,6 @@ it("discovers and dispatches the same concise input as native invocation through
       await client.callTool({ name: "list_agents", arguments: { namespace: "foreign" } }),
     ).toMatchObject({ isError: true });
   } finally {
-    sync.close();
     await client.close();
     await handler.close();
   }

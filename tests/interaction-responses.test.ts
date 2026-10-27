@@ -1,4 +1,5 @@
-import { create } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState, TaskStatusSchema } from "../gen/a2a_pb.js";
@@ -9,8 +10,9 @@ import {
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { messageCommands } from "../server/console/messages.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
+import { ingest } from "../server/read-model/entry.js";
 import { fixtureIds } from "./fixtures/kagent.js";
-import { environment, until } from "./harness.js";
+import { environment, operator, until } from "./harness.js";
 
 async function pending(kind: "question" | "approval") {
   const message = create(MessageSchema, {
@@ -33,9 +35,9 @@ async function pending(kind: "question" | "approval") {
     history: [message],
     status: { state: TaskState.INPUT_REQUIRED, message },
   });
-  const env = environment([task]);
-  await env.sync.refresh();
-  const interaction = env.index.entry(task.id)?.interactions[0];
+  const env = await environment([task]);
+  await env.reconcile.refresh();
+  const interaction = (await env.projection.entry(task.id))?.interactions[0];
   if (!interaction) throw new Error("Missing native interaction");
   const request = create(RespondInteractionRequestSchema, {
     taskId: task.id,
@@ -45,7 +47,13 @@ async function pending(kind: "question" | "approval") {
         ? { case: "answer", value: { answers: [{ values: ["Current environment"] }] } }
         : { case: "approval", value: { approvals: [{ id: "tool", approved: true }] } },
   });
-  return { ...env, request, task, commands: messageCommands(env.sync, env.clients) };
+  const commands = messageCommands(env.projection, env.clients, "agentos", env.executions);
+  return {
+    ...env,
+    request,
+    task,
+    respond: (value: typeof request) => commands.respond(value, operator),
+  };
 }
 
 it("forwards custom single-choice and mixed multi-choice answers through native HITL", async () => {
@@ -78,19 +86,22 @@ it("forwards custom single-choice and mixed multi-choice answers through native 
     value: create(AnswerDecisionSchema, { answers: values.map((values) => ({ values })) }),
   };
   try {
-    await env.commands.respond(env.request);
+    await env.respond(env.request);
     expect(hitlPayload(env.fake.received.at(-1))).toMatchObject({
       type: "ask_user_response",
       value: { id: "question", answers: values.map((answer) => ({ answer })) },
     });
+    await env.reconcile.refresh();
     expect(
-      env.index.entry(env.task.id)?.interactions[0].answers.map((answer) => answer.values),
+      (await env.projection.entry(env.task.id))?.interactions[0].answers.map(
+        (answer) => answer.values,
+      ),
     ).toEqual(values);
-    await expect(env.commands.respond(env.request)).rejects.toMatchObject({
+    await expect(env.respond(env.request)).rejects.toMatchObject({
       code: Code.FailedPrecondition,
     });
   } finally {
-    env.sync.close();
+    await env.close();
   }
 });
 
@@ -99,17 +110,21 @@ it.each(["question", "approval"] as const)(
   async (kind) => {
     const env = await pending(kind);
     try {
-      const stale = env.index.entry(env.task.id);
-      if (!stale) throw new Error("Missing pending task");
-      await env.commands.respond(env.request);
-      env.index.upsert({ ...stale, version: "stale-pending-view" });
-      await expect(
-        messageCommands(env.sync, env.clients).respond(env.request),
-      ).rejects.toMatchObject({ code: Code.FailedPrecondition, rawMessage: "interaction.stale" });
+      const stale = clone(TaskSchema, env.task);
+      await env.respond(env.request);
+      // A lagging projection still shows the pause; the decision is checked natively.
+      if (stale.status) stale.status.timestamp = timestampFromMs(Date.now() + 60_000);
+      await env.projection.apply([{ task: stale, agentId: "agentos/assistant" }]);
+      await expect(env.respond(env.request)).rejects.toMatchObject({
+        code: Code.FailedPrecondition,
+        rawMessage: "interaction.stale",
+      });
       expect(env.fake.received).toHaveLength(1);
-      expect(env.index.entry(env.task.id)?.interactions[0].state).toBe(ActivityState.SUCCEEDED);
+      expect(ingest(env.fake.task(env.task.id), "agentos/assistant").interactions[0].state).toBe(
+        ActivityState.SUCCEEDED,
+      );
     } finally {
-      env.sync.close();
+      await env.close();
     }
   },
 );
@@ -122,15 +137,15 @@ it.each(["question", "approval"] as const)(
     const hold = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const send = env.sync.send.bind(env.sync);
-    const waiting = vi.spyOn(env.sync, "send").mockImplementation(async (...args) => {
+    const send = env.projection.send;
+    const waiting = vi.spyOn(env.projection, "send").mockImplementation(async (...args) => {
       await hold;
       return send(...args);
     });
-    const accepted = env.commands.respond(env.request);
+    const accepted = env.respond(env.request);
     try {
       await until(() => waiting.mock.calls.length === 1);
-      await expect(env.commands.respond(env.request)).rejects.toMatchObject({
+      await expect(env.respond(env.request)).rejects.toMatchObject({
         code: Code.Aborted,
       });
       expect(env.fake.received).toHaveLength(0);
@@ -138,7 +153,7 @@ it.each(["question", "approval"] as const)(
       release();
       await accepted;
       expect(env.fake.received).toHaveLength(1);
-      env.sync.close();
+      await env.close();
     }
   },
 );

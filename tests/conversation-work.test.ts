@@ -2,22 +2,17 @@ import { describe, expect, it } from "vitest";
 import { TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { conversation } from "../server/read-model/views/conversation.js";
-import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
+import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 
-async function view(index: ReturnType<typeof fixtureIndex>) {
-  return conversation(
-    {
-      index,
-      fullTask: async (id: string) => fixtureTasks().find((task) => task.id === id),
-    } as never,
-    undefined,
-    ids.chatContext,
+async function view(index: ReturnType<typeof fixtureState>) {
+  return conversation(index.graph(), undefined, ids.chatContext, async (entry) =>
+    fixtureTasks().find((task) => task.id === entry.id),
   );
 }
 
 describe("conversation worker projection", () => {
   it("keeps a completed result through a working continuation and preserves both completed phases", async () => {
-    const index = fixtureIndex();
+    const index = fixtureState();
     const entry = index.entry(ids.chatRoot);
     if (!entry) throw new Error("Missing child fixture");
     index.upsert({
@@ -70,7 +65,7 @@ describe("conversation worker projection", () => {
   });
 
   it("shows a child only as presence while working and emits its final answer at the delegation", async () => {
-    const index = fixtureIndex();
+    const index = fixtureState();
     const entry = index.entry(ids.chatRoot);
     expect(entry).toBeDefined();
     if (!entry) throw new Error("Missing child fixture");

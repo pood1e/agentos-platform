@@ -5,10 +5,10 @@ import { MemoryServiceSearchResponseSchema } from "../gen/kagent/runtime/v1/memo
 import { discoveryMethods } from "../server/authorization/mcp.js";
 import { registerTeamSessions } from "../server/team-sessions/app.js";
 import { sessionTools } from "../server/team-sessions/tools.js";
-import { environment, testBindings } from "./harness.js";
+import { fakeKagent, testBindings } from "./harness.js";
 
 async function setup(discovery = false) {
-  const { clients, fake, sync } = environment();
+  const { clients, fake } = fakeKagent();
   const app = Fastify();
   await registerTeamSessions(
     app,
@@ -27,7 +27,7 @@ async function setup(discovery = false) {
   );
   app.get("/healthz", async () => ({ status: "ok" }));
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
-  return { app, fake, sync, url };
+  return { app, fake, url };
 }
 
 it("exposes the verified caller's scopes and ignores caller-supplied roles", async () => {
@@ -63,7 +63,6 @@ it("exposes the verified caller's scopes and ignores caller-supplied roles", asy
     expect(env.fake.sessions.size).toBe(sessions);
   } finally {
     await env.app.close();
-    env.sync.close();
   }
 });
 
@@ -85,7 +84,6 @@ it("requires authentication for all HTTP methods and preserves health probes", a
     expect((await env.app.inject("/healthz")).statusCode).toBe(200);
   } finally {
     await env.app.close();
-    env.sync.close();
   }
 });
 
@@ -123,6 +121,5 @@ it("allows discovery and rejects method-header spoofing before native creation",
     expect(env.fake.sessions.size).toBe(sessions);
   } finally {
     await env.app.close();
-    env.sync.close();
   }
 });

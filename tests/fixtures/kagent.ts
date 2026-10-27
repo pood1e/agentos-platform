@@ -3,9 +3,9 @@ import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { type Task, TaskSchema } from "../../gen/a2a_pb.js";
 import { type Agent, AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { agentInfo, agentKey, sessionInfo } from "../../server/read-model/agents.js";
-import { ingest } from "../../server/read-model/entry.js";
-import { TaskIndex } from "../../server/read-model/index.js";
+import { agentInfo, type SessionInfo, sessionInfo } from "../../server/read-model/agents.js";
+import { ingest, type TaskEntry } from "../../server/read-model/entry.js";
+import { TaskGraph } from "../../server/read-model/graph.js";
 
 /** Sanitized tasks recorded from the agentos kagent environment. */
 const read = (name: string) =>
@@ -36,12 +36,22 @@ export const fixtureIds = {
   retiredMember: "01a1330c-3ef7-74ca-91ae-73d7f74b8e2e",
 };
 
-export function fixtureIndex(tasks = fixtureTasks()): TaskIndex {
-  const index = new TaskIndex();
-  index.setAgents(fixtureAgents().map((agent) => agentInfo(agent)));
-  const sessions = fixtureSessions();
-  for (const session of sessions) index.setSession(sessionInfo(session));
-  const owners = new Map(sessions.map((session) => [session.id, agentKey(session.agent)]));
-  for (const task of tasks) index.upsert(ingest(task, owners.get(task.contextId) ?? ""));
-  return index;
+/** Projected fixture state that view tests amend before building an execution graph. */
+export function fixtureState(tasks = fixtureTasks()) {
+  const sessions = new Map(fixtureSessions().map((session) => [session.id, sessionInfo(session)]));
+  const entries = new Map(
+    tasks.map((task) => {
+      const entry = ingest(task, sessions.get(task.contextId)?.agentId ?? "");
+      return [entry.id, entry] as const;
+    }),
+  );
+  const agents = fixtureAgents().map((agent) => agentInfo(agent));
+  return {
+    upsert: (entry: TaskEntry) => void entries.set(entry.id, entry),
+    setSession: (session: SessionInfo) => void sessions.set(session.id, session),
+    entry: (id: string) => entries.get(id),
+    graph: () => new TaskGraph([...entries.values()], [...sessions.values()], agents),
+  };
 }
+
+export const fixtureGraph = (tasks = fixtureTasks()) => fixtureState(tasks).graph();

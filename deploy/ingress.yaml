@@ -19,16 +19,17 @@
         fail_msg: Configure CLOUDFLARE_API_TOKEN or cloudflare_token_file.
       no_log: true
 
-    - name: Converge application DNS record
+    - name: Converge application DNS records
       community.general.cloudflare_dns:
         zone: "{{ dns_zone }}"
-        record: "{{ agentos_domain }}"
+        record: "{{ item }}"
         type: A
         value: "{{ agentos_address }}"
         proxied: false
         solo: true
         api_token: "{{ cloudflare_token }}"
         state: present
+      loop: ["{{ agentos_domain }}", "*.{{ agentos_domain }}"]
       no_log: true
       diff: false
 
@@ -97,7 +98,7 @@
           spec:
             secretName: agentos-ingress
             issuerRef: { name: letsencrypt, kind: Issuer }
-            dnsNames: ["{{ agentos_domain }}"]
+            dnsNames: ["{{ agentos_domain }}", "*.{{ agentos_domain }}"]
 
     - name: Wait for certificate readiness
       kubernetes.core.k8s_info:
@@ -109,3 +110,22 @@
         wait: true
         wait_condition: { type: Ready, status: "True" }
         wait_timeout: 600
+
+    - name: Publish the application gateway
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata: { name: agentos-public, namespace: "{{ agentos_namespace }}" }
+          spec:
+            gatewayClassName: traefik
+            listeners:
+              - name: https
+                protocol: HTTPS
+                port: 8443
+                tls:
+                  mode: Terminate
+                  certificateRefs: [{ name: agentos-ingress }]
+                allowedRoutes:
+                  namespaces: { from: Same }

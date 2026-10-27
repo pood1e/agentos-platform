@@ -1,41 +1,24 @@
 import { fileURLToPath } from "node:url";
 import { clone, create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
-import { createValidateInterceptor } from "@connectrpc/validate";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it } from "vitest";
 import { Role, type Task, TaskSchema, TaskState } from "../gen/a2a_pb.js";
-import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { loadPack } from "../server/console/pack.js";
-import { consoleService } from "../server/console/service.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment, testBindings } from "./harness.js";
+import { bindTasks, consoleClient, environment } from "./harness.js";
 
 const examplePack = fileURLToPath(new URL("fixtures/pack/", import.meta.url));
 
 async function workbench(tasks?: Task[]) {
-  const env = environment(tasks);
-  await env.sync.refresh();
-  const service = consoleService({
-    sync: env.sync,
-    clients: env.clients,
-    namespace: "agentos",
-    access: testBindings(env.fake),
-    operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
-    roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-    replaceTemplate: async (template) => env.fake.replaceTemplate(template),
-    pack: loadPack(examplePack),
-    tags: env.tags,
-  });
-  const transport = createRouterTransport((router) => router.service(ConsoleService, service), {
-    router: { interceptors: [createValidateInterceptor()] },
-  });
-  return { ...env, client: createClient(ConsoleService, transport) };
+  const env = await environment(tasks);
+  await env.reconcile.refresh();
+  return { ...env, client: consoleClient(env, { pack: loadPack(examplePack) }) };
 }
 
 async function rejection(call: Promise<unknown>) {
@@ -49,7 +32,7 @@ async function rejection(call: Promise<unknown>) {
 
 describe("console service", () => {
   it("cancels an operation through a child task and closes its pending approval interval", async () => {
-    const { client, sync, index, fake } = await workbench(pendingApprovalTasks());
+    const { client, projection, fake, close } = await workbench(pendingApprovalTasks());
     try {
       await client.cancelTask({ taskId: ids.approved });
       expect(fake.task(ids.approved).status?.state).toBe(TaskState.CANCELED);
@@ -60,7 +43,7 @@ describe("console service", () => {
       expect((await client.listTasks({ query: ids.approvalRoot })).tasks[0]?.state).toBe(
         ActivityState.CANCELED,
       );
-      const approval = index.entry(ids.approved)?.interactions[0];
+      const approval = (await projection.entry(ids.approved))?.interactions[0];
       expect(approval?.state).toBe(ActivityState.CANCELED);
       expect(approval?.requestedAt).toBeDefined();
       expect(approval?.answeredAt).toBeDefined();
@@ -68,7 +51,7 @@ describe("console service", () => {
         code: Code.NotFound,
       });
     } finally {
-      sync.close();
+      await close();
     }
   });
   it("serves the solution pack presentation", async () => {
@@ -81,14 +64,14 @@ describe("console service", () => {
   });
 
   it("keeps native approval pending and rejects direct workbench decisions", async () => {
-    const { client, fake, sync } = await workbench(pendingApprovalTasks());
+    const { client, fake, projection, close } = await workbench(pendingApprovalTasks());
     expect(
       (await client.listTasks({ pageSize: 12 })).tasks.find((item) => item.id === ids.approvalRoot)
         ?.state,
     ).toBe(ActivityState.AWAITING_APPROVAL);
-    const pending = sync.index
-      .entry(ids.approved)
-      ?.interactions.find((item) => item.kind === InteractionKind.APPROVAL);
+    const pending = (await projection.entry(ids.approved))?.interactions.find(
+      (item) => item.kind === InteractionKind.APPROVAL,
+    );
     if (!pending) throw new Error("native approval missing");
     expect(
       await rejection(
@@ -100,11 +83,11 @@ describe("console service", () => {
       ),
     ).toMatchObject({ code: Code.InvalidArgument, key: "interaction.invalidAnswer" });
     expect(fake.received).toHaveLength(0);
-    sync.close();
+    await close();
   });
 
   it("starts a conversation, deduplicates retries and streams the answer", async () => {
-    const { client, fake, sync } = await workbench();
+    const { client, fake, reconcile, close } = await workbench();
     const request = {
       agent: { namespace: "agentos", name: "assistant" },
       messageId: "6a2f0f8e-0000-4000-8000-000000000001",
@@ -142,16 +125,16 @@ describe("console service", () => {
     const assistant = fake.agents.find((agent) => agent.ref?.name === "assistant")?.resource;
     if (!assistant?.value) throw new Error("missing assistant");
     assistant.value.status = { conditions: [{ type: "Ready", status: "False" }] };
-    await sync.refresh();
+    await reconcile.refresh();
     expect(await rejection(client.sendMessage({ ...request, messageId: "not-ready" }))).toEqual({
       code: Code.Unavailable,
       key: "chat.notReady",
     });
-    sync.close();
+    await close();
   });
 
   it("loads a newly observed conversation before deciding that it is unavailable", async () => {
-    const { client, fake, sync, index } = await workbench([]);
+    const { client, fake, store, projection, close } = await workbench([]);
     const agent = { namespace: "agentos", name: "assistant" };
     const session = create(SessionSchema, { id: "newly-observed", agent });
     const task = create(TaskSchema, {
@@ -162,7 +145,8 @@ describe("console service", () => {
       artifacts: [{ parts: [{ content: { case: "text", value: "同步后的回答" } }] }],
     });
     fake.load({ sessions: [session], tasks: [task] });
-    expect(index.session(session.id)).toBeUndefined();
+    await bindTasks(store, fake, [task]);
+    expect(await projection.session(session.id)).toBeUndefined();
     const controller = new AbortController();
     try {
       for await (const { conversation } of client.watchConversation(
@@ -177,12 +161,12 @@ describe("console service", () => {
       }
     } finally {
       controller.abort();
-      sync.close();
+      await close();
     }
   });
 
   it("derives tool confirmation requirements when saving", async () => {
-    const { client, sync } = await workbench();
+    const { client, close } = await workbench();
     const { requirements } = await client.explainTools({ engineer: "service-health" });
     expect(requirements).toContainEqual(
       expect.objectContaining({
@@ -211,11 +195,11 @@ describe("console service", () => {
         requireApproval: false,
       }),
     ]);
-    sync.close();
+    await close();
   });
 
   it("saves roles through native templates with approval and concurrency checks", async () => {
-    const { client, fake, sync } = await workbench();
+    const { client, fake, close } = await workbench();
     const configuration = await client.getConfiguration({});
     expect(configuration.roles.map((role) => role.name)).toContain("inspection");
     const knowledge = configuration.engineerTools.find(
@@ -270,6 +254,6 @@ describe("console service", () => {
       displayName: "服务健康工程师",
       resourceVersion: "2",
     });
-    sync.close();
+    await close();
   });
 });

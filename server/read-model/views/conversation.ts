@@ -1,14 +1,12 @@
 import { create, fromJson, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
-import { Role } from "../../../gen/a2a_pb.js";
+import { Role, type Task } from "../../../gen/a2a_pb.js";
 import {
   type ChatMessage,
   type ChatMessagePart,
   ChatMessageSchema,
   type Conversation,
   ConversationSchema,
-  type ConversationSummary,
-  ConversationSummarySchema,
 } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import {
   type RoleDefinition,
@@ -22,84 +20,37 @@ import { toolCalls } from "../calls.js";
 import { object } from "../decode/messages.js";
 import { toolBaseName } from "../decode/tools.js";
 import type { TaskEntry } from "../entry.js";
-import type { TaskIndex } from "../index.js";
+import type { TaskGraph } from "../graph.js";
 import { approvals } from "../interactions.js";
-import { type PageRequest, pageOf } from "../page.js";
-import type { KagentSync } from "../sync.js";
 import { busy, taskTree } from "../tree.js";
 import { chatParts } from "./chat-parts.js";
-import { conversationParts, conversationProgress, conversationWork } from "./conversation-work.js";
+import { conversationParts, conversationWork } from "./conversation-work.js";
 import { engineer } from "./engineers.js";
 import { interactionAnchors } from "./interaction-anchors.js";
-import { runState, stamp } from "./runs.js";
+import { runState } from "./runs.js";
 import { taskSummary } from "./task.js";
 
-export function listConversations(
-  index: TaskIndex,
-  agent: Pick<ResourceReference, "namespace" | "name"> | undefined,
-  request: PageRequest,
-) {
-  const id = agent ? agentKey(agent) : "";
-  const needle = request.query.trim().toLowerCase();
-  const matches = index
-    .sessions()
-    .filter((session) => session.agentId === id)
-    .filter(
-      (session) =>
-        !needle ||
-        `${session.name} ${index
-          .contextEntries(session.id)
-          .map((entry) => entry.prompt)
-          .join(" ")}`
-          .toLowerCase()
-          .includes(needle),
-    )
-    .map((session) => {
-      const progress = conversationProgress(index, session.id);
-      return {
-        session,
-        state: progress.state,
-        at: Math.max(session.updatedAt ?? 0, progress.updatedAt),
-      };
-    })
-    .sort((a, b) => b.at - a.at || a.session.id.localeCompare(b.session.id));
-  const page = pageOf(matches, request, `conversations:${id}`, (entry) => ({
-    id: entry.session.id,
-    time: entry.at,
-  }));
-  return {
-    conversations: page.items.map(
-      ({ session, at, state }): ConversationSummary =>
-        create(ConversationSummarySchema, {
-          contextId: session.id,
-          title: session.name,
-          updatedAt: stamp(at || undefined),
-          state,
-        }),
-    ),
-    totalSize: page.totalSize,
-    nextPageToken: page.nextPageToken,
-  };
-}
-
 /** Operations this conversation turn started: its own root or those it delegated to engineers. */
-function operations(index: TaskIndex, entry: TaskEntry) {
-  const roots = new Set(index.relations().roots.map((root) => root.id));
+function operations(graph: TaskGraph, entry: TaskEntry) {
+  const roots = new Set(graph.relations().roots.map((root) => root.id));
   const delegated = entry.calls.flatMap((call) => {
-    const root = index.operationRoot(index.target(entry, call) ?? "");
+    const root = graph.operationRoot(graph.target(entry, call) ?? "");
     return root && roots.has(root.id) ? [root.id] : [];
   });
   return [...new Set(roots.has(entry.id) ? [entry.id, ...delegated] : delegated)].flatMap((id) => {
-    const tree = taskTree(index, id);
-    return tree ? [taskSummary(index, tree)] : [];
+    const tree = taskTree(graph, id);
+    return tree ? [taskSummary(graph, tree)] : [];
   });
 }
 
-async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]) {
+/** Complete task payloads, from a live stream while running or from kagent once settled. */
+export type FullTask = (entry: TaskEntry) => Promise<Task | undefined>;
+
+async function messages(fullTask: FullTask, graph: TaskGraph, entries: TaskEntry[]) {
   const parts = new Map<string, ChatMessagePart[]>();
-  const anchors = interactionAnchors(index, entries);
+  const anchors = interactionAnchors(graph, entries);
   await pool(entries, 4, async (entry) => {
-    const task = await sync.fullTask(entry.id);
+    const task = await fullTask(entry);
     if (task) parts.set(entry.id, chatParts(task, entry.agentId));
   });
   const seen = new Set<string>();
@@ -114,11 +65,11 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
           role: Role.USER,
           parts: [{ id: `text:${message.id}`, content: { case: "text", value: message.text } }],
           taskId: entry.id,
-          tasks: position === 0 ? operations(index, entry) : [],
+          tasks: position === 0 ? operations(graph, entry) : [],
         });
       });
     const content = conversationParts(
-      index,
+      graph,
       entry,
       parts.get(entry.id) ?? [],
       interactions,
@@ -138,11 +89,14 @@ async function messages(sync: KagentSync, index: TaskIndex, entries: TaskEntry[]
   });
 }
 
-async function roleDraft(sync: KagentSync, entry: TaskEntry): Promise<RoleDefinition | undefined> {
+async function roleDraft(
+  fullTask: FullTask,
+  entry: TaskEntry,
+): Promise<RoleDefinition | undefined> {
   const call = entry.calls.findLast(
     (item) => toolBaseName(item.name) === "prepare_role" && item.state === ActivityState.SUCCEEDED,
   );
-  const task = call && (await sync.fullTask(entry.id));
+  const task = call && (await fullTask(entry));
   if (!task) return undefined;
   const output = toolCalls(task, entry.agentId, approvals(task)).find(
     (item) => item.id === call.id,
@@ -159,14 +113,14 @@ async function roleDraft(sync: KagentSync, entry: TaskEntry): Promise<RoleDefini
 }
 
 export async function conversation(
-  sync: KagentSync,
+  graph: TaskGraph,
   agent: Pick<ResourceReference, "namespace" | "name"> | undefined,
   contextId: string,
-  index: TaskIndex = sync.index,
+  fullTask: FullTask,
 ): Promise<Conversation> {
-  const member = agent ? index.agent(agentKey(agent)) : undefined;
+  const member = agent ? graph.agent(agentKey(agent)) : undefined;
   const ready = member?.ready ?? false;
-  const entries = index
+  const entries = graph
     .contextEntries(contextId)
     .sort(
       (a, b) =>
@@ -175,31 +129,31 @@ export async function conversation(
     );
   const latest = entries.at(-1);
   if (!contextId || !latest) return create(ConversationSchema, { contextId, ready });
-  const tree = taskTree(index, latest.parentTaskId || latest.id);
-  const runs = conversationWork(index, entries);
+  const tree = taskTree(graph, latest.parentTaskId || latest.id);
+  const runs = conversationWork(graph, entries);
   const members = [...new Set(runs.map((run) => run.agentId))];
   return create(ConversationSchema, {
     contextId,
     ready,
-    title: index.session(contextId)?.name ?? "",
+    title: graph.session(contextId)?.name ?? "",
     busy: tree ? busy(tree) : false,
     state: runState(latest),
-    messages: await messages(sync, index, entries),
+    messages: await messages(fullTask, graph, entries),
     interactions: [
       ...new Map(
         runs.flatMap((run) =>
-          (index.entry(run.taskId)?.interactions ?? []).map((item) => [item.id, item] as const),
+          (graph.entry(run.taskId)?.interactions ?? []).map((item) => [item.id, item] as const),
         ),
       ).values(),
     ],
     runs,
     participants: members.map((id) =>
       engineer(
-        index,
+        graph,
         id,
-        runs.filter((run) => run.agentId === id).flatMap((run) => index.entry(run.taskId) ?? []),
+        runs.filter((run) => run.agentId === id).flatMap((run) => graph.entry(run.taskId) ?? []),
       ),
     ),
-    roleDraft: member?.role === "role-builder" ? await roleDraft(sync, latest) : undefined,
+    roleDraft: member?.role === "role-builder" ? await roleDraft(fullTask, latest) : undefined,
   });
 }

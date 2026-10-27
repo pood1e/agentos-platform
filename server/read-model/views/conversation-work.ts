@@ -8,16 +8,16 @@ import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../decode/messages.js";
 import { toolBaseName } from "../decode/tools.js";
 import type { TaskEntry } from "../entry.js";
-import type { TaskIndex } from "../index.js";
+import type { TaskGraph } from "../graph.js";
 import { taskActivity, terminal } from "../state.js";
 import { busy, outcomeState, taskTree } from "../tree.js";
 import type { interactionAnchors } from "./interaction-anchors.js";
 import { runSummary } from "./runs.js";
 
-export function conversationWork(index: TaskIndex, entries: TaskEntry[]) {
+export function conversationWork(graph: TaskGraph, entries: TaskEntry[]) {
   const runs = new Map<string, ReturnType<typeof runSummary>>();
   for (const entry of entries) {
-    const tree = taskTree(index, entry.id);
+    const tree = taskTree(graph, entry.id);
     if (tree)
       for (const member of tree.entries)
         runs.set(member.id, runSummary(member, tree.background.has(member.id)));
@@ -26,13 +26,13 @@ export function conversationWork(index: TaskIndex, entries: TaskEntry[]) {
 }
 
 /** Conversation status includes background work, unlike composer availability. */
-export function conversationProgress(index: TaskIndex, contextId: string) {
-  const entries = index.contextEntries(contextId);
-  const runs = conversationWork(index, entries);
+export function conversationProgress(graph: TaskGraph, contextId: string) {
+  const entries = graph.contextEntries(contextId);
+  const runs = conversationWork(graph, entries);
   const latest = entries.toSorted(
     (a, b) => (b.createdAt ?? b.statusAt ?? 0) - (a.createdAt ?? a.statusAt ?? 0),
   )[0];
-  const tree = latest && taskTree(index, latest.id);
+  const tree = latest && taskTree(graph, latest.id);
   const priority = [
     ActivityState.AWAITING_APPROVAL,
     ActivityState.AWAITING_INPUT,
@@ -42,7 +42,7 @@ export function conversationProgress(index: TaskIndex, contextId: string) {
   const state =
     priority.find((state) => runs.some((run) => run.state === state)) ??
     (entries.some((entry) => {
-      const work = taskTree(index, entry.id);
+      const work = taskTree(graph, entry.id);
       return work && busy(work);
     })
       ? ActivityState.WORKING
@@ -56,10 +56,10 @@ export function conversationProgress(index: TaskIndex, contextId: string) {
 }
 
 /** Completed results remain visible when the delegated conversation continues. */
-export function delegatedResults(index: TaskIndex, entry: TaskEntry, callId: string) {
+export function delegatedResults(graph: TaskGraph, entry: TaskEntry, callId: string) {
   const call = entry.calls.find((item) => item.id === callId);
-  const target = call && index.target(entry, call);
-  const tree = target ? taskTree(index, target) : undefined;
+  const target = call && graph.target(entry, call);
+  const tree = target ? taskTree(graph, target) : undefined;
   if (!tree) return [];
   return tree.entries
     .filter((member) => member.contextId !== entry.contextId && terminal(member.state))
@@ -69,7 +69,7 @@ export function delegatedResults(index: TaskIndex, entry: TaskEntry, callId: str
 
 /** Only terminal child answers enter the transcript; native tool payloads stay in their icons. */
 export function conversationParts(
-  index: TaskIndex,
+  graph: TaskGraph,
   entry: TaskEntry,
   parts: ChatMessagePart[],
   interactions: Set<string>,
@@ -94,8 +94,8 @@ export function conversationParts(
     if (part.content.case !== "toolCall") return [part];
     const callId = part.content.value.id;
     const call = entry.calls.find((item) => item.id === callId);
-    const target = call && index.target(entry, call);
-    const children = target ? (taskTree(index, target)?.entries ?? []) : [];
+    const target = call && graph.target(entry, call);
+    const children = target ? (taskTree(graph, target)?.entries ?? []) : [];
     return [
       part,
       ...human(
@@ -120,7 +120,7 @@ export function conversationParts(
             return !anchor || (anchor.entryId === entry.id && anchor.callId === callId);
           }),
       ),
-      ...delegatedResults(index, entry, callId)
+      ...delegatedResults(graph, entry, callId)
         .filter(({ member }) => member.answer.trim() && !emitted.has(member.id))
         .map(({ member, background }) => {
           emitted.add(member.id);

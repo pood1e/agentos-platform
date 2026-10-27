@@ -14,10 +14,10 @@ import { conversation } from "../server/read-model/views/conversation.js";
 import { conversationParts } from "../server/read-model/views/conversation-work.js";
 import { interactionAnchors } from "../server/read-model/views/interaction-anchors.js";
 import { convertMessage } from "../src/features/chat/runtime-message.js";
-import { fixtureIndex, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
+import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 
 it("keeps a delegated approval before a later user message as its state changes", async () => {
-  const index = fixtureIndex();
+  const index = fixtureState();
   const child = index.entry(ids.chatRoot);
   const root = index.entry(ids.chat);
   if (!child || !root) throw new Error("Missing conversation fixtures");
@@ -40,21 +40,18 @@ it("keeps a delegated approval before a later user message as its state changes"
     resumedTaskId: "",
     version: "next-turn",
   });
-  const sync = {
-    index,
-    fullTask: async (id: string) =>
-      id === "next-turn"
-        ? create(TaskSchema, {
-            id,
-            contextId: ids.chatContext,
-            status: { state: TaskState.WORKING },
-          })
-        : fixtureTasks().find((task) => task.id === id),
-  };
+  const fullTask = async ({ id }: { id: string }) =>
+    id === "next-turn"
+      ? create(TaskSchema, {
+          id,
+          contextId: ids.chatContext,
+          status: { state: TaskState.WORKING },
+        })
+      : fixtureTasks().find((task) => task.id === id);
   let partId = "";
   for (const state of [ActivityState.AWAITING_APPROVAL, ActivityState.SUCCEEDED]) {
     request.state = state;
-    const view = await conversation(sync as never, undefined, ids.chatContext);
+    const view = await conversation(index.graph(), undefined, ids.chatContext, fullTask);
     const position = view.messages.findIndex((message) =>
       message.parts.some((part) => part.content.case === "interaction"),
     );
@@ -72,7 +69,7 @@ it("keeps a delegated approval before a later user message as its state changes"
 });
 
 it("anchors local approval and question cards to their own calls and keeps them out of spoken text", () => {
-  const index = fixtureIndex();
+  const index = fixtureState();
   const entry = index.entry(ids.chat);
   if (!entry) throw new Error("Missing conversation fixture");
   const approval = create(InteractionSchema, {
@@ -97,7 +94,7 @@ it("anchors local approval and question cards to their own calls and keeps them 
     }),
   );
   const projected = conversationParts(
-    index,
+    index.graph(),
     { ...entry, calls: calls as typeof entry.calls, interactions: [approval, question] },
     parts,
     new Set(),
@@ -121,7 +118,7 @@ it("anchors local approval and question cards to their own calls and keeps them 
 });
 
 it("anchors a reused worker's new approval to the later delegation without moving the older approval", () => {
-  const index = fixtureIndex();
+  const index = fixtureState();
   const root = index.entry(ids.chat),
     child = index.entry(ids.chatRoot);
   if (!root || !child) throw new Error("Missing conversation fixtures");
@@ -135,9 +132,10 @@ it("anchors a reused worker's new approval to the later delegation without movin
     id: "later-root",
     calls: [{ ...call, id: "next-call", startedAt: 300 }],
   };
-  const target = vi.spyOn(index, "target").mockReturnValue(child.id);
+  const graph = index.graph();
+  const target = vi.spyOn(graph, "target").mockReturnValue(child.id);
   try {
-    const anchors = interactionAnchors(index, [earlier, later]);
+    const anchors = interactionAnchors(graph, [earlier, later]);
     expect(anchors.get(first.id)).toMatchObject({ entryId: earlier.id, callId: "first-call" });
     expect(anchors.get(second.id)).toMatchObject({ entryId: later.id, callId: "next-call" });
   } finally {

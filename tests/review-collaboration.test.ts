@@ -7,14 +7,13 @@ import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { createdAtKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskTree } from "../server/read-model/tree.js";
-import { listTasks } from "../server/read-model/views/task.js";
-import { fixtureIndex, fixtureIds as ids } from "./fixtures/kagent.js";
+import { fixtureState, fixtureIds as ids } from "./fixtures/kagent.js";
 
 const reviewer = "agentos/reviewer";
 
 describe("native review projection", () => {
   it("attaches an independent review to its paused operation without adding a task-list item", () => {
-    const index = fixtureIndex();
+    const index = fixtureState();
     const source = index.entry(ids.approved);
     const approval = source?.interactions.find((item) => item.kind === InteractionKind.APPROVAL);
     assert(source && approval?.tools[0]);
@@ -34,8 +33,9 @@ describe("native review projection", () => {
       ],
     });
     index.upsert(ingest(task, reviewer));
-    expect(index.relations().parents.get(task.id)).toBe(source.id);
-    expect(taskTree(index, ids.approvalRoot)?.entries.map((entry) => entry.id)).toContain(task.id);
-    expect(listTasks(index, { query: task.id, pageSize: 20, pageToken: "" }).totalSize).toBe(0);
+    const graph = index.graph();
+    expect(graph.relations().parents.get(task.id)).toBe(source.id);
+    expect(taskTree(graph, ids.approvalRoot)?.entries.map((entry) => entry.id)).toContain(task.id);
+    expect(graph.relations().roots.map((root) => root.id)).not.toContain(task.id);
   });
 });

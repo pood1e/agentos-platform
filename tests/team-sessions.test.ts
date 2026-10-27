@@ -6,7 +6,7 @@ import { sessionTools } from "../server/team-sessions/tools.js";
 import { decidedTasks } from "./fake-kagent/scenario.js";
 import { startContinuations } from "./fixtures/coordination.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment, silent, testBindings, until } from "./harness.js";
+import { environment, fakeKagent, silent, testBindings, until } from "./harness.js";
 import { managementEnvironment } from "./management-harness.js";
 
 async function mcp(handler: ReturnType<typeof sessionTools>, method: string, params = {}) {
@@ -29,47 +29,47 @@ describe("team sessions", () => {
   it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
     "returns a decided child result to the waiting coordinator exactly once",
     async () => {
-      const { fake, sync, index } = environment(decidedTasks());
-      await sync.refresh();
-      const stop = await startContinuations(sync, silent);
+      const { fake, projection, reconcile, close } = await environment(decidedTasks());
+      const stop = await startContinuations(projection, silent);
+      await reconcile.refresh();
       await until(() => fake.received.length === 1);
       const [message] = fake.received;
       expect(message?.messageId).toMatch(new RegExp(`^resume-${ids.approved}-`));
-      expect(message?.contextId).toBe(index.entry(ids.approvalRoot)?.contextId);
+      expect(message?.contextId).toBe((await projection.entry(ids.approvalRoot))?.contextId);
       expect(message?.metadata).toMatchObject({
         [parentTaskKey]: ids.approvalRoot,
         [resumedTaskKey]: ids.approved,
       });
-      await sync.refresh();
+      await reconcile.refresh();
       await new Promise((resolve) => setTimeout(resolve, 300));
       expect(fake.received.filter((item) => item.metadata?.[resumedTaskKey])).toHaveLength(1);
       await stop();
-      sync.close();
+      await close();
     },
   );
 
   it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
     "retries a failed continuation without waiting for another index event",
     async () => {
-      const { sync } = environment(decidedTasks());
+      const { projection, reconcile, close } = await environment(decidedTasks());
       let stop = async () => {};
       try {
-        await sync.refresh();
         const send = vi
-          .spyOn(sync, "send")
+          .spyOn(projection, "send")
           .mockRejectedValueOnce(new Error("temporarily unavailable"));
-        stop = await startContinuations(sync, silent);
+        stop = await startContinuations(projection, silent);
+        await reconcile.refresh();
         await until(() => send.mock.calls.length === 2, 8_000);
         expect(send.mock.calls[0]?.[1].messageId).toBe(send.mock.calls[1]?.[1].messageId);
       } finally {
         await stop();
-        sync.close();
+        await close();
       }
     },
   );
 
   it("offers discovery and normalizes drafted approvals", async () => {
-    const { clients, fake } = environment();
+    const { clients, fake } = fakeKagent();
     const handler = sessionTools(
       clients,
       "agentos",

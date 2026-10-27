@@ -12,10 +12,10 @@ import { executions } from "../server/authorization/executions.js";
 import type { ExecutionRuntime } from "../server/authorization/runtime.js";
 import { collaborationGuardrails } from "../server/platform/guardrails.js";
 import { memoryStore } from "./fixtures/execution-store.js";
-import { environment } from "./harness.js";
+import { fakeKagent } from "./harness.js";
 
 it("rejects cross-workspace invocation and native task methods outside the exposed tools", async () => {
-  const { clients } = environment();
+  const { clients } = fakeKagent();
   const { session } = await clients.sessions.createSession({
     agent: { namespace: "other", name: "engineer" },
     requestId: "scope-test",
@@ -41,7 +41,7 @@ it("rejects cross-workspace invocation and native task methods outside the expos
 });
 
 it("filters both structured and readable session results using the verified workspace", async () => {
-  const { clients } = environment();
+  const { clients } = fakeKagent();
   const guard = createClient(
     ExtMcp,
     createRouterTransport((router) =>
@@ -79,7 +79,7 @@ it("filters both structured and readable session results using the verified work
 });
 
 it("keeps native discovery inside the signed caller's execution tree", async () => {
-  const { clients, fake, sync } = environment([]);
+  const { clients, fake } = fakeKagent([]);
   const registry = executions(memoryStore());
   const alice = create(ExecutionIdentitySchema, {
     subject: "user:alice",
@@ -137,6 +137,5 @@ it("keeps native discovery inside the signed caller's execution tree", async () 
     request.metadataContext = { ...request.metadataContext, runtimeIdentity: "" };
     expect((await guard.checkResponse(request)).result.case).toBe("error");
   } finally {
-    sync.close();
   }
 });

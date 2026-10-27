@@ -45,7 +45,6 @@ it("uses native watches for configuration reads and observes edits and deletions
     });
   } finally {
     await catalog.close();
-    env.sync.close();
     await env.close();
   }
 });

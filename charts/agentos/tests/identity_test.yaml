@@ -1,0 +1,102 @@
+suite: browser sessions, delegation and identity sources
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release: {name: agentos, namespace: agentos}
+templates: ['*.yaml']
+tests:
+- it: verifies bearer tokens from the site identity provider and delegates on the API host
+  asserts:
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_OIDC_ISSUER, value: https://identity.example.test/realms/operations}
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_OIDC_CLIENT_SECRET
+        valueFrom: {secretKeyRef: {name: agentos-identity, key: client-secret}}
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_API_ORIGIN, value: https://api.agentos.example.test}
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_COOKIE_SECRET
+        valueFrom: {secretKeyRef: {name: agentos-sessions, key: delegation}}
+  - template: identity.yaml
+    hasDocuments: {count: 0}
+- it: registers additional frontends as delegation return origins
+  set:
+    identity.returnOrigins: [https://controller.example.test]
+  template: console-deployment.yaml
+  asserts:
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_DELEGATION_ORIGINS
+        value: '["https://agentos.example.test","https://controller.example.test"]'
+- it: holds browser sessions in front of the API and strips client authorization headers
+  template: web-config.yaml
+  asserts:
+  - matchRegex:
+      path: data["oauth2-proxy.yaml"]
+      pattern: 'uri: http://agentos-console:8080'
+  - matchRegex:
+      path: data["oauth2-proxy.yaml"]
+      pattern: 'claim: access_token\s+prefix: "Bearer "'
+  - matchRegex:
+      path: data["oauth2-proxy.yaml"]
+      pattern: 'issuerURL: "https://identity.example.test/realms/operations"'
+- it: issues standard tokens from the built-in password source on the console host
+  set:
+    identity: {mode: password, issuer: '', clientId: '', audience: '', writerRole: ''}
+  asserts:
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_OIDC_ISSUER, value: https://agentos.example.test/identity}
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_OIDC_CLIENT_SECRET
+        valueFrom: {secretKeyRef: {name: agentos-identity-keys, key: client-secret}}
+  - template: console-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_USER_TOKEN_EXCHANGE, value: 'false'}
+  - template: identity.yaml
+    documentIndex: 0
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_IDENTITY_PASSWORD
+        valueFrom: {secretKeyRef: {name: agentos-identity, key: password}}
+  - template: identity.yaml
+    documentIndex: 0
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_IDENTITY_REDIRECT_URIS
+        value: '["https://agentos.example.test/oauth2/callback","https://api.agentos.example.test/delegation/callback"]'
+  - template: routes.yaml
+    documentIndex: 0
+    contains:
+      path: spec.rules
+      content:
+        matches: [{path: {type: PathPrefix, value: /identity}}]
+        backendRefs: [{name: agentos-identity, port: 8080}]
+  - template: web-deployment.yaml
+    documentIndex: 0
+    equal:
+      path: spec.template.spec.volumes[0].projected.sources[1].secret.name
+      value: agentos-identity-keys
+- it: attaches every public route to the site gateway
+  template: routes.yaml
+  asserts:
+  - equal: {path: spec.parentRefs, value: [{name: site, sectionName: https}]}
+  - documentIndex: 1
+    equal: {path: spec.hostnames, value: [api.agentos.example.test]}

@@ -9,33 +9,32 @@
 | 服务端 | `server/`，不含 `management`、`governance` 与 `console/{roles,role-template,template-writer}.ts` |
 | 前端与 SDK | `src/`，不含 `src/features/{engineers,management}`；其中的语音配置页面归本计划；`shared/` |
 | 协议 | `proto/agentos/{console,execution,authorization,voice,mcp,automation,kagent}`，不含 `console/v1/role.proto` |
-| 数据 | PostgreSQL schema 与版本化迁移 |
-| Chart 与镜像 | 平台工作负载、Service、NetworkPolicy、入口、执行密钥、协作 MCP 注册、语音与迁移模板；平台镜像、console 镜像与 `voice/` |
+| 数据 | PostgreSQL schema |
+| Chart 与镜像 | 平台工作负载、Service、NetworkPolicy、入口、执行密钥、协作 MCP 注册与语音模板；平台镜像、`web/` 镜像与 `voice/` |
 
 ## 单元
 
-### 1.1 执行存储
+### 1.1 执行存储（已实现）
 
-按总览的[执行存储](refactor.md#执行存储)设计实施，同时引入 golang-migrate 迁移框架。
+按总览的[执行存储](refactor.md#执行存储)设计实施。
 
-删除：`server/authorization/store.ts` 的整行加密、`agentos_authorization.objects` 表与启动建表；`server/tasks/store.ts` 的启动建表；`charts/agentos/templates/execution-secret.yaml` 的密钥生成。迁移 Job 解密旧记录并写入新表后删除旧表。
+删除：`server/authorization/store.ts` 的整行加密与 `agentos_authorization.objects` 表。
 
 验收：
 
-- 单次工具调用的委派链校验为一次查询（当前最多 32 次读取与解密）。
-- 互换两行密文后解密失败。
-- 迁移在 CI 中分别对空库与上一版本数据库执行。
+- 单次工具调用的委派链校验为一次查询（原实现最多 32 次读取与解密）。
+- 互换两个主体的密文、使用其他密钥或其他工作空间读取时被拒绝。
 
-### 1.2 身份与前端解耦
+### 1.2 身份与前端解耦（已实现）
 
-按总览的[身份与委派](refactor.md#身份与委派)设计实施。新增 console 镜像、委派端点与密码模式的 identity 入口。
+按总览的[身份与委派](refactor.md#身份与委派)设计实施。新增 web 镜像（`web/`）、委派端点（`server/authorization/delegation.ts`）与密码模式的身份源（`server/identity`）。
 
 删除：
 
 - `server/authorization/browser.ts`，由委派端点替代；`server/platform/access.ts` 的 Origin 校验与访客主体；`identity.mode: none`。
-- 平台 API 镜像中的前端产物与静态托管；`server/mcp-apps/sandbox.ts` 移入 console。
-- `charts/agentos/templates/console-ingress.yaml` 与 `sandbox-ingress.yaml`。
-- 方案包的 `environments/clients.yaml` 与 `environments/tasks/client-api.yaml`；Controller UI 对平台会话 Cookie 的绑定。
+- 平台 API 镜像中的前端产物与静态托管；`server/mcp-apps/sandbox.ts` 移入 web 镜像。
+- `charts/agentos/templates/{console,sandbox,automation}-ingress.yaml`。
+- 方案包的 `environments/clients.yaml` 与 `environments/tasks/client-api.yaml`；Controller UI 对平台会话 Cookie 的绑定。两项随消费方仓库各自发布。
 
 验收：
 
@@ -45,11 +44,11 @@
 - 密码模式下 console、CLI 与后台任务使用与外部身份提供方相同的授权路径；连续输错密码触发限速。
 - console 发版不重启平台 API。
 
-### 1.3 读投影
+### 1.3 读投影（已实现）
 
-按总览的[读投影](refactor.md#读投影)设计实施。
+按总览的[读投影](refactor.md#读投影)设计实施。投影在 `server/read-model/{store,schema,summaries,listings,projection,reconcile,streams,graph}.ts`；分页游标沿用 `page.ts`。
 
-删除：`server/read-model` 的 `sync`、`live`、`index`、`checkpoints`、`observation`、`page` 与内存视图，`decode/` 保留为投影写入的解析；`server/jobs/coordination.ts` 的启动全量入队与 checkpoint 订阅；`server/team-sessions/continuation.ts` 的结果截断与语言判断。切换时由 Job 从 kagent 回填投影。
+删除：`server/read-model` 的 `sync`、`live`、`index`、`checkpoints`、`observation`、`send` 与内存视图，`decode/` 保留为投影写入的解析；`server/jobs/coordination.ts` 的启动全量入队与 checkpoint 订阅；`server/team-sessions/continuation.ts` 的结果截断与语言判断；`executions.history`。首次对账从 kagent 回填投影。
 
 验收：
 
@@ -72,7 +71,7 @@
 
 ### 1.5 语音单链路
 
-按总览的[语音](refactor.md#语音)设计实施。语音会话记录使用 1.1 的迁移框架。
+按总览的[语音](refactor.md#语音)设计实施。
 
 删除：RPC `TranscribeAudio`、`SynthesizeSpeech`、`StartVoiceCall` 与 `EndVoiceCall`；`server/speech` 的 WebSocket 转写代理与合成流；`shared/browser/speech` 与 `shared/browser/voice/chat-bridge.ts`；依赖 `@deepgram/sdk`、`@ricky0123/vad-web`、`@fastify/websocket` 与 `ws`。
 
@@ -92,4 +91,4 @@
 | 1.4 进程拆分 | 1.2、1.3 |
 | 1.5 语音单链路 | 1.1 |
 
-1.2 与 1.3 互不依赖。1.5 放在 1.4 之后，避免语音接线迁移两次。
+1.2 与 1.3 互不依赖。1.5 放在 1.4 之后，避免语音接线改两次。

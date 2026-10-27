@@ -68,6 +68,17 @@ build-image:
   extends: .build-image
   needs: [verify]
 
+build-web:
+  extends: .build-image
+  needs: [verify]
+  variables:
+    AGENTOS_DOCKERFILE_DIR: web
+    AGENTOS_IMAGE_SUFFIX: /web
+    AGENTOS_BUILD_METADATA: .cache/web-build-metadata.json
+  artifacts:
+    paths: [.cache/web-build-metadata.json, .cache/web-build-metadata.ref]
+    expire_in: 1 day
+
 build-contracts:
   extends: .agentos-node
   stage: package
@@ -85,6 +96,7 @@ package-check:
   needs:
     - build-contracts
     - build-image
+    - build-web
     - build-automation
     - build-voice
     - build-platform-controller

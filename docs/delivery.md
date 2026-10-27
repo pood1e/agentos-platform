@@ -12,7 +12,7 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `python-verify` | 生成 Python 契约；ruff 检查与格式校验；案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；每次发布均从当前提交构建 |
 | `platform-controller-verify` | 平台控制器 race、真实 API Server 集成测试、vet 与编译 |
-| `build-*` | rootless BuildKit 构建平台、平台控制器、kagent、Substrate、Harness、语音与自动化镜像，写入源码提交标签 |
+| `build-*` | rootless BuildKit 构建平台 API、web、平台控制器、kagent、Substrate、Harness、语音与自动化镜像，写入源码提交标签 |
 | `build-contracts` | 提前构建 Node SDK 与 Python protobuf wheel，并验证发布打包；不上传发布注册表 |
 | `voice-verify` | 在本次构建的语音镜像中校验语音源码与单元测试 |
 | `package-check` | 校验所有平台镜像的源码提交，打包四个 Chart 与参考部署 collection；功能分支同样执行 |
@@ -130,7 +130,7 @@ all:
 
 | 站点变量 | 说明 |
 | --- | --- |
-| `agentos_domain` | 控制台域名 |
+| `agentos_domain` | 控制台域名；DNS 与证书同时覆盖 `*.<agentos_domain>`，供 API 与沙箱主机名使用 |
 | `agentos_image_registry` | 平台运行时镜像所在的注册表路径，即构建时的 `$CI_REGISTRY_IMAGE` |
 | `dns_zone` | Cloudflare 托管的 DNS 区域，用于域名记录与 ACME DNS-01 |
 | `app_chart_repository` | 应用 Chart 所在的 OCI 仓库，如 `oci://registry.example.com/team/platform/charts` |
@@ -140,7 +140,7 @@ all:
 | `delivery_public_key` | 平台签名公钥，默认使用已验签 collection 内的公钥 |
 | `agentos_cache` | 部署缓存目录，默认 `$XDG_CACHE_HOME/agentos` 或 `~/.cache/agentos` |
 | `app_release_name` | Helm 发布名称，默认 `agentos` |
-| `app_values` | 应用 Chart 的值：入口域名、模型、`global.agentos` 等 |
+| `app_values` | 应用 Chart 的值：`route`、模型、`global.agentos` 等 |
 | `agentos_namespace` | 平台命名空间，默认 `agentos` |
 | `node_hosts` | 可选，节点 `/etc/hosts` 追加的 `{name, address}` |
 
@@ -153,7 +153,22 @@ all:
 
 凭据文件权限为 0600，保存在仓库外或忽略的 `.cache/`。平台模型与 MCP 使用工作负载 JWT；目标系统凭据由运维环境管理。Helm values 以 JSON 文件传入，保留 JWK 的标准字段名。
 
-控制台认证由平台值 `identity.mode` 选择，默认 `none`，直接提供工作空间访问。启用 `oidc` 时配置：
+平台以 Gateway API HTTPRoute 暴露 console（web）、平台 API 与可选的 MCP App 沙箱，Gateway 由站点提供：
+
+```yaml
+route:
+  parentRefs: [{name: agentos-public, sectionName: https}]
+  hosts: {console: agentos.example.com, api: api.agentos.example.com, sandbox: apps.agentos.example.com}
+  from: [...]  # 站点网关 Pod 的 NetworkPolicy peer，默认 K3s 内置 Traefik
+```
+
+参考部署启用 K3s 内置 Traefik 的 Gateway API 支持，创建 Gateway `agentos-public` 与覆盖 `<agentos_domain>`、`*.<agentos_domain>` 的证书。
+平台 API 只接受 Bearer 令牌；web 以 oauth2-proxy 持有浏览器会话并向 API 注入访问令牌，前端发布不重启平台 API。CLI、Controller UI
+等客户端直接以 Bearer 访问 API 主机。
+
+身份源由 `identity.mode` 选择，默认 `password`：内置身份源随 Chart 部署于 `https://<console>/identity`，以 oidc-provider 签发标准令牌。
+登录页只校验站点密码，令牌主体为单一共享用户并携带全部应用角色与写角色；连续输错密码按来源地址与全站限速。站点密码保存在
+`identity.secretRef`（默认 `agentos-identity`）的 `password` 键。参考部署首次安装时创建站点密码、`<release>-identity-keys` 的签名、客户端与 Cookie 密钥，以及 `<release>-sessions` 的浏览器会话和委派密钥；升级复用已有 Secret，密钥随站点数据库备份。签名密钥由 `community.crypto` 生成 P-256 PKCS#8 PEM。启用外部身份提供方时配置：
 
 ```yaml
 identity:
@@ -163,12 +178,13 @@ identity:
   audience: agentos-platform
   writerRole: operations-writer
   secretRef: agentos-identity
+  returnOrigins: [https://controller.example.com]
 ```
 
-身份提供方由部署方提供，平台复用标准 OIDC Discovery、Authorization Code 与 PKCE S256。
-OAuth 应用回调为 `https://<ingress.host>/auth/callback`。引用的 Secret 包含 `client-secret` 与 `cookie-secret`，后者为 Base64 编码的 32 字节随机值。
-方案 Chart 的平台值位于 `app_values.agentos`。OIDC 模式校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户可聊天和执行只读查询。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
-RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作；认证用户可管理自己的对话、交互和取消，配置写操作分别要求智能体、Skill、MCP、团队知识、模型或 Harness 的应用角色；角色可组合，目录由发布包 `authorization.json` 提供。目标系统写角色仅决定运维操作上限。实际工具调用独立校验会话与 Agent 权限，见[执行授权](execution-authorization.md)。开放模式使用共享服务主体。
+机密客户端登记回调 `https://<console>/oauth2/callback`（web 登录）与 `https://<api>/delegation/callback`（离线委派），引用的 Secret 包含 `client-secret`。`returnOrigins` 登记 console 之外允许完成委派后返回的前端源。
+方案 Chart 的平台值位于 `app_values.agentos`。平台 API 校验访问令牌的 `iss`、`aud`、`exp`、`iat`、`sub` 与签名，`roles` 数组包含 `writerRole` 时授予写权限，其余认证用户可聊天和执行只读查询。API audience 与登录 clientId 分别配置，ID Token 的登录客户端受众不能替代 API 受众。
+后台执行使用用户的离线授权：console 登录后自动跳转平台 API 的 `/delegation/start` 完成授权，其他客户端向用户展示 `GetAccessProfile.delegation_url`。
+RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作；认证用户可管理自己的对话、交互和取消，配置写操作分别要求智能体、Skill、MCP、团队知识、模型或 Harness 的应用角色；角色可组合，目录由发布包 `authorization.json` 提供。目标系统写角色仅决定运维操作上限。实际工具调用独立校验会话与 Agent 权限，见[执行授权](execution-authorization.md)。
 执行授权复用 PostgreSQL 连接及 CA Secret。站点预先创建 `execution.keySecret`（默认 `agentos-execution`），其中 `key` 为 Base64 编码的 32 字节密钥；该 Secret 由站点与数据库一并备份。
 
 参考部署从 OCI 安装 collection。版本与源码提交取自已审阅的发布记录，公钥通过站点可信渠道保存：
@@ -180,7 +196,7 @@ cosign verify --key /etc/agentos/cosign.pub --insecure-ignore-tlog \
   -a "version=$VERSION" -a "revision=$REVISION" "$collection@$digest"
 oras pull "$collection@$digest" --output .cache/delivery
 ansible-galaxy collection install ".cache/delivery/agentos-platform-$VERSION.tar.gz"
-ansible-playbook agentos.platform.deploy -i <site>/inventory.yaml -e @<site>/vars.yaml
+ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/vars.yaml
 ```
 
 控制端需安装 collection 中 `playbooks/deploy/requirements.txt` 声明的 Python 依赖，并提供 Helm、cosign、ORAS 与 Kustomize。
@@ -199,7 +215,7 @@ Python 使用项目的 `/packages/pypi/simple` 索引，锁文件固定 `agentos
 [Helm OCI](https://helm.sh/docs/topics/registries/) 与 [Ansible collection 安装](https://docs.ansible.com/projects/ansible/latest/collections_guide/collections_installing.html)。
 
 标签 `node`、`runtime`、`model`、`ingress`、`app` 可单独执行；更新应用使用 `--tags app`。不使用 Cloudflare 时跳过 `ingress`，自行准备域名解析与
-TLS Secret `agentos-ingress`。节点就绪后，`deploy/validate.yaml` 以服务端 dry-run 校验 microVM 资源；在节点上执行
+TLS Secret `agentos-ingress` 与 Gateway。站点密码可用 `kubectl -n <namespace> get secret agentos-identity -o jsonpath='{.data.password}' | base64 -d` 读取。节点就绪后，`deploy/validate.yaml` 以服务端 dry-run 校验 microVM 资源；在节点上执行
 `python3 deploy/verify-runtime.py <namespace>` 创建一次 microVM 沙箱，核验执行、挂起恢复后的文件与 KVM 进程。
 
 ## 语音
