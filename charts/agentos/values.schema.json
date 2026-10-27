@@ -4,20 +4,12 @@
   "properties": {
     "global": {
       "type": "object",
-      "required": [
-        "agentos"
-      ],
+      "required": ["agentos"],
       "properties": {
         "agentos": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "environments",
-            "toolsets",
-            "identities",
-            "skills",
-            "skillRepository"
-          ],
+          "required": ["environments", "toolsets", "identities", "skills", "skillRepository"],
           "properties": {
             "environments": {
               "items": {
@@ -39,18 +31,11 @@
                         "type": "integer"
                       }
                     },
-                    "required": [
-                      "address",
-                      "host",
-                      "nodePort"
-                    ],
+                    "required": ["address", "host", "nodePort"],
                     "type": "object"
                   },
                   "governance": {
-                    "enum": [
-                      "approval",
-                      "direct"
-                    ],
+                    "enum": ["approval", "direct"],
                     "type": "string"
                   },
                   "identities": {
@@ -73,28 +58,19 @@
                         "services": {
                           "additionalProperties": {
                             "description": "Access identifies an identity's capability boundary.",
-                            "enum": [
-                              "read",
-                              "operate",
-                              "manage"
-                            ],
+                            "enum": ["read", "operate", "manage"],
                             "type": "string"
                           },
                           "maxProperties": 32,
                           "type": "object"
                         }
                       },
-                      "required": [
-                        "name",
-                        "services"
-                      ],
+                      "required": ["name", "services"],
                       "type": "object"
                     },
                     "maxItems": 64,
                     "type": "array",
-                    "x-kubernetes-list-map-keys": [
-                      "name"
-                    ],
+                    "x-kubernetes-list-map-keys": ["name"],
                     "x-kubernetes-list-type": "map"
                   },
                   "issuer": {
@@ -172,17 +148,12 @@
                     "type": "object"
                   }
                 },
-                "required": [
-                  "governance",
-                  "name"
-                ],
+                "required": ["governance", "name"],
                 "type": "object"
               },
               "maxItems": 32,
               "type": "array",
-              "x-kubernetes-list-map-keys": [
-                "name"
-              ],
+              "x-kubernetes-list-map-keys": ["name"],
               "x-kubernetes-list-type": "map"
             },
             "toolsets": {
@@ -256,47 +227,32 @@
                   "services": {
                     "additionalProperties": {
                       "description": "Access identifies an identity's capability boundary.",
-                      "enum": [
-                        "read",
-                        "operate",
-                        "manage"
-                      ],
+                      "enum": ["read", "operate", "manage"],
                       "type": "string"
                     },
                     "maxProperties": 32,
                     "type": "object"
                   }
                 },
-                "required": [
-                  "name",
-                  "services"
-                ],
+                "required": ["name", "services"],
                 "type": "object"
               },
               "maxItems": 64,
               "type": "array",
-              "x-kubernetes-list-map-keys": [
-                "name"
-              ],
+              "x-kubernetes-list-map-keys": ["name"],
               "x-kubernetes-list-type": "map"
             },
             "skills": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "skill"
-                ]
+                "required": ["skill"]
               }
             },
             "skillRepository": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "host",
-                "path",
-                "secretRef"
-              ],
+              "required": ["host", "path", "secretRef"],
               "properties": {
                 "host": {
                   "type": "string",
@@ -330,10 +286,7 @@
           "pattern": "^sha256:[a-f0-9]{64}$"
         }
       },
-      "required": [
-        "repository",
-        "digest"
-      ]
+      "required": ["repository", "digest"]
     },
     "imagePullSecrets": {
       "type": "array",
@@ -346,17 +299,13 @@
             "minLength": 1
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       }
     },
     "pack": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "image"
-      ],
+      "required": ["image"],
       "properties": {
         "image": {
           "type": "string",
@@ -378,10 +327,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "endpoint",
-        "userId"
-      ]
+      "required": ["endpoint", "userId"]
     },
     "console": {
       "type": "object",
@@ -392,17 +338,12 @@
           "additionalProperties": {
             "type": "object",
             "additionalProperties": {
-              "type": [
-                "string",
-                "number"
-              ]
+              "type": ["string", "number"]
             }
           }
         }
       },
-      "required": [
-        "resources"
-      ]
+      "required": ["resources"]
     },
     "access": false,
     "modelConfig": {
@@ -413,9 +354,7 @@
           "type": "object"
         }
       },
-      "required": [
-        "spec"
-      ]
+      "required": ["spec"]
     },
     "knowledgeMemory": {
       "type": "object",
@@ -426,9 +365,7 @@
           "minimum": 1
         }
       },
-      "required": [
-        "ttlDays"
-      ]
+      "required": ["ttlDays"]
     },
     "embedding": {
       "type": "object",
@@ -457,30 +394,17 @@
           "additionalProperties": {
             "type": "object",
             "additionalProperties": {
-              "type": [
-                "string",
-                "number"
-              ]
+              "type": ["string", "number"]
             }
           }
         }
       },
-      "required": [
-        "image",
-        "model",
-        "digest",
-        "storage",
-        "resources"
-      ]
+      "required": ["image", "model", "digest", "storage", "resources"]
     },
     "gateway": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "parameters",
-        "models",
-        "mcps"
-      ],
+      "required": ["parameters", "models", "mcps"],
       "properties": {
         "parameters": {
           "type": "object"
@@ -489,10 +413,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "name",
-              "spec"
-            ],
+            "required": ["name", "spec"],
             "properties": {
               "name": {
                 "type": "string"
@@ -507,10 +428,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "name",
-              "spec"
-            ],
+            "required": ["name", "spec"],
             "properties": {
               "name": {
                 "type": "string"
@@ -525,10 +443,7 @@
     },
     "harnesses": {
       "type": "object",
-      "required": [
-        "standard",
-        "memory"
-      ],
+      "required": ["standard", "memory"],
       "propertyNames": {
         "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
       },
@@ -575,9 +490,7 @@
           "maxItems": 32
         }
       },
-      "required": [
-        "enabled"
-      ]
+      "required": ["enabled"]
     },
     "entryAgent": {
       "type": "string",
@@ -587,11 +500,7 @@
     "speech": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "transcription",
-        "synthesis",
-        "secretRef"
-      ],
+      "required": ["transcription", "synthesis", "secretRef"],
       "properties": {
         "transcription": {
           "$ref": "#/$defs/speechTranscription"
@@ -618,10 +527,7 @@
       ],
       "properties": {
         "mode": {
-          "enum": [
-            "password",
-            "oidc"
-          ]
+          "enum": ["password", "oidc"]
         },
         "issuer": {
           "type": "string"
@@ -679,12 +585,7 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "databaseSecret",
-        "databaseCASecret",
-        "substrateURL",
-        "actorIssuer"
-      ],
+      "required": ["databaseSecret", "databaseCASecret", "substrateURL", "actorIssuer"],
       "properties": {
         "databaseSecret": {
           "type": "string",
@@ -743,10 +644,7 @@
           "additionalProperties": {
             "type": "object",
             "additionalProperties": {
-              "type": [
-                "string",
-                "number"
-              ]
+              "type": ["string", "number"]
             }
           }
         }
@@ -788,30 +686,20 @@
     "route": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "parentRefs",
-        "hosts",
-        "from"
-      ],
+      "required": ["parentRefs", "hosts", "from"],
       "properties": {
         "parentRefs": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": [
-              "name"
-            ]
+            "required": ["name"]
           }
         },
         "hosts": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "console",
-            "api",
-            "sandbox"
-          ],
+          "required": ["console", "api", "sandbox"],
           "properties": {
             "console": {
               "type": "string",
@@ -841,11 +729,7 @@
     "web": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "image",
-        "proxyImage",
-        "resources"
-      ],
+      "required": ["image", "proxyImage", "resources"],
       "properties": {
         "image": {
           "type": "string",
@@ -860,10 +744,7 @@
           "additionalProperties": {
             "type": "object",
             "additionalProperties": {
-              "type": [
-                "string",
-                "number"
-              ]
+              "type": ["string", "number"]
             }
           }
         }
@@ -872,10 +753,7 @@
     "controller": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "image",
-        "resources"
-      ],
+      "required": ["image", "resources"],
       "properties": {
         "image": {
           "type": "string",
@@ -885,9 +763,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "name"
-            ],
+            "required": ["name"],
             "properties": {
               "name": {
                 "type": "string",
@@ -901,10 +777,7 @@
           "additionalProperties": {
             "type": "object",
             "additionalProperties": {
-              "type": [
-                "string",
-                "number"
-              ]
+              "type": ["string", "number"]
             }
           }
         }
@@ -963,17 +836,12 @@
                 "type": "string"
               }
             },
-            "required": [
-              "name",
-              "value"
-            ],
+            "required": ["name", "value"],
             "type": "object"
           },
           "maxItems": 100,
           "type": "array",
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
+          "x-kubernetes-list-map-keys": ["name"],
           "x-kubernetes-list-type": "map"
         },
         "kagent": {
@@ -1075,9 +943,7 @@
                   "type": "integer"
                 }
               },
-              "required": [
-                "modelConfigRef"
-              ],
+              "required": ["modelConfigRef"],
               "type": "object",
               "x-kubernetes-validations": [
                 {
@@ -1101,9 +967,7 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "location"
-              ],
+              "required": ["location"],
               "type": "object"
             },
             "workerPoolRef": {
@@ -1119,10 +983,7 @@
               "x-kubernetes-map-type": "atomic"
             }
           },
-          "required": [
-            "snapshotPolicy",
-            "workerPoolRef"
-          ],
+          "required": ["snapshotPolicy", "workerPoolRef"],
           "type": "object",
           "x-kubernetes-validations": [
             {
@@ -1159,9 +1020,7 @@
           "type": "object"
         }
       },
-      "required": [
-        "substrate"
-      ],
+      "required": ["substrate"],
       "type": "object",
       "x-kubernetes-validations": [
         {
@@ -1181,9 +1040,7 @@
     "speechEndpoint": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "baseUrl"
-      ],
+      "required": ["baseUrl"],
       "properties": {
         "baseUrl": {
           "type": "string",
@@ -1198,10 +1055,7 @@
       "properties": {
         "protocol": {
           "type": "string",
-          "enum": [
-            "PROTOCOL_DEEPGRAM",
-            "PROTOCOL_WHISPERLIVEKIT"
-          ]
+          "enum": ["PROTOCOL_DEEPGRAM", "PROTOCOL_WHISPERLIVEKIT"]
         },
         "endpoint": {
           "$ref": "#/$defs/speechEndpoint"
@@ -1226,10 +1080,7 @@
           "maxProperties": 0
         },
         {
-          "required": [
-            "endpoint",
-            "model"
-          ]
+          "required": ["endpoint", "model"]
         }
       ]
     },
@@ -1239,10 +1090,7 @@
       "properties": {
         "protocol": {
           "type": "string",
-          "enum": [
-            "PROTOCOL_OPENAI",
-            "PROTOCOL_NEMO"
-          ]
+          "enum": ["PROTOCOL_OPENAI", "PROTOCOL_NEMO"]
         },
         "endpoint": {
           "$ref": "#/$defs/speechEndpoint"
@@ -1254,11 +1102,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "languageCode",
-              "model",
-              "voice"
-            ],
+            "required": ["languageCode", "model", "voice"],
             "properties": {
               "languageCode": {
                 "type": "string",
@@ -1283,10 +1127,7 @@
           "maxProperties": 0
         },
         {
-          "required": [
-            "endpoint",
-            "voices"
-          ]
+          "required": ["endpoint", "voices"]
         }
       ]
     },

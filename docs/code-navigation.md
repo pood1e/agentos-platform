@@ -48,6 +48,7 @@
 | `contracts` | Python wheel 与 Node SDK 的打包配置，SDK 同时发布官方依赖的 proto 源码 |
 | `mise.toml`、`mise.lock` | 开发与 CI 共用的工具版本、平台来源与完整性锁定 |
 | `charts/agentos-controller` | 控制器部署与 Preset 的共享 Helm library |
+| `controller/config/crd/bases` | 平台与环境 Chart 共用的 CRD |
 | `scripts/generate-kubernetes.mjs` | 从 CRD 生成 Helm schema、TS 类型与编译器测试夹具 |
 | `.github/workflows` | 合并前检查、自动发布 PR 与正式 tag |
 | `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |

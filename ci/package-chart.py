@@ -13,12 +13,14 @@ from versions import versions
 version, built = versions(), images()
 root = Path(".cache/release-charts")
 shutil.rmtree(root, ignore_errors=True)
-shutil.copytree("charts", root, ignore=shutil.ignore_patterns("charts"))
+shutil.copytree("charts", root, ignore=shutil.ignore_patterns("charts", "crds"))
 for chart in sorted(root.iterdir()):
     metadata = chart / "Chart.yaml"
     if not metadata.exists():
         continue
     info = yaml.safe_load(metadata.read_text())
+    if chart.name in ("agentos", "agentos-environment"):
+        shutil.copytree("controller/config/crd/bases", chart / "crds")
     info.update(version=version.semver, appVersion=version.semver)
     info.setdefault("annotations", {}).update(
         {

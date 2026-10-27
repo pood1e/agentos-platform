@@ -14,5 +14,6 @@ gen/
 .npm/
 charts/*/charts/
 charts/*/Chart.lock
+charts/*/crds/
 tests/fixtures/solution-chart/charts/
 tests/fixtures/solution-chart/Chart.lock

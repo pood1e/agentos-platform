@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 ci/generate-controller.sh
+git diff --exit-code -- controller/api controller/config/crd/bases
 helm dependency build charts/agentos --skip-refresh
 helm dependency build charts/agentos-environment --skip-refresh
 mkdir -p .cache/chart-check

@@ -169,6 +169,7 @@ class OCITest(unittest.TestCase):
                 shutil.copytree(
                     ROOT / name, root / name, ignore=shutil.ignore_patterns("charts", "__pycache__")
                 )
+            shutil.copytree(ROOT / "controller/config/crd/bases", root / "controller/config/crd/bases")
             for name in ("package.json", ".release-please-manifest.json", "LICENSE"):
                 shutil.copyfile(ROOT / name, root / name)
             (root / "gen").mkdir()
@@ -279,6 +280,14 @@ class OCITest(unittest.TestCase):
                     if p.is_file()
                 }
                 self.assertEqual(len(artifacts), 5)
+                for chart in ("agentos", "agentos-environment"):
+                    metadata = yaml.safe_load((root / ".cache/release-charts" / chart / "Chart.yaml").read_text())
+                    archive = root / "dist" / f"{chart}-{metadata['version']}.tgz"
+                    with tarfile.open(archive) as package:
+                        for crd in (root / "controller/config/crd/bases").glob("*.yaml"):
+                            content = package.extractfile(f"{chart}/crds/{crd.name}")
+                            self.assertIsNotNone(content)
+                            self.assertEqual(content.read(), crd.read_bytes())
                 if previous is not None:
                     self.assertEqual(artifacts, previous)
                 previous = artifacts

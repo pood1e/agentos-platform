@@ -4,7 +4,7 @@ import { compile } from "json-schema-to-typescript";
 import { parse, stringify } from "yaml";
 
 const read = (file) => JSON.parse(readFileSync(file, "utf8"));
-const crd = parse(readFileSync("charts/agentos/crds/agentos.dev_accessplans.yaml", "utf8"));
+const crd = parse(readFileSync("controller/config/crd/bases/agentos.dev_accessplans.yaml", "utf8"));
 const schema = crd.spec.versions[0].schema.openAPIV3Schema;
 const spec = schema.properties.spec;
 mkdirSync("gen/schema", { recursive: true });

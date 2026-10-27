@@ -4,6 +4,7 @@
 
 `controller/api/v1alpha1` 定义 `AccessPlan` 与 `Preset`；`ci/generate-controller.sh` 生成 CRD，
 `scripts/generate-kubernetes.mjs` 从 CRD 生成 TypeScript 类型和 Helm values schema。
+CRD 统一存于 `controller/config/crd/bases`，源码验证与发布打包时分发到平台和环境 Chart；CI 校验生成结果与提交一致。
 
 | 声明 | 管理者 | 派生对象 |
 | --- | --- | --- |
