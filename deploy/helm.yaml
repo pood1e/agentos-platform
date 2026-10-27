@@ -41,9 +41,16 @@
         dest: "{{ helm_plugin_directory.stdout }}/agentos-kustomize"
         state: link
 
-    - name: Install Helm diff for rendered manifest checks
-      kubernetes.core.helm_plugin:
-        binary_path: "{{ helm_binary }}"
-        plugin_path: https://github.com/databus23/helm-diff
-        plugin_version: "{{ helm_diff_version }}"
-        state: present
+    - name: Download the pinned Helm diff plugin
+      ansible.builtin.get_url:
+        url: >-
+          {{ 'https://github.com/databus23/helm-diff/releases/download/' ~ helm_diff_version
+             ~ '/diff-' ~ (helm_diff_version | regex_replace('^v', '')) ~ '-linux-amd64.tgz' }}
+        dest: "{{ agentos_cache }}/helm-diff.tgz"
+        checksum: "{{ helm_diff_checksum }}"
+        mode: "0644"
+
+    - name: Install the verified Helm diff plugin
+      ansible.builtin.unarchive:
+        src: "{{ agentos_cache }}/helm-diff.tgz"
+        dest: "{{ helm_plugin_directory.stdout }}"
