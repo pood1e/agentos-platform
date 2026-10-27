@@ -15,7 +15,7 @@
 
 ## 原则
 
-- 每个单元一次切换：同一版本删除旧实现，不保留兼容层、双轨实现或迁移代码。
+- 首版直接采用目标模型，每个单元一次切换并删除旧实现。
 - 复用维护中的组件、官方 SDK 与官方资源类型，平台代码只保留业务语义。
 - 模型唯一来源：RPC 与持久化使用 proto；Kubernetes 资源使用 Go 类型生成的 CRD schema，Helm values schema 与 TS 类型由该 schema 生成。
 - 依赖方向：前端只经平台 API 访问平台；Agent 只经网关与运行时控制面访问 dataplane；控制器只写 Kubernetes 资源。
@@ -182,7 +182,7 @@ flowchart LR
 | 风险 | 处理 |
 | --- | --- |
 | 密码模式为单一共享主体，没有用户隔离 | 与原访客模式的共享语义一致；需要隔离的站点使用外部身份提供方 |
-| 离线委派增加一次授权跳转 | 沿用原机密客户端，console 登录后自动完成 |
+| 离线委派增加一次授权跳转 | console 登录后自动完成委派授权 |
 | 投影遗漏 kagent 侧的状态变化 | worker 对账兜底，验收记录最大陈旧时间 |
 | 新增 Go 控制器 | 复用现有 Go 与 envtest 工具链；分级规则只在控制器中实现 |
 | oauth2-proxy alpha 配置随版本变化 | 固定版本，配置纳入 Chart 测试 |
@@ -196,4 +196,4 @@ flowchart LR
 - [PostgreSQL NOTIFY](https://www.postgresql.org/docs/current/sql-notify.html)、[pg-boss](https://github.com/timgit/pg-boss)、[OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/)
 - [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)、[Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)、[垃圾回收与 ownerReferences](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)、[Helm lookup](https://helm.sh/docs/chart_template_guide/functions_and_pipelines/#using-the-lookup-function)
 - [Gateway API HTTPRoute](https://gateway-api.sigs.k8s.io/api-types/httproute/)、[LiveKit Agents](https://docs.livekit.io/agents/)
-- [Helm 3 OCI](https://helm.sh/docs/v3/topics/registries/)、[cosign](https://github.com/sigstore/cosign)、[GitLab npm](https://docs.gitlab.com/user/packages/npm_registry/) 与 [PyPI](https://docs.gitlab.com/user/packages/pypi_repository/) 注册表、[Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)、[Helm post-rendering](https://helm.sh/docs/v3/topics/advanced/#post-rendering)、[Ansible collection 安装](https://docs.ansible.com/ansible/latest/collections_guide/collections_installing.html)
+- [Helm OCI](https://helm.sh/docs/topics/registries/)、[cosign](https://github.com/sigstore/cosign)、[GitLab npm](https://docs.gitlab.com/user/packages/npm_registry/) 与 [PyPI](https://docs.gitlab.com/user/packages/pypi_repository/) 注册表、[Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)、[Helm post-rendering](https://helm.sh/docs/v3/topics/advanced/#post-rendering)、[Ansible collection 安装](https://docs.ansible.com/ansible/latest/collections_guide/collections_installing.html)

@@ -1,0 +1,16 @@
+{{- range .Values.gateway.mcps }}
+{{- if eq .name "kagent-collaboration" }}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: kagent-collaboration-tool-access
+  labels: {{ include "agentos.labels" $ | nindent 4 }}
+spec:
+  targetRefs: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-kagent-collaboration}]
+  traffic:
+    transformation:
+      request:
+        set:
+          - {name: x-user-id, value: {{ $.Values.kagent.userId | toJson | quote }}}
+{{- end }}
+{{- end }}

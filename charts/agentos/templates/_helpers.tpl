@@ -35,3 +35,10 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.workloadAuthName" -}}
 {{- printf "%s.%s-workload-auth" .Release.Namespace (include "agentos.name" .) -}}
 {{- end -}}
+
+{{- define "agentos.dataplaneService" -}}
+{{- printf "%s-console" (include "agentos.name" .) -}}
+{{- end -}}
+{{- define "agentos.actorKeysService" -}}
+{{- include "agentos.dataplaneService" . -}}
+{{- end -}}

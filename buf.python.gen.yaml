@@ -7,7 +7,6 @@ plugins:
     out: gen/python
     include_imports: true
     types:
-      - agentos.distribution.v1.ReleaseManifest
       - agentos.automation.v1.CaseRequest
       - agentos.automation.v1.CaseReference
       - agentos.automation.v1.AutomationConfig

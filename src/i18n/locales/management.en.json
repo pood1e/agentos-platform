@@ -134,6 +134,5 @@
     "refresh": "Refresh"
   },
   "view": "View",
-  "embeddingModels": "Embedding models",
-  "partialSave": "The update could not be fully restored. Refresh and check the configuration before retrying."
+  "embeddingModels": "Embedding models"
 }

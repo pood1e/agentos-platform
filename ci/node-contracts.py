@@ -26,12 +26,15 @@ for name in ("LICENSE", "buf.lock"):
 package = {
     "name": "@agentos/contracts",
     "version": versions().semver,
+    "gitHead": versions().revision,
+    "repository": {"type": "git", "url": "https://github.com/pood1e/agentos-platform.git"},
     "type": "module",
     "license": "Apache-2.0",
     "exports": {"./*": {"types": "./*.d.ts", "default": "./*.js"}},
     "peerDependencies": {
         name: "^" + manifest["dependencies"][name]
         for name in (
+            "@kubernetes/client-node",
             "@assistant-ui/react",
             "@modelcontextprotocol/client",
             "@modelcontextprotocol/core",
@@ -51,6 +54,7 @@ package = {
         name: {"optional": True}
         for name in (
             "react",
+            "@kubernetes/client-node",
             "@assistant-ui/react",
             "@modelcontextprotocol/client",
             "@modelcontextprotocol/core",

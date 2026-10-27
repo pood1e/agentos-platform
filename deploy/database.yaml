@@ -4,7 +4,7 @@
   gather_facts: false
   vars_files: [vars.yaml]
   vars:
-    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
   module_defaults:
     kubernetes.core.k8s:
       kubeconfig: "{{ kubeconfig_path }}"

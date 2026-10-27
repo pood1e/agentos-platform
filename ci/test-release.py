@@ -6,10 +6,9 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from packaging.version import Version
-from registry import Registry
 from versions import versions
 
 
@@ -91,42 +90,6 @@ class VersionsTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "tag revisions"):
                 versions()
 
-
-class RegistryTest(unittest.TestCase):
-    def setUp(self):
-        env = {
-            "CI_API_V4_URL": "https://registry.example.test/api/v4",
-            "CI_PROJECT_ID": "1",
-            "CI_JOB_TOKEN": "test",
-        }
-        with patch.dict(os.environ, env):
-            self.registry = Registry("test", "0.27.0")
-        self.addCleanup(self.registry.close)
-        self.registry.session = Mock()
-
-    def response(self, status, body=b""):
-        response = Mock(status_code=status, content=body)
-        if status >= 400:
-            response.raise_for_status.side_effect = RuntimeError("registry unavailable")
-        return response
-
-    def test_retry_reuses_identical_artifacts_and_rejects_replacement(self):
-        self.registry.session.get.return_value = self.response(200, b"original")
-        self.registry.put("manifest.json", b"original")
-        self.registry.session.put.assert_not_called()
-        with self.assertRaisesRegex(ValueError, "differs"):
-            self.registry.put("manifest.json", b"changed")
-        self.registry.session.put.assert_not_called()
-
-    def test_only_missing_artifacts_are_created(self):
-        self.registry.session.get.return_value = self.response(404)
-        self.registry.put("contract.whl", b"content")
-        self.registry.session.put.assert_called_once()
-        self.registry.session.reset_mock()
-        self.registry.session.get.return_value = self.response(503)
-        with self.assertRaisesRegex(RuntimeError, "unavailable"):
-            self.registry.put("contract.whl", b"content")
-        self.registry.session.put.assert_not_called()
 
 
 if __name__ == "__main__":

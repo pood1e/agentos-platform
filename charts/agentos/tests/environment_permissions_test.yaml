@@ -1,45 +1,45 @@
 suite: environment permission sets
-values: [../../../tests/fixtures/chart-values.yaml]
-templates: [preset-system.yaml]
-release: {name: agentos, namespace: agentos}
+values:
+- ../../../tests/fixtures/chart-values.yaml
+templates:
+- access-plan.yaml
+release:
+  name: agentos
+  namespace: agentos
 set:
-  global.agentos.environments: [{name: example, governance: approval}]
+  global.agentos.environments:
+  - name: example
+    governance: approval
   global.agentos.toolsets:
     inventory:
-      readOnly: [list_assets]
-      write: [execute_job]
-      managementReadOnly: [list_accounts]
-      management: [create_asset]
+      readOnly:
+      - list_assets
+      write:
+      - execute_job
+      managementReadOnly:
+      - list_accounts
+      management:
+      - create_asset
   global.agentos.identities:
-    - name: assistant
-      services: {inventory: manage}
+  - name: assistant
+    services:
+      inventory: manage
 tests:
-  - it: grants management without operational execution and reviews management mutations by default
-    documentSelector: {path: spec.description, value: 团队的聊天入口}
-    asserts:
-      - equal:
-          path: "spec.tools[2].mcp.tools"
-          value: [example-inventory_list_assets, example-inventory_list_accounts]
-      - equal:
-          path: "spec.tools[3].mcp"
-          value:
-            server: {kind: RemoteMCPServer, name: example-inventory-assistant-changes}
-            tools: [example-inventory_create_asset]
-            requireApproval: true
-      - lengthEqual: {path: spec.tools, count: 4}
-  - it: grants operational execution without asset or account management
-    set:
-      global.agentos.identities:
-        - name: assistant
-          services: {inventory: operate}
-    documentSelector: {path: spec.description, value: 团队的聊天入口}
-    asserts:
-      - equal: {path: "spec.tools[2].mcp.tools", value: [example-inventory_list_assets]}
-      - equal: {path: "spec.tools[3].mcp.tools", value: [example-inventory_execute_job]}
-      - lengthEqual: {path: spec.tools, count: 4}
-  - it: honors an explicit empty review set while retaining a mutation binding
-    set: {global.agentos.toolsets.inventory.approval: []}
-    documentSelector: {path: spec.description, value: 团队的聊天入口}
-    asserts:
-      - equal: {path: "spec.tools[3].mcp.requireApproval", value: false}
-      - equal: {path: "spec.tools[3].mcp.tools", value: [example-inventory_create_asset]}
+- it: passes native tier and identity inputs to the controller
+  asserts:
+  - isKind:
+      of: AccessPlan
+  - equal:
+      path: spec.identities[0].services.inventory
+      value: manage
+  - equal:
+      path: spec.toolsets.inventory.management
+      value:
+      - create_asset
+- it: preserves an explicit empty approval set
+  set:
+    global.agentos.toolsets.inventory.approval: []
+  asserts:
+  - equal:
+      path: spec.toolsets.inventory.approval
+      value: []

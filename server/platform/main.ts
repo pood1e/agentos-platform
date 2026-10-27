@@ -81,7 +81,7 @@ const database = {
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const configuration = await configurationClients(kubeConfig, config.namespace, clients, app.log);
-const access = toolBindings(kubeConfig, config.namespace, undefined, configuration.backends);
+const access = await toolBindings(kubeConfig, config.namespace, app.log);
 const operations = governanceConfig();
 const environmentToken = environmentTokens(
   operations,
@@ -202,7 +202,7 @@ await registerConsole(app, {
     process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
     projection,
   ),
-  ready: () => projection.healthy() && configuration.healthy(),
+  ready: () => projection.healthy() && configuration.healthy() && access.healthy(),
   packRoot,
 });
 await registerPlatformMcp(
@@ -282,6 +282,7 @@ app.addHook("onClose", async () => {
   reconcile.close();
   await projection.close();
   await configuration.close();
+  await access.close();
   await execution.close();
   await tags.close();
 });

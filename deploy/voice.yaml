@@ -4,7 +4,7 @@
   gather_facts: false
   vars_files: [vars.yaml]
   vars:
-    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
     voice_configuration: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('voice', {}) }}"
     voice_platform_values: "{{ (app_values | default({})).get('agentos', app_values | default({})) }}"
   module_defaults:
@@ -54,7 +54,7 @@
         - name: Download the official LiveKit chart
           ansible.builtin.get_url:
             url: https://helm.livekit.io/livekit-server-1.9.0.tgz
-            dest: "{{ playbook_dir }}/../.cache/livekit-server-1.9.0.tgz"
+            dest: "{{ agentos_cache }}/livekit-server-1.9.0.tgz"
             checksum: sha256:4fafb11011747552803061ce41480c7d2b4fa58d3471f6d3579d988c53399109
             mode: "0644"
 
@@ -63,7 +63,7 @@
             name: agentos-livekit
             binary_path: "{{ helm_binary }}"
             kubeconfig: "{{ kubeconfig_path }}"
-            chart_ref: "{{ playbook_dir }}/../.cache/livekit-server-1.9.0.tgz"
+            chart_ref: "{{ agentos_cache }}/livekit-server-1.9.0.tgz"
             release_namespace: "{{ agentos_namespace }}"
             reset_values: true
             wait: true

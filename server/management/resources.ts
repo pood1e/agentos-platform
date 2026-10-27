@@ -8,8 +8,10 @@ import {
 } from "@kubernetes/client-node";
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
+import { userResource } from "./native.js";
 
 const resourceKinds = {
+  accessPlans: ["agentos.dev", "v1alpha1", "accessplans"],
   models: ["agentgateway.dev", "v1alpha1", "agentgatewaymodels"],
   mcps: ["agentgateway.dev", "v1alpha1", "agentgatewaybackends"],
   mcpPolicies: ["agentgateway.dev", "v1alpha1", "agentgatewaypolicies"],
@@ -30,12 +32,7 @@ export interface ResourceStore {
   remove(kind: ResourceKind, name: string, version: string): Promise<void>;
   readCatalog(): Promise<{ value: string; version: string }>;
   writeCatalog(value: string, version: string): Promise<string>;
-  credential(
-    name: string,
-    value: string,
-    owner: JsonObject,
-    dryRun?: boolean,
-  ): Promise<() => Promise<void>>;
+  credential(name: string, value: string, owner: JsonObject): Promise<void>;
 }
 
 export function resourceError(error: unknown): never {
@@ -79,7 +76,8 @@ export function resourceStore(
     async save(kind, resource, create) {
       const metadata = object(resource.metadata);
       const name = String(metadata.name ?? "");
-      const body: JsonObject = { ...resource, metadata: { ...metadata, namespace } };
+      const claimed = userResource(resource);
+      const body: JsonObject = { ...claimed, metadata: { ...object(claimed.metadata), namespace } };
       delete body.status;
       try {
         return create
@@ -87,12 +85,14 @@ export function resourceStore(
               ...params(kind),
               body,
               fieldValidation: "Strict",
+              fieldManager: "agentos-users",
             })
           : await custom.replaceNamespacedCustomObject({
               ...params(kind),
               name,
               body,
               fieldValidation: "Strict",
+              fieldManager: "agentos-users",
             });
       } catch (error) {
         return resourceError(error);
@@ -144,11 +144,16 @@ export function resourceStore(
         const cm = await core.replaceNamespacedConfigMap({
           namespace,
           name: catalogName,
+          fieldManager: "agentos-users",
           body: {
             apiVersion: "v1",
             kind: "ConfigMap",
             metadata: {
               ...current.metadata,
+              annotations: { ...current.metadata?.annotations, "agentos.dev/ownership": "user" },
+              ownerReferences: current.metadata?.ownerReferences?.filter(
+                (ref) => ref.kind !== "Preset" || ref.apiVersion !== "agentos.dev/v1alpha1",
+              ),
               namespace,
               name: catalogName,
               resourceVersion: version,
@@ -161,7 +166,7 @@ export function resourceStore(
         return resourceError(error);
       }
     },
-    async credential(name, value, owner, dryRun = false) {
+    async credential(name, value, owner) {
       const metadata = object(owner.metadata);
       const body = {
         apiVersion: "v1",
@@ -175,6 +180,7 @@ export function resourceStore(
               kind: String(owner.kind),
               name: String(metadata.name),
               uid: String(metadata.uid),
+              controller: true,
             },
           ],
         },
@@ -193,42 +199,19 @@ export function resourceStore(
           !existing.metadata?.ownerReferences?.some((ref) => ref.uid === metadata.uid)
         )
           throw invalid("management.credentialOwner");
-        const saved = existing
-          ? await core.replaceNamespacedSecret({
+        await (existing
+          ? core.replaceNamespacedSecret({
               namespace,
               name,
-              ...(dryRun ? { dryRun: "All" } : {}),
               body: {
                 ...body,
                 metadata: { ...body.metadata, resourceVersion: existing.metadata?.resourceVersion },
               },
             })
-          : await core.createNamespacedSecret({
+          : core.createNamespacedSecret({
               namespace,
               body,
-              ...(dryRun ? { dryRun: "All" } : {}),
-            });
-        return async () => {
-          if (dryRun) return;
-          if (existing)
-            await core.replaceNamespacedSecret({
-              namespace,
-              name,
-              body: {
-                ...existing,
-                metadata: {
-                  ...existing.metadata,
-                  resourceVersion: saved.metadata?.resourceVersion,
-                },
-              },
-            });
-          else
-            await core.deleteNamespacedSecret({
-              namespace,
-              name,
-              body: { preconditions: { resourceVersion: saved.metadata?.resourceVersion } },
-            });
-        };
+            }));
       } catch (error) {
         return resourceError(error);
       }

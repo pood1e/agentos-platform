@@ -7,3 +7,5 @@
 !build/**
 !dist/
 !dist/**
+!web/
+!web/**

@@ -1,119 +1,89 @@
 suite: environment gateway identity boundary
-values: [values.json]
-release: {name: agentos-environment, namespace: mcp}
+values:
+- values.json
+release:
+  name: agentos-environment
+  namespace: mcp
 tests:
-  - it: restricts management routes to inventory administration
-    template: backends.yaml
-    documentSelector:
-      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
-      value: agentos-remediation
-    asserts:
-      - matchRegex:
-          path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-          pattern: nodes_list.*nodes_drain
-      - notMatchRegex:
-          path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-          pattern: resources_create_or_update
-  - it: retires idle upstream connections before MCP servers close their keep-alive sockets
-    template: gateway.yaml
-    documentSelector: {path: kind, value: AgentgatewayParameters}
-    asserts:
-      - equal: {path: spec.rawConfig.config.backend.poolIdleTimeout, value: 4s}
-  - it: exposes the HTTPS listener with its managed certificate
-    template: gateway.yaml
-    documentSelector: {path: "kind", value: Gateway}
-    asserts:
-      - equal: {path: "spec.listeners[0].protocol", value: HTTPS}
-      - equal: {path: "spec.listeners[0].tls.certificateRefs[0].name", value: mcp-gateway-tls}
-  - it: validates the environment issuer and resource audience
-    template: authentication.yaml
-    documentSelector: {path: "metadata.name", value: gateway-auth}
-    asserts:
-      - equal: {path: "spec.traffic.jwtAuthentication.mode", value: Strict}
-      - equal:
-          path: spec.traffic.jwtAuthentication.providers[0].audiences
-          value: ['https://env-approval-mcp.example.test:31000/mcp']
-      - equal: {path: "spec.frontend.http.maxBufferSize", value: 16Mi}
-      - matchRegex:
-          path: spec.traffic.authorization.policy.matchExpressions[0]
-          pattern: "agentos-catalog"
-  - it: uses the configured gateway SAN
-    template: certificates.yaml
-    documentSelector: {path: "spec.secretName", value: mcp-gateway-tls}
-    asserts:
-      - equal: {path: "spec.dnsNames", value: [env-approval-mcp.example.test]}
-      - equal: {path: "spec.issuerRef.name", value: mcp-ca}
-  - it: rejects a plaintext issuer
-    set: {environment.issuer: 'http://identity.example.test'}
-    asserts:
-      - failedTemplate: {errorPattern: 'issuer.*pattern|issuer.*match|issuer'}
-  - it: requires the catalog discovery identity
-    set: {identities: [{name: inspection, services: {kubernetes: read}}]}
-    asserts:
-      - failedTemplate: {errorPattern: 'catalog|contains|identities'}
-  - it: rejects mixed credential boundaries in one service
-    set:
-      connectors.kubernetes.targets:
-        - {host: first, port: 8000, auth: {secretRef: {name: first, key: token}}}
-        - host: second
-          port: 8000
-          auth:
-            oauthTokenExchange:
-              url: https://identity.example.test/token
-              grantType: TokenExchange
-              audiences: [example]
-              subjectToken: {source: {header: {name: Authorization}}, tokenType: AccessToken}
-              clientAuth: {clientId: example, method: None}
-    asserts:
-      - failedTemplate: {errorPattern: 'credential boundary|clientAuth'}
-  - it: resolves identity placeholders inside native OAuth credentials
-    template: backends.yaml
-    documentSelector:
-      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
-      value: agentos-catalog
-    asserts:
-      - equal:
-          path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.secretRef.name
-          value: agentos-catalog
-      - equal:
-          path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.audiences
-          value: [env-approval-kubernetes]
-  - it: resolves the issuer placeholder before sending native OAuth configuration
-    template: backends.yaml
-    documentSelector:
-      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
-      value: agentos-catalog
-    asserts:
-      - equal:
-          path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.url
-          value: https://identity.example.test/realms/env-approval/protocol/openid-connect/token
-  - it: rejects malformed issuer placeholders
-    set:
-      connectors.kubernetes.targets:
-        - host: kubernetes-mcp
-          port: 8000
-          auth:
-            oauthTokenExchange:
-              url: <issuer>?token=invalid
-              grantType: TokenExchange
-              clientAuth: {clientId: agentos-catalog, method: None}
-    asserts:
-      - failedTemplate: {errorPattern: 'url|anyOf|pattern'}
-  - it: exposes UI resources only to catalog discovery
-    template: backends.yaml
-    documentSelector:
-      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
-      value: agentos-catalog
-    asserts:
-    - matchRegex:
-        path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-        pattern: mcp.resource.name
-  - it: keeps UI resources absent from Agent identity routes
-    template: backends.yaml
-    documentSelector:
-      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
-      value: agentos-inspection
-    asserts:
-    - notMatchRegex:
-        path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-        pattern: mcp.resource.name
+- it: retires idle upstream connections before MCP servers close their keep-alive sockets
+  template: gateway.yaml
+  documentSelector:
+    path: kind
+    value: AgentgatewayParameters
+  asserts:
+  - equal:
+      path: spec.rawConfig.config.backend.poolIdleTimeout
+      value: 4s
+- it: exposes the HTTPS listener with its managed certificate
+  template: gateway.yaml
+  documentSelector:
+    path: kind
+    value: Gateway
+  asserts:
+  - equal:
+      path: spec.listeners[0].protocol
+      value: HTTPS
+  - equal:
+      path: spec.listeners[0].tls.certificateRefs[0].name
+      value: mcp-gateway-tls
+- it: validates the environment issuer and resource audience
+  template: authentication.yaml
+  documentSelector:
+    path: metadata.name
+    value: gateway-auth
+  asserts:
+  - equal:
+      path: spec.traffic.jwtAuthentication.mode
+      value: Strict
+  - equal:
+      path: spec.traffic.jwtAuthentication.providers[0].audiences
+      value:
+      - https://env-approval-mcp.example.test:31000/mcp
+  - equal:
+      path: spec.frontend.http.maxBufferSize
+      value: 16Mi
+- it: uses the configured gateway SAN
+  template: certificates.yaml
+  documentSelector:
+    path: spec.secretName
+    value: mcp-gateway-tls
+  asserts:
+  - equal:
+      path: spec.dnsNames
+      value:
+      - env-approval-mcp.example.test
+  - equal:
+      path: spec.issuerRef.name
+      value: mcp-ca
+- it: rejects a plaintext issuer
+  set:
+    environment.issuer: http://identity.example.test
+  asserts:
+  - failedTemplate:
+      errorPattern: issuer.*pattern|issuer.*match|issuer
+- it: rejects malformed issuer placeholders
+  set:
+    connectors.kubernetes.targets:
+    - host: kubernetes-mcp
+      port: 8000
+      auth:
+        oauthTokenExchange:
+          url: <issuer>?token=invalid
+          grantType: TokenExchange
+          clientAuth:
+            clientId: agentos-catalog
+            method: None
+  asserts:
+  - failedTemplate:
+      errorPattern: url|anyOf|pattern
+- it: passes connectors to the shared compiler
+  template: access-plan.yaml
+  asserts:
+  - isKind:
+      of: AccessPlan
+  - equal:
+      path: spec.mode
+      value: environment
+  - equal:
+      path: spec.connectors.kubernetes.targets[0].auth.oauthTokenExchange.url
+      value: https://identity.example.test/realms/env-approval/protocol/openid-connect/token

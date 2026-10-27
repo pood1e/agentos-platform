@@ -1,29 +1,31 @@
-{{- range .Values.gateway.models }}
-{{- if not (lookup "agentgateway.dev/v1alpha1" "AgentgatewayModel" $.Release.Namespace .name) }}
----
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayModel
+apiVersion: agentos.dev/v1alpha1
+kind: Preset
 metadata:
-  name: {{ .name }}
-  annotations:
-    helm.sh/resource-policy: keep
-    {{- if eq .name "knowledge-embedding" }}
-    agentos.dev/system-connection: "true"
-    agentos.dev/model-purpose: embedding
-    {{- end }}
-  labels:
-    {{- include "agentos.labels" $ | nindent 4 }}
+  name: {{ include "agentos.name" . }}-models
 spec:
-  parentRefs:
-    - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" $ }}-gateway, sectionName: http}
-  {{- $spec := deepCopy .spec }}
-  {{- $policies := $spec.policies | default dict }}
-  {{- $headers := $policies.headers | default dict }}
-  {{- $request := $headers.request | default dict }}
-  {{- $_ := set $request "remove" (append ($request.remove | default list) "x-substrate-actor-token" | uniq) }}
-  {{- $_ := set $headers "request" $request }}
-  {{- $_ := set $policies "headers" $headers }}
-  {{- $_ := set $spec "policies" $policies }}
-  {{- toYaml $spec | nindent 2 }}
-{{- end }}
-{{- end }}
+  resources:
+    {{- range .Values.gateway.models }}
+    - apiVersion: agentgateway.dev/v1alpha1
+      kind: AgentgatewayModel
+      metadata:
+        name: {{ .name }}
+        annotations:
+          agentos.dev/connection: 'true'
+          {{- if eq .name "default-model-config" }}
+          agentos.dev/model-config: {{ $.Values.modelConfig.spec | toJson | quote }}
+          {{- else if eq .name "knowledge-embedding" }}
+          agentos.dev/system-connection: 'true'
+          agentos.dev/model-purpose: embedding
+          {{- end }}
+      spec:
+        parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" $ }}-gateway, sectionName: http}]
+        {{- $spec := deepCopy .spec }}
+        {{- $policies := $spec.policies | default dict }}
+        {{- $headers := $policies.headers | default dict }}
+        {{- $request := $headers.request | default dict }}
+        {{- $_ := set $request "remove" (append ($request.remove | default list) "x-substrate-actor-token" | uniq) }}
+        {{- $_ := set $headers "request" $request }}
+        {{- $_ := set $policies "headers" $headers }}
+        {{- $_ := set $spec "policies" $policies }}
+        {{- toYaml $spec | nindent 8 }}
+    {{- end }}

@@ -1,0 +1,80 @@
+- name: Identify the chart release
+  ansible.builtin.set_fact:
+    delivery_chart_identity:
+      reference: "{{ delivery_chart | regex_replace('^oci://', '') }}:{{ delivery_chart_version | default(delivery_version) | replace('+', '_') }}"
+      version: "{{ delivery_chart_version | default(delivery_version) }}"
+      revision: "{{ delivery_chart_revision | default(delivery_revision) }}"
+      public_key: "{{ delivery_chart_public_key | default(delivery_public_key) }}"
+
+- name: Verify the OCI chart
+  ansible.builtin.include_tasks: verify-oci.yaml
+  vars:
+    delivery_artifact: "{{ delivery_chart_identity }}"
+
+- name: Create private release cache
+  ansible.builtin.file:
+    path: "{{ agentos_cache }}/verified"
+    state: directory
+    mode: "0700"
+
+- name: Pull the verified chart digest
+  ansible.builtin.command:
+    argv:
+      - "{{ helm_binary }}"
+      - pull
+      - "oci://{{ delivery_verified_ref }}"
+      - --registry-config
+      - "{{ agentos_cache }}/registry/config.json"
+      - --destination
+      - "{{ agentos_cache }}/verified"
+  changed_when: false
+  check_mode: false
+
+- name: Select the chart archive by digest
+  ansible.builtin.set_fact:
+    delivery_chart_archive: "{{ agentos_cache }}/verified/{{ delivery_verified_ref | basename | replace(':', '-') }}.tgz"
+
+- name: Read native chart metadata
+  ansible.builtin.command:
+    argv: ["{{ helm_binary }}", show, chart, "{{ delivery_chart_archive }}"]
+  register: delivery_metadata
+  changed_when: false
+  check_mode: false
+
+- name: Verify native chart source identity
+  ansible.builtin.assert:
+    that:
+      - (delivery_metadata.stdout | from_yaml).version == delivery_chart_identity.version
+      - (delivery_metadata.stdout | from_yaml).annotations['org.opencontainers.image.revision'] == delivery_chart_identity.revision
+    quiet: true
+
+- name: Render the verified chart
+  ansible.builtin.command:
+    argv: >-
+      {{ [helm_binary, 'template', delivery_release, delivery_chart_archive,
+          '--namespace', delivery_namespace]
+         + (['--values', delivery_values_file] if delivery_values_file | default('') | length > 0 else []) }}
+  register: delivery_rendered
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: Verify platform image signatures before installation
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ playbook_dir }}/../deploy/verify-images.py"
+      - --registry
+      - "{{ agentos_image_registry }}"
+      - --version
+      - "{{ delivery_version }}"
+      - --revision
+      - "{{ delivery_revision }}"
+      - --key
+      - "{{ delivery_public_key }}"
+    stdin: "{{ delivery_rendered.stdout }}"
+  changed_when: false
+  check_mode: false
+  no_log: true
+  environment:
+    DOCKER_CONFIG: "{{ agentos_cache }}/registry"

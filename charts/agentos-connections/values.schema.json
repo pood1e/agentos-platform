@@ -9,17 +9,14 @@
       "properties": {
         "release": {
           "type": "string",
-          "maxLength": 45,
-          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+          "minLength": 1
         },
         "controllerServiceAccount": {
           "type": "string",
-          "maxLength": 45,
-          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+          "minLength": 1
         },
         "actorIssuer": {
           "type": "string",
-          "format": "uri",
           "pattern": "^https://[^/]+"
         }
       },
@@ -28,133 +25,143 @@
     "environments": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
+        "description": "Environment declares one external environment's authorization boundary.",
         "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 45,
-            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
-          },
-          "governance": {
-            "enum": ["approval", "direct"]
-          },
-          "issuer": {
-            "type": "string",
-            "format": "uri",
-            "pattern": "^https://[^/]+"
-          },
-          "resource": {
-            "type": "string",
-            "format": "uri",
-            "pattern": "^https://[^/]+"
-          },
           "gateway": {
-            "type": "object",
-            "additionalProperties": false,
+            "description": "EnvironmentGateway is the TLS gateway exposed by a connected environment.",
             "properties": {
               "address": {
-                "type": "string",
-                "minLength": 1
+                "type": "string"
               },
               "host": {
-                "type": "string",
-                "minLength": 1
+                "type": "string"
               },
               "nodePort": {
-                "type": "integer",
-                "minimum": 30000,
-                "maximum": 32767
+                "format": "int32",
+                "maximum": 65535,
+                "minimum": 1,
+                "type": "integer"
               },
               "ca": {
                 "type": "string",
                 "minLength": 1
               }
             },
-            "required": ["address", "host", "nodePort", "ca"]
+            "required": ["address", "host", "nodePort"],
+            "type": "object"
           },
-          "toolsets": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "additionalProperties": false,
+          "governance": {
+            "enum": ["approval", "direct"],
+            "type": "string"
+          },
+          "identities": {
+            "items": {
+              "description": "Identity selects services and optionally restricts the environments in which it exists.",
               "properties": {
-                "readOnly": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "write": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "managementReadOnly": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "management": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "approval": {
-                  "type": "array",
+                "environments": {
                   "items": {
                     "type": "string"
                   },
-                  "uniqueItems": true
-                }
-              }
-            },
-            "minProperties": 1
-          },
-          "identities": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["name", "services"],
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "environments": {
+                  "maxItems": 32,
                   "type": "array",
-                  "items": {
-                    "type": "string",
-                    "maxLength": 45,
-                    "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
-                  }
+                  "x-kubernetes-list-type": "set"
+                },
+                "name": {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                  "type": "string"
                 },
                 "services": {
-                  "type": "object",
                   "additionalProperties": {
-                    "enum": ["read", "operate", "manage"]
-                  }
-                }
-              }
-            },
-            "minItems": 1,
-            "contains": {
-              "type": "object",
-              "additionalProperties": true,
-              "properties": {
-                "name": {
-                  "const": "catalog"
+                    "description": "Access identifies an identity's capability boundary.",
+                    "enum": ["read", "operate", "manage"],
+                    "type": "string"
+                  },
+                  "maxProperties": 32,
+                  "type": "object"
                 }
               },
-              "required": ["name"]
-            }
+              "required": ["name", "services"],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "type": "array",
+            "x-kubernetes-list-map-keys": ["name"],
+            "x-kubernetes-list-type": "map"
+          },
+          "issuer": {
+            "pattern": "^https://[^/]+",
+            "type": "string"
+          },
+          "jwksURL": {
+            "pattern": "^https://[^/]+",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 32,
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "resource": {
+            "pattern": "^https://[^/]+",
+            "type": "string"
+          },
+          "titles": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "toolsets": {
+            "additionalProperties": {
+              "description": "Toolset declares disjoint capability tiers for one service.",
+              "properties": {
+                "approval": {
+                  "description": "Omitted approvals default to every write capability; an empty list requires none.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 200,
+                  "type": "array",
+                  "x-kubernetes-list-type": "set"
+                },
+                "management": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "type": "array",
+                  "x-kubernetes-list-type": "set"
+                },
+                "managementReadOnly": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "type": "array",
+                  "x-kubernetes-list-type": "set"
+                },
+                "readOnly": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "type": "array",
+                  "x-kubernetes-list-type": "set"
+                },
+                "write": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "type": "array",
+                  "x-kubernetes-list-type": "set"
+                }
+              },
+              "type": "object"
+            },
+            "maxProperties": 32,
+            "type": "object"
           },
           "apis": {
             "type": "array",
@@ -198,16 +205,8 @@
               "type": "object"
             }
           },
-          "titles": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
           "approvalUrl": {
             "type": "string",
-            "format": "uri",
             "pattern": "^https://[^/]+"
           },
           "authorization": {
@@ -215,16 +214,8 @@
             "minLength": 1
           }
         },
-        "required": [
-          "name",
-          "governance",
-          "issuer",
-          "resource",
-          "gateway",
-          "toolsets",
-          "identities",
-          "titles"
-        ]
+        "required": ["governance", "name"],
+        "type": "object"
       }
     }
   },

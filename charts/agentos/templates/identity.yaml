@@ -2,21 +2,6 @@
 {{- $name := include "agentos.name" . -}}
 {{- $origins := include "agentos.origins" . | fromJson -}}
 {{- $identity := include "agentos.identity" . | fromJson -}}
-{{- $existing := (lookup "v1" "Secret" .Release.Namespace $identity.secret).data | default dict -}}
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ $identity.secret }}
-  labels:
-    {{- include "agentos.labels" . | nindent 4 }}
-  annotations:
-    helm.sh/resource-policy: keep
-type: Opaque
-data:
-  client-secret: {{ $existing | dig "client-secret" (randAlphaNum 48 | b64enc) | quote }}
-  signing-key: {{ $existing | dig "signing-key" (genPrivateKey "ecdsa" | b64enc) | quote }}
-  cookie-key: {{ $existing | dig "cookie-key" (randAlphaNum 32 | b64enc) | quote }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:

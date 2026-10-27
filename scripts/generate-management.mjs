@@ -34,7 +34,7 @@ chartSchema.properties.automation.properties.sources = {
 };
 writeFileSync("charts/agentos/values.schema.json", `${JSON.stringify(chartSchema, null, 2)}\n`);
 
-await import("./generate-environment-schema.mjs");
+await import("./generate-kubernetes.mjs");
 
 execFileSync(
   "node_modules/.bin/biome",

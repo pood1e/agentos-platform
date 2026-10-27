@@ -1,12 +1,16 @@
+agentos_cache: "{{ lookup('env', 'XDG_CACHE_HOME') | default(lookup('env', 'HOME') ~ '/.cache', true) }}/agentos"
+delivery_version: ""
+delivery_revision: ""
+delivery_public_key: "{{ playbook_dir }}/../deploy/files/cosign.pub"
 # Defaults and values derived from the solution's chart values. Site inventories and variables are passed at
 # deployment time; see docs/environments.md.
 agentos_namespace: agentos
 platform_release: agentos
 platform_gateway: "{{ platform_release }}-gateway"
-platform_kubeconfig: "{{ playbook_dir }}/../.cache/kubeconfig.yaml"
-helm_binary: "{{ playbook_dir }}/../.cache/helm/linux-amd64/helm"
-chart_cache: "{{ playbook_dir }}/../.cache/environments/charts"
-environment_cache: "{{ playbook_dir }}/../.cache/environments/{{ environment_name }}"
+platform_kubeconfig: "{{ agentos_cache }}/kubeconfig.yaml"
+helm_binary: "{{ agentos_cache }}/helm/linux-amd64/helm"
+chart_cache: "{{ agentos_cache }}/environments/charts"
+environment_cache: "{{ agentos_cache }}/environments/{{ environment_name }}"
 kubeconfig: "{{ environment_kubeconfig | default(environment_cache ~ '/kubeconfig.yaml') }}"
 gateway_namespace: mcp
 gateway_node_port: 31000

@@ -1,5 +1,5 @@
 ---
-- name: Unbind retiring environment access
+- name: Identify retiring environment identities
   ansible.builtin.import_playbook: lifecycle.yaml
 - name: Deploy AgentOS access in managed environments
   hosts: environments

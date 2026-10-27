@@ -1,7 +1,3 @@
-{{- $clients := list -}}
-{{- range .Values.identities -}}
-{{- $clients = append $clients (printf "agentos-%s" .name) -}}
-{{- end -}}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -27,13 +23,7 @@ spec:
           resource: {{ .Values.environment.resource | quote }}
           authorization_servers: [{{ .Values.environment.issuer | quote }}]
           bearer_methods_supported: [header]
-    authorization:
-      action: Require
-      policy:
-        matchExpressions:
-          - >-
-            request.path.startsWith('/.well-known/') ||
-            (has(jwt.azp) && jwt.azp in {{ $clients | toJson }})
+
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy

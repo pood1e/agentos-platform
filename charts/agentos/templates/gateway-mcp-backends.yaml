@@ -1,31 +1,23 @@
-{{- range .Values.gateway.mcps }}
----
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayBackend
+apiVersion: agentos.dev/v1alpha1
+kind: Preset
 metadata:
-  name: {{ .name }}
-  annotations: {agentos.dev/system-connection: 'true'}
-  labels:
-    {{- include "agentos.labels" $ | nindent 4 }}
+  name: {{ include "agentos.name" . }}-mcps
 spec:
-  {{- $spec := tpl (toYaml .spec) $ | fromYaml }}
-  {{- $processors := list (dict "methods" (dict "*" "Full") "remote" (dict "backendRef" (dict "name" (printf "%s-console" (include "agentos.name" $)) "port" 9090) "failureMode" "FailClosed" "allowedRequestHeaders" (list "x-substrate-actor-token" "authorization") "metadata" (dict "workspace" ($.Release.Namespace | squote) "platformService" (.name | squote) "toolName" "has(mcp.tool) ? mcp.tool.name : ''" "runtimeIdentity" "'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'] : ''"))) }}
-  {{- $_ := set $spec "policies" (mergeOverwrite (deepCopy ($spec.policies | default dict)) (dict "mcp" (dict "guardrails" (dict "processors" $processors)))) }}
-  {{- toYaml $spec | nindent 2 }}
-{{- if eq .name "kagent-collaboration" }}
----
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayPolicy
-metadata:
-  name: kagent-collaboration-tool-access
-  labels:
-    {{- include "agentos.labels" $ | nindent 4 }}
-spec:
-  targetRefs: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: mcp-kagent-collaboration}]
-  traffic:
-    transformation:
-      request:
-        set:
-          - {name: x-user-id, value: {{ $.Values.kagent.userId | toJson | quote }}}
-{{- end }}
-{{- end }}
+  resources:
+    {{- range .Values.gateway.mcps }}
+    - apiVersion: agentgateway.dev/v1alpha1
+      kind: AgentgatewayBackend
+      metadata:
+        name: {{ .name }}
+        annotations:
+          agentos.dev/system-connection: 'true'
+          agentos.dev/connection: 'true'
+          agentos.dev/description: {{ .description | default .name | quote }}
+        labels:
+          {{- include "agentos.labels" $ | nindent 10 }}
+      spec:
+        {{- $spec := tpl (toYaml .spec) $ | fromYaml }}
+        {{- $processors := list (dict "methods" (dict "*" "Full") "remote" (dict "backendRef" (dict "name" (include "agentos.dataplaneService" $) "port" 9090) "failureMode" "FailClosed" "allowedRequestHeaders" (list "x-substrate-actor-token" "authorization") "metadata" (dict "workspace" ($.Release.Namespace | squote) "platformService" (.name | squote) "toolName" "has(mcp.tool) ? mcp.tool.name : ''" "runtimeIdentity" "'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'] : ''"))) }}
+        {{- $_ := set $spec "policies" (mergeOverwrite (deepCopy ($spec.policies | default dict)) (dict "mcp" (dict "guardrails" (dict "processors" $processors)))) }}
+        {{- toYaml $spec | nindent 8 }}
+    {{- end }}

@@ -69,14 +69,14 @@ tests:
       path: spec.template.spec.containers[0].env
       content: {name: AGENTOS_USER_TOKEN_EXCHANGE, value: 'false'}
   - template: identity.yaml
-    documentIndex: 1
+    documentIndex: 0
     contains:
       path: spec.template.spec.containers[0].env
       content:
         name: AGENTOS_IDENTITY_PASSWORD
         valueFrom: {secretKeyRef: {name: agentos-identity, key: password}}
   - template: identity.yaml
-    documentIndex: 1
+    documentIndex: 0
     contains:
       path: spec.template.spec.containers[0].env
       content:

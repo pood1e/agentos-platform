@@ -11,6 +11,7 @@ import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { TaskGraph } from "../server/read-model/graph.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { mcpAppsEnvironment } from "./fixtures/mcp-apps.js";
+import { publishTargets } from "./harness.js";
 
 it("discovers independent App services together before either metadata response arrives", async () => {
   const env = await mcpAppsEnvironment();
@@ -26,6 +27,16 @@ it("discovers independent App services together before either metadata response 
     },
     true,
   );
+  publishTargets(env.fake, [
+    {
+      server: "lab-other",
+      service: "lab-other",
+      environment: "lab",
+      project: "views",
+      catalog: true,
+      tools: [{ name: "show_topology", write: false, requireApproval: false }],
+    },
+  ]);
   let release = () => {};
   const released = new Promise<void>((resolve) => {
     release = resolve;

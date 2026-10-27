@@ -26,11 +26,13 @@ workflow:
           - LICENSE
           - charts/**/*
           - contracts/**/*
+          - controller/**/*
           - ci/**/*
           - automation/**/*
           - deploy/**/*
           - environments/**/*
           - proto/**/*
+          - roles/**/*
           - runtime/**/*
           - scripts/**/*
           - server/**/*

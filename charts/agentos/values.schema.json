@@ -12,93 +12,235 @@
           "required": ["environments", "toolsets", "identities", "skills", "skillRepository"],
           "properties": {
             "environments": {
-              "type": "array",
               "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["name", "governance"],
+                "description": "Environment declares one external environment's authorization boundary.",
                 "properties": {
-                  "name": {
-                    "type": "string",
-                    "maxLength": 45,
-                    "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+                  "gateway": {
+                    "description": "EnvironmentGateway is the TLS gateway exposed by a connected environment.",
+                    "properties": {
+                      "address": {
+                        "type": "string"
+                      },
+                      "host": {
+                        "type": "string"
+                      },
+                      "nodePort": {
+                        "format": "int32",
+                        "maximum": 65535,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": ["address", "host", "nodePort"],
+                    "type": "object"
                   },
                   "governance": {
-                    "enum": ["approval", "direct"]
+                    "enum": ["approval", "direct"],
+                    "type": "string"
+                  },
+                  "identities": {
+                    "items": {
+                      "description": "Identity selects services and optionally restricts the environments in which it exists.",
+                      "properties": {
+                        "environments": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 32,
+                          "type": "array",
+                          "x-kubernetes-list-type": "set"
+                        },
+                        "name": {
+                          "maxLength": 63,
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                          "type": "string"
+                        },
+                        "services": {
+                          "additionalProperties": {
+                            "description": "Access identifies an identity's capability boundary.",
+                            "enum": ["read", "operate", "manage"],
+                            "type": "string"
+                          },
+                          "maxProperties": 32,
+                          "type": "object"
+                        }
+                      },
+                      "required": ["name", "services"],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array",
+                    "x-kubernetes-list-map-keys": ["name"],
+                    "x-kubernetes-list-type": "map"
+                  },
+                  "issuer": {
+                    "pattern": "^https://[^/]+",
+                    "type": "string"
+                  },
+                  "jwksURL": {
+                    "pattern": "^https://[^/]+",
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 32,
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                    "type": "string"
+                  },
+                  "resource": {
+                    "pattern": "^https://[^/]+",
+                    "type": "string"
+                  },
+                  "titles": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "toolsets": {
+                    "additionalProperties": {
+                      "description": "Toolset declares disjoint capability tiers for one service.",
+                      "properties": {
+                        "approval": {
+                          "description": "Omitted approvals default to every write capability; an empty list requires none.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 200,
+                          "type": "array",
+                          "x-kubernetes-list-type": "set"
+                        },
+                        "management": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 100,
+                          "type": "array",
+                          "x-kubernetes-list-type": "set"
+                        },
+                        "managementReadOnly": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 100,
+                          "type": "array",
+                          "x-kubernetes-list-type": "set"
+                        },
+                        "readOnly": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 100,
+                          "type": "array",
+                          "x-kubernetes-list-type": "set"
+                        },
+                        "write": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 100,
+                          "type": "array",
+                          "x-kubernetes-list-type": "set"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "maxProperties": 32,
+                    "type": "object"
                   }
-                }
-              }
+                },
+                "required": ["governance", "name"],
+                "type": "object"
+              },
+              "maxItems": 32,
+              "type": "array",
+              "x-kubernetes-list-map-keys": ["name"],
+              "x-kubernetes-list-type": "map"
             },
             "toolsets": {
-              "type": "object",
               "additionalProperties": {
-                "type": "object",
-                "additionalProperties": false,
+                "description": "Toolset declares disjoint capability tiers for one service.",
                 "properties": {
-                  "readOnly": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "write": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "managementReadOnly": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "management": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
                   "approval": {
-                    "type": "array",
+                    "description": "Omitted approvals default to every write capability; an empty list requires none.",
                     "items": {
                       "type": "string"
                     },
-                    "uniqueItems": true
+                    "maxItems": 200,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "management": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "managementReadOnly": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "readOnly": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "write": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
                   }
-                }
-              }
+                },
+                "type": "object"
+              },
+              "maxProperties": 32,
+              "type": "object"
             },
             "identities": {
-              "type": "array",
               "items": {
-                "type": "object",
-                "required": ["name", "services"],
+                "description": "Identity selects services and optionally restricts the environments in which it exists.",
                 "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
                   "environments": {
-                    "type": "array",
                     "items": {
-                      "type": "string",
-                      "maxLength": 45,
-                      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
-                    }
+                      "type": "string"
+                    },
+                    "maxItems": 32,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "name": {
+                    "maxLength": 63,
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                    "type": "string"
                   },
                   "services": {
-                    "type": "object",
                     "additionalProperties": {
-                      "enum": ["read", "operate", "manage"]
-                    }
+                      "description": "Access identifies an identity's capability boundary.",
+                      "enum": ["read", "operate", "manage"],
+                      "type": "string"
+                    },
+                    "maxProperties": 32,
+                    "type": "object"
                   }
-                }
-              }
+                },
+                "required": ["name", "services"],
+                "type": "object"
+              },
+              "maxItems": 64,
+              "type": "array",
+              "x-kubernetes-list-map-keys": ["name"],
+              "x-kubernetes-list-type": "map"
             },
             "skills": {
               "type": "array",
@@ -462,6 +604,10 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^https://"
+        },
+        "keySecret": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -603,6 +749,42 @@
           }
         }
       }
+    },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image", "resources"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": ["string", "number"]
+            }
+          }
+        }
+      }
+    },
+    "agentos-controller": {
+      "type": "object"
     }
   },
   "required": [

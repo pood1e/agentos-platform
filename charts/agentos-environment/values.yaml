@@ -1,5 +1,6 @@
 environment:
   name: ''
+  governance: direct
   issuer: ''
   resource: ''
   jwksURL: ''
@@ -16,3 +17,10 @@ gateway:
 toolsets: {}
 identities: []
 connectors: {}
+
+controller:
+  image: registry.example.com/agentos/platform-controller:0.39.0
+  imagePullSecrets: []
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: '1', memory: 256Mi}

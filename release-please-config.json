@@ -36,6 +36,26 @@
           "type": "yaml",
           "path": "charts/agentos-connections/Chart.yaml",
           "jsonpath": "$.appVersion"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-controller/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-controller/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos/Chart.yaml",
+          "jsonpath": "$.dependencies[0].version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/agentos-environment/Chart.yaml",
+          "jsonpath": "$.dependencies[0].version"
         }
       ]
     }

@@ -1,0 +1,44 @@
+- name: Inspect K3s service
+  ansible.builtin.stat:
+    path: /etc/systemd/system/k3s.service
+  register: node_dns_k3s
+
+- name: Create resolver configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: [/etc/systemd/resolved.conf.d, /etc/rancher/k3s/config.yaml.d]
+
+- name: Configure DNS over TLS
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/agentos.conf
+    mode: "0644"
+    content: |
+      [Resolve]
+      DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com
+      Domains=~.
+      DNSOverTLS=yes
+      DNSStubListenerExtra={{ ansible_host }}
+  notify: Restart resolver
+
+- name: Use the local resolver
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+
+- name: Configure Pod upstream resolver
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/resolv.conf
+    mode: "0644"
+    content: "nameserver {{ ansible_host }}\n"
+  notify: Restart K3s DNS
+
+- name: Configure K3s resolver source
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml.d/20-dns.yaml
+    mode: "0644"
+    content: "resolv-conf: /etc/rancher/k3s/resolv.conf\n"
+  notify: Restart K3s DNS

@@ -6,6 +6,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { parse } from "yaml";
 import { AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
 import { object, text } from "../../server/read-model/decode/messages.js";
+import { fixturePlans } from "../harness.js";
 import type { FakeKagent } from "./kagent.js";
 
 const harnesses = object(
@@ -21,6 +22,8 @@ export class FakeResources {
   reset() {
     this.data.clear();
     this.version = 0;
+    for (const plan of fixturePlans())
+      this.save("accessplans", plan as unknown as JsonObject, true);
     this.save(
       "secrets",
       {
@@ -36,7 +39,7 @@ export class FakeResources {
       {
         apiVersion: "v1",
         kind: "ConfigMap",
-        metadata: { name: "agentos-skills", annotations: { "helm.sh/resource-policy": "keep" } },
+        metadata: { name: "agentos-skills" },
         data: { "catalog.json": "{}" },
       },
       true,

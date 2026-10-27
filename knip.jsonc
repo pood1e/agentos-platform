@@ -11,6 +11,7 @@
     "shared/digest.ts"
   ],
   "ignoreDependencies": ["@bufbuild/protoc-gen-es"],
+  "ignoreBinaries": ["go"],
   "ignoreIssues": {
     "src/components/ui/**": ["exports", "types"]
   }

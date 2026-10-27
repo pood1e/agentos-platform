@@ -43,18 +43,15 @@ deny contains sprintf("console cannot watch configuration %s/%s", [group, resour
 	some group, resources in {
 		"api.kagent.dev": ["agents", "agenttemplates", "modelconfigs", "harnesses"],
 		"agentgateway.dev": ["agentgatewaybackends"],
+        "agentos.dev": ["accessplans"],
 	}
 	some resource in resources
 	not configuration_permission(group, resource, "watch")
 }
 
-deny contains sprintf("console cannot compensate creation of %s/%s", [group, resource]) if {
-	some group, resources in {
-		"api.kagent.dev": ["modelconfigs", "remotemcpservers"],
-		"agentgateway.dev": ["agentgatewaymodels", "agentgatewaybackends"],
-		"gateway.networking.k8s.io": ["httproutes"],
-		"": ["secrets"],
-	}
-	some resource in resources
-	not configuration_permission(group, resource, "delete")
+deny contains sprintf("console can mutate derived resource %s/%s", [group, resource]) if {
+ some group, resources in {"api.kagent.dev": ["modelconfigs", "remotemcpservers"], "gateway.networking.k8s.io": ["httproutes"], "agentgateway.dev": ["agentgatewaypolicies"]}
+ some resource in resources
+ some verb in ["create", "update", "delete"]
+ configuration_permission(group, resource, verb)
 }

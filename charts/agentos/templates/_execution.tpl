@@ -5,7 +5,7 @@
     secretKeyRef: {name: {{ .Values.execution.databaseSecret }}, key: connectionString}
 - name: AGENTOS_EXECUTION_KEY
   valueFrom:
-    secretKeyRef: {name: {{ include "agentos.name" . }}-execution, key: key}
+    secretKeyRef: {name: {{ .Values.execution.keySecret }}, key: key}
 - {name: AGENTOS_EXECUTION_DATABASE_CA, value: /etc/agentos-database/ca.crt}
 - {name: AGENTOS_RUNTIME_CA, value: /etc/agentos-runtime/ca.crt}
 - {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos-runtime/ca.crt}

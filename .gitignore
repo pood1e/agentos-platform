@@ -10,7 +10,10 @@ gen/
 .env.*
 !.env.example
 .cache/
+.ansible/
 .npm/
 charts/*/charts/
+charts/*/Chart.lock
+charts/*/crds/
 tests/fixtures/solution-chart/charts/
 tests/fixtures/solution-chart/Chart.lock

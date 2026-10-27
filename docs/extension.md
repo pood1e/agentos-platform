@@ -5,10 +5,10 @@
 
 | 扩展点 | 形式 | 平台提供 | 方案包提供 |
 | --- | --- | --- | --- |
-| 团队 | kagent 原生 `AgentTemplate` 与 `Agent`，经 `agentos.presets` 渲染 | 助手与角色构建 Agent；首次缺失时初始化，之后在控制台维护 | 业务角色、提示词、工具绑定、Harness 选择 |
+| 团队 | Preset 内的原生 `AgentTemplate` 与 `Agent` | 未修改预置随升级更新，用户编辑后保留 | 业务角色、提示词、工具绑定、Harness 选择 |
 | 角色标识 | `Agent` 的 `agentos.dev/role` 标签与显示注解 | 保留角色键、解析与展示 | 业务角色键、显示名、说明 |
 | Skill | `global.agentos.skills`，kagent 原生来源 | 共享目录、保存前 dry-run 校验、只读 Git 网关 | Skill 内容与固定版本 |
-| 工具分级 | `global.agentos.toolsets` | 环境网关的读写视图与原生暂停绑定，未知工具按写处理 | 各连接器的分级及与原生 MCP 注解的一致性检查 |
+| 工具分级 | `global.agentos.toolsets` → AccessPlan | 统一编译环境网关视图与原生暂停绑定，未知工具拒绝 | 各连接器的分级及与原生 MCP 注解的一致性检查 |
 | 身份档案 | `global.agentos.identities` | 生成各角色的 RemoteMCPServer 绑定与环境侧账号清单 | 各角色的环境范围与访问级别 |
 | 环境接入 | `global.agentos.environments` 与 `EnvironmentConnection`（proto） | 审批协调、OIDC 资源令牌、TLS 信任和凭据绑定 | 环境标识、治理模式、issuer 与 resource |
 | 连接器 | 环境内的 MCP 服务与 `environment_connectors` 后端描述 | 环境网关、身份映射、读写视图 | MCP 服务、目标系统与各身份的后端凭据 |
@@ -115,7 +115,8 @@ global:
 {{ include "agentos.presets" (dict "root" . "files" (.Files.Glob "presets/engineers/*.yaml")) }}
 ```
 
-`AgentTemplate` 只在缺失时创建，之后保留控制台的修改；`Agent` 保留控制台选择的 Harness；环境工具绑定按身份档案追加。
+`AgentTemplate` 与 `Agent` 通过 Preset 应用；未修改对象随方案升级更新，用户编辑后保留。
+环境工具绑定由控制器使用 AccessPlan 的编译结果生成，详见 [Kubernetes 控制器](kubernetes-controller.md)。
 `systemAgents.assistant.systemPrompt` 与 `systemAgents.roleBuilder.systemPrompt` 可覆盖平台系统 Agent 的提示词，支持模板表达式。
 
 ## 展示

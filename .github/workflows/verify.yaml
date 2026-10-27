@@ -105,13 +105,16 @@ jobs:
           ansible-playbook environments/deploy.yaml --syntax-check
           ansible-playbook environments/connect.yaml --syntax-check
           ci/check-charts.sh
+          python ci/test-artifacts.py
+          export KUBEBUILDER_ASSETS="$(setup-envtest use 1.37 -p path)"
+          go -C controller test -race ./...
+          go -C controller vet ./...
       - run: |
           node_modules/.bin/buf generate --template buf.python.gen.yaml
           ruff check
           ruff format --check
           pytest
           python ci/contracts.py
-          python ci/test-package-chart.py
           python ci/test-release.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

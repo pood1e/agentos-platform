@@ -22,6 +22,7 @@ kagent:
   endpoint: http://kagent-controller:8083
   userId: agentos
 execution:
+  keySecret: agentos-execution
   databaseSecret: kagent-postgres
   databaseCASecret: kagent-postgres-ca
   substrateURL: https://api.ate-system.svc
@@ -226,3 +227,10 @@ gateway:
             policies:
               http: {requestTimeout: 10m}
             protocol: StreamableHTTP
+
+controller:
+  image: registry.example.com/agentos/platform-controller:0.39.0
+  imagePullSecrets: []
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: '1', memory: 256Mi}

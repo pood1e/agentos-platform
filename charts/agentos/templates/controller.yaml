@@ -1,0 +1,2 @@
+{{- $name := include "agentos.name" . -}}
+{{ include "agentos.controller" (dict "root" . "mode" "platform" "options" (dict "gateway" (printf "%s-gateway" $name) "gateway-url" (printf "http://%s-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace) "mcp-url" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace) "model-secret" (printf "%s-model-client" $name) "dataplane" (include "agentos.dataplaneService" .) "actor-keys" (include "agentos.actorKeysService" .) "actor-issuer" .Values.execution.actorIssuer)) }}

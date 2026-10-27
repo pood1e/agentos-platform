@@ -8,6 +8,7 @@ from pathlib import Path
 
 from versions import versions
 
+os.umask(0o022)
 root = Path(__file__).resolve().parent.parent
 version = versions().python
 shutil.rmtree(root / "dist/contracts", ignore_errors=True)
@@ -36,6 +37,12 @@ def wheel(name, project, sources, requirements=""):
     for path in (root / "LICENSE", project):
         shutil.copyfile(path, target / path.name)
     (target / "VERSION").write_text(version + "\n")
+    with (target / "pyproject.toml").open("a") as metadata:
+        metadata.write(
+            '\n[project.urls]\nSource = "https://github.com/pood1e/agentos-platform/tree/'
+            + versions().revision
+            + '"\n'
+        )
     if requirements:
         (target / "requirements.txt").write_text(requirements)
     subprocess.run(

@@ -4,7 +4,7 @@
   gather_facts: false
   vars_files: [vars.yaml]
   vars:
-    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
   module_defaults:
     kubernetes.core.helm:
       binary_path: "{{ helm_binary }}"
@@ -26,14 +26,14 @@
     - name: Fetch missing Gateway API CRDs
       ansible.builtin.get_url:
         url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ gateway_api_version }}/standard-install.yaml"
-        dest: "{{ playbook_dir }}/../.cache/gateway-api-{{ gateway_api_version }}.yaml"
+        dest: "{{ agentos_cache }}/gateway-api-{{ gateway_api_version }}.yaml"
         mode: "0600"
       when: gateway_api.resources | length == 0
 
     - name: Install missing Gateway API CRDs
       kubernetes.core.k8s:
         kubeconfig: "{{ kubeconfig_path }}"
-        src: "{{ playbook_dir }}/../.cache/gateway-api-{{ gateway_api_version }}.yaml"
+        src: "{{ agentos_cache }}/gateway-api-{{ gateway_api_version }}.yaml"
         apply: true
         server_side_apply:
           field_manager: agentos-platform

@@ -4,10 +4,10 @@
   gather_facts: false
   vars_files: [vars.yaml]
   vars:
-    ansible_python_interpreter: "{{ playbook_dir }}/../.cache/deploy-venv/bin/python"
-    chart_user: "{{ lookup('env', 'AGENTOS_CHART_USER') }}"
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
     site_identity: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('identity', {}) }}"
     site_password_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"
+    site_application_name: "{{ app_release_name[:44] | regex_replace('-$', '') }}"
   module_defaults:
     kubernetes.core.k8s:
       kubeconfig: "{{ kubeconfig_path }}"
@@ -34,7 +34,7 @@
         kind: Secret
         name: "{{ item }}"
         namespace: "{{ agentos_namespace }}"
-      loop: [model-credentials]
+      loop: [model-credentials, "{{ app_values.get('agentos', app_values).get('execution', {}).get('keySecret', 'agentos-execution') }}"]
       register: application_credentials
       no_log: true
 
@@ -44,68 +44,29 @@
       loop: "{{ application_credentials.results }}"
       no_log: true
 
-    - name: Discover the site password
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Secret
-        name: "{{ site_password_secret }}"
-        namespace: "{{ agentos_namespace }}"
-      register: site_password
-      when: site_identity.get('mode', 'password') == 'password'
-      no_log: true
-
-    - name: Generate the site password
-      kubernetes.core.k8s:
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata: {name: "{{ site_password_secret }}", namespace: "{{ agentos_namespace }}"}
-          type: Opaque
-          stringData:
-            password: "{{ lookup('ansible.builtin.password', '/dev/null', length=24, chars=['ascii_letters', 'digits']) }}"
-      when: site_identity.get('mode', 'password') == 'password' and site_password.resources | length == 0
-      no_log: true
-      diff: false
-
-    - name: Authenticate application chart registry
-      ansible.builtin.command:
-        argv:
-          - "{{ helm_binary }}"
-          - registry
-          - login
-          - "{{ (app_chart_repository | ansible.builtin.urlsplit).netloc }}"
-          - --username
-          - "{{ chart_user }}"
-          - --password-stdin
-        stdin: "{{ lookup('env', 'AGENTOS_CHART_TOKEN') }}"
-      when: chart_user | length > 0
-      changed_when: false
-      no_log: true
+    - name: Provision site authentication credentials
+      ansible.builtin.include_tasks: tasks/site-credentials.yaml
 
     - name: Write application Helm values
       ansible.builtin.copy:
         content: >-
           {{ app_values | to_nice_json }}
-        dest: "{{ playbook_dir }}/../.cache/application-values.json"
+        dest: "{{ agentos_cache }}/application-values.json"
         mode: "0600"
       no_log: true
 
-    - name: Deploy application chart
-      kubernetes.core.helm:
-        name: "{{ app_release_name }}"
-        binary_path: "{{ helm_binary }}"
-        kubeconfig: "{{ kubeconfig_path }}"
-        chart_ref: "{{ app_chart_repository }}/{{ app_chart }}"
-        chart_version: "{{ app_chart_version }}"
-        release_namespace: "{{ agentos_namespace }}"
-        reset_values: true
-        take_ownership: true
-        history_max: 3
-        wait: true
-        timeout: 20m
-        values_files: ["{{ playbook_dir }}/../.cache/application-values.json"]
-      environment:
-        HELM_DIFF_USE_UPGRADE_DRY_RUN: "true"
+    - name: Deploy verified application chart
+      ansible.builtin.include_tasks: tasks/install-chart.yaml
+      vars:
+        delivery_chart: "{{ app_chart_repository }}/{{ app_chart }}"
+        delivery_release: "{{ app_release_name }}"
+        delivery_namespace: "{{ agentos_namespace }}"
+        delivery_values_file: "{{ agentos_cache }}/application-values.json"
+        delivery_chart_version: "{{ app_chart_version }}"
+        delivery_chart_revision: "{{ app_chart_revision }}"
+        delivery_chart_public_key: "{{ app_chart_public_key }}"
+        delivery_kubeconfig: "{{ kubeconfig_path }}"
+        delivery_timeout: 20m
 
     - name: Publish the current collaboration tool catalog
       ansible.builtin.include_tasks: mcp-discovery.yaml

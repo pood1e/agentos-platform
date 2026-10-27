@@ -40,6 +40,7 @@ def chart(name, reference, version):
 
 
 sources = [
+    *[path.read_text() for path in Path("controller/config/crd/bases").glob("*.yaml")],
     chart(
         "kagent-crds",
         "oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds",

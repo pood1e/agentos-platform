@@ -1,0 +1,12 @@
+apiVersion: agentos.dev/v1alpha1
+kind: AccessPlan
+metadata:
+  name: {{ include "agentos.name" . }}
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+spec:
+  mode: platform
+  toolsets: {{ toYaml .Values.global.agentos.toolsets | nindent 4 }}
+  identities: {{ toYaml .Values.global.agentos.identities | nindent 4 }}
+  environments: {{ toYaml .Values.global.agentos.environments | nindent 4 }}
+  servers:
+    {{- .Files.Get "presets/platform-tools.yaml" | nindent 4 }}

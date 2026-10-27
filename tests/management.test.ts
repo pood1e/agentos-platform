@@ -60,7 +60,7 @@ describe("native gateway connections", () => {
         "agentos.dev/model-purpose": "embedding",
       };
       await client.saveConnection({ connection: draft, create: true });
-      const model = await env.store.get("modelConfigs", name);
+      const model = await env.store.get("models", name);
       expect(object(object(model.metadata).annotations)["agentos.dev/model-purpose"]).toBe(
         "embedding",
       );
@@ -114,23 +114,28 @@ describe("native gateway connections", () => {
     if (!initial?.model?.resource?.value) throw new Error("native model missing");
     initial.model.resource.value.spec = { provider: "OpenAI", openAI: { apiFormat: "responses" } };
     const { connection: cleared } = await client.saveConnection({ connection: initial });
-    expect(
-      object(object((await env.store.get("modelConfigs", "harness-model")).spec).openAI),
-    ).toEqual({
-      baseUrl: `${env.dependencies.gateway.url}/v1`,
-      apiFormat: "responses",
-    });
+    const desired = JSON.parse(
+      text(
+        object(object((await env.store.get("models", "harness-model")).metadata).annotations)[
+          "agentos.dev/model-config"
+        ],
+      ),
+    );
+    expect(desired).toEqual({ provider: "OpenAI", openAI: { apiFormat: "responses" } });
     if (!cleared?.model?.resource?.value) throw new Error("native model missing");
     cleared.model.resource.value.spec = { provider: "Anthropic", anthropic: {} };
     await client.saveConnection({ connection: cleared });
-    const native = object((await env.store.get("modelConfigs", "harness-model")).spec);
-    expect(native).toMatchObject({
-      provider: "Anthropic",
-      anthropic: { baseUrl: env.dependencies.gateway.url },
-      apiKeySecret: "agentos-model-client",
-      apiKeySecretKey: "placeholder",
+    const native = JSON.parse(
+      text(
+        object(object((await env.store.get("models", "harness-model")).metadata).annotations)[
+          "agentos.dev/model-config"
+        ],
+      ),
+    );
+    expect(native).toEqual({ provider: "Anthropic", anthropic: {} });
+    await expect(env.store.get("modelConfigs", "harness-model")).rejects.toMatchObject({
+      code: Code.NotFound,
     });
-    expect(native.openAI).toBeUndefined();
     expect(object((await env.store.get("models", "harness-model")).spec).provider).toBe("OpenAI");
   });
   it("creates a model consumer through the gateway and returns only secret references", async () => {
@@ -140,11 +145,8 @@ describe("native gateway connections", () => {
       credential: "provider-secret",
     });
     expect(JSON.stringify(saved)).not.toContain("provider-secret");
-    const native = await env.store.get("modelConfigs", "model-smoke");
-    expect(object(native.spec)).toMatchObject({
-      apiKeySecret: "agentos-model-client",
-      apiKeySecretKey: "placeholder",
-      openAI: { baseUrl: `${env.dependencies.gateway.url}/v1` },
+    await expect(env.store.get("modelConfigs", "model-smoke")).rejects.toMatchObject({
+      code: Code.NotFound,
     });
     const secret = env.fake.resources.get("secrets", "agentos-model-model-smoke");
     expect(Buffer.from(text(object(secret.data).Authorization), "base64").toString()).toBe(
@@ -170,8 +172,9 @@ describe("native gateway connections", () => {
     await expect(client.saveConnection({ connection: first })).rejects.toMatchObject({
       code: Code.Aborted,
     });
-    const current = await env.store.get("modelConfigs", "versioned");
-    expect(object(current.metadata).ownerReferences).toHaveLength(1);
+    await expect(env.store.get("modelConfigs", "versioned")).rejects.toMatchObject({
+      code: Code.NotFound,
+    });
     expect(object(updated.connection?.resource?.value?.metadata).resourceVersion).not.toBe(
       object(first?.resource?.value?.metadata).resourceVersion,
     );
@@ -205,12 +208,12 @@ describe("native gateway connections", () => {
     expect(object(object(backend.spec).mcp).targets).toMatchObject([
       { static: { policies: { http: { requestTimeout: "10m" } } } },
     ]);
-    const remote = await env.store.get("remoteMCPs", "new-mcp");
-    expect(remote.spec).toMatchObject({ url: `${env.dependencies.gateway.url}/mcp/new-mcp` });
-    expect(object(remote.spec).headersFrom).toBeUndefined();
-    expect(object(object(remote.metadata).annotations)["agentos.dev/discovery-auth"]).toBe(
-      "kubernetes",
-    );
+    await expect(env.store.get("remoteMCPs", "new-mcp")).rejects.toMatchObject({
+      code: Code.NotFound,
+    });
+    await expect(env.store.get("routes", "mcp-new-mcp")).rejects.toMatchObject({
+      code: Code.NotFound,
+    });
     await client.deleteConnection({
       kind: ConnectionKind.MCP,
       name: "new-mcp",
@@ -223,11 +226,11 @@ describe("native gateway connections", () => {
       code: Code.NotFound,
     });
   });
-  it("leaves foreign consumers untouched and rolls back a new connection when credentials fail", async () => {
+  it("retains the committed parent for retry and leaves foreign credentials untouched", async () => {
     const foreign = await env.store.get("modelConfigs", "default-model-config");
     await expect(
       client.saveConnection({ connection: connection("default-model-config"), create: true }),
-    ).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    ).rejects.toMatchObject({ code: Code.Aborted });
     expect(await env.store.get("modelConfigs", "default-model-config")).toEqual(foreign);
     env.fake.resources.save(
       "secrets",
@@ -246,7 +249,7 @@ describe("native gateway connections", () => {
         credential: "new-secret",
       }),
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
-    await expect(env.store.get("models", "owned")).rejects.toMatchObject({ code: Code.NotFound });
+    expect(object((await env.store.get("models", "owned")).metadata).name).toBe("owned");
     const value = env.fake.resources.get("secrets", "agentos-model-owned");
     expect(Buffer.from(text(object(value.data).Authorization), "base64").toString()).toBe(
       "other-secret",
@@ -276,7 +279,7 @@ describe("shared skill catalog", () => {
     });
     await expect(client.saveSkill({ item })).rejects.toMatchObject({ code: Code.Aborted });
     const cm = env.fake.resources.get("configmaps", "agentos-skills");
-    expect(object(object(cm.metadata).annotations)["helm.sh/resource-policy"]).toBe("keep");
+    expect(object(object(cm.metadata).annotations)["agentos.dev/ownership"]).toBe("user");
     const { skills } = await client.listSkills({});
     expect(skills[0]?.description).toBe("Updated");
     await client.deleteSkill({ name: "triage", resourceVersion: skills[0]?.resourceVersion });

@@ -1,9 +1,8 @@
 """Validate native post-renderer boundaries and cold-start routing guarantees."""
 
-import json
 import os
 import subprocess
-import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -27,16 +26,25 @@ def resource(kind, name, spec):
     return {"apiVersion": api_version, "kind": kind, "metadata": {"name": name}, "spec": spec}
 
 
-def transform(path, resources, variables):
-    result = subprocess.run(
-        [sys.executable, str(ROOT / path)],
-        input=yaml.safe_dump_all(resources),
-        text=True,
-        capture_output=True,
-        check=True,
-        env={**os.environ, **variables},
-    )
-    return list(yaml.safe_load_all(result.stdout))
+def transform(overlay, resources, image):
+    with tempfile.TemporaryDirectory() as directory:
+        chart = Path(directory)
+        (chart / "Chart.yaml").write_text("apiVersion: v2\nname: native-postrenderer\nversion: 0.1.0\n")
+        (chart / "templates").mkdir()
+        (chart / "templates/resources.yaml").write_text(yaml.safe_dump_all(resources))
+        result = subprocess.run(
+            ["helm", "template", "test", str(chart), "--post-renderer", "agentos-kustomize"],
+            text=True,
+            capture_output=True,
+            check=True,
+            env={
+                **os.environ,
+                "HELM_PLUGINS": str(ROOT / "deploy/helm-plugins"),
+                "AGENTOS_KUSTOMIZE_OVERLAY": str(ROOT / "deploy/kustomize" / overlay),
+                "AGENTOS_PATCHED_IMAGE": image,
+            },
+        )
+    return {item["metadata"]["name"]: item for item in yaml.safe_load_all(result.stdout)}
 
 
 class PostRendererTest(unittest.TestCase):
@@ -74,16 +82,15 @@ class PostRendererTest(unittest.TestCase):
             resource("ConfigMap", "kagent-ui-config", {}),
         ]
         result = transform(
-            "deploy/gateway/kagent-post-renderer.py",
+            "kagent",
             originals,
-            {
-                "AGENTOS_KAGENT_CONTROLLER_IMAGE": image("kagent_controller_image"),
-            },
+            image("kagent_controller_image"),
         )
         self.assertEqual(len(result), 3)
-        self.assertEqual(result[:2], originals[:2])
+        self.assertEqual(result["external-environment"], external)
+        self.assertEqual(result["other"], service)
         self.assertEqual(
-            result[2]["spec"]["template"]["spec"]["containers"],
+            result["kagent-controller"]["spec"]["template"]["spec"]["containers"],
             [
                 {"name": "controller", "image": image("kagent_controller_image")},
                 {"name": "sidecar", "image": "sidecar"},
@@ -115,6 +122,7 @@ class PostRendererTest(unittest.TestCase):
                 }
             },
         )
+        job["metadata"]["annotations"] = {"helm.sh/hook": "pre-install,pre-upgrade"}
         atelet = resource(
             "DaemonSet",
             "atelet",
@@ -131,13 +139,13 @@ class PostRendererTest(unittest.TestCase):
         router["data"] = {
             "config.yaml": yaml.safe_dump(
                 {
-                    "routes": [{"policies": {"substrateIngress": {"host": "api:443"}}}],
+                    "routes": [{"name": "substrate-actors", "policies": {"substrateIngress": {"host": "api:443"}}}],
                     "binds": [
                         {
                             "listeners": [
                                 {
                                     "routes": [
-                                        {"policies": {"substrateIngress": {"host": "api:443"}}}
+                                        {"name": "substrate-actors-tunneled", "policies": {"substrateIngress": {"host": "api:443"}}}
                                     ]
                                 }
                             ]
@@ -147,18 +155,16 @@ class PostRendererTest(unittest.TestCase):
             )
         }
         result = transform(
-            "deploy/microvm/substrate-post-renderer.py",
+            "substrate",
             [deployment, service, job, atelet, router],
-            {
-                "AGENTOS_SUBSTRATE_API_IMAGE": image("substrate_api_image"),
-            },
+            image("substrate_api_image"),
         )
-        self.assertEqual(result[1], service)
-        self.assertEqual(result[2], job)
-        pod = result[0]["spec"]["template"]["spec"]
+        self.assertEqual(result["other"], service)
+        self.assertEqual(result["rustfs-bucket-init"], job)
+        pod = result["ate-api-server"]["spec"]["template"]["spec"]
         self.assertEqual(pod["containers"][0]["image"], image("substrate_api_image"))
         self.assertEqual(pod["imagePullSecrets"], [{"name": "agentos-registry"}])
-        worker = result[3]["spec"]["template"]["spec"]
+        worker = result["atelet"]["spec"]["template"]["spec"]
         self.assertEqual(
             worker["volumes"],
             [
@@ -181,7 +187,7 @@ class PostRendererTest(unittest.TestCase):
                 }
             ],
         )
-        configuration = yaml.safe_load(result[4]["data"]["config.yaml"])
+        configuration = yaml.safe_load(result["atenet-router-agentgateway-config"]["data"]["config.yaml"])
         for route in [
             configuration["routes"][0],
             configuration["binds"][0]["listeners"][0]["routes"][0],

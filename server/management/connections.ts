@@ -14,12 +14,9 @@ import type { KagentClients } from "../kagent/clients.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { pageOf } from "../read-model/page.js";
 import { conflict, invalid, precondition } from "../shared/errors.js";
-import { connectionBindings } from "./bindings.js";
-import { resourceChanges } from "./changes.js";
-import { credentialReferences } from "./credential-references.js";
+import { compiledTargets, serviceBindings } from "./connection-views.js";
 import { mcpGuardrails } from "./mcp-authorization.js";
-import { credentialProfile, refreshCredentialProfiles, serviceBindings } from "./mcp-services.js";
-import { type GatewayConfig, meta, optional, resource } from "./native.js";
+import { credentialReferences, type GatewayConfig, meta, optional, resource } from "./native.js";
 
 export type { GatewayConfig } from "./native.js";
 
@@ -35,21 +32,29 @@ export function connectionCommands(
   gateway: GatewayConfig,
 ) {
   async function catalog() {
-    const [templates, harnesses, modelConfigs, toolServers, backends] = await Promise.all([
+    const [templates, harnesses, modelConfigs, toolServers, backends, plans] = await Promise.all([
       store.list("templates"),
       store.list("harnesses"),
       store.list("modelConfigs"),
       clients.tools.listToolServers({}, { timeoutMs: 10_000 }),
       store.list("mcps"),
+      store.list("accessPlans"),
     ]);
-    return { templates, harnesses, modelConfigs, toolServers: toolServers.toolServers, backends };
+    return {
+      templates,
+      harnesses,
+      modelConfigs,
+      toolServers: toolServers.toolServers,
+      backends,
+      plans,
+    };
   }
   function uses(kind: ConnectionKind, name: string, context: Awaited<ReturnType<typeof catalog>>) {
-    const { templates, harnesses, backends, toolServers } = context;
+    const { templates, harnesses, backends, toolServers, plans } = context;
     const service = backends.find((item) => meta(item).name === name);
     const bindings =
       kind === ConnectionKind.MCP && service
-        ? serviceBindings(service, backends, toolServers, gateway.namespace)
+        ? serviceBindings(service, plans, toolServers, gateway.namespace)
         : [];
     const roles = templates
       .filter((item) => {
@@ -84,13 +89,20 @@ export function connectionCommands(
   ): Promise<Connection> {
     const name = text(meta(value).name);
     const usedBy = uses(kind, name, context);
-    const model =
-      kind === ConnectionKind.MODEL
+    const desiredModel = text(object(meta(value).annotations)["agentos.dev/model-config"]);
+    const model = desiredModel
+      ? {
+          apiVersion: "api.kagent.dev/v1alpha3",
+          kind: "ModelConfig",
+          metadata: { name, namespace: gateway.namespace },
+          spec: JSON.parse(desiredModel),
+        }
+      : kind === ConnectionKind.MODEL
         ? context.modelConfigs.find((item) => meta(item).name === name)
         : undefined;
     const credentialBindings =
       kind === ConnectionKind.MCP
-        ? serviceBindings(value, context.backends, context.toolServers, gateway.namespace)
+        ? serviceBindings(value, context.plans, context.toolServers, gateway.namespace)
         : [];
     const discovered =
       kind === ConnectionKind.MCP
@@ -117,17 +129,21 @@ export function connectionCommands(
             resource: resource(model),
           })
         : undefined,
-      systemManaged: object(meta(value).annotations)["agentos.dev/system-connection"] === "true",
+      systemManaged:
+        object(meta(value).annotations)["agentos.dev/system-connection"] === "true" ||
+        Boolean(compiledTargets(context.plans).get(name)?.environment),
     });
   }
   async function list(request: ListConnectionsRequest) {
+    const context = await catalog();
+    const targets = compiledTargets(context.plans);
     const query = request.query.toLowerCase().trim();
     const items = (await store.list(keyFor(request.kind)))
       .filter(
         (item) =>
           request.kind === ConnectionKind.MODEL ||
           (object(item.spec).mcp !== undefined &&
-            !credentialProfile(item) &&
+            !targets.get(text(meta(item).name))?.engineer &&
             object(meta(item).annotations)["agentos.dev/connection-role"] !== "ingress"),
       )
       .filter((item) =>
@@ -148,7 +164,6 @@ export function connectionCommands(
         time: 0,
       }),
     );
-    const context = await catalog();
     const connections = await Promise.all(
       page.items.map((item) => view(request.kind, item, context)),
     );
@@ -169,7 +184,7 @@ export function connectionCommands(
     const current = await optional(store, keyFor(kind), name);
     if (
       kind === ConnectionKind.MCP &&
-      (credentialProfile(current ?? {}) || credentialProfile(value))
+      compiledTargets(await store.list("accessPlans")).get(name)?.environment
     )
       throw precondition("management.credentialBinding");
     if (current && object(meta(current).annotations)["agentos.dev/system-connection"] === "true")
@@ -178,16 +193,6 @@ export function connectionCommands(
       throw invalid("configuration.conflict");
     if (!request.create && meta(current ?? {}).resourceVersion !== meta(value).resourceVersion)
       throw conflict("configuration.conflict");
-    if (request.create) {
-      for (const [childKind, childName] of (kind === ConnectionKind.MODEL
-        ? [["modelConfigs", name]]
-        : [
-            ["remoteMCPs", name],
-            ["routes", `mcp-${name}`],
-          ]) as [ResourceKind, string][]) {
-        if (await optional(store, childKind, childName)) throw precondition("management.nameInUse");
-      }
-    }
     const spec = { ...object(value.spec) };
     if (kind === ConnectionKind.MODEL && text(object(spec.match).model).includes("*"))
       throw invalid("management.concreteModelRequired");
@@ -254,36 +259,36 @@ export function connectionCommands(
           }
         : undefined,
     );
-    return resourceChanges(store, async (target) => {
-      const { bindModel, bindMCP } = connectionBindings(target, gateway);
-      const saved = await target.save(
-        keyFor(kind),
-        {
-          ...value,
-          metadata: {
-            ...meta(value),
-            annotations: {
-              ...object(meta(value).annotations),
-              "agentos.dev/system-connection": "false",
-            },
+    const saved = await store.save(
+      keyFor(kind),
+      {
+        ...value,
+        metadata: {
+          ...meta(value),
+          annotations: {
+            ...object(meta(value).annotations),
+            "agentos.dev/system-connection": "false",
+            "agentos.dev/connection": "true",
+            ...(kind === ConnectionKind.MODEL && connection.model?.resource?.value?.spec
+              ? { "agentos.dev/model-config": JSON.stringify(connection.model.resource.value.spec) }
+              : {}),
           },
-          spec,
         },
-        request.create,
-      );
-      if (request.credential?.trim())
-        await target.credential(credentialName, request.credential.trim(), saved);
-      if (kind === ConnectionKind.MODEL) await bindModel(saved, connection);
-      else {
-        await bindMCP(saved);
-        await refreshCredentialProfiles(target, saved);
-      }
-      return { connection: await view(kind, saved, await catalog()) };
-    });
+        spec,
+      },
+      request.create,
+    );
+    if (request.credential?.trim())
+      await store.credential(credentialName, request.credential.trim(), saved);
+    return { connection: await view(kind, saved, await catalog()) };
   }
+
   async function remove(kind: ConnectionKind, name: string, version: string) {
     const current = await store.get(keyFor(kind), name);
-    if (kind === ConnectionKind.MCP && credentialProfile(current))
+    if (
+      kind === ConnectionKind.MCP &&
+      compiledTargets(await store.list("accessPlans")).get(name)?.environment
+    )
       throw precondition("management.credentialBinding");
     if (object(meta(current).annotations)["agentos.dev/system-connection"] === "true")
       throw precondition("management.systemManaged");
