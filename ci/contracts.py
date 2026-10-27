@@ -8,6 +8,7 @@ from pathlib import Path
 
 from versions import versions
 
+os.umask(0o022)
 root = Path(__file__).resolve().parent.parent
 version = versions().python
 shutil.rmtree(root / "dist/contracts", ignore_errors=True)
@@ -55,7 +56,6 @@ def wheel(name, project, sources, requirements=""):
             str(target),
         ],
         env={**os.environ, "SOURCE_DATE_EPOCH": epoch},
-        umask=0o022,
         check=True,
     )
 
