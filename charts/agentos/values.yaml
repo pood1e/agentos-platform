@@ -76,7 +76,7 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: registry.example.com/agentos/standard-harness@sha256:83a61f2fc207f34fb59ebcfb214189dfc49f2ab9539ea92be33d7e013f13a517
+      image: registry.example.com/agentos/standard-harness@sha256:88dbb5fe713fdd32983dba865ab6f21426374dc1c9a8efad90f154bfd9b6f399
     env:
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
@@ -88,7 +88,7 @@ harnesses:
         modelConfigRef: {name: knowledge-embedding}
         ttlDays: 3650
     workload:
-      image: registry.example.com/agentos/standard-harness@sha256:83a61f2fc207f34fb59ebcfb214189dfc49f2ab9539ea92be33d7e013f13a517
+      image: registry.example.com/agentos/standard-harness@sha256:88dbb5fe713fdd32983dba865ab6f21426374dc1c9a8efad90f154bfd9b6f399
     env:
     - {name: GOMEMLIMIT, value: 768MiB}
     substrate:
@@ -97,7 +97,7 @@ harnesses:
   codex:
     codex: {}
     workload:
-      image: registry.example.com/agentos/codex-harness@sha256:43f1c818e5b02841c8d240a36f7ac78fced22aed739632e9ef5606a8c715c208
+      image: registry.example.com/agentos/codex-harness@sha256:e8a5e7dc17b124d33cf173b7608e015e5fc1289b20502d0b415971029b517514
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
@@ -105,7 +105,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: registry.example.com/agentos/claude-harness@sha256:3bb5879fe96e1d7684b06a63f1b38c15456cb89b14a3b31d8531c7bf0622b01c
+      image: registry.example.com/agentos/claude-harness@sha256:ebf84bc3151d2b4913ed1b4f274a0560f1240be5552bde1f871cdd39b7cfc478
     env: [{name: GOMEMLIMIT, value: 768MiB}]
     substrate:
       workerPoolRef: {name: kagent-default}
