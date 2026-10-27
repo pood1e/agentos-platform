@@ -78,6 +78,9 @@ tests:
   - equal:
       path: spec.policies.extAuth.http.path
       value: '''/authorize/automation'''
+  - equal:
+      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+      value: "mcp.tool.name in ['run_case', 'observe_case', 'cancel_case', 'list_scheduled_run_executions', 'get_scheduled_run_execution_result', 'dispatch_scheduled_run_execution']"
 - it: consumes model transport credentials before injecting provider credentials
   template: gateway-auth.yaml
   asserts:
