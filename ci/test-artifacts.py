@@ -234,6 +234,7 @@ class OCITest(unittest.TestCase):
             ).strip()
             suffixes = [
                 "",
+                "/web",
                 "/platform-controller",
                 "/voice",
                 "/automation",
@@ -288,6 +289,8 @@ class OCITest(unittest.TestCase):
                     ],
                     revision,
                 )
+            values = yaml.safe_load((root / ".cache/release-charts/agentos/values.yaml").read_text())
+            self.assertEqual(values["web"]["image"], registry + "/web@" + digest)
             for path in (root / ".cache/collection/playbooks").glob("*/vars.yaml"):
                 self.assertEqual(yaml.safe_load(path.read_text())["delivery_revision"], revision)
 
