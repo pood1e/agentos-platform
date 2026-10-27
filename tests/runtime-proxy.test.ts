@@ -185,3 +185,71 @@ it("exposes only native persistence RPCs, derives workload identity and denies f
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+it("reports lost upstream transport as Unavailable and keeps upstream status codes", async () => {
+  const connections = new Set<ServerHttp2Session>();
+  let conflict = false;
+  const server = createServer(
+    connectNodeAdapter({
+      routes: (router) => {
+        router.service(TaskStoreService, {
+          updateTask: () => {
+            if (conflict) throw new ConnectError("Version conflict", Code.Aborted);
+            for (const connection of connections) connection.destroy();
+            return new Promise<never>(() => {});
+          },
+        });
+      },
+    }),
+  );
+  server.on("session", (connection) => {
+    connections.add(connection);
+    connection.on("close", () => connections.delete(connection));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Upstream missing");
+  const session = create(SessionSchema, {
+    id: "own",
+    agent: { namespace: "workspace", name: "assistant" },
+  });
+  let streamClosed = true;
+  const runtime = {
+    authenticatedActor: async () => ({ session }),
+    registry: {
+      record: async () => {
+        if (!streamClosed) return;
+        streamClosed = false;
+        throw Object.assign(new Error("Premature close"), { code: "ERR_STREAM_PREMATURE_CLOSE" });
+      },
+    },
+  } as unknown as ExecutionRuntime;
+  const { clients, sync } = environment([]);
+  const warnings: unknown[] = [];
+  const tasks = createClient(
+    TaskStoreService,
+    createRouterTransport((router) =>
+      registerRuntime(
+        router,
+        runtime,
+        { url: `http://127.0.0.1:${address.port}`, namespace: "workspace", userId: "console" },
+        clients,
+        undefined,
+        { warn: (entry: unknown) => warnings.push(entry) },
+      ),
+    ),
+  );
+  const update = { sessionId: "own", task: { id: "task", contextId: "own" } };
+  try {
+    await expect(tasks.updateTask(update)).rejects.toMatchObject({ code: Code.Unavailable });
+    await expect(tasks.updateTask(update)).rejects.toMatchObject({ code: Code.Unavailable });
+    expect(warnings).toHaveLength(2);
+    conflict = true;
+    await expect(tasks.updateTask(update)).rejects.toMatchObject({ code: Code.Aborted });
+    expect(warnings).toHaveLength(2);
+  } finally {
+    sync.close();
+    for (const connection of connections) connection.destroy();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});

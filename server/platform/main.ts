@@ -289,7 +289,7 @@ const processor = grpcServer(app, {
   },
 });
 const runtimeProcessor = grpcServer(app, {
-  routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope),
+  routes: (router) => registerRuntime(router, execution, config, clients, knowledge.scope, app.log),
 });
 const keys = actorKeyServer(app, execution.actorKeys);
 app.addHook("onClose", async () => {
