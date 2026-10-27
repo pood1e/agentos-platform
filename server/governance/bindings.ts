@@ -1,85 +1,34 @@
-import { create, type JsonObject } from "@bufbuild/protobuf";
-import { CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
+import { create } from "@bufbuild/protobuf";
 import { type ToolBinding, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import {
   type ToolRequirement,
   ToolRequirementSchema,
 } from "../../gen/agentos/console/v1/tool_pb.js";
 import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
-import { loadCatalog, requiresApproval, type ToolCatalog } from "../../shared/tool-catalog.js";
-import { object, text } from "../read-model/decode/messages.js";
+import type { AccessPlanStatus } from "../../gen/kubernetes.js";
 
-interface Target {
-  engineer: string;
-  catalog: boolean;
-  project: string;
-  service: string;
-  environment: string;
-  governance: string;
-  access: string;
-}
+export { serverTargets, toolBindings } from "./access-plans.js";
 
-export function serverTargets(backends: JsonObject[]) {
-  const services = new Map(
-    backends.flatMap((backend) => {
-      const metadata = object(backend.metadata),
-        labels = object(metadata.labels);
-      return labels["agentos.dev/project"] && !labels["agentos.dev/engineer"]
-        ? [
-            [
-              text(metadata.name),
-              {
-                project: text(labels["agentos.dev/project"]),
-                environment: text(labels["agentos.dev/environment"]),
-                governance: text(labels["agentos.dev/governance"]),
-              },
-            ] as const,
-          ]
-        : [];
-    }),
-  );
-  const targets = new Map<string, Target>();
-  for (const [name, service] of services)
-    targets.set(name, { ...service, service: name, engineer: "", catalog: true, access: "" });
-  for (const backend of backends) {
-    const metadata = object(backend.metadata),
-      engineer = text(object(metadata.labels)["agentos.dev/engineer"]);
-    const entries = object(object(backend.spec).mcp).targets;
-    const name = text(object(Array.isArray(entries) ? entries[0] : undefined).name);
-    const service = services.get(name);
-    if (engineer && service)
-      targets.set(text(metadata.name), {
-        ...service,
-        service: name,
-        engineer,
-        catalog: false,
-        access: text(object(metadata.labels)["agentos.dev/tool-access"]),
-      });
-  }
-  return targets;
-}
+export type Target = NonNullable<AccessPlanStatus["targets"]>[number];
 
-/** Selects engineer credentials and execution pauses; resource access stays with each target system. */
+/** Runtime authorization consumes controller decisions without interpreting resource labels. */
 export class ToolBindings {
-  constructor(
-    private catalog: ToolCatalog,
-    private targets: Map<string, Target>,
-  ) {}
+  constructor(private readonly targets: Map<string, Target>) {}
 
   catalogs() {
-    return [...this.targets]
-      .filter(([, target]) => target.catalog && target.environment)
-      .map(([server, target]) => ({ server, ...target }));
+    return [...this.targets.values()].filter(
+      (target): target is Target & { environment: string; project: string } =>
+        Boolean(target.catalog && target.environment && target.project),
+    );
   }
 
   catalogServer(server: ToolServer, servers: ToolServer[]) {
-    const name = server.ref.split("/").at(-1) ?? "";
-    const target = this.targets.get(name);
+    const target = this.targets.get(server.ref.split("/").at(-1) ?? "");
     if (target?.access === "write") return server;
-    const service = target?.service;
     return (
-      servers.find((candidate) => candidate.ref === `${server.ref.split("/")[0]}/${service}`) ??
-      server
+      servers.find(
+        (candidate) => candidate.ref === `${server.ref.split("/")[0]}/${target?.service}`,
+      ) ?? server
     );
   }
 
@@ -99,46 +48,31 @@ export class ToolBindings {
 
   usable(engineer: string, server: string) {
     const target = this.targets.get(server);
-    return !target || (!target.catalog && target.engineer === engineer);
+    return Boolean(target && !target.catalog && (!target.engineer || target.engineer === engineer));
+  }
+
+  private decision(target: Target | undefined, tool: string) {
+    const name =
+      target && tool.startsWith(`${target.service}_`)
+        ? tool.slice(target.service.length + 1)
+        : tool;
+    return target?.tools?.find((entry) => entry.name === name);
   }
 
   permitsCall(engineer: string, services: string[], tool: string, write: boolean) {
-    for (const target of this.targets.values()) {
+    return [...this.targets.values()].some((target) => {
       if (target.catalog || target.engineer !== engineer || !services.includes(target.service))
-        continue;
-      const name = tool.startsWith(`${target.service}_`)
-        ? tool.slice(target.service.length + 1)
-        : tool;
-      const tier = this.catalog.projects.get(target.project)?.get(name);
-      if (target.environment && target.access !== (tier === "read" ? "readOnly" : "write"))
-        continue;
-      if (tier === "read" || (write && tier === "write")) return true;
-    }
-    return false;
+        return false;
+      const decision = this.decision(target, tool);
+      return Boolean(decision && (!decision.write || write));
+    });
   }
 
   selectedCall(bindings: ToolBinding[], services: string[], tool: string) {
     return bindings.some((binding) => {
       const target = this.targets.get(binding.server);
-      return (
-        target &&
-        services.includes(target.service) &&
-        binding.tools.some((name) => name === tool || name === `${target.service}_${tool}`)
-      );
+      return target && services.includes(target.service) && this.selectedTool(binding, tool);
     });
-  }
-
-  private writes(server: string, tool: string) {
-    const target = this.targets.get(server);
-    const name =
-      target && tool.startsWith(`${target.service}_`)
-        ? tool.slice(target.service.length + 1)
-        : tool;
-    return (
-      (target ? this.catalog.projects.get(target.project) : this.catalog.servers.get(server))?.get(
-        name,
-      ) !== "read"
-    );
   }
 
   selectedTool(binding: ToolBinding, tool: string) {
@@ -158,87 +92,68 @@ export class ToolBindings {
   }
 
   permitsTool(engineer: string, server: string, tool: string, write: boolean) {
-    const target = this.targets.get(server);
-    if (target)
-      return (
-        !target.catalog &&
-        target.engineer === engineer &&
-        this.permitsCall(engineer, [target.service], tool, write)
-      );
-    const name = tool.startsWith(`${server}_`) ? tool.slice(server.length + 1) : tool;
-    const tier = this.catalog.servers.get(server)?.get(name);
-    return tier === "read" || (write && tier === "write");
+    if (!this.usable(engineer, server)) return false;
+    const decision = this.decision(this.targets.get(server), tool);
+    return Boolean(decision && (!decision.write || write));
   }
 
   requiresApproval(server: string, tool: string) {
-    const target = this.targets.get(server);
-    if (target?.governance === "direct") return false;
-    return target
-      ? requiresApproval(
-          this.catalog,
-          target.project,
-          tool.startsWith(`${target.service}_`) ? tool.slice(target.service.length + 1) : tool,
-        )
-      : this.writes(server, tool);
+    return this.decision(this.targets.get(server), tool)?.requireApproval ?? true;
   }
 
   requirements(engineer: string, servers: ToolServer[]) {
     return servers.flatMap((server) => {
       const name = server.ref.split("/").at(-1) ?? server.ref;
-      return this.usable(engineer, name)
-        ? server.discoveredTools
-            .filter((tool) =>
-              this.targets.get(name)?.environment
-                ? this.targets.get(name)?.access ===
-                  (this.writes(name, tool.name) ? "write" : "readOnly")
-                : true,
-            )
-            .map((tool) =>
+      if (!this.usable(engineer, name)) return [];
+      return server.discoveredTools.flatMap((tool) => {
+        const decision = this.decision(this.targets.get(name), tool.name);
+        return decision
+          ? [
               create(ToolRequirementSchema, {
                 server: name,
                 tool: tool.name,
-                requireApproval: this.requiresApproval(name, tool.name),
+                requireApproval: decision.requireApproval,
               }),
-            )
-        : [];
+            ]
+          : [];
+      });
     });
   }
 
-  bindings(
-    engineer: string,
-    bindings: ToolBinding[],
-    servers: ToolServer[],
-    strict: boolean,
-  ): ToolBinding[] | undefined {
+  bindings(engineer: string, bindings: ToolBinding[], servers: ToolServer[], strict: boolean) {
     const groups = new Map<string, ToolBinding>();
     for (const binding of bindings) {
+      const source = this.targets.get(binding.server);
       for (const name of binding.tools) {
-        const requireApproval = this.requiresApproval(binding.server, name);
-        const target = this.targets.get(binding.server);
-        if (!target && !this.catalog.servers.get(binding.server)?.has(name)) {
-          if (strict) return undefined;
-          continue;
-        }
-        const view = target?.environment
-          ? [...this.targets].find(
-              ([, candidate]) =>
-                candidate.service === target.service &&
+        const target = source?.environment
+          ? [...this.targets.values()].find(
+              (candidate) =>
+                candidate.service === source.service &&
                 candidate.engineer === engineer &&
-                candidate.access === (this.writes(binding.server, name) ? "write" : "readOnly"),
-            )?.[0]
-          : binding.server;
-        const server = servers.find((item) => item.ref.split("/").at(-1) === view);
+                this.decision(candidate, name),
+            )
+          : source;
+        const decision = this.decision(target, name);
+        const discovered = servers.find(
+          (server) => server.ref.split("/").at(-1) === target?.server,
+        );
         if (
+          !source ||
           !this.usable(engineer, binding.server) ||
-          !view ||
-          (strict && !server?.discoveredTools.some((tool) => tool.name === name))
+          !target ||
+          !decision ||
+          (strict && !discovered?.discoveredTools.some((tool) => tool.name === name))
         ) {
           if (strict) return undefined;
           continue;
         }
-        const key = `${view}:${requireApproval}`;
+        const key = `${target.server}:${decision.requireApproval}`;
         const group =
-          groups.get(key) ?? create(ToolBindingSchema, { server: view, requireApproval });
+          groups.get(key) ??
+          create(ToolBindingSchema, {
+            server: target.server,
+            requireApproval: decision.requireApproval,
+          });
         if (!group.tools.includes(name)) group.tools.push(name);
         groups.set(key, group);
       }
@@ -247,25 +162,4 @@ export class ToolBindings {
   }
 }
 
-export function toolBindings(
-  config: KubeConfig,
-  namespace: string,
-  catalog?: ToolCatalog,
-  backends?: () => Promise<JsonObject[]>,
-) {
-  const api = config.makeApiClient(CustomObjectsApi);
-  const tools = catalog ?? loadCatalog();
-  return async () => {
-    const response = backends
-      ? { items: await backends() }
-      : ((await api.listNamespacedCustomObject({
-          group: "agentgateway.dev",
-          version: "v1alpha1",
-          plural: "agentgatewaybackends",
-          namespace,
-        })) as { items: JsonObject[] });
-    return new ToolBindings(tools, serverTargets(response.items));
-  };
-}
-
-export type BindingView = ReturnType<typeof toolBindings>;
+export type BindingView = () => Promise<ToolBindings>;

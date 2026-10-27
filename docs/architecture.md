@@ -12,6 +12,8 @@ flowchart LR
     Browser[浏览器] -->|Connect RPC| Console[console]
     Console -->|官方 gRPC| Kagent[kagent 控制面]
     Console -->|CRD| K8s[Kubernetes API]
+    Controller[平台控制器] -->|SSA| K8s
+    K8s -->|AccessPlan status| Console
     Team[Agent 团队 / microVM] -->|模型 / MCP| Gateway[平台网关 · agentgateway]
     Team -->|签名 Actor · 持久化 RPC| Console
     Gateway -->|逐次执行授权| Console
@@ -37,6 +39,7 @@ flowchart LR
 | 底座 | Agent Substrate | 上游 0.6.0-alpha3 与固定补丁 | 每会话一个 Actor，Cloud Hypervisor microVM 隔离，快照与按目标主机注入凭据 |
 | 底座 | agentgateway | 上游 v1.6.0 官方 Chart | 平台网关与环境网关：模型接入、MCP 汇聚、身份映射、读写视图、ExtMCP |
 | 平台服务 | console | 本仓库 | 聊天、工具调用与审批状态，团队、Skill、知识、连接、Harness 与环境管理 |
+| 平台控制器 | agentos-controller | controller-runtime 与原生 Kubernetes API 类型 | 编译 AccessPlan、维护连接派生资源与方案预置 |
 | 平台服务 | team-sessions | 本仓库 | 协作 MCP：委派、续接、知识检索、角色起草；可选外部审批协调 |
 | 环境侧 | 案例自动化 | 本仓库 | 把源 CloudEvents 映射为版本化案例，以 Temporal 工作流交指定 Agent 处理；发布案例事实，受理人工反馈 |
 | 平台资源 | 嵌入模型 | Ollama 与 EmbeddingGemma | 团队知识的 768 维向量 |
@@ -54,7 +57,10 @@ flowchart LR
 每次处理重新核验执行授权，原生回复使用确定性 messageId，外部审批按任务与工具引用幂等。
 
 配置读取采用 Kubernetes 官方 Informer，订阅 Agent、AgentTemplate、ModelConfig、Harness 与 AgentgatewayBackend。
-运行时授权读取配置索引；订阅故障使实例未就绪并拒绝依赖该索引的授权。当前 Actor、执行绑定、撤销与用户身份继续逐次核验。
+运行时授权通过 Informer 读取已就绪的 AccessPlan 编译结果；订阅故障使实例未就绪并拒绝授权。
+当前 Actor、执行绑定、撤销与用户身份继续逐次核验。管理 API 只写原生连接父对象与凭据 Secret，控制器维护派生对象。
+方案预置由 Preset 以 SSA 维护，未修改的对象随升级更新，用户编辑后移交所有权。
+资源边界与部署验证见 [Kubernetes 控制器](kubernetes-controller.md)。
 会话观测只响应本会话及委派树的变化，订阅恢复仅遍历活动任务；原始历史仍由 kagent 保存，完整任务缓存上限为 64 MiB。
 全局紧凑任务索引与首次历史同步仍随历史量增长，持久化分页索引属于后续工作。
 

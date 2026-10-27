@@ -60,7 +60,7 @@ deny contains sprintf("%s exposes static discovery headers", [remote.metadata.na
 deny contains sprintf("%s has a different discovery timeout", [remote.metadata.name]) if {
 	some remote in objects
 	remote.kind == "RemoteMCPServer"
-	remote.spec.timeout != "10m"
+	time.parse_duration_ns(remote.spec.timeout) != 600000000000
 }
 
 deny contains "model and MCP credentials share a host" if {

@@ -1,24 +1,22 @@
 {{- $name := printf "%s-speech" (include "agentos.name" .) }}
-{{- $existing := lookup "v1" "Secret" .Release.Namespace $name }}
 {{- $configuration := dict }}
 {{- range $kind := list "transcription" "synthesis" }}
   {{- with index $.Values.speech $kind }}
     {{- $_ := set $configuration $kind . }}
   {{- end }}
 {{- end }}
-apiVersion: v1
-kind: Secret
+apiVersion: agentos.dev/v1alpha1
+kind: Preset
 metadata:
   name: {{ $name }}
-  labels:
-    {{- include "agentos.labels" . | nindent 4 }}
-type: Opaque
-data:
-{{- if $existing }}
-  {{- $existing.data | toYaml | nindent 2 }}
-{{- else }}
-  configuration.json: {{ $configuration | toJson | b64enc | quote }}
-  {{- with .Values.speech.secretRef }}
-  credentials-secret: {{ . | b64enc | quote }}
-  {{- end }}
-{{- end }}
+spec:
+  resources:
+    - apiVersion: v1
+      kind: Secret
+      metadata: {name: {{ $name }}}
+      type: Opaque
+      data:
+        configuration.json: {{ $configuration | toJson | b64enc | quote }}
+        {{- with .Values.speech.secretRef }}
+        credentials-secret: {{ . | b64enc | quote }}
+        {{- end }}

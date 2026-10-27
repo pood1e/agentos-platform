@@ -1,53 +1,13 @@
-import { readFileSync } from "node:fs";
-import { create, type JsonObject } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ConnectionSchema } from "../gen/agentos/management/v1/management_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
-import { parseCatalog } from "../shared/tool-catalog.js";
 import { ownIdentities, toolRequirements } from "../src/features/engineers/mcp-services.js";
+import { fixturePlans } from "./harness.js";
 
-const pack = new URL("fixtures/pack/", import.meta.url);
-const file = (name: string) => readFileSync(new URL(name, pack), "utf8");
-const platformTools = readFileSync(
-  new URL("../charts/agentos/presets/platform-tools.yaml", import.meta.url),
-  "utf8",
-);
-const backend = (name: string, labels: Record<string, string>, service = name): JsonObject => ({
-  metadata: { name, labels },
-  spec: { mcp: { targets: [{ name: service }] } },
-});
-const environment = { "agentos.dev/environment": "lab", "agentos.dev/governance": "approval" };
-const access = new ToolBindings(
-  parseCatalog(file("toolsets.yaml"), platformTools),
-  serverTargets([
-    backend("lab-kubernetes", { ...environment, "agentos.dev/project": "kubernetes" }),
-    backend(
-      "lab-kubernetes-inspection",
-      {
-        ...environment,
-        "agentos.dev/engineer": "inspection",
-        "agentos.dev/tool-access": "readOnly",
-      },
-      "lab-kubernetes",
-    ),
-    backend(
-      "lab-kubernetes-remediation",
-      {
-        ...environment,
-        "agentos.dev/engineer": "remediation",
-        "agentos.dev/tool-access": "readOnly",
-      },
-      "lab-kubernetes",
-    ),
-    backend(
-      "lab-kubernetes-remediation-changes",
-      { ...environment, "agentos.dev/engineer": "remediation", "agentos.dev/tool-access": "write" },
-      "lab-kubernetes",
-    ),
-  ]),
-);
+const access = new ToolBindings(serverTargets(fixturePlans()));
 const tools = (name: string, names: string[]) =>
   create(ToolServerSchema, {
     ref: `agentos/${name}`,
@@ -109,8 +69,26 @@ describe("engineer tool access", () => {
   });
   it("keeps identical tool names scoped to their own service", () => {
     const policy = new ToolBindings(
-      parseCatalog("", "reader:\n  readOnly: [get]\nwriter:\n  write: [get]\n"),
-      new Map(),
+      new Map([
+        [
+          "reader",
+          {
+            server: "reader",
+            service: "reader",
+            catalog: false,
+            tools: [{ name: "get", write: false, requireApproval: false }],
+          },
+        ],
+        [
+          "writer",
+          {
+            server: "writer",
+            service: "writer",
+            catalog: false,
+            tools: [{ name: "get", write: true, requireApproval: true }],
+          },
+        ],
+      ]),
     );
     expect(policy.permitsTool("inspection", "reader", "get", false)).toBe(true);
     expect(policy.permitsTool("inspection", "writer", "get", false)).toBe(false);
@@ -205,32 +183,18 @@ describe("engineer tool access", () => {
 
   it("keeps simulation write tools in their write view without approval pauses", () => {
     const simulation = new ToolBindings(
-      parseCatalog(file("toolsets.yaml"), platformTools),
-      serverTargets([
-        backend("lab-kubernetes", {
-          ...environment,
-          "agentos.dev/governance": "direct",
-          "agentos.dev/project": "kubernetes",
-        }),
-        backend(
-          "lab-kubernetes-remediation",
-          {
-            ...environment,
-            "agentos.dev/engineer": "remediation",
-            "agentos.dev/tool-access": "readOnly",
+      serverTargets(
+        fixturePlans().map((plan) => ({
+          ...plan,
+          status: {
+            ...plan.status,
+            targets: plan.status?.targets?.map((target) => ({
+              ...target,
+              tools: target.tools?.map((tool) => ({ ...tool, requireApproval: false })),
+            })),
           },
-          "lab-kubernetes",
-        ),
-        backend(
-          "lab-kubernetes-remediation-changes",
-          {
-            ...environment,
-            "agentos.dev/engineer": "remediation",
-            "agentos.dev/tool-access": "write",
-          },
-          "lab-kubernetes",
-        ),
-      ]),
+        })),
+      ),
     );
     expect(simulation.requirements("remediation", servers)).toContainEqual(
       expect.objectContaining({

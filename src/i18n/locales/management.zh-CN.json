@@ -134,6 +134,5 @@
     "refresh": "刷新"
   },
   "view": "查看",
-  "embeddingModels": "向量模型",
-  "partialSave": "保存未完整完成，请刷新核对配置后重试。"
+  "embeddingModels": "向量模型"
 }

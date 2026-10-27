@@ -2,7 +2,10 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `proto/agentos/distribution/v1` | 发布清单：源提交、版本与制品摘要 |
+| `controller/api/v1alpha1` | AccessPlan / Preset 类型及生成的 CRD schema |
+| `controller/internal/compile` | 工具分级、原生资源与预置绑定的纯编译器 |
+| `controller/internal/reconcile` | SSA、所有权、连接条件与中断恢复 |
+| `controller/cmd/{controller,render}` | 控制器与离线展开验证 |
 | `proto/agentos/execution/v1` | 通用执行状态、任务运行与工具调用 |
 | `proto/agentos/console/v1` | 控制台 RPC：会话、任务、角色、工具、方案包展示（`pack.proto`） |
 | `proto/agentos/management/v1` | 管理 RPC：连接、模型、Harness、Skill、知识 |
@@ -19,12 +22,12 @@
 | `server/kagent/configuration.ts` | 官方 Kubernetes Informer 配置索引与运行时授权读取 |
 | `server/mcp-apps` | MCP Apps 元数据投影、资源缓存、当前用户的只读工具回调与独立源沙箱代理 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
-| `server/management/changes.ts` | 连接更新的原生预检与版本约束回滚 |
+| `server/management/connections.ts` | 原生父对象与凭据保存；编译结果的管理页投影 |
 | `server/knowledge` | 团队知识检索 |
 | `server/speech`、`src/features/chat/speech` | 语音设置 Secret、音频 API 适配与 assistant-ui 听写、朗读 |
 | `shared/browser` | 对外发布的听写、流式朗读、LiveKit 通话适配器与官方 MCP AppBridge 生命周期封装 |
 | `server/team-sessions` | 协作 MCP：发现 Agent、创建与续接会话、知识检索、角色起草 |
-| `server/governance` | 工具分级与身份绑定、原生暂停与外部审批协议的协调 |
+| `server/governance` | AccessPlan Informer、已编译工具授权、原生暂停与外部审批协调 |
 | `server/shared`、`shared/` | 服务端公共配置、错误与前后端共用模型 |
 | `src/app`、`src/components` | 前端路由、布局与 shadcn/ui 组件 |
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
@@ -42,9 +45,11 @@
 | `runtime` | kagent、Agent Substrate 的固定版本补丁与 Harness 工具箱镜像 |
 | `contracts` | Python wheel 与 Node SDK 的打包配置，SDK 同时发布官方依赖的 proto 源码 |
 | `mise.toml`、`mise.lock` | 开发与 CI 共用的工具版本、平台来源与完整性锁定 |
+| `charts/agentos-controller` | 控制器部署与 Preset 的共享 Helm library |
+| `scripts/generate-kubernetes.mjs` | 从 CRD 生成 Helm schema、TS 类型与编译器测试夹具 |
 | `.github/workflows` | 合并前检查、自动发布 PR 与正式 tag |
 | `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |
-| `deploy` | 单节点参考部署的 Ansible 剧本、运行时 Helm 值与 post-renderer |
+| `deploy` | Ansible collection 源码、OCI 验签、运行时 Helm 值与 Kustomize overlays |
 | `environments` | 环境套件：环境网关、连接器后端、身份映射与平台接入 |
 | `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台接入的独立 Helm release、原生 Chart 测试 |
 | `third_party` | 上游协议、CRD 与组件来源 |
@@ -60,3 +65,4 @@
 | `charts/*/tests` | helm-unittest 模板、非法配置与资源生命周期用例 |
 | `tests/policies` | Conftest 跨资源、工具绑定、工作负载及原生部署约束 |
 | `tests/deployment` | 后置渲染器的标准库单元测试 |
+| `ci/test-artifacts.py` | 临时 OCI 注册表中的签名、篡改、版本与提交验证 |

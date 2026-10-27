@@ -13,7 +13,7 @@ import {
 } from "../gen/kagent/api/v1/tools_pb.js";
 import { appVisible } from "../server/kagent/tool-metadata.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
-import { testBindings } from "./harness.js";
+import { publishTargets, testBindings } from "./harness.js";
 
 it("retains independent App instances when later calls share the same resource", async () => {
   const env = await setup();
@@ -294,6 +294,21 @@ it("checks write visibility against the selected profile instead of the read-onl
         )
       : original(request, options),
   );
+  publishTargets(env.fake, [
+    {
+      server: profile,
+      service: "lab-views",
+      environment: "lab",
+      project: "views",
+      engineer: "assistant",
+      access: "write",
+      catalog: false,
+      tools: [
+        { name: "update", write: true, requireApproval: true },
+        { name: "hidden_write", write: true, requireApproval: true },
+      ],
+    },
+  ]);
   const bindings = await testBindings(env.fake)();
   const selected = [create(ToolBindingSchema, { server: profile, tools: [write, hidden] })];
   const references = bindings.environmentCalls(selected, "update", ["lab-views"]);

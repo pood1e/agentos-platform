@@ -36,11 +36,7 @@ spec:
             {{- end }}
             (has(jwt.iss) && jwt.iss == '{{ .Values.execution.actorIssuer }}' && (
               (request.path.startsWith('/v1/') && (jwt.aud == '{{ $trust.modelAudience }}' || '{{ $trust.modelAudience }}' in jwt.aud)) ||
-              (request.path.startsWith('/mcp/') {{ range .Values.global.agentos.environments }}&& !request.path.startsWith('/mcp/{{ .name }}-') {{ end }}&& (jwt.aud == '{{ $trust.mcpAudience }}' || '{{ $trust.mcpAudience }}' in jwt.aud))
-              {{- range .Values.global.agentos.environments }}{{- $environment := .name }}
-              {{- range $project, $_ := $.Values.global.agentos.toolsets }} ||
-              (request.path.startsWith('/mcp/{{ $environment }}-{{ $project }}') && (jwt.aud == 'http://{{ $environment }}-{{ $project }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080' || 'http://{{ $environment }}-{{ $project }}-mcp-gateway.{{ $.Release.Namespace }}.svc.cluster.local:8080' in jwt.aud))
-              {{- end }}{{- end }}
+              request.path.startsWith('/mcp/')
             )) ||
             (!('x-substrate-actor-token' in request.headers) && 'authorization' in request.headers &&
              (request.path.startsWith('/mcp/') || request.path.startsWith('/v1/')))

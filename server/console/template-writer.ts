@@ -5,6 +5,7 @@ import {
   type AgentTemplate,
   AgentTemplateSchema,
 } from "../../gen/kagent/api/v1/agent_templates_pb.js";
+import { userResource } from "../management/native.js";
 import { conflict, fail, invalid } from "../shared/errors.js";
 
 export type TemplateWriter = (template: AgentTemplate) => Promise<AgentTemplate>;
@@ -21,7 +22,8 @@ export function templateWriter(config: KubeConfig): TemplateWriter {
         plural: "agenttemplates",
         namespace: template.ref.namespace,
         name: template.ref.name,
-        body: template.resource.value,
+        body: userResource(template.resource.value),
+        fieldManager: "agentos-users",
         fieldValidation: "Strict",
       });
       return create(AgentTemplateSchema, {

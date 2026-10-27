@@ -1,0 +1,26 @@
+apiVersion: agentos.dev/v1alpha1
+kind: AccessPlan
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{ include "agentos-connections.labels" . | nindent 4 }}
+spec:
+  mode: platform
+  platform:
+    name: {{ .Values.platform.release }}-gateway
+    url: http://{{ .Values.platform.release }}-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080
+    mcpURL: http://{{ .Values.platform.release }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080
+    modelSecret: {{ .Values.platform.release }}-model-client
+    dataplane: {{ .Values.platform.release }}-console
+    actorKeys: {{ .Values.platform.release }}-console
+    actorIssuer: {{ .Values.platform.actorIssuer | quote }}
+  environments:{{ if not .Values.environments }} []{{ end }}
+    {{- range .Values.environments }}
+    - name: {{ .name }}
+      governance: {{ .governance }}
+      issuer: {{ .issuer | quote }}
+      resource: {{ .resource | quote }}
+      gateway: {{ omit .gateway "ca" | toYaml | nindent 8 }}
+      toolsets: {{ toYaml .toolsets | nindent 8 }}
+      identities: {{ toYaml .identities | nindent 8 }}
+      titles: {{ toYaml .titles | nindent 8 }}
+    {{- end }}

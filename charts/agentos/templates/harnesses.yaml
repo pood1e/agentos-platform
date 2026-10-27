@@ -1,29 +1,12 @@
-{{- range $name, $defaults := .Values.harnesses }}
-{{- $current := lookup "api.kagent.dev/v1alpha3" "Harness" $.Release.Namespace $name }}
-{{- $spec := deepCopy $defaults }}
-{{- $managedImage := $defaults.workload.image }}
-{{- if $current }}
-{{- $spec = deepCopy $current.spec }}
-{{- $managedImage = index ($current.metadata.annotations | default dict) "agentos.dev/managed-image" | default "" }}
-{{- if and $managedImage (eq $spec.workload.image $managedImage) }}
-{{- $_ := set $spec.workload "image" $defaults.workload.image }}
-{{- $managedImage = $defaults.workload.image }}
-{{- else }}
-{{- $managedImage = "" }}
-{{- end }}
-{{- end }}
----
-apiVersion: api.kagent.dev/v1alpha3
-kind: Harness
+apiVersion: agentos.dev/v1alpha1
+kind: Preset
 metadata:
-  name: {{ $name }}
-  annotations:
-    helm.sh/resource-policy: keep
-    {{- if $managedImage }}
-    agentos.dev/managed-image: {{ $managedImage | quote }}
-    {{- end }}
-  labels:
-    {{- include "agentos.labels" $ | nindent 4 }}
+  name: {{ include "agentos.name" . }}-harnesses
 spec:
-  {{- toYaml $spec | nindent 2 }}
-{{- end }}
+  resources:
+    {{- range $name, $spec := .Values.harnesses }}
+    - apiVersion: api.kagent.dev/v1alpha3
+      kind: Harness
+      metadata: {name: {{ $name }}}
+      spec: {{ toYaml $spec | nindent 8 }}
+    {{- end }}

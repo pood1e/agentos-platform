@@ -85,7 +85,7 @@ const sync = new KagentSync(clients, config.namespace, new TaskIndex(), app.log)
 const kubeConfig = new KubeConfig();
 kubeConfig.loadFromDefault();
 const configuration = await configurationClients(kubeConfig, config.namespace, clients, app.log);
-const access = toolBindings(kubeConfig, config.namespace, undefined, configuration.backends);
+const access = await toolBindings(kubeConfig, config.namespace, app.log);
 const operations = governanceConfig();
 const environmentToken = environmentTokens(
   operations,
@@ -212,7 +212,7 @@ await registerConsole(app, {
     process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
     sync,
   ),
-  ready: () => sync.healthy() && configuration.healthy(),
+  ready: () => sync.healthy() && configuration.healthy() && access.healthy(),
   staticRoot: resolve(process.env.AGENTOS_STATIC_ROOT ?? "dist"),
   packRoot,
 });
@@ -297,6 +297,7 @@ app.addHook("onClose", async () => {
   await jobs.boss.stop({ graceful: true, timeout: 40_000 });
   sync.close();
   await configuration.close();
+  await access.close();
   await execution.close();
   await tags.close();
 });

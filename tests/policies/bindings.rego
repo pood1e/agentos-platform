@@ -27,35 +27,14 @@ deny contains "the assistant's collaboration tools differ from the native entry 
 
 actual_bindings(template) := [binding | some group in template.spec.tools; not group.mcp.server.name in {"team-sessions", "kagent-collaboration"}; some tool in group.mcp.tools; binding := {"server": group.mcp.server.name, "tool": tool, "review": group.mcp.requireApproval}]
 
-scoped(identity, name) if {
-	not identity.environments
-	name
-}
-
-scoped(identity, name) if name in identity.environments
-
-tier_suffix("write") := "-changes"
-tier_suffix("readOnly") := ""
-
-review_required(tier, environment, tools, tool) if {
-	tier == "write"
-	environment.governance == "approval"
-	tool in object.get(tools, "approval", array.concat(object.get(tools, "write", []), object.get(tools, "management", [])))
-} else := false
-
 expected_bindings(template) := {binding |
-	some identity in data.global.agentos.identities
-	identity.name == template.metadata.name
-	some environment in data.global.agentos.environments
-	scoped(identity, environment.name)
-	some project, access in identity.services
-	tools := data.global.agentos.toolsets[project]
-	some tier in ["readOnly", "write"]
-	some tool in data.agentos.tools_for(tools, access, tier)
-	suffix := tier_suffix(tier)
-	server := sprintf("%s-%s-%s%s", [environment.name, project, identity.name, suffix])
-	review := review_required(tier, environment, tools, tool)
-	binding := {"server": server, "tool": sprintf("%s-%s_%s", [environment.name, project, tool]), "review": review}
+ some plan in objects
+ plan.kind == "AccessPlan"
+ some target in plan.status.targets
+ target.engineer == template.metadata.name
+ target.environment
+ some tool in target.tools
+ binding := {"server": target.server, "tool": sprintf("%s_%s", [target.service, tool.name]), "review": tool.requireApproval}
 }
 
 deny contains sprintf("%s duplicates a tool binding", [template.metadata.name]) if {

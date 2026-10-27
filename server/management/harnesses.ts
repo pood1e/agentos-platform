@@ -7,8 +7,7 @@ import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import { HarnessSchema } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { conflict, invalid } from "../shared/errors.js";
-import { credentialReferences } from "./credential-references.js";
-import { meta, resource } from "./native.js";
+import { credentialReferences, meta, resource } from "./native.js";
 import type { ResourceStore } from "./resources.js";
 
 export function asHarness(value: JsonObject) {

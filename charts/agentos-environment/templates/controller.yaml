@@ -1,0 +1,1 @@
+{{ include "agentos.controller" (dict "root" . "mode" "environment" "options" dict) }}

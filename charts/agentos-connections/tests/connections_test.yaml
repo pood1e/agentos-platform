@@ -11,93 +11,6 @@ tests:
   - matchRegex:
       path: stringData["connections.json"]
       pattern: '"apis":.*"ListResources".*"UpdateResource"'
-- it: excludes operational execution from the management mutation route
-  template: identity-views.yaml
-  documentSelector:
-    path: spec.mcp.targets[0].static.path
-    value: /mcp/remediation/kubernetes
-    matchMany: true
-  asserts:
-  - notMatchRegex:
-      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-      pattern: resources_create_or_update
-- it: includes only management mutations in the management change route
-  template: identity-views.yaml
-  documentSelector:
-    path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-    value: 'mcp.tool.name in ["nodes_drain"]'
-    matchMany: true
-  asserts:
-  - matchRegex:
-      path: metadata.name
-      pattern: kubernetes-remediation-changes$
-- it: keeps presets under the connection release
-  template: catalog.yaml
-  documentSelector:
-    path: spec.mcp.targets[0].name
-    value: env-approval-kubernetes
-  asserts:
-  - equal:
-      path: metadata.annotations["agentos.dev/system-connection"]
-      value: 'true'
-  - equal:
-      path: metadata.labels["app.kubernetes.io/managed-by"]
-      value: Helm
-  - notExists:
-      path: metadata.ownerReferences
-  - equal:
-      path: spec.policies.extAuth.failureMode
-      value: FailClosed
-  - equal:
-      path: spec.policies.extAuth.backendRef.port
-      value: 9090
-  - equal:
-      path: spec.policies.extAuth.http.allowedResponseHeaders
-      value:
-      - authorization
-  - notExists:
-      path: spec.mcp.targets[0].static.policies.extAuth
-- it: limits Actor authentication to this service's audience
-  template: runtime-auth.yaml
-  documentSelector:
-    path: metadata.name
-    value: env-approval-kubernetes-runtime-auth
-  asserts:
-  - equal:
-      path: spec.traffic.jwtAuthentication.providers[0].audiences
-      value:
-      - http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080
-  - lengthEqual:
-      path: spec.traffic.jwtAuthentication.providers
-      count: 1
-  - equal:
-      path: spec.traffic.jwtAuthentication.providers[0].jwks.remote
-      value:
-        backendRef: {name: agentos-console, port: 9092}
-        jwksPath: /keys/actor
-  - equal:
-      path: spec.targetSelectors[0].matchLabels["agentos.dev/mcp-source"]
-      value: env-approval-kubernetes
-- it: removes managed connections from the next release when no environments remain
-  set:
-    environments: []
-  asserts:
-  - template: catalog.yaml
-    hasDocuments:
-      count: 0
-  - template: identity-views.yaml
-    hasDocuments:
-      count: 0
-  - template: runtime-auth.yaml
-    hasDocuments:
-      count: 0
-  - template: services.yaml
-    hasDocuments:
-      count: 0
-  - template: governance.yaml
-    equal:
-      path: stringData["connections.json"]
-      value: '{"environments":[]}'
 - it: rejects removed inline workload keys
   set:
     platform.actorJWKS:
@@ -105,33 +18,31 @@ tests:
   asserts:
   - failedTemplate:
       errorPattern: actorJWKS|Additional property
-- it: advertises the catalog origin covered by its Actor audience
-  template: catalog.yaml
-  documentSelector:
-    path: spec.url
-    value: http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080/mcp/env-approval-kubernetes
-  asserts:
-  - equal: {path: metadata.name, value: env-approval-kubernetes}
-- it: advertises the identity origin covered by its Actor audience
-  template: identity-views.yaml
-  documentSelector:
-    path: spec.url
-    value: http://env-approval-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080/mcp/env-approval-kubernetes/inspection/readonly
-  asserts:
-  - equal: {path: metadata.name, value: env-approval-kubernetes-inspection}
 - it: routes each service origin through the platform gateway
   template: services.yaml
-  documentSelector: {path: metadata.name, value: env-approval-kubernetes-mcp-gateway}
+  documentSelector:
+    path: metadata.name
+    value: env-approval-kubernetes-mcp-gateway
   asserts:
   - equal:
       path: spec.selector["gateway.networking.k8s.io/gateway-name"]
       value: agentos-gateway
-- it: allows catalog UI resources without granting Agent profiles resource access
-  template: identity-views.yaml
-  documentSelector:
-    path: spec.mcp.targets[?(@.static.host == '192.0.2.21')].static.path
-    value: /mcp/inspection/kubernetes
+- it: declares scoped authorization inputs
+  template: access-plan.yaml
   asserts:
-  - notMatchRegex:
-      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-      pattern: mcp.resource.name
+  - isKind:
+      of: AccessPlan
+  - equal:
+      path: spec.platform.actorKeys
+      value: agentos-console
+  - equal:
+      path: spec.environments[0].governance
+      value: approval
+- it: declares an empty plan when disconnecting all environments
+  template: access-plan.yaml
+  set:
+    environments: []
+  asserts:
+  - equal:
+      path: spec.environments
+      value: []

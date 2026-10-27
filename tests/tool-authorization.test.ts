@@ -4,12 +4,24 @@ import { expect, it } from "vitest";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { authorizeToolSelection } from "../server/authorization/tools.js";
 import { ToolBindings } from "../server/governance/bindings.js";
-import { parseCatalog } from "../shared/tool-catalog.js";
 
 it("distinguishes the caller's read-only ceiling from an unselected or unknown Agent tool", () => {
   const policy = new ToolBindings(
-    parseCatalog("", "service:\n  readOnly: [read]\n  write: [write, delete]\n"),
-    new Map(),
+    new Map([
+      [
+        "service",
+        {
+          server: "service",
+          service: "service",
+          catalog: false,
+          tools: [
+            { name: "read", write: false, requireApproval: false },
+            { name: "write", write: true, requireApproval: true },
+            { name: "delete", write: true, requireApproval: true },
+          ],
+        },
+      ],
+    ]),
   );
   const role = create(RoleDefinitionSchema, {
     tools: [{ server: "service", tools: ["service_read", "service_write", "service_unknown"] }],

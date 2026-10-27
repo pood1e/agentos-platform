@@ -1,0 +1,17 @@
+apiVersion: agentos.dev/v1alpha1
+kind: AccessPlan
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{ include "agentos-environment.labels" . | nindent 4 }}
+spec:
+  mode: environment
+  toolsets: {{ toYaml .Values.toolsets | nindent 4 }}
+  identities: {{ toYaml .Values.identities | nindent 4 }}
+  environments:
+    - name: {{ .Values.environment.name }}
+      governance: direct
+      issuer: {{ .Values.environment.issuer | quote }}
+      resource: {{ .Values.environment.resource | quote }}
+      jwksURL: {{ .Values.environment.jwksURL | quote }}
+  connectors:
+    {{- toYaml .Values.connectors | replace "<issuer>" .Values.environment.issuer | nindent 4 }}

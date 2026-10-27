@@ -1,29 +1,28 @@
 suite: platform resource lifecycle
-values: [../../../tests/fixtures/chart-values.yaml]
-templates: [preset-system.yaml]
-release: {name: agentos, namespace: agentos}
+values:
+- ../../../tests/fixtures/chart-values.yaml
+templates:
+- preset-system.yaml
+release:
+  name: agentos
+  namespace: agentos
 tests:
-  - it: initializes system templates once
-    asserts:
-      - hasDocuments: {count: 4}
-      - containsDocument: {kind: AgentTemplate, apiVersion: api.kagent.dev/v1alpha3, name: assistant, any: true}
-  - it: preserves editable template changes and deletions during upgrades
-    release: {upgrade: true}
-    asserts:
-      - hasDocuments: {count: 2}
-      - isKind: {of: Agent}
-  - it: preserves the Harness selected in the platform
-    kubernetesProvider:
-      scheme:
-        api.kagent.dev/v1alpha3/Agent:
-          gvr: {group: api.kagent.dev, version: v1alpha3, resource: agents}
-          namespaced: true
-      objects:
-        - apiVersion: api.kagent.dev/v1alpha3
-          kind: Agent
-          metadata: {name: assistant, namespace: agentos}
-          spec: {harnessRef: {name: user-harness}}
-    documentSelector: {path: spec.harnessRef.name, value: user-harness}
-    asserts:
-      - equal: {path: metadata.name, value: assistant}
-      - equal: {path: spec.harnessRef.name, value: user-harness}
+- it: declares the same native presets for installation and upgrade
+  asserts:
+  - isKind:
+      of: Preset
+  - lengthEqual:
+      path: spec.resources
+      count: 4
+  - equal:
+      path: spec.resources[0].kind
+      value: AgentTemplate
+- it: keeps desired presets deterministic during upgrade
+  release:
+    upgrade: true
+  asserts:
+  - isKind:
+      of: Preset
+  - lengthEqual:
+      path: spec.resources
+      count: 4

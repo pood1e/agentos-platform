@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { createRouterTransport } from "@connectrpc/connect";
 import type { FastifyBaseLogger } from "fastify";
 import type { Task } from "../gen/a2a_pb.js";
-import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
+import type { AccessPlan } from "../server/governance/access-plans.js";
+import { serverTargets, type Target, ToolBindings } from "../server/governance/bindings.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import { TaskIndex } from "../server/read-model/index.js";
 import { KagentSync } from "../server/read-model/sync.js";
-import { parseCatalog } from "../shared/tool-catalog.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
 import { fixtureAgents, fixtureSessions, fixtureTasks } from "./fixtures/kagent.js";
@@ -40,14 +40,23 @@ export async function until(check: () => boolean | Promise<boolean>, timeout = 3
   }
 }
 
-const fixtureCatalog = () =>
-  parseCatalog(
-    readFileSync(new URL("fixtures/pack/toolsets.yaml", import.meta.url), "utf8"),
-    readFileSync(new URL("fixtures/execution/platform-tools.yaml", import.meta.url), "utf8"),
-  );
+export const fixturePlans = () =>
+  JSON.parse(
+    readFileSync(new URL("../gen/test-access-plans.json", import.meta.url), "utf8"),
+  ) as AccessPlan[];
 
 /** Native credential isolation and execution requirements in the fake workspace. */
 export function testBindings(fake: FakeKagent) {
   return async () =>
-    new ToolBindings(fixtureCatalog(), serverTargets(fake.resources.list("agentgatewaybackends")));
+    new ToolBindings(serverTargets(fake.resources.list("accessplans") as unknown as AccessPlan[]));
+}
+
+export function publishTargets(fake: FakeKagent, targets: Target[]) {
+  const plan = fake.resources.get("accessplans", "fixture");
+  const value = plan as unknown as AccessPlan;
+  value.status ??= {};
+  const compiled = new Map(value.status.targets?.map((target) => [target.server, target]));
+  for (const target of targets) compiled.set(target.server, target);
+  value.status.targets = [...compiled.values()];
+  fake.resources.save("accessplans", plan, false);
 }

@@ -100,9 +100,17 @@ export function speechSettingsStore(
         const updated = await core.replaceNamespacedSecret({
           namespace,
           name,
+          fieldManager: "agentos-users",
           body: {
             ...current,
-            metadata: { ...current.metadata, resourceVersion: request.resourceVersion },
+            metadata: {
+              ...current.metadata,
+              resourceVersion: request.resourceVersion,
+              annotations: { ...current.metadata?.annotations, "agentos.dev/ownership": "user" },
+              ownerReferences: current.metadata?.ownerReferences?.filter(
+                (ref) => ref.kind !== "Preset" || ref.apiVersion !== "agentos.dev/v1alpha1",
+              ),
+            },
             data,
           },
         });

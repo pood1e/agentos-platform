@@ -1,5 +1,10 @@
 #!/bin/sh
 set -eu
+ci/generate-controller.sh
+helm dependency build charts/agentos
+helm dependency build charts/agentos-environment
+mkdir -p .cache/chart-check
+go -C controller build -o ../.cache/chart-check/render ./cmd/render
 python ci/chart-schemas.py
 ANSIBLE_CONFIG=deploy/ansible.cfg ansible-playbook ci/render-chart-values.yaml
 python -m unittest discover -s tests/deployment
@@ -14,6 +19,10 @@ helm template agentos charts/agentos -n operations -f tests/fixtures/chart-value
 helm template agentos tests/fixtures/solution-chart -n agentos > .cache/chart-check/solution.yaml
 helm template agentos tests/fixtures/solution-chart -n agentos -f .cache/chart-check/direct-values.json > .cache/chart-check/direct-only.yaml
 for name in platform alternate solution direct-only; do
+  namespace=agentos
+  if [ "$name" = alternate ]; then namespace=operations; fi
+  .cache/chart-check/render -namespace="$namespace" < ".cache/chart-check/$name.yaml" > ".cache/chart-check/$name-expanded.yaml"
+  mv ".cache/chart-check/$name-expanded.yaml" ".cache/chart-check/$name.yaml"
   kubeconform -strict -summary -kubernetes-version 1.37.1 \
     -schema-location default \
     -schema-location '.cache/chart-check/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \

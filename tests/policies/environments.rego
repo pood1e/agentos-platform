@@ -54,14 +54,12 @@ deny contains sprintf("%s exposes tools beyond its identity view", [backend.meta
 	some backend in resources
 	backend.kind == "AgentgatewayBackend"
 	engineer := backend.metadata.labels["agentos.dev/engineer"]
-	some environment in data.environments
-	environment.name == backend.metadata.labels["agentos.dev/environment"]
-	project := trim_prefix(backend.spec.mcp.targets[0].name, sprintf("%s-", [environment.name]))
-	some identity in environment.identities
-	identity.name == engineer
-	access := identity.services[project]
-	tier := backend.metadata.labels["agentos.dev/tool-access"]
-	expected := data.agentos.tools_for(environment.toolsets[project], access, tier)
+ some plan in resources
+ plan.kind == "AccessPlan"
+ some target in plan.status.targets
+ target.server == backend.metadata.name
+ target.engineer == engineer
+ expected := [tool.name | some tool in target.tools]
 	expression := backend.spec.policies.mcp.authorization.policy.matchExpressions[0]
 	actual := json.unmarshal(trim_prefix(expression, "mcp.tool.name in "))
 	sort(actual) != sort(expected)

@@ -68,52 +68,25 @@ beforeEach(async () => {
 afterEach(async () => env.close());
 
 describe("MCP services and credential bindings", () => {
-  it("preserves managed discovery, identity paths and authorization while updating shared transport", async () => {
-    for (const name of [service, profile]) {
-      const backend = await env.store.get("mcps", name);
-      object(object(backend.metadata).labels)["agentos.dev/environment"] = "lab";
-      const target = object((object(object(backend.spec).mcp).targets as JsonObject[])[0]);
-      object(target.static).path = `/mcp/${name === service ? "catalog" : "inspection"}/grafana`;
-      delete object(target.static).policies;
-      object(backend.spec).policies =
-        name === service
-          ? { tls: { sni: "environment.example" }, mcp: { guardrails: { catalog: true } } }
-          : { mcp: { guardrails: { identity: "inspection" } } };
-      await env.store.save("mcps", backend, false);
-    }
-    const remote: JsonObject = {
-      apiVersion: "api.kagent.dev/v1alpha3",
-      kind: "RemoteMCPServer",
-      metadata: { name: service, annotations: { "agentos.dev/discovery-auth": "kubernetes" } },
-      spec: { protocol: "STREAMABLE_HTTP", url: `http://platform/mcp/${service}` },
-    };
-    await env.store.save("remoteMCPs", remote, true);
-    const before = await env.store.get("remoteMCPs", service);
+  it("refuses API edits to compiled environment resources", async () => {
+    const before = await env.store.get("mcps", profile);
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
     const connection = connections.find(
       (item) => object(item.resource?.value?.metadata).name === service,
     );
-    const targets = object(object(connection?.resource?.value?.spec).mcp).targets as JsonObject[];
-    object(targets[0].static).host = "new-environment.example";
-    await client.saveConnection({ connection });
-    expect(await env.store.get("remoteMCPs", service)).toEqual(before);
-    const updated = await env.store.get("mcps", profile);
-    const target = object((object(object(updated.spec).mcp).targets as JsonObject[])[0]);
-    expect(target.static).toMatchObject({
-      host: "new-environment.example",
-      path: "/mcp/inspection/grafana",
-      policies: { tls: { sni: "environment.example" } },
+    await expect(client.saveConnection({ connection })).rejects.toMatchObject({
+      code: Code.FailedPrecondition,
     });
-    expect(object(object(target.static).policies).auth).toBeUndefined();
-    expect(object(object(target.static).policies).mcp).toBeUndefined();
-    expect(object(updated.spec).policies).toEqual({
-      mcp: { guardrails: { identity: "inspection" } },
-    });
+    expect(await env.store.get("mcps", profile)).toEqual(before);
   });
 
   it("lists built-in services with discovered tools while protecting their configuration", async () => {
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
-    const builtins = connections.filter((item) => item.systemManaged);
+    const builtins = connections.filter(
+      (item) =>
+        item.systemManaged &&
+        !object(item.resource?.value?.metadata).name?.toString().startsWith("lab-"),
+    );
     expect(builtins.map((item) => object(item.resource?.value?.metadata).name)).toEqual([
       "kagent-collaboration",
       "team-sessions",
@@ -148,7 +121,7 @@ describe("MCP services and credential bindings", () => {
       }),
     ).rejects.toMatchObject({ code: Code.FailedPrecondition });
   });
-  it("lists one editable service and scopes its identity tools and consumers", async () => {
+  it("lists one managed service and scopes its identity tools and consumers", async () => {
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
     const connection = connections.find(
       (item) => object(item.resource?.value?.metadata).name === service,
@@ -156,12 +129,16 @@ describe("MCP services and credential bindings", () => {
     expect(
       connections.some((item) => object(item.resource?.value?.metadata).name === profile),
     ).toBe(false);
-    expect(connection?.systemManaged).toBe(false);
+    expect(connection?.systemManaged).toBe(true);
     expect(connection?.tools).toHaveLength(1);
     expect(connection?.usedBy).toEqual(["inspection"]);
     expect(connection?.credentialBindings.map((binding) => binding.engineer)).toEqual([
       "catalog",
+      "assistant",
+      "coordinator",
+      "diagnosis",
       "inspection",
+      "remediation",
     ]);
     const current = await env.store.get("mcps", profile);
     await expect(
@@ -180,28 +157,19 @@ describe("MCP services and credential bindings", () => {
     ).rejects.toMatchObject({ code: Code.FailedPrecondition });
   });
 
-  it("propagates service changes while preserving identity secrets, routes and the native prefix", async () => {
+  it("ignores forged identity labels and reads profiles from compiled status", async () => {
+    const backend = await env.store.get("mcps", profile);
+    object(object(backend.metadata).labels)["agentos.dev/engineer"] = "borrowed";
+    await env.store.save("mcps", backend, false);
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
     const connection = connections.find(
       (item) => object(item.resource?.value?.metadata).name === service,
     );
-    const targets = object(object(connection?.resource?.value?.spec).mcp).targets;
-    if (!Array.isArray(targets)) throw new Error("Missing target");
-    object(object(targets[0]).static).host = "new-gateway.example";
-    await client.saveConnection({ connection });
-    const backend = await env.store.get("mcps", profile);
-    expect(object(object(backend.spec).mcp)).toMatchObject({
-      prefixMode: "Always",
-      targets: [
-        {
-          static: {
-            host: "new-gateway.example",
-            policies: { auth: { secretRef: { name: `${profile}-credential` } } },
-          },
-        },
-      ],
-    });
-    const route = await env.store.get("routes", `mcp-${service}`);
-    expect(object(route.spec).rules).toMatchObject([{ backendRefs: [{ name: service }] }]);
+    expect(connection?.credentialBindings.some((binding) => binding.engineer === "borrowed")).toBe(
+      false,
+    );
+    expect(
+      connection?.credentialBindings.some((binding) => binding.engineer === "inspection"),
+    ).toBe(true);
   });
 });
