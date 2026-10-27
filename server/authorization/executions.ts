@@ -64,42 +64,36 @@ export function executions(
   }
 
   async function record(session: Session, allowRevoked = false, messageIds: string[] = []) {
-    let stored = await store.binding(session.id);
-    if (!stored && adopt) {
+    let chain = await store.chain(session.id);
+    if (!chain.length && adopt) {
       const identity = await adopt(session, messageIds);
       if (identity) {
         await bind(session, identity);
-        stored = await store.binding(session.id);
+        chain = await store.chain(session.id);
       }
     }
-    const binding = stored?.value;
+    const [binding] = chain;
     if (
       !binding ||
-      (!allowRevoked && binding.revoked) ||
       binding.agent?.namespace !== session.agent?.namespace ||
-      binding.agent?.name !== session.agent?.name
+      binding.agent?.name !== session.agent?.name ||
+      chain.at(-1)?.sessionId !== binding.rootSessionId
     )
       throw denied();
-    let ancestor = binding,
-      write = binding.write,
+    let write = binding.write,
       capabilities = binding.capabilities;
     const seen = new Set<string>();
-    for (;;) {
+    for (const ancestor of chain) {
       if (
         (!allowRevoked && ancestor.revoked) ||
         ancestor.subject !== binding.subject ||
         ancestor.rootSessionId !== binding.rootSessionId ||
-        seen.has(ancestor.sessionId) ||
-        seen.size >= 32
+        seen.has(ancestor.sessionId)
       )
         throw denied();
       seen.add(ancestor.sessionId);
       write &&= ancestor.write;
       capabilities = intersectCapabilities(capabilities, ancestor.capabilities);
-      if (ancestor.sessionId === binding.rootSessionId) break;
-      const parent = (await store.binding(ancestor.parentSessionId))?.value;
-      if (!parent) throw denied();
-      ancestor = parent;
     }
     return { binding, write, capabilities };
   }

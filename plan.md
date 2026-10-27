@@ -19,7 +19,7 @@
 
 | 计划 | 单元 | 内容 | 状态 |
 | --- | --- | --- | --- |
-| [平台服务](refactor-services.md) | 1.1 | 执行存储：结构化绑定、凭据信封加密与版本化迁移 | 待实施 |
+| [平台服务](refactor-services.md) | 1.1 | 执行存储：结构化绑定与凭据信封加密 | 已实现 |
 | | 1.2 | 身份与前端解耦：Bearer API、oauth2-proxy console、离线委派与密码身份源 | 待实施 |
 | | 1.3 | PostgreSQL 读投影 | 待实施 |
 | | 1.4 | api、dataplane、worker 进程拆分 | 待实施 |

@@ -20,7 +20,7 @@
 
 个人任务的标签由发起人维护，包括已结束或已撤销执行权的任务；共享服务任务的标签需要任务管理角色。标签作为操作根任务的元数据保存在同一 PostgreSQL 的 `agentos_console.task_tags` 表中，以工作空间隔离并采用乐观锁更新。标签只用于分类和筛选，执行状态、审批结果与目标系统写权限独立校验。
 
-执行绑定与最新验证的用户凭证以 protobuf 保存于 PostgreSQL 的 `agentos_authorization` schema。记录采用 AES-256-GCM 加密，认证数据包含工作空间、记录类型和 ID；加密密钥位于独立、持久保留的 Kubernetes Secret。
+执行绑定与最新验证的用户凭证保存于 PostgreSQL 的 `agentos_authorization` schema。绑定按列存储，委派链以一次递归查询读取；access token 与 refresh token 由 AWS Encryption SDK 信封加密，加密上下文包含工作空间、记录类型和主体，加密密钥位于独立、持久保留的 Kubernetes Secret。
 原生会话、A2A 消息与工具参数仅保存身份引用，不携带用户访问令牌。
 
 平台在每次工具调用时计算用户当前凭证、会话及父链权限、Agent 当前已选工具与环境身份上限的交集。未知工具默认拒绝。委派与自动续接校验相同的根会话及发起人。停止通过原生 A2A 取消会话内的执行及全部委派，确认完成后可在同一会话发送新消息；删除会话撤销其执行绑定及后代授权。

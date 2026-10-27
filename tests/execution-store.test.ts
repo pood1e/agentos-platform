@@ -3,6 +3,7 @@ import { create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
 import postgres from "postgres";
 import { expect, it } from "vitest";
+import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import {
   ExecutionBindingSchema,
   ExecutionIdentitySchema,
@@ -10,7 +11,7 @@ import {
 import { executionStore } from "../server/authorization/store.js";
 
 it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
-  "persists encrypted protobufs with CAS and authenticates the workspace, record ID and encryption key",
+  "keeps bindings queryable, encrypts tokens per subject and rejects swapped or foreign ciphertexts",
   async () => {
     const uri = process.env.CHANGE_TEST_DATABASE_URL ?? "";
     const workspace = `execution-test-${randomUUID()}`,
@@ -23,16 +24,18 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
       const identity = create(ExecutionIdentitySchema, {
         subject: "alice",
         write: true,
+        capabilities: [Capability.TASKS_MANAGE],
         credential: { case: "accessToken", value: jwt },
         refreshToken: "offline-private-refresh",
       });
       await store.saveIdentity(identity);
       const saved = await store.identity("alice");
       expect(saved?.value).toEqual(identity);
-      const rows =
-        await sql`select value from agentos_authorization.objects where workspace=${workspace}`;
-      expect(Buffer.from(rows[0].value).includes(Buffer.from(jwt))).toBe(false);
-      expect(Buffer.from(rows[0].value).includes(Buffer.from(identity.refreshToken))).toBe(false);
+      const [row] = await sql`select tokens, capabilities from agentos_authorization.credentials
+        where workspace=${workspace} and subject='alice'`;
+      expect(row?.capabilities).toEqual([Capability.TASKS_MANAGE]);
+      expect(Buffer.from(row?.tokens).includes(Buffer.from(jwt))).toBe(false);
+      expect(Buffer.from(row?.tokens).includes(Buffer.from(identity.refreshToken))).toBe(false);
       await store.close();
       restarted = await executionStore(uri, key, workspace);
       expect((await restarted.identity("alice"))?.value).toEqual(identity);
@@ -57,18 +60,39 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
       } finally {
         await replica.close();
       }
-      const binding = create(ExecutionBindingSchema, {
-        sessionId: "one",
-        rootSessionId: "one",
-        subject: "alice",
-        agent: { namespace: workspace, name: "assistant" },
-      });
-      await restarted.saveBinding(binding);
-      expect(await restarted.bindings(["one", "missing"])).toEqual([binding]);
-      await sql`insert into agentos_authorization.objects(workspace,kind,id,value)
-      select workspace,kind,'two',value from agentos_authorization.objects where workspace=${workspace} and id='one'`;
-      await expect(restarted.binding("two")).rejects.toMatchObject({ code: Code.PermissionDenied });
-      await expect(restarted.bindings(["two"])).rejects.toMatchObject({
+
+      const agent = { namespace: workspace, name: "assistant" };
+      const binding = (sessionId: string, parentSessionId = "") =>
+        create(ExecutionBindingSchema, {
+          sessionId,
+          parentSessionId,
+          rootSessionId: "root",
+          subject: "alice",
+          agent,
+          capabilities: [Capability.TASKS_MANAGE],
+        });
+      for (const value of [binding("root"), binding("child", "root"), binding("leaf", "child")])
+        await restarted.saveBinding(value);
+      expect((await restarted.chain("leaf")).map((item) => item.sessionId)).toEqual([
+        "leaf",
+        "child",
+        "root",
+      ]);
+      expect(await restarted.bindings(["child", "missing"])).toEqual([binding("child", "root")]);
+      await restarted.saveBinding(binding("orphan", "absent"));
+      expect((await restarted.chain("orphan")).map((item) => item.sessionId)).toEqual(["orphan"]);
+
+      await restarted.saveIdentity(
+        create(ExecutionIdentitySchema, {
+          subject: "bob",
+          credential: { case: "accessToken", value: "bob-credential" },
+        }),
+      );
+      await sql`update agentos_authorization.credentials set tokens=(
+          select tokens from agentos_authorization.credentials
+          where workspace=${workspace} and subject='alice')
+        where workspace=${workspace} and subject='bob'`;
+      await expect(restarted.identity("bob")).rejects.toMatchObject({
         code: Code.PermissionDenied,
       });
       const wrong = await executionStore(uri, randomBytes(32), workspace);
@@ -82,11 +106,13 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
       const isolated = await executionStore(uri, key, `${workspace}-other`);
       try {
         expect(await isolated.identity("alice")).toBeUndefined();
+        expect(await isolated.chain("leaf")).toEqual([]);
       } finally {
         await isolated.close();
       }
     } finally {
-      await sql`delete from agentos_authorization.objects where workspace=${workspace}`;
+      await sql`delete from agentos_authorization.credentials where workspace=${workspace}`;
+      await sql`delete from agentos_authorization.execution_bindings where workspace=${workspace}`;
       await Promise.all([sql.end(), restarted?.close(), store.close()]);
     }
   },
