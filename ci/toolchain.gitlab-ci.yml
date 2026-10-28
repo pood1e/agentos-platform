@@ -24,18 +24,23 @@ variables:
     paths: [.cache/go-mod/, .cache/go-build/, .cache/golangci-lint/]
 
 .agentos-node:
-  extends: [.agentos-ci, .agentos-go-cache]
+  extends: .agentos-ci
   variables:
     NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
   cache:
-    - !reference [.agentos-go-cache, cache]
-    - key:
-        files: [package-lock.json]
-        prefix: npm
-      paths: [.npm/]
+    key:
+      files: [package-lock.json]
+      prefix: npm
+    paths: [.npm/]
   before_script:
     - mkdir -p .cache
     - npm ci --prefer-offline
+
+.agentos-node-go:
+  extends: [.agentos-node, .agentos-go-cache]
+  cache:
+    - !reference [.agentos-go-cache, cache]
+    - !reference [.agentos-node, cache]
 
 .agentos-go:
   extends: [.agentos-ci, .agentos-go-cache]

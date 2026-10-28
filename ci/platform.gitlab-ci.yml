@@ -13,7 +13,7 @@ include:
   - local: ci/python.gitlab-ci.yml
 
 verify:
-  extends: [.agentos-node, .agentos-postgres]
+  extends: [.agentos-node-go, .agentos-postgres]
   stage: verify
   script: [npm run verify]
   artifacts:
@@ -44,6 +44,7 @@ platform-controller-verify:
   needs: []
   script:
     - ci/generate-controller.sh
+    - python ci/chart-schemas.py
     - go -C controller test -race -count=1 ./...
     - go -C controller vet ./...
     - mkdir -p .cache/platform-controller-image
@@ -82,7 +83,7 @@ build-web:
     expire_in: 1 day
 
 build-contracts:
-  extends: .agentos-node
+  extends: .agentos-node-go
   stage: package
   needs: []
   script:

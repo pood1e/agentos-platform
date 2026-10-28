@@ -11,6 +11,9 @@ on:
       - 'ci/verify-controller.sh'
       - 'ci/verify-substrate.sh'
       - 'ci/generate-controller.sh'
+      - 'ci/chart-schemas.py'
+      - 'ci/requirements.txt'
+      - 'deploy/vars.yaml'
       - 'mise.toml'
       - 'mise.lock'
       - '.github/workflows/verify.yaml'
@@ -42,7 +45,7 @@ jobs:
               - '!**/*.md'
               - '!LICENSE'
             controller:
-              - '{controller/**,ci/generate-controller.sh,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '{controller/**,ci/{generate-controller.sh,chart-schemas.py,requirements.txt},deploy/vars.yaml,mise.toml,mise.lock,.github/workflows/verify.yaml}'
               - '!**/*.md'
             runtime:
               - '{runtime/**,third_party/{kagent,substrate}/**,ci/{prepare-substrate,verify-controller,verify-substrate}.sh,mise.toml,mise.lock,.github/workflows/verify.yaml}'
@@ -78,8 +81,9 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ hashFiles('controller/**/*.go') }}
+          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-${{ hashFiles('controller/**/*.go') }}
           restore-keys: |
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-
             platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
@@ -106,8 +110,9 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ hashFiles('controller/**/*.go') }}
+          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-${{ hashFiles('controller/**/*.go') }}
           restore-keys: |
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-
             platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
       - run: |
           uv venv .cache/venv
@@ -155,18 +160,22 @@ jobs:
       - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
           version: 2026.10.18
-          install_args: go go:sigs.k8s.io/controller-runtime/tools/setup-envtest
+          install_args: go helm python uv go:sigs.k8s.io/controller-runtime/tools/setup-envtest
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ hashFiles('controller/**/*.go') }}
+          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-${{ hashFiles('controller/**/*.go') }}
           restore-keys: |
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-
             platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
       - run: |
           ci/generate-controller.sh
           git diff --exit-code -- controller/api controller/config/crd/bases
+          uv venv .cache/venv
+          uv pip install --python .cache/venv/bin/python -r ci/requirements.txt
+          .cache/venv/bin/python ci/chart-schemas.py
           export KUBEBUILDER_ASSETS="$(setup-envtest use 1.37 -p path)"
           go -C controller test -race -count=1 ./...
           go -C controller vet ./...
