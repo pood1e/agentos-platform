@@ -17,6 +17,9 @@
 - {name: AGENTOS_VOICE_GATEWAY_URL, value: "http://{{ $name }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080"}
 - {name: AGENTOS_VOICE_AGENT, value: {{ $name }}-voice}
 - {name: AGENTOS_VOICE_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-voice"}
+- name: AGENTOS_VOICE_SESSION_KEY
+  valueFrom: {secretKeyRef: {name: {{ .Values.voice.sessionSecretRef }}, key: key}}
+- {name: LIVEKIT_URL, value: {{ .Values.voice.livekitURL | quote }}}
 - name: AGENTOS_LIVEKIT_URL
   value: {{ default (printf "wss://%s/livekit" .Values.route.hosts.console) .Values.voice.publicURL | quote }}
 - name: LIVEKIT_API_KEY

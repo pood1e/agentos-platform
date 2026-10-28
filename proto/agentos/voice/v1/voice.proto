@@ -6,12 +6,12 @@ import "agentos/console/v1/speech.proto";
 import "buf/validate/validate.proto";
 
 // Voice worker API. Callers present the worker's Kubernetes service account token;
-// requests act as the session initiator on the session's own conversation.
+// API-signed tickets bind requests to the initiator and conversation.
 service VoiceService {
   rpc GetVoiceSession(GetVoiceSessionRequest) returns (GetVoiceSessionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Sends a call turn; the first turn of a new call binds the conversation it starts.
+  // Sends a call turn; the first turn returns a ticket bound to its conversation.
   rpc SendVoiceTurn(SendVoiceTurnRequest) returns (SendVoiceTurnResponse);
   // Waits up to 20 seconds for the turn to settle.
   rpc GetVoiceAnswer(GetVoiceAnswerRequest) returns (GetVoiceAnswerResponse) {
@@ -27,8 +27,26 @@ message Speech {
   string language_code = 2;
 }
 
+// Claims carried by an API-signed voice ticket.
+message VoiceSession {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  string subject = 2 [(buf.validate.field).string.min_len = 1];
+  agentos.console.v1.VoiceMode mode = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string language_code = 4 [(buf.validate.field).string.pattern = "^([a-z]{2,3})?$"];
+  string text = 5 [(buf.validate.field).string.max_len = 8000];
+  // Empty until a call's first turn creates its native session.
+  string context_id = 6 [(buf.validate.field).string.max_len = 128];
+}
+
 message GetVoiceSessionRequest {
   string session_id = 1 [(buf.validate.field).string.uuid = true];
+  string session_token = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65536
+  }];
 }
 
 message GetVoiceSessionResponse {
@@ -50,11 +68,17 @@ message SendVoiceTurnRequest {
     min_len: 1
     max_len: 8000
   }];
+  string session_token = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65536
+  }];
 }
 
 message SendVoiceTurnResponse {
   string context_id = 1;
   string task_id = 2;
+  // Same expiry as the original ticket, bound to context_id.
+  string session_token = 3;
 }
 
 message GetVoiceAnswerRequest {
@@ -62,6 +86,10 @@ message GetVoiceAnswerRequest {
   string task_id = 2 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
+  }];
+  string session_token = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65536
   }];
 }
 
@@ -76,6 +104,10 @@ message CancelVoiceTurnRequest {
   string task_id = 2 [(buf.validate.field).string = {
     min_len: 1
     max_len: 128
+  }];
+  string session_token = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65536
   }];
 }
 

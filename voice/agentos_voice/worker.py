@@ -174,7 +174,7 @@ async def call(voice: Voice, platform: Platform):
         stt=voice.transcriber(),
         tts=tts,
         vad=voice.ctx.proc.userdata["vad"],
-        llm=Conversation(platform, voice.ctx.room.name, tts, voice.publish),
+        llm=Conversation(platform, tts, voice.publish),
         aec_warmup_duration=None,
         turn_handling={
             "turn_detection": "vad",
@@ -202,9 +202,15 @@ async def call(voice: Voice, platform: Platform):
 async def entrypoint(ctx: JobContext):
     http = aiohttp.ClientSession()
     ctx.add_shutdown_callback(http.close)
-    platform = Platform(os.environ["AGENTOS_API_URL"], os.environ["AGENTOS_TOKEN_FILE"], http)
+    platform = Platform(
+        os.environ["AGENTOS_API_URL"],
+        os.environ["AGENTOS_TOKEN_FILE"],
+        http,
+        ctx.room.name,
+        ctx.job.metadata,
+    )
     try:
-        voice = Voice(ctx, await platform.session(ctx.room.name))
+        voice = Voice(ctx, await platform.session())
     except PlatformError as error:
         logger.warning("Voice session unavailable: %s", error.code)
         await ctx.delete_room()

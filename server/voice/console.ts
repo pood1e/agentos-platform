@@ -1,15 +1,20 @@
 import { Code, type ServiceImpl } from "@connectrpc/connect";
-import { AccessToken, RoomAgentDispatch, RoomConfiguration, TrackSource } from "livekit-server-sdk";
+import {
+  AccessToken,
+  RoomAgentDispatch,
+  type RoomServiceClient,
+  TrackSource,
+} from "livekit-server-sdk";
 import type { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { VoiceMode } from "../../gen/agentos/console/v1/speech_pb.js";
 import { speechText } from "../../shared/speech-text.js";
 import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
-import { fail, invalid, precondition } from "../shared/errors.js";
+import { fail, invalid, precondition, unavailable } from "../shared/errors.js";
 import { speechLanguage } from "./language.js";
-import type { VoiceSessions } from "./sessions.js";
 import type { SpeechSource } from "./settings.js";
+import type { VoiceTickets } from "./tickets.js";
 
 /** The LiveKit server browsers join and the agent its rooms dispatch. */
 export interface VoiceRooms {
@@ -17,6 +22,7 @@ export interface VoiceRooms {
   apiKey: string;
   apiSecret: string;
   agent: string;
+  createRoom: RoomServiceClient["createRoom"];
 }
 
 export type VoiceConsole = Pick<
@@ -33,7 +39,7 @@ export const voiceDisabled: VoiceConsole = {
 
 export function voiceConsole(
   settings: SpeechSource,
-  sessions: VoiceSessions,
+  tickets: VoiceTickets,
   rooms: VoiceRooms,
   clients: KagentClients,
   executions: Executions,
@@ -49,10 +55,6 @@ export function voiceConsole(
       canPublish: speaks,
       canPublishData: speaks,
       canPublishSources: speaks ? [TrackSource.MICROPHONE] : [],
-    });
-    token.roomConfig = new RoomConfiguration({
-      maxParticipants: 2,
-      agents: [new RoomAgentDispatch({ agentName: rooms.agent })],
     });
     return token.toJwt();
   };
@@ -94,13 +96,23 @@ export function voiceConsole(
         if (!session) throw fail(Code.PermissionDenied, "chat.executionDenied");
         await executions.own(session, identity);
       }
-      const id = await sessions.create({
+      const { id, token } = await tickets.create({
         subject: identity.subject,
         mode,
         languageCode,
         text,
         contextId,
       });
+      try {
+        await rooms.createRoom({
+          name: id,
+          maxParticipants: 2,
+          emptyTimeout: 60,
+          agents: [new RoomAgentDispatch({ agentName: rooms.agent, metadata: token })],
+        });
+      } catch {
+        throw unavailable();
+      }
       return { url: rooms.url, token: await roomToken(id, mode) };
     },
   };

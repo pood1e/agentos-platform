@@ -42,6 +42,16 @@ tests:
         contains:
           path: spec.template.spec.containers[0].env
           content: {name: AGENTOS_VOICE_GATEWAY_URL, value: 'http://agentos-mcp-gateway.agentos.svc.cluster.local:8080'}
+      - template: api-deployment.yaml
+        contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AGENTOS_VOICE_SESSION_KEY
+            valueFrom: {secretKeyRef: {name: agentos-voice-sessions, key: key}}
+      - template: voice.yaml
+        documentSelector: {path: kind, value: Deployment}
+        notExists:
+          path: spec.template.spec.containers[0].env[?(@.name == "AGENTOS_VOICE_SESSION_KEY")]
       - template: controller.yaml
         documentSelector: {path: kind, value: Deployment}
         contains:

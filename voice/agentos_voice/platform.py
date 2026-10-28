@@ -38,10 +38,20 @@ def failure(status: int, body: bytes) -> PlatformError:
 
 
 class Platform:
-    def __init__(self, url: str, token_file: str, http: aiohttp.ClientSession):
+    def __init__(
+        self,
+        url: str,
+        token_file: str,
+        http: aiohttp.ClientSession,
+        session_id: str,
+        session_token: str,
+    ):
         self.url = url.rstrip("/")
         self.token_file = Path(token_file)
         self.http = http
+        self.session_id = session_id
+        self.session_token = session_token
+        self.started = False
 
     async def call(self, method: str, request: Message, response: Message):
         # Every method is idempotent, so transport failures are retried.
@@ -64,6 +74,7 @@ class Platform:
             f"{self.url}/agentos.voice.v1.VoiceService/{method}",
             data=MessageToJson(request),
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            allow_redirects=False,
         ) as reply:
             body = await reply.read()
             if reply.status != 200:
@@ -73,30 +84,44 @@ class Platform:
         except ParseError as error:
             raise PlatformError("unknown") from error
 
-    def session(self, session_id: str):
+    def session(self):
         return self.call(
             "GetVoiceSession",
-            voice_pb2.GetVoiceSessionRequest(session_id=session_id),
+            voice_pb2.GetVoiceSessionRequest(
+                session_id=self.session_id, session_token=self.session_token
+            ),
             voice_pb2.GetVoiceSessionResponse(),
         )
 
-    def send_turn(self, session_id: str, message_id: str, text: str):
-        return self.call(
+    async def send_turn(self, message_id: str, text: str):
+        response = await self.call(
             "SendVoiceTurn",
-            voice_pb2.SendVoiceTurnRequest(session_id=session_id, message_id=message_id, text=text),
+            voice_pb2.SendVoiceTurnRequest(
+                session_id=self.session_id,
+                session_token=self.session_token,
+                message_id=message_id if self.started else self.session_id,
+                text=text,
+            ),
             voice_pb2.SendVoiceTurnResponse(),
         )
+        self.session_token = response.session_token
+        self.started = True
+        return response
 
-    def answer(self, session_id: str, task_id: str):
+    def answer(self, task_id: str):
         return self.call(
             "GetVoiceAnswer",
-            voice_pb2.GetVoiceAnswerRequest(session_id=session_id, task_id=task_id),
+            voice_pb2.GetVoiceAnswerRequest(
+                session_id=self.session_id, session_token=self.session_token, task_id=task_id
+            ),
             voice_pb2.GetVoiceAnswerResponse(),
         )
 
-    def cancel_turn(self, session_id: str, task_id: str):
+    def cancel_turn(self, task_id: str):
         return self.call(
             "CancelVoiceTurn",
-            voice_pb2.CancelVoiceTurnRequest(session_id=session_id, task_id=task_id),
+            voice_pb2.CancelVoiceTurnRequest(
+                session_id=self.session_id, session_token=self.session_token, task_id=task_id
+            ),
             voice_pb2.CancelVoiceTurnResponse(),
         )

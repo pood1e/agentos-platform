@@ -23,24 +23,24 @@ class Platform:
         self.calls = []
         self.accepted = asyncio.Event()
 
-    async def send_turn(self, session_id, message_id, text):
+    async def send_turn(self, message_id, text):
         self.calls.append(("send", text))
         if text == "first":
             await self.accepted.wait()
         return SendVoiceTurnResponse(context_id="conversation", task_id=f"task-{text}")
 
-    async def answer(self, session_id, task_id):
+    async def answer(self, task_id):
         if task_id == "task-first":
             await asyncio.Event().wait()
         return GetVoiceAnswerResponse(done=True, answer=Speech(text="已完成", language_code="zh"))
 
-    async def cancel_turn(self, session_id, task_id):
+    async def cancel_turn(self, task_id):
         self.calls.append(("cancel", task_id))
 
 
 async def test_an_interrupted_turn_cancels_its_task_before_the_next_turn_is_sent():
     platform, tts, publish = Platform(), Mock(), AsyncMock()
-    conversation = Conversation(platform, "session", tts, publish)
+    conversation = Conversation(platform, tts, publish)
     first = conversation.chat(chat_ctx=said("first"))
     await asyncio.sleep(0.01)
     await first.aclose()
@@ -59,7 +59,7 @@ async def test_an_interrupted_turn_cancels_its_task_before_the_next_turn_is_sent
 async def test_a_rejected_turn_reports_its_reason_and_stays_silent():
     platform, publish = Mock(), AsyncMock()
     platform.send_turn = AsyncMock(side_effect=PlatformError("aborted", "chat.busy"))
-    turn = Conversation(platform, "session", Mock(), publish).chat(chat_ctx=said("巡检"))
+    turn = Conversation(platform, Mock(), publish).chat(chat_ctx=said("巡检"))
     async with asyncio.timeout(3):
         assert [chunk async for chunk in turn] == []
     publish.assert_awaited_once_with(VoiceEvent(error="chat.busy"))
@@ -67,7 +67,7 @@ async def test_a_rejected_turn_reports_its_reason_and_stays_silent():
 
 async def test_the_agent_session_answers_each_turn_through_the_conversation():
     platform = Platform()
-    async with AgentSession(llm=Conversation(platform, "session", Mock(), AsyncMock())) as session:
+    async with AgentSession(llm=Conversation(platform, Mock(), AsyncMock())) as session:
         await session.start(Agent(instructions="Relay the call."))
         await session.run(user_input="second")
         answers = [
