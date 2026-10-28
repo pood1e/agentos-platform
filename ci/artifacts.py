@@ -112,7 +112,7 @@ def sign(reference):
             "cosign",
             "verify",
             "--key",
-            "deploy/files/cosign.pub",
+            "ci/cosign.pub",
             "--insecure-ignore-tlog",
             "-a",
             "version=" + version.semver,

@@ -16,6 +16,9 @@ py-modules = ["a2a_pb2", "ateapi_pb2"]
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
 
+[tool.setuptools.package-data]
+agentos = ["authorization.json"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 namespaces = true

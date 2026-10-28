@@ -26,6 +26,7 @@ subprocess.run(
     cwd=root,
     check=True,
 )
+shutil.copyfile(root / "gen/authorization.json", root / "gen/python/agentos/authorization.json")
 
 
 def wheel(name, project, sources, requirements=""):

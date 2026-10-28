@@ -10,7 +10,6 @@ on:
       - 'ci/generate-controller.sh'
       - 'ci/chart-schemas.py'
       - 'ci/requirements.txt'
-      - 'deploy/vars.yaml'
       - 'mise.toml'
       - 'mise.lock'
       - '.github/workflows/verify.yaml'
@@ -42,7 +41,7 @@ jobs:
               - '!**/*.md'
               - '!LICENSE'
             controller:
-              - '{controller/**,ci/{generate-controller.sh,chart-schemas.py,requirements.txt},deploy/vars.yaml,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '{controller/**,ci/{generate-controller.sh,chart-schemas.py,requirements.txt},mise.toml,mise.lock,.github/workflows/verify.yaml}'
               - '!**/*.md'
             runtime:
               - '{third_party/{kagent,substrate}/**,ci/verify-runtime-protos.sh,.github/workflows/verify.yaml}'
@@ -92,9 +91,6 @@ jobs:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || (github.event_name != 'push' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-24.04
-    env:
-      ANSIBLE_CONFIG: deploy/ansible.cfg
-      ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.cache/collections
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,27 +109,13 @@ jobs:
             platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
       - run: |
           uv venv .cache/venv
-          uv pip install --python .cache/venv/bin/python -r deploy/requirements.txt -r ci/python-requirements.txt -r contracts/requirements.txt
+          uv pip install --python .cache/venv/bin/python -r ci/python-requirements.txt -r contracts/requirements.txt
           echo "$PWD/.cache/venv/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        id: collections
-        with:
-          path: .cache/collections
-          key: collections-${{ runner.os }}-${{ hashFiles('deploy/requirements.yaml') }}
-      - run: ansible-galaxy collection install -r deploy/requirements.yaml
-        if: steps.collections.outputs.cache-hit != 'true'
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci --prefer-offline
-      - name: Ansible validation
-        run: |
-          ansible-lint deploy environments
-          ansible-playbook deploy/deploy.yaml --syntax-check
-          ansible-playbook deploy/validate.yaml --syntax-check
-          ansible-playbook environments/deploy.yaml --syntax-check
-          ansible-playbook environments/connect.yaml --syntax-check
       - run: ci/check-charts.sh
       - run: python ci/test-artifacts.py
       - name: Python checks and contracts

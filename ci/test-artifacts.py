@@ -1,4 +1,4 @@
-"""Exercise OCI verification against a disposable native registry."""
+"""Exercise chart packaging and OCI verification against a disposable native registry."""
 
 import hashlib
 import json
@@ -66,12 +66,12 @@ class OCITest(unittest.TestCase):
         )
         cls.version, cls.revision = "1.0.0", "a" * 40
         (cls.root / "artifact.txt").write_text("original")
-        tagged = cls.registry + "/collection:1.0.0"
+        tagged = cls.registry + "/artifact:1.0.0"
         cls.push(tagged)
         cls.digest = subprocess.check_output(
             ["oras", "resolve", "--plain-http", tagged], text=True
         ).strip()
-        cls.reference = cls.registry + "/collection@" + cls.digest
+        cls.reference = cls.registry + "/artifact@" + cls.digest
         subprocess.run(
             [
                 "cosign",
@@ -153,19 +153,19 @@ class OCITest(unittest.TestCase):
 
     def test_tampered_tag_cannot_reuse_the_old_signature(self):
         (self.root / "artifact.txt").write_text("tampered")
-        tagged = self.registry + "/collection:tampered"
+        tagged = self.registry + "/artifact:tampered"
         self.push(tagged)
         changed = subprocess.check_output(
             ["oras", "resolve", "--plain-http", tagged], text=True
         ).strip()
         self.assertNotEqual(
-            self.verify(reference=self.registry + "/collection@" + changed).returncode, 0
+            self.verify(reference=self.registry + "/artifact@" + changed).returncode, 0
         )
 
-    def test_charts_and_collection_share_one_source_and_repackage_identically(self):
+    def test_charts_share_one_source_and_repackage_identically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name in ("charts", "deploy", "environments", "ci"):
+            for name in ("charts", "ci"):
                 shutil.copytree(
                     ROOT / name, root / name, ignore=shutil.ignore_patterns("charts", "__pycache__")
                 )
@@ -173,10 +173,8 @@ class OCITest(unittest.TestCase):
                 ROOT / "controller/config/crd/bases", root / "controller/config/crd/bases"
             )
             (root / ".github").mkdir()
-            for name in ("package.json", ".github/.release-please-manifest.json", "LICENSE"):
+            for name in ("package.json", ".github/.release-please-manifest.json"):
                 shutil.copyfile(ROOT / name, root / name)
-            (root / "gen").mkdir()
-            (root / "gen/authorization.json").write_text("{}\n")
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
             subprocess.run(["git", "add", "."], cwd=root, check=True)
             subprocess.run(
@@ -200,10 +198,6 @@ class OCITest(unittest.TestCase):
                 json.dumps({"bootstrap-sha": revision})
             )
             (root / ".cache").mkdir()
-            (root / "dist/contracts").mkdir(parents=True)
-            (root / "dist/contracts/agentos_contracts-1.0.0-py3-none-any.whl").write_bytes(
-                b"fixture"
-            )
             with tarfile.open(root / "layer.tar", "w"):
                 pass
             registry = self.registry + "/platform"
@@ -275,7 +269,7 @@ class OCITest(unittest.TestCase):
                     for p in (root / "dist").glob("*.*")
                     if p.is_file()
                 }
-                self.assertEqual(len(artifacts), 5)
+                self.assertEqual(len(artifacts), 4)
                 for chart in ("agentos", "agentos-environment"):
                     metadata = yaml.safe_load(
                         (root / ".cache/release-charts" / chart / "Chart.yaml").read_text()
@@ -300,8 +294,6 @@ class OCITest(unittest.TestCase):
                 (root / ".cache/release-charts/agentos/values.yaml").read_text()
             )
             self.assertEqual(values["web"]["image"], registry + "/web@" + digest)
-            for path in (root / ".cache/collection/playbooks").glob("*/vars.yaml"):
-                self.assertEqual(yaml.safe_load(path.read_text())["delivery_revision"], revision)
 
 
 if __name__ == "__main__":

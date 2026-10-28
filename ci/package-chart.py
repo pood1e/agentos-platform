@@ -1,6 +1,5 @@
 """Package deterministic charts using only images built from the current source."""
 
-import os
 import shutil
 import subprocess
 from datetime import UTC, datetime
@@ -57,5 +56,4 @@ for chart in sorted(root.iterdir()):
         reproducible(dependency)
     subprocess.run(["helm", "package", str(chart), "--destination", "dist"], check=True)
     reproducible(Path(f"dist/{chart.name}-{version.semver}.tgz"))
-subprocess.run([os.sys.executable, "ci/package-collection.py"], check=True)
 print("Packaged", version.semver, version.revision)

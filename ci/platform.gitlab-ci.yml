@@ -22,15 +22,7 @@ verify:
 deployment-check:
   extends: [.agentos-ci, .agentos-go-cache]
   stage: verify
-  variables:
-    ANSIBLE_CONFIG: deploy/ansible.cfg
-    ANSIBLE_DEPRECATION_WARNINGS: "false"
   script:
-    - ansible-lint deploy environments
-    - ansible-playbook deploy/deploy.yaml --syntax-check
-    - ansible-playbook deploy/validate.yaml --syntax-check
-    - ansible-playbook environments/deploy.yaml --syntax-check
-    - ansible-playbook environments/connect.yaml --syntax-check
     - ci/check-charts.sh
     - python ci/test-artifacts.py
 

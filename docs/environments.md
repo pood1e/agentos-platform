@@ -12,17 +12,14 @@ flowchart LR
   EG -->|目标令牌交换 / 每身份 API 凭据| MCP[连接器 MCP]
 ```
 
-## 组成与依赖
+## 组成
 
-| 剧本 | 作用 |
-| --- | --- |
-| `environments/deploy.yaml` | 安装固定版本控制器与 `agentos-environment` Chart，发布平台连接 release |
-| `environments/connections.yaml` | 安装 `agentos-connections` Chart，统一管理平台环境 CA、准入配置、服务目录与身份视图 |
-| `environments/lifecycle.yaml` | 对比原 release 的身份范围，识别需要撤销目标凭据的身份 |
+`agentos-environment` Chart 在目标集群部署环境网关、证书声明、身份路由和网络策略；`agentos-connections` Chart 在平台工作空间登记环境 CA、准入配置、服务目录与身份视图。
+参考部署的环境剧本、站点变量与身份变更流程随站点发行版提供。
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 只用于服务工具发现。
-
-方案包先配置环境 OIDC issuer、每身份客户端和目标凭据，再部署环境套件、平台应用和服务连接。平台应用挂载环境 CA，CA 必须在应用就绪前发布。客户端 `agentos-<identity>` 的标识与密钥分别保存在平台 `<environment>-<identity>` 和环境网关同名身份 Secret 中，键为 `client-id`、`client-secret`。
+客户端 `agentos-<identity>` 的标识与密钥分别保存在平台 `<environment>-<identity>` 和环境网关同名身份 Secret 中，键为 `client-id`、`client-secret`。
+环境与连接 Chart 声明 AccessPlan，控制器统一编译工具范围和原生派生资源。Preset 从编译结果补齐默认工具绑定；原生控制器负责发现与刷新，逐调用授权见[执行授权](execution-authorization.md)。
 
 环境令牌的 audience 为 `gateway_resource`。平台网关使用原生 HTTP 外部鉴权为每次上游请求设置令牌，包括初始化通知、SSE 建连与会话清理；ExtMCP 单独校验工具授权。用户执行请求采用 RFC 8693 并保留原用户 `sub`；服务执行和控制器发现采用 client credentials。外部鉴权由网关经 dataplane 的私有 h2c 端口 9090 调用。路径 `/mcp/<identity>/<service>` 校验 `azp == agentos-<identity>`。环境网关按 RFC 9728 发布受保护资源元数据。
 
@@ -82,47 +79,10 @@ environment_connectors:
 
 agentgateway 按 MCP SEP-414 将 W3C 上下文同步到 MCP `_meta`。Baggage 用于关联与幂等，身份以可验证令牌为准。API 令牌目标的原生审计记录服务账号，平台执行记录保留实际发起人。
 
-## 站点变量
-
-`environments` 组每台主机声明一套环境，`ansible_host` 为平台访问网关的地址。
-
-| 变量 | 说明 |
-| --- | --- |
-| `environment_name` | 对应 `global.agentos.environments` |
-| `environment_issuer` | HTTPS OIDC issuer |
-| `environment_domain` | 网关 DNS 名称所属域 |
-| `environment_kubeconfig` | 默认 `.cache/environments/<name>/kubeconfig.yaml` |
-| `gateway_server_name` | 默认 `<environment>-mcp.<domain>`，用于证书 SAN 与上游 SNI |
-| `gateway_resource` | 默认 `https://<gateway_server_name>:31000/mcp`，作为 OAuth audience |
-| `agentos_values_file` | 包含 `global.agentos` 的方案 Chart 值文件 |
-| `environment_connectors` | 连接器后端定义 |
-| `platform_cidr` | 允许访问环境网关的平台地址段 |
-| `platform_kubeconfig` | 平台集群访问配置 |
-| `registry_config_file` | 可选，镜像拉取凭据 Docker JSON |
-| `environment_chart_repository`、`environment_chart_version` | 已验签 collection 固化的 OCI Chart 仓库与平台版本 |
-| `environment_state` | `present` 或 `absent`，控制所属环境 release 生命周期 |
-
-```sh
-ansible-playbook agentos.platform.access -i <site>/environments.yaml -e @<site>/environments-vars.yaml
-ansible-playbook agentos.platform.connections -i <site>/environments.yaml -e @<site>/environments-vars.yaml
-```
-
-环境与连接 Chart 声明 AccessPlan，控制器统一编译工具范围和原生派生资源。
-Preset 从编译结果补齐默认工具绑定；原生控制器负责发现与刷新，逐调用授权见[执行授权](execution-authorization.md)。
-
 ## 资源归属与生命周期
 
 目标环境每套一个 `agentos-environment` release，拥有证书声明、网关、身份路由和网络策略。平台工作空间只有一个 `agentos-connections` release，
 拥有环境 AccessPlan 和 CA 声明，统一处理环境增删；控制器拥有派生连接。连接 release 在应用启动前发布 CA 与配置，原生 kagent 与 Substrate 基础设施须已就绪。
 
 Chart 管理对象由 Helm 回收，预置连接在控制台只读。平台创建的连接、可编辑 AgentTemplate 与目标系统的凭据分别由平台、原生 kagent API 与环境管理。
-未修改的 AgentTemplate 随 Preset 更新，用户编辑或取得所有权后保留修改与删除结果。共享连接 release 使用完整环境 inventory；退役环境以 `environment_state: absent` 显式声明。
-
-身份变更按以下顺序执行：
-
-1. 方案包调用 `agentos.platform.lifecycle`，读取上一版环境 release，识别退役身份。
-2. 环境通过目标系统原生 API 撤销对应 OAuth 客户端、角色、API 令牌及凭据 Secret。
-3. 更新环境 release，再更新平台连接 release；控制器回收已移除的路由、工具视图与注册，Helm 回收 CA 声明。
-4. 应用值和连接配置同步后，检查原生发现、OBO、角色工具范围与撤销结果。
-
-回退使用已发布 Chart 及完整站点值，Helm 处理其管理资源。原生身份权限与平台模板按目标版本的明确配置恢复。
+未修改的 AgentTemplate 随 Preset 更新，用户编辑或取得所有权后保留修改与删除结果。
