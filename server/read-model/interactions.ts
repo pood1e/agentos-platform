@@ -7,7 +7,7 @@ import {
   InteractionSchema,
 } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
-import type { HitlTool } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import type { HitlTool } from "../../gen/kagent/api/v1/interactions_pb.js";
 import type { Approval, CallEntry } from "./calls.js";
 import { approvalDecisions } from "./decode/approval-decisions.js";
 import { type HitlPayload, hitlExtension, hitlPayload, isHitlResponse } from "./decode/hitl.js";

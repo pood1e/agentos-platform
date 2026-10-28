@@ -11,5 +11,7 @@ CI 在 PostgreSQL 18/pgvector 上验证范围隔离、删除、原生持久化�
 
 上游提交：[Actor 身份头 #3401](https://github.com/kagent-dev/kagent/pull/3401)、[Memory 身份范围 #3402](https://github.com/kagent-dev/kagent/pull/3402)、[Harness 工具约束 #3403](https://github.com/kagent-dev/kagent/pull/3403)、[准备策略 #3404](https://github.com/kagent-dev/kagent/pull/3404)。所选发布版本包含能力并通过站点回归后移除对应补丁。
 
+原生持久化入口通过携带原始 Actor JWT 的 `SessionService.GetSession` 获取当前会话，身份认证及 Actor 绑定由 kagent 校验。自定义网关 audience 的凭据由对应接入层校验。可配置运行时授权扩展见 [#3413](https://github.com/kagent-dev/kagent/pull/3413)，用于让现有 authorizer 同时约束 Actor 的持久化调用。
+
 原生子任务续接由 [#3244](https://github.com/kagent-dev/kagent/issues/3244) 跟踪，发布版本具备同等能力并通过回归后，由原生链路替代平台续接协调。
-HITL 与工具调用元数据随上游公开协议收敛，平台补充定义位于 `proto/agentos/kagent/v1/wire.proto`。
+HITL、工具调用元数据与协作 MCP 类型采用 kagent 的 `kagent.api.v1` proto，源码及版本记录位于 [third_party/kagent](../../third_party/kagent/README.md)。

@@ -11,7 +11,12 @@ import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import { text } from "../read-model/decode/messages.js";
 import { requiredEnv } from "../shared/config.js";
-import { actorTokenHeader, actorVerifier, runtimeIdentity } from "./actor.js";
+import {
+  actorTokenHeader,
+  actorVerifier,
+  nativeRuntimeIdentity,
+  runtimeIdentity,
+} from "./actor.js";
 import type { EnvironmentTokens } from "./environment-tokens.js";
 import type { ExecutionAccess } from "./execution.js";
 import { mcpAuthorization } from "./mcp.js";
@@ -58,12 +63,7 @@ export function executionRuntime(
   const keys = createRemoteJWKSet(new URL("/openid/v1/jwks", issuer));
   const verifyActor = actorVerifier(keys, issuer, audience);
   const resolve = runtimeIdentity(verifyActor, substrate, clients.sessions, workspaces);
-  const resolveRuntime = runtimeIdentity(
-    actorVerifier(keys, issuer, "kagent-runtime"),
-    substrate,
-    clients.sessions,
-    workspaces,
-  );
+  const resolveRuntime = nativeRuntimeIdentity(clients.sessions, workspaces);
   const actor = async (
     headers: Record<string, string | string[] | undefined>,
     audience?: string,

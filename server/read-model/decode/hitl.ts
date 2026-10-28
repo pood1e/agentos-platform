@@ -9,7 +9,7 @@ import {
   ToolApprovalRequestSchema,
   type ToolApprovalResponse,
   ToolApprovalResponseSchema,
-} from "../../../gen/agentos/kagent/v1/wire_pb.js";
+} from "../../../gen/kagent/api/v1/interactions_pb.js";
 import { object, timelineKey } from "./messages.js";
 
 export const hitlExtension = "https://kagent.dev/extensions/hitl/v1";

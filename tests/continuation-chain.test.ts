@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { type Message, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { InvokeSessionOutputSchema } from "../gen/agentos/kagent/v1/wire_pb.js";
+import { InvokeSessionOutputSchema } from "../gen/kagent/api/v1/collaboration_pb.js";
 import { resumedTaskKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { continuations } from "../server/team-sessions/continuation.js";

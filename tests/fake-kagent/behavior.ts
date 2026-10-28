@@ -14,7 +14,7 @@ import {
   TaskState,
 } from "../../gen/a2a_pb.js";
 import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
-import { InvokeSessionOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { InvokeSessionOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import {
   messageText,
   parentTaskKey,

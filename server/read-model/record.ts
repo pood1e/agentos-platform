@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { fromJson, type JsonObject, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { InteractionSchema } from "../../gen/agentos/console/v1/task_pb.js";
-import { InvokeSessionOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { InvokeSessionOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import type { CallEntry } from "./calls.js";
 import type { TaskEntry } from "./entry.js";
 

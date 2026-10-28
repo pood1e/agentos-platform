@@ -3,7 +3,7 @@ syntax = "proto3";
 package agentos.execution.v1;
 
 import "agentos/execution/v1/task.proto";
-import "agentos/kagent/v1/wire.proto";
+import "kagent/api/v1/collaboration.proto";
 import "buf/validate/validate.proto";
 import "kagent/api/v1/common.proto";
 
@@ -26,7 +26,7 @@ message GetExecutionRequest {
 }
 
 message GetExecutionResponse {
-  agentos.kagent.v1.InvokeSessionOutput execution = 1;
+  .kagent.api.v1.InvokeSessionOutput execution = 1;
   repeated TaskRun runs = 2;
   .kagent.api.v1.PageResponse page = 3;
 }

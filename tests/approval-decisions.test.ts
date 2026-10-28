@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { ApprovalSchema } from "../gen/agentos/governance/v1/governance_pb.js";
-import { ToolApprovalResponseSchema } from "../gen/agentos/kagent/v1/wire_pb.js";
+import { ToolApprovalResponseSchema } from "../gen/kagent/api/v1/interactions_pb.js";
 import {
   approvalDecisions,
   withApprovalDecisions,

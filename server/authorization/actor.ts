@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { type Client, Code, ConnectError } from "@connectrpc/connect";
-import { type JWTPayload, type JWTVerifyGetKey, jwtVerify } from "jose";
+import { decodeJwt, type JWTPayload, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { type Control, ResourceMetadataSchema } from "../../gen/ateapi_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
@@ -87,6 +87,36 @@ export function runtimeIdentity(
       session.agent?.namespace !== identity.atespace
     )
       throw denied();
+    return session;
+  };
+}
+
+/** Native persistence credentials are authenticated and bound by kagent. */
+export function nativeRuntimeIdentity(
+  sessions: KagentClients["sessions"],
+  workspaces: ReadonlySet<string>,
+) {
+  return async (token: string): Promise<Session> => {
+    let actorName: unknown;
+    try {
+      const claims = decodeJwt(token)["actor.ate.dev"];
+      if (claims && typeof claims === "object" && !Array.isArray(claims))
+        actorName = (claims as Record<string, unknown>).actorName;
+    } catch {
+      throw denied();
+    }
+    if (
+      typeof actorName !== "string" ||
+      !/^session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(actorName)
+    )
+      throw denied();
+    const id = actorName.slice("session-".length);
+    // Unverified claims only select the lookup. The original credential must pass native authentication.
+    const { session } = await sessions.getSession(
+      { sessionId: id },
+      { timeoutMs: 5_000, headers: { authorization: `Bearer ${token}` } },
+    );
+    if (session?.id !== id || !workspaces.has(session.agent?.namespace ?? "")) throw denied();
     return session;
   };
 }

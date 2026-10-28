@@ -17,8 +17,10 @@ export function kagentTransport(config: KagentConfig): Transport {
     interceptors: [
       rpcMetrics("client"),
       (next) => (request) => {
-        if (!request.header.has("X-User-Id")) request.header.set("X-User-Id", config.userId);
-        if (config.token) request.header.set("Authorization", `Bearer ${config.token}`);
+        if (!request.header.has("Authorization")) {
+          if (!request.header.has("X-User-Id")) request.header.set("X-User-Id", config.userId);
+          if (config.token) request.header.set("Authorization", `Bearer ${config.token}`);
+        }
         return next(request);
       },
     ],

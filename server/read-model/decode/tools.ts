@@ -4,8 +4,8 @@ import { type Part, SendMessageResponseSchema } from "../../../gen/a2a_pb.js";
 import {
   type InvokeSessionOutput,
   InvokeSessionOutputSchema,
-  ToolActivitySchema,
-} from "../../../gen/agentos/kagent/v1/wire_pb.js";
+} from "../../../gen/kagent/api/v1/collaboration_pb.js";
+import { ToolActivitySchema } from "../../../gen/kagent/api/v1/interactions_pb.js";
 import { object, partTypeKey, text } from "./messages.js";
 
 const lenient = { ignoreUnknownFields: true };
