@@ -12,3 +12,4 @@
 CI 验证规则、事务回滚、首次准备与普通会话隔离、隧道生命周期和 microVM，再从同版本官方镜像替换 API 与 worker 二进制。Substrate 出站网关采用同版本官方 Chart 固定的 agentgateway 镜像；业务 MCP 网关由平台 Gateway 配置管理。
 
 镜像摘要固定在 `deploy/vars.yaml`。kagent 的协议适配位于 `runtime/kagent/platform.patch`。
+所选发布版本包含上述修复并通过站点回归后，移除对应本地补丁。

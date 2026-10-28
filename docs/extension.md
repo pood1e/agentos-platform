@@ -25,10 +25,10 @@
 同样列入方案包的 `toolsets.readOnly`。目录路由提供视图元数据与模板，Agent 路由保留可见性并移除资源 URI，分析结果继续进入模型。
 
 卡片默认折叠，展开后加载 View。宿主使用当前查看者凭证，经原调用 Agent 的环境身份调用同一服务的只读工具；
-写操作、跨服务访问与仅模型可见工具均拒绝。`ui/message` 只预填聊天输入框；链接限 `http(s)`。
+回调范围限定为同服务、含 `app` 可见性的只读工具。`ui/message` 只预填聊天输入框；链接限 `http(s)`。
 
 站点在平台 Chart 配置 `route.hosts.sandbox`，并在站点 Gateway 上准备对应 DNS 与证书。
-View 使用规范默认 CSP，仅可显式申请 `data:` 静态资源，无直接网络出口。接入与验证见[对话视图](mcp-app.md)。
+View 使用规范默认 CSP，可显式申请 `data:` 静态资源，数据访问经宿主工具回调。接入与验证见[对话视图](mcp-app.md)。
 
 ## 系统任务
 
@@ -53,7 +53,7 @@ MCP 接入目录展示供 Agent 调用的工具服务。自动化事件入口使
 
 ## 模型用途
 
-模型接入通过 `AgentgatewayModel` 的 `agentos.dev/model-purpose` 注解区分 `language` 与 `embedding`，未声明时为对话模型。用途随接入同步到原生 `ModelConfig`；模型页面按用途查询、分页和展示，向量模型用于知识记忆，不参与聊天 Harness 的模型选择。
+模型接入通过 `AgentgatewayModel` 的 `agentos.dev/model-purpose` 注解区分 `language` 与 `embedding`，未声明时为对话模型。用途随接入同步到原生 `ModelConfig`；模型页面按用途查询、分页和展示，向量模型用于知识记忆，对话模型用于聊天 Harness。
 
 ## 任务标签
 
@@ -68,7 +68,7 @@ MCP 接入目录展示供 Agent 调用的工具服务。自动化事件入口使
 | `assistant` | 默认聊天入口，由平台 Chart 管理；可通过 `entryAgent` 选择其他入口 |
 | `role-builder` | 角色构建，由平台 Chart 管理 |
 
-`agentos.dev/role` 的业务角色键不限制执行拓扑。默认任务按原生 task 分组；需要把多轮执行展示为一个任务的 Agent 设置注解 `agentos.dev/task-scope: session`。
+角色键用于展示与身份档案，执行拓扑取自原生 task 和 session。默认任务按原生 task 分组；需要把多轮执行展示为一个任务的 Agent 设置注解 `agentos.dev/task-scope: session`。
 
 注解 `agentos.dev/display-name` 与 `agentos.dev/description` 是用户在控制台修改的显示名与说明，优先于方案包文案。
 
@@ -103,10 +103,10 @@ global:
 | `operate` | `readOnly` | `write` |
 | `manage` | `readOnly`、`managementReadOnly` | `management` |
 
-`operate` 与 `manage` 分别表示运行操作和资源管理权限，管理身份不隐含运行执行权限。方案包按职责选择对应权限集。所有写调用仍受发起人的写权限及目标系统原生权限限制。
+`operate` 与 `manage` 分别表示运行操作和资源管理权限，两个级别使用各自独立的工具集合。方案包按职责选择对应权限集。所有写调用仍受发起人的写权限及目标系统原生权限限制。
 
-身份 `catalog` 为平台保留，用于发现各服务的工具，须对每个服务有只读访问。`approval` 环境中，`approval` 列出的写绑定工具以 kagent 原生 `requireApproval` 暂停；目标系统自行审批的写工具可不列入。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
-`skillRepository` 设置后，平台的只读 Skill 网关代理该 Git 仓库并由 agentgateway 注入凭据，Agent 不持有仓库凭据。
+身份 `catalog` 为平台保留，用于发现各服务的工具，须对每个服务有只读访问。`approval` 环境中，`approval` 列出的写绑定工具以 kagent 原生 `requireApproval` 暂停；该列表显式声明由平台确认的写操作。平台服务（team-sessions、kagent 会话 MCP）的分级由平台维护。
+`skillRepository` 设置后，平台的只读 Skill 网关代理该 Git 仓库，由 agentgateway 注入仓库凭据。
 
 业务角色以模板文件提供，方案包 Chart 调用平台模板渲染，预置中可用 `agentos.presetSkill` 引用目录中的 Skill，完整示例见
 [示例方案 Chart](../tests/fixtures/solution-chart)：
@@ -130,7 +130,7 @@ global:
 | `tools[]` | `match` 匹配工具名或服务名的正则；`name` 品牌名；`icon` 图标；`monochrome` 暗色模式反色 |
 | `locales` | 按语言的 i18next 资源，按命名空间覆盖平台文案，如角色名 `translation.role.<role>` 与工具标签 `tools.catalog.<tool>` |
 
-资源路径相对方案包目录，不允许 `..` 与绝对路径。部署时，方案包把 `pack.json` 与资源放在镜像的 `/pack` 下，镜像须提供 `cp`
+资源使用方案包目录内的相对路径。部署时，方案包把 `pack.json` 与资源放在镜像的 `/pack` 下，镜像须提供 `cp`
 （如基于 busybox）；平台 Chart 设置 `pack.image`（摘要固定）后，由 init 容器复制到 console。
 
 ## 环境
@@ -150,9 +150,9 @@ global:
 | `PrepareApproval` | 核验决定并准备本次执行 |
 | `RecordApprovalResult` | 接收原生调用结果；重试保持幂等 |
 
-批准返回 `SUCCEEDED`，拒绝返回 `REJECTED` 或 `CANCELED`，等待返回 `AWAITING_APPROVAL`。结果通过通用 `Approval` 展示状态、理由、决定者、链接与说明。外部请求失败时任务继续暂停，浏览器不能覆盖该服务的决定；同次原生工具暂停采用同一类决定来源。
+批准返回 `SUCCEEDED`，拒绝返回 `REJECTED` 或 `CANCELED`，等待返回 `AWAITING_APPROVAL`。结果通过通用 `Approval` 展示状态、理由、决定者、链接与说明。外部请求失败时任务继续暂停，该服务的决定作为审批来源；同次原生工具暂停采用同一类决定来源。
 
-业务服务维护自身的业务协议、数据库、鉴权与执行守卫。AIOps 的 ChangePlan、Zammad 角色核验、`prepare_change` 与 ExtMCP 守卫由 aiops-mvp 提供，平台不解释这些业务字段。Node SDK `@agentos/contracts` 与 Python `agentos-contracts` 发布同一组 proto 生成代码；方案包引用 SDK 的 proto 源码生成业务协议。
+业务服务维护自身的业务协议、数据库、鉴权与执行守卫。AIOps 的 ChangePlan、Zammad 角色核验、`prepare_change` 与 ExtMCP 守卫由 aiops-mvp 提供，业务字段由提供方解释。Node SDK `@agentos/contracts` 与 Python `agentos-contracts` 发布同一组 proto 生成代码；方案包引用 SDK 的 proto 源码生成业务协议。
 
 ## 运行时图标
 
@@ -181,7 +181,7 @@ Harness 列表、选择器与编辑器共用运行时图标。kagent 沿用仓�
 }
 ```
 
-案例键为事件 `source` 与 `keyField` 取值，版本为 JetStream 序号，状态不区分大小写。`activeStates` 交 `trigger.agent` 选择的工作空间 Agent 处理，同一案例复用原生会话，
+案例键为事件 `source` 与 `keyField` 取值，版本为 JetStream 序号，状态按大小写归一化。`activeStates` 交 `trigger.agent` 选择的工作空间 Agent 处理，同一案例复用原生会话，
 重试以确定性 messageId 幂等；超过 `timeoutSeconds` 取消前台任务并升级。`resolvedStates` 记为来源已恢复，其余状态只登记。
 事实发布为 `<namespace>.cases.updated`、`<namespace>.findings.proposed`、`<namespace>.findings.escalated`与 `<namespace>.feedback.recorded`，源为 `/<namespace>/<environment>`。
 

@@ -1,12 +1,11 @@
 # 真实组件验证
 
-本目录覆盖原生 microVM、网关、身份提供方和目标 API。验证记录见[身份与授权链路验证](../../docs/authorization-validation.md)。
+本目录覆盖原生 microVM、网关、身份提供方和目标 API。验证记录见[身份与授权](authorization.md)、[工作负载身份](workload-identity.md)和[环境 Chart](environment-charts.md)。
 
 ## 原生运行时与 MCP
 
 验证环境需要 kagent、Substrate、可用模型、标准 Harness、agentgateway，以及支持 ActorJWTSource 的宿主机出站网关。
-已验证的出站镜像为 `gsoci.azurecr.io/giantswarm/agentgateway-upstream/agentgateway:2.6.3@sha256:dbca0e92a69ba08a6ca28e471495df846ca35e55b9fbe91234187e17b6409a5a`。
-Actor issuer 使用原生签名池与 JWKS 服务；缺少该服务的 0.5.0-alpha2 验证环境可使用 `tests/fixtures/authorization/runtime-issuer.yaml`。
+Actor issuer 使用原生签名池与 JWKS 服务，隔离验证的签发服务模板为 `tests/fixtures/authorization/runtime-issuer.yaml`。
 
 渲染变量：
 
@@ -56,7 +55,7 @@ npx tsx tests/proofs/native-client.ts
 ```
 
 客户端创建独立 Session，在其已声明目标上配置五分钟 Actor JWT 注入，执行工具并核对原生工具结果；随后暂停、恢复并再次执行。
-同一连接中验证允许与拒绝调用，拒绝后比较接收端计数。参数中附带的伪造身份不参与判定。客户端最后删除自己创建的 Session，保留失败原因与清理异常。
+同一连接中验证允许与拒绝调用，拒绝后比较接收端计数。身份判定取自签名声明与原生状态。客户端最后删除自己创建的 Session，保留失败原因与清理异常。
 接收服务只输出验证元数据与计数，令牌留在 HTTP 头和受信组件中。issuer 与 audience 分别匹配原生签发方和包含明确端口的目标 origin。
 
 ## Keycloak Token Exchange
@@ -76,7 +75,7 @@ npx tsx tests/proofs/keycloak-exchange.ts
 
 ## NetBox 服务身份桥接
 
-凭据文件使用现有只读服务 Token，连接通过 HTTPS。写检查使用不存在的对象 ID，权限配置错误也不会修改现有对象。
+凭据文件使用现有只读服务 Token，连接通过 HTTPS。写权限探测使用测试对象 ID `0`，验证权限校验先于对象查找。
 
 ```sh
 PROOF_NETBOX_URL=https://inventory.example.test \

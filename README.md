@@ -1,16 +1,16 @@
 # AgentOS Platform
 
-以 [kagent](https://kagent.dev) 1.0 为底座、与具体业务无关的 AgentOS 平台。平台负责 Agent 团队的运行、协作、受治理的工具访问、团队知识、
-Skill 目录、模型接入与控制台；业务以方案包提供团队、Skill、工具分级、环境连接器与文案，不修改平台代码。
+基于 [kagent](https://kagent.dev) 的 AgentOS 平台，提供 Agent 团队协作、工具治理、团队知识、Skill 管理与控制台。
+业务通过方案包配置角色、工具、环境连接器与界面展示。
 
-| 平台负责 | 方案包负责 |
-| --- | --- |
-| kagent、Agent Substrate、agentgateway 的固定版本与必要补丁 | 业务角色（AgentTemplate / Agent）、提示词与 Harness 选择 |
-| 控制台、协作服务（team-sessions）、原生工具确认 | Skill 内容 |
-| 环境网关的身份映射、读写工具视图 | 各连接器 MCP 的工具分级与角色访问级别 |
-| 原生 HITL 与可选的外部审批协议 | 业务审批服务、执行守卫、环境连接器与目标系统 |
-| 团队知识（原生记忆、嵌入模型）、Skill 目录、模型接入 | 角色名、头像、工具标签与图标 |
-| 平台 Chart、环境套件与部署 | 业务 Chart 值与部署变量 |
+- **运行与协作**：microVM 执行环境、Agent 委派、会话与任务、定时执行。
+- **工具治理**：执行身份、工具分级、原生工具确认、环境身份映射与外部审批。
+- **交互与扩展**：模型接入、团队知识、Skill 目录、MCP Apps 与语音。
+
+## 部署
+
+参考部署使用 Ansible collection 安装 K3s、原生运行时与平台 Chart，Agent 运行节点需支持 KVM。
+制品验签、站点变量与安装步骤见[构建与部署](docs/delivery.md)，目标系统接入见[环境接入](docs/environments.md)。
 
 ## 开发
 
@@ -21,11 +21,13 @@ mise install --locked
 docker compose up --wait
 export CHANGE_TEST_DATABASE_URL='postgresql://postgres:agentos-dev@localhost:55432/agentos?sslmode=disable'
 mise exec -- npm ci
-mise exec -- npm run verify    # 生成、构建、静态检查与单元测试
+mise exec -- npm run verify
 docker compose down
 ```
 
-前端开发连接已部署的平台 API。复制 `.env.example` 为 `.env`，设置 API 地址与 Bearer 令牌后启动：
+`npm run verify` 执行生成、构建、静态检查与单元测试。
+
+前端开发连接已部署的平台 API。复制 [`.env.example`](.env.example) 为 `.env`，设置 API 地址与 Bearer 令牌后启动：
 
 ```sh
 set -a
@@ -34,18 +36,18 @@ set +a
 mise exec -- npm run dev
 ```
 
-开发代理将 `AGENTOS_API_TOKEN` 注入 API 请求。本地 API 调试通过 `npm run server` 启动，依赖 PostgreSQL、Kubernetes、OIDC 与原生运行时；配置见 [API Deployment](charts/agentos/templates/console-deployment.yaml)。
+开发代理将 `AGENTOS_API_TOKEN` 注入 API 请求。本地 API 调试使用 `mise exec -- npm run server`，依赖 PostgreSQL、Kubernetes、OIDC 与原生运行时；配置见 [API Deployment](charts/agentos/templates/console-deployment.yaml)。
 
 ## 文档
 
-- [实施计划](plan.md)：当前能力与后续优先级
-- [架构](docs/architecture.md)：组件、调用链路、部署形态与安全边界
-- [代码导航](docs/code-navigation.md)：目录与模块职责
-- [构建与部署](docs/delivery.md)：CI、发布与单节点参考部署
-- [执行授权](docs/execution-authorization.md)：用户身份、运行时边界、工具授权与 OBO
-- [环境接入](docs/environments.md)：环境网关、身份绑定与可选审批服务
-- [扩展契约](docs/extension.md)：方案包可提供的内容与格式
-- [架构收敛重构](refactor.md)：目标架构与两份并行计划（[平台服务](refactor-services.md)、[Kubernetes 编排与交付](refactor-kubernetes.md)）
+| 主题 | 文档 |
+| --- | --- |
+| 架构与源码 | [架构](docs/architecture.md)、[代码导航](docs/code-navigation.md)、[Kubernetes 控制器](docs/kubernetes-controller.md) |
+| 构建与部署 | [构建、发布与站点配置](docs/delivery.md) |
+| 授权与环境 | [执行授权](docs/execution-authorization.md)、[环境接入](docs/environments.md) |
+| 业务扩展 | [扩展契约](docs/extension.md)、[MCP Apps](docs/mcp-app.md) |
+| 语音 | [听写、朗读与 LiveKit 通话](docs/speech.md) |
+| 后续演进 | [实施计划](plan.md)、[后续架构](refactor.md) |
 
 ## 许可证
 

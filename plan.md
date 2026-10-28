@@ -2,35 +2,24 @@
 
 ## 当前能力
 
-平台提供统一聊天助手、A2A 委派、MCP 工具访问、团队知识、Skill、模型和 Harness 管理、系统任务及可选语音。个人任务在聊天中展示，系统任务的执行记录以只读会话向管理员展示。
+平台提供统一聊天助手、A2A 委派、MCP 工具访问、团队知识、Skill、模型和 Harness 管理、系统任务及可选语音。
+平台 API 使用 Bearer 令牌；身份源为内置站点密码或外部 OIDC，用户会话与执行历史按发起人隔离。
 
-- 平台 API 只接受 Bearer 令牌；身份源为内置站点密码或外部 OIDC，用户会话与执行历史按发起人隔离。
-- 平台资源按应用角色授权；目标系统权限由用户 OBO、Agent 工具绑定和环境身份共同限制。
-- 后台执行使用原始用户的离线授权，浏览器退出不撤销任务；执行取消撤销整个委派树。
-- 任务与调用状态来自 kagent 原生协议和读模型；业务测评由平台外流程交付。
-- 可选 OpenTelemetry 遥测通过 OTLP 接入站点接收端，默认关闭导出与内容采集。
-- 方案包提供业务 Agent、Skill、工具分级与展示资源；运维环境提供身份源、连接器、目标账号及业务审批。
+执行绑定、凭据和读投影保存在 PostgreSQL。AccessPlan 与 Preset 统一管理工具授权和方案资源。
+镜像、Chart 与部署 collection 使用 OCI 和 cosign，契约通过 npm / PyPI 注册表发布。
 
 现行边界见[架构](docs/architecture.md)、[执行授权](docs/execution-authorization.md)与[扩展契约](docs/extension.md)。
 
-## 维护与交付
+## 后续工作
 
-架构收敛按 [refactor.md](refactor.md) 分两份计划同时推进，已删除轨迹视图与浏览器 e2e：
-
-| 计划 | 单元 | 内容 | 状态 |
-| --- | --- | --- | --- |
-| [平台服务](refactor-services.md) | 1.1 | 执行存储：结构化绑定与凭据信封加密 | 已实现 |
-| | 1.2 | 身份与前端解耦：Bearer API、oauth2-proxy console、离线委派与密码身份源 | 已实现 |
-| | 1.3 | PostgreSQL 读投影 | 已实现 |
-| | 1.4 | api、dataplane、worker 进程拆分 | 待实施 |
-| | 1.5 | 语音单链路 | 待实施 |
-| [Kubernetes 编排与交付](refactor-kubernetes.md) | 2.1 | 平台控制器：AccessPlan、连接派生与方案预置 | 已实现 |
-| | 2.2 | OCI 与注册表交付 | 已实现 |
-| | 持续 | kagent、Substrate 上游能力收敛 | 按发布版本验证 |
+| 工作 | 内容 |
+| --- | --- |
+| [进程拆分](refactor.md#进程拆分) | api、dataplane、worker 独立部署与观测 |
+| [语音单链路](refactor.md#语音单链路) | LiveKit Agents 承载听写、朗读、通话与轮次编排 |
+| [逐资源授权](refactor.md#逐资源授权) | 团队、分享、继承与撤销 |
+| [运维与上游](refactor.md#运维与上游) | 持续备份、密钥轮换、运行时版本回归与补丁收敛 |
 
 ## 后续产品能力
 
 - 团队知识的文本文件导入。
 - 配置版本历史与回滚。
-
-功能扩展保持统一助手入口、用户数据隔离、原始发起人授权与业务方案边界。
