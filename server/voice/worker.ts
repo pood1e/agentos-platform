@@ -1,8 +1,8 @@
-import { create } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
 import { Code, ConnectError, type Interceptor, type ServiceImpl } from "@connectrpc/connect";
 import { TaskState } from "../../gen/a2a_pb.js";
 import { SendMessageRequestSchema } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { VoiceMode } from "../../gen/agentos/console/v1/speech_pb.js";
+import { SpeechConfigurationSchema, VoiceMode } from "../../gen/agentos/console/v1/speech_pb.js";
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import {
   GetVoiceAnswerResponseSchema,
@@ -41,6 +41,7 @@ export function voiceWorker(
 
 export interface VoiceWorkerDependencies {
   settings: SpeechSource;
+  gatewayURL: string;
   sessions: VoiceSessions;
   projection: TaskQueries;
   clients: KagentClients;
@@ -53,6 +54,7 @@ export interface VoiceWorkerDependencies {
 
 export function voiceService({
   settings,
+  gatewayURL,
   sessions,
   projection,
   clients,
@@ -85,14 +87,16 @@ export function voiceService({
   return {
     async getVoiceSession({ sessionId }) {
       const value = await session(sessionId);
-      const { configuration, transcriptionCredential, synthesisCredential } = await settings();
+      const configuration = clone(SpeechConfigurationSchema, (await settings()).configuration);
+      if (configuration.transcription?.endpoint)
+        configuration.transcription.endpoint.baseUrl = `${gatewayURL}/speech/transcription/v1`;
+      if (configuration.synthesis?.endpoint)
+        configuration.synthesis.endpoint.baseUrl = `${gatewayURL}/speech/synthesis`;
       return {
         mode: value.mode,
         languageCode: value.languageCode,
         speech: value.text ? { text: value.text, languageCode: value.languageCode } : undefined,
         configuration,
-        transcriptionCredential,
-        synthesisCredential,
       };
     },
     async sendVoiceTurn({ sessionId, messageId, text }) {

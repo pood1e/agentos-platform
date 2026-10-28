@@ -12,20 +12,34 @@ from livekit.agents import APIConnectionError, stt
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
 from livekit.plugins import deepgram
 
+from agentos_voice.gateway import gateway_session
 
-def transcriber(settings: SpeechTranscription, credential: str, language: str) -> stt.STT:
+
+def transcriber(settings: SpeechTranscription, token_file: str, language: str) -> stt.STT:
     if settings.protocol == SpeechTranscription.PROTOCOL_WHISPERLIVEKIT:
-        return WhisperLiveKitSTT(settings.endpoint.base_url, credential, language)
-    return deepgram.STT(
-        api_key=credential,
-        base_url=settings.endpoint.base_url.removesuffix("/v1"),
+        return WhisperLiveKitSTT(settings.endpoint.base_url, token_file, language)
+    return GatewayDeepgramSTT(
+        token_file=token_file,
+        base_url=settings.endpoint.base_url.rstrip("/") + "/listen",
         model=settings.model,
         language=language or "multi",
     )
 
 
+class GatewayDeepgramSTT(deepgram.STT):
+    def __init__(self, token_file: str, **kwargs):
+        self.http = gateway_session(token_file, kwargs["base_url"])
+        super().__init__(api_key="gateway", http_session=self.http, **kwargs)
+
+    async def aclose(self):
+        try:
+            await super().aclose()
+        finally:
+            await self.http.close()
+
+
 class WhisperLiveKitSTT(stt.STT):
-    def __init__(self, endpoint: str, credential: str, language: str):
+    def __init__(self, endpoint: str, token_file: str, language: str):
         super().__init__(
             capabilities=stt.STTCapabilities(
                 streaming=True, interim_results=True, offline_recognize=False
@@ -36,12 +50,13 @@ class WhisperLiveKitSTT(stt.STT):
             (
                 "wss" if parts.scheme == "https" else "ws",
                 parts.netloc,
-                "/asr",
+                parts.path.removesuffix("/v1").rstrip("/") + "/asr",
                 urlencode({"language": language}) if language else "",
                 "",
             )
         )
-        self.headers = {"Authorization": f"Bearer {credential}"} if credential else {}
+        self.token_file = token_file
+        self.endpoint = endpoint
         self.language = language
         self.streams: weakref.WeakSet[WhisperStream] = weakref.WeakSet()
 
@@ -73,15 +88,13 @@ class WhisperStream(stt.RecognizeStream):
     async def _run(self):
         try:
             more = True
-            async with aiohttp.ClientSession(
-                headers=self.provider.headers,
-                timeout=aiohttp.ClientTimeout(total=None, sock_connect=10),
-            ) as client:
+            async with gateway_session(self.provider.token_file, self.provider.endpoint) as client:
                 while more:
                     async with client.ws_connect(
                         self.provider.url,
                         max_msg_size=1024 * 1024,
                         heartbeat=20,
+                        timeout=aiohttp.ClientWSTimeout(ws_close=10),
                     ) as socket:
                         # FFmpeg accepts a WAV header with an unspecified final size.
                         await socket.send_bytes(

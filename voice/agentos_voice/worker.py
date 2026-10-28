@@ -80,7 +80,7 @@ class Voice:
     def transcriber(self):
         provider = transcriber(
             self.session.configuration.transcription,
-            self.session.transcription_credential,
+            os.environ["AGENTOS_TOKEN_FILE"],
             self.session.language_code,
         )
         self.ctx.add_shutdown_callback(provider.aclose)
@@ -88,7 +88,7 @@ class Voice:
 
     def synthesizer(self, language: str):
         provider = ConfiguredTTS(
-            self.session.configuration.synthesis, self.session.synthesis_credential, language
+            self.session.configuration.synthesis, os.environ["AGENTOS_TOKEN_FILE"], language
         )
         self.ctx.add_shutdown_callback(provider.aclose)
         return provider

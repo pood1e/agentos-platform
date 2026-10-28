@@ -15,10 +15,12 @@ import (
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"github.com/pood1e/agentos-platform/controller/internal/compile"
 	"github.com/pood1e/agentos-platform/controller/internal/connections"
+	"github.com/pood1e/agentos-platform/controller/internal/speech"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -122,6 +124,16 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal("user ownership not recorded")
 		}
 	})
+	t.Run("speech publishes service account verification keys from the API", func(t *testing.T) {
+		api, err := kubernetes.NewForConfig(config)
+		must(t, err)
+		issuer, jwks, err := speech.ServiceAccountTrust(t.Context(), api.Discovery().RESTClient())
+		must(t, err)
+		if issuer == "" || !json.Valid([]byte(jwks)) {
+			t.Fatal("missing service account verification material")
+		}
+	})
+	t.Run("speech uses native gateway authorization and credential references", func(t *testing.T) { testSpeech(t, c, scheme, ns.Name, config) })
 	t.Run("native connections use deployed gateway CRDs", func(t *testing.T) {
 		manager, err := ctrl.NewManager(config, ctrl.Options{
 			Scheme: scheme, Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{ns.Name: {}}},

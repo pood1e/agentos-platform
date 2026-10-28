@@ -38,6 +38,26 @@ tests:
         contains:
           path: spec.template.spec.containers[0].env
           content: {name: AGENTOS_VOICE_SUBJECT, value: 'system:serviceaccount:agentos:agentos-voice'}
+      - template: api-deployment.yaml
+        contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: AGENTOS_VOICE_GATEWAY_URL, value: 'http://agentos-mcp-gateway.agentos.svc.cluster.local:8080'}
+      - template: controller.yaml
+        documentSelector: {path: kind, value: Deployment}
+        contains:
+          path: spec.template.spec.containers[0].args
+          content: --speech-secret=agentos-speech
+      - template: controller.yaml
+        documentSelector: {path: kind, value: Deployment}
+        contains:
+          path: spec.template.spec.containers[0].args
+          content: --voice-subject=system:serviceaccount:agentos:agentos-voice
+      - template: gateway-networkpolicy.yaml
+        contains:
+          path: spec.ingress[0].from
+          content:
+            podSelector:
+              matchLabels: {app.kubernetes.io/instance: agentos, app.kubernetes.io/component: voice}
       - template: api-networkpolicy.yaml
         equal:
           path: spec.ingress[2]

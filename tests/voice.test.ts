@@ -38,8 +38,8 @@ const settings = async () => ({
       ],
     },
   }),
-  transcriptionCredential: "asr-key",
-  synthesisCredential: "tts-key",
+  transcriptionCredentialConfigured: true,
+  synthesisCredentialConfigured: true,
 });
 const agent = { namespace: "agentos", name: "assistant" };
 const signed = { headers: { authorization: "Bearer worker-token" } };
@@ -60,6 +60,7 @@ beforeAll(async () => {
   };
   const service = voiceService({
     settings,
+    gatewayURL: "http://speech-gateway:8080",
     sessions,
     projection: env.projection,
     clients: env.clients,
@@ -103,12 +104,20 @@ describe("voice sessions", () => {
       maxParticipants: 2,
       agents: [{ agentName: "agentos-voice" }],
     });
-    expect(await worker.getVoiceSession({ sessionId: reading.id }, signed)).toMatchObject({
+    const value = await worker.getVoiceSession({ sessionId: reading.id }, signed);
+    expect(value).toMatchObject({
       mode: VoiceMode.READ_ALOUD,
       speech: { text: "系统健康。 All good.", languageCode: "zh" },
-      transcriptionCredential: "asr-key",
-      synthesisCredential: "tts-key",
+      configuration: {
+        transcription: {
+          endpoint: { baseUrl: "http://speech-gateway:8080/speech/transcription/v1" },
+        },
+        synthesis: { endpoint: { baseUrl: "http://speech-gateway:8080/speech/synthesis" } },
+      },
     });
+    expect(JSON.stringify(value)).not.toMatch(
+      /credential|asr-key|tts-key|asr\.example|tts\.example/i,
+    );
     const dictation = await room({ mode: VoiceMode.DICTATION, languageCode: "en" });
     expect(dictation.claims.video).toMatchObject({
       canPublish: true,

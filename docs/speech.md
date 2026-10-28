@@ -8,8 +8,9 @@ flowchart LR
     Browser <-->|WebRTC 音频 · 转写流 · 事件| SFU[LiveKit Server]
     SFU <-->|agent dispatch · 音频| Voice[voice worker]
     Voice -->|VoiceService · 工作负载身份| API
-    Voice <-->|WebSocket 转写| ASR[ASR 服务]
-    Voice <-->|HTTP PCM 流| TTS[TTS 服务]
+    Voice <-->|工作负载 JWT| Gateway[agentgateway]
+    Gateway <-->|WebSocket · 注入供应商凭据| ASR[ASR 服务]
+    Gateway <-->|HTTP PCM · 注入供应商凭据| TTS[TTS 服务]
     API --> Kagent[kagent · OBO · MCP]
 ```
 
@@ -18,7 +19,8 @@ flowchart LR
 - `StartVoiceSession` 按听写、朗读或通话模式在 PostgreSQL 记录会话，签发只能加入该房间的 LiveKit 令牌，并通过 agent dispatch 调度 voice worker。
 - worker 以 ServiceAccount 投射令牌（受众 `agentos-voice`）调用 api 集群内端口 9093 上的 `VoiceService`，api 经 TokenReview 校验主体，再按房间名取得会话的模式、语言与模型设置。会话到期后请求被拒绝：听写与朗读 2 分钟，通话 30 分钟。
 - 通话只能向会话绑定的对话发送消息、读取答复和取消任务，执行身份为发起人，由执行存储续期，权限以发起人为上限。新聊天中发起的通话由首轮创建对话并完成绑定。发起通话需要离线委派。
-- 浏览器只持有房间令牌；模型凭据与用户令牌留在服务端。
+- `GetVoiceSession` 返回会话、模型设置与网关地址；供应商凭据保留在 Kubernetes Secret，由 agentgateway 注入。浏览器持有房间令牌。
+- worker 每次 HTTP 请求或 WebSocket 建连均重读投射令牌。agentgateway 校验集群签名、`agentos-voice` 受众与 worker ServiceAccount 主体，再使用供应商凭据访问后端。
 
 ## 交互
 
@@ -56,14 +58,14 @@ speech:
 
 方案 Chart 的初始配置位于 `app_values.agentos.speech`，仅启用一项时另一项保留 `{}`。
 Preset 首次创建 `<release>-speech` Secret，用户在模型管理页保存后取得对象所有权，后续预置升级保留配置与凭据。
-`configuration.json` 使用 `SpeechConfiguration` 的 proto JSON，配置与凭据在同一 Secret 中原子更新。
+`configuration.json` 使用 `SpeechConfiguration` 的 proto JSON，配置与凭据在同一 Secret 中原子更新。平台 controller 将配置收敛为原生 `AgentgatewayBackend`、`HTTPRoute` 与 `AgentgatewayPolicy`，后端认证通过 Secret 键引用生效。
 合成配置至少包含一个音色，每种语言一个模型和音色，语言代码使用 ISO 639。
 `secretRef` 引用已有 Secret，启用转写需要 `transcription-api-key`，启用合成需要 `synthesis-api-key`；管理接口只返回密钥是否配置，留空保留原密钥，显式清除停止使用引用密钥。
 
 ## 部署
 
 平台 Chart 以 `voice.enabled` 启用语音，`voice.image` 固定 worker 镜像摘要，`voice.secretRef` 指向包含 LiveKit `api-key` 与 `api-secret` 的 Secret，`voice.capacity` 设置 worker 并发上限。
-启用后渲染 worker、语音设置 Preset 与 worker 到 api 的网络策略。
+启用后渲染 worker、语音设置 Preset 与 worker 到 api、agentgateway 的网络策略。controller 经已认证的 Kubernetes API 读取 ServiceAccount issuer 与公开 JWKS，每分钟同步至网关策略；供应商密钥随 Secret 更新生效。
 
 [参考部署](https://github.com/pood1e/agentos-deploy)在安装应用前生成 LiveKit 密钥，使用官方 Chart 安装 LiveKit Server，并复用应用 TLS 域名的 `/livekit`。
 信令经 HTTPS/WSS 443，媒体使用节点 UDP 7882 或 TCP 7881，客户端需要能访问媒体地址。外部 LiveKit 通过 `voice.livekitURL`（worker 地址）与 `voice.publicURL`（浏览器地址）接入。

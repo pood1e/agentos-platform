@@ -5,25 +5,18 @@ import {
   type SpeechConfiguration,
   SpeechConfigurationSchema,
 } from "../../gen/agentos/console/v1/speech_pb.js";
-import type { SaveSpeechConfigurationRequest } from "../../gen/agentos/management/v1/management_pb.js";
+import type {
+  GetSpeechConfigurationResponse,
+  SaveSpeechConfigurationRequest,
+} from "../../gen/agentos/management/v1/management_pb.js";
 import { resourceError } from "../management/resources.js";
 import { invalid } from "../shared/errors.js";
 import { validateSpeechConfiguration } from "./config.js";
 
-export interface SpeechSettings {
+export type SpeechSettings = Omit<GetSpeechConfigurationResponse, "$typeName" | "configuration"> & {
   configuration: SpeechConfiguration;
-  resourceVersion: string;
-  transcriptionCredential?: string;
-  synthesisCredential?: string;
-}
+};
 export type SpeechSource = () => Promise<SpeechSettings>;
-
-const speechSettingsView = (settings: SpeechSettings) => ({
-  configuration: settings.configuration,
-  resourceVersion: settings.resourceVersion,
-  transcriptionCredentialConfigured: !!settings.transcriptionCredential,
-  synthesisCredentialConfigured: !!settings.synthesisCredential,
-});
 
 /** Configuration and credentials change in one versioned Kubernetes Secret. */
 export function speechSettingsStore(
@@ -57,8 +50,8 @@ export function speechSettingsStore(
     return {
       configuration,
       resourceVersion: secret.metadata?.resourceVersion ?? "",
-      transcriptionCredential: credential("transcription"),
-      synthesisCredential: credential("synthesis"),
+      transcriptionCredentialConfigured: !!credential("transcription"),
+      synthesisCredentialConfigured: !!credential("synthesis"),
     };
   }
   async function read() {
@@ -74,7 +67,7 @@ export function speechSettingsStore(
       return (await cache.fetch(name)) ?? read();
     },
     async get() {
-      return speechSettingsView(await read());
+      return read();
     },
     async save(request: SaveSpeechConfigurationRequest) {
       let configuration: SpeechConfiguration;
@@ -116,7 +109,7 @@ export function speechSettingsStore(
         });
         const snapshot = await settings(updated);
         cache.set(name, snapshot);
-        return { settings: speechSettingsView(snapshot) };
+        return { settings: snapshot };
       } catch (error) {
         return resourceError(error);
       }

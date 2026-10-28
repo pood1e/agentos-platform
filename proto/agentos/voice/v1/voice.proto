@@ -38,8 +38,8 @@ message GetVoiceSessionResponse {
   // Read-aloud content.
   Speech speech = 3;
   agentos.console.v1.SpeechConfiguration configuration = 4;
-  string transcription_credential = 5;
-  string synthesis_credential = 6;
+  reserved 5, 6;
+  reserved "transcription_credential", "synthesis_credential";
 }
 
 message SendVoiceTurnRequest {
