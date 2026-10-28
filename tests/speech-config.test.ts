@@ -1,7 +1,7 @@
 import { create, fromJsonString } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { SpeechConfigurationSchema } from "../gen/agentos/console/v1/speech_pb.js";
-import { validateSpeechConfiguration } from "../server/speech/config.js";
+import { validateSpeechConfiguration } from "../server/voice/config.js";
 
 function configuration(value: unknown) {
   return () =>

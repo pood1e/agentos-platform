@@ -27,6 +27,9 @@ flowchart LR
     Substrate --> S3[(S3 快照)]
     Automation[案例自动化 · Temporal] <-->|源事件与案例事实| Bus[(NATS JetStream)]
     Automation -->|案例 MCP| Gateway
+    Browser -.->|WebRTC| LiveKit[LiveKit Server]
+    LiveKit -.->|可选 · 语音会话| Voice[voice worker]
+    Voice -.->|工作负载身份| API
 ```
 
 | 组件 | 来源 | 职责 |
@@ -42,6 +45,7 @@ flowchart LR
 | 平台控制器 | controller-runtime 与官方 Kubernetes 类型 | 编译 AccessPlan、维护连接派生对象与方案预置 |
 | 团队知识 | 原生 MemoryService、Ollama 与 EmbeddingGemma | 共享知识及 768 维向量检索 |
 | 案例自动化 | Temporal 与 NATS JetStream | 在环境侧映射事件、调用指定 Agent、处理超时与人工反馈 |
+| voice worker | LiveKit Agents | 可选组件：听写、朗读与通话，通话轮次以发起人身份进入会话绑定的对话 |
 
 api、dataplane 与 worker 使用同一镜像，各自配置 Service、NetworkPolicy 与最小权限 ServiceAccount；Agent 只经网关与运行时控制面访问 dataplane。
 运行时补丁与回归范围见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
@@ -88,7 +92,7 @@ Preset 首次应用方案资源，后续更新由 SSA 所有权决定；用户�
 
 MCP Apps 由环境 MCP 服务交付单文件 HTML，在独立源沙箱中运行。
 宿主校验来源会话、服务、可见性与只读分级，再以当前查看者身份访问环境网关，接入见[对话视图](mcp-app.md)。
-语音输入、朗读和 LiveKit 通话复用聊天与执行授权，配置见[语音](speech.md)。
+语音为可选组件，听写、朗读与通话经 LiveKit 由 voice worker 处理，配置见[语音](speech.md)。
 
 系统任务在 `/system-tasks/:scheduleId?` 展示共享定义与运行历史，读取要求平台管理能力，维护与手动触发要求 `tasks.manage`。
 定时任务由 kagent ScheduledRunService 持久化和调度，每次运行核对原生执行记录后绑定独立只读服务主体。

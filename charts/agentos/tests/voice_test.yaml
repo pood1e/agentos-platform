@@ -1,46 +1,56 @@
-suite: optional real-time voice worker
+suite: optional voice worker
 values: [../../../tests/fixtures/chart-values.yaml]
 release: {name: agentos, namespace: agentos}
 templates: ['*.yaml']
 tests:
-  - it: omits the voice worker when disabled
+  - it: renders no voice resources when disabled
     asserts:
       - template: voice.yaml
+        hasDocuments: {count: 0}
+      - template: speech-settings.yaml
         hasDocuments: {count: 0}
       - template: api-deployment.yaml
         notContains:
           path: spec.template.spec.containers[0].env
-          content: {name: AGENTOS_VOICE_URL, value: 'http://agentos-voice:8080'}
-      - template: api-deployment.yaml
-        notContains:
-          path: spec.template.spec.containers[0].env
-          content: {name: AGENTOS_VOICE_TOKEN, valueFrom: {secretKeyRef: {name: agentos-voice, key: api-token}}}
-  - it: enables voice with a bounded and unprivileged worker
+          content: {name: AGENTOS_VOICE_AGENT, value: agentos-voice}
+  - it: runs the worker with its own service account token for the API
     set:
       voice.enabled: true
       voice.image: registry.example.com/voice@sha256:1111111111111111111111111111111111111111111111111111111111111111
     asserts:
       - template: voice.yaml
-        documentSelector: {path: "kind", value: Deployment}
-        equal: {path: "spec.template.spec.automountServiceAccountToken", value: false}
+        documentSelector: {path: kind, value: Deployment}
+        equal: {path: spec.template.spec.automountServiceAccountToken, value: false}
       - template: voice.yaml
-        documentSelector: {path: "kind", value: Deployment}
-        equal: {path: "spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem", value: true}
-      - template: voice.yaml
-        documentSelector: {path: "kind", value: Deployment}
-        isNotNullOrEmpty: {path: "spec.template.spec.containers[0].readinessProbe.exec.command"}
-      - template: voice.yaml
-        containsDocument: {apiVersion: networking.k8s.io/v1, kind: NetworkPolicy, name: agentos-voice, any: true}
-      - template: voice.yaml
-        documentSelector: {path: "kind", value: NetworkPolicy}
+        documentSelector: {path: kind, value: Deployment}
         equal:
-          path: spec.ingress[0].from[0].podSelector.matchLabels
-          value: {app.kubernetes.io/name: agentos, app.kubernetes.io/component: api}
+          path: spec.template.spec.volumes[1].projected.sources[0].serviceAccountToken.audience
+          value: agentos-voice
+      - template: voice.yaml
+        documentSelector: {path: kind, value: Deployment}
+        contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: LIVEKIT_AGENT_NAME, value: agentos-voice}
+      - template: voice.yaml
+        documentSelector: {path: kind, value: NetworkPolicy}
+        notExists: {path: spec.ingress}
       - template: api-deployment.yaml
         contains:
           path: spec.template.spec.containers[0].env
-          content: {name: AGENTOS_VOICE_URL, value: 'http://agentos-voice:8080'}
-      - template: api-deployment.yaml
+          content: {name: AGENTOS_VOICE_SUBJECT, value: 'system:serviceaccount:agentos:agentos-voice'}
+      - template: api-networkpolicy.yaml
+        equal:
+          path: spec.ingress[2]
+          value:
+            from:
+              - podSelector:
+                  matchLabels: {app.kubernetes.io/instance: agentos, app.kubernetes.io/component: voice}
+            ports: [{port: 9093, protocol: TCP}]
+      - template: api-service.yaml
         contains:
-          path: spec.template.spec.containers[0].env
-          content: {name: AGENTOS_VOICE_TOKEN, valueFrom: {secretKeyRef: {name: agentos-voice, key: api-token}}}
+          path: spec.ports
+          content: {name: voice, port: 9093, targetPort: voice}
+      - template: workload-auth-rolebinding.yaml
+        contains:
+          path: subjects
+          content: {kind: ServiceAccount, name: agentos-api, namespace: agentos}

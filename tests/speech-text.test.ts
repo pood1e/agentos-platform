@@ -1,6 +1,5 @@
-import { expect, it, vi } from "vitest";
-import { RemoteSpeechAdapter } from "../shared/browser/speech/synthesis.js";
-import { speechText } from "../shared/browser/speech/text.js";
+import { expect, it } from "vitest";
+import { speechText } from "../shared/speech-text.js";
 
 it.each([
   [
@@ -24,15 +23,4 @@ it.each([
   ["![工具图标](https://example.test/icon.svg)\n\n<div>工具详情</div>\n\n完成。", "完成。"],
 ])("extracts speakable prose from %s", (markdown, expected) => {
   expect(speechText(markdown)).toBe(expected);
-});
-
-it("skips synthesis when an answer only contains code", () => {
-  const synthesizeSpeech =
-    vi.fn<ConstructorParameters<typeof RemoteSpeechAdapter>[0]["synthesizeSpeech"]>();
-  const report = vi.fn();
-  const adapter = new RemoteSpeechAdapter({ synthesizeSpeech }, report);
-  const utterance = adapter.speak('```json\n{"tool":"k8s_get_resources"}\n```');
-  expect(utterance.status).toEqual({ type: "ended", reason: "finished" });
-  expect(synthesizeSpeech).not.toHaveBeenCalled();
-  expect(report).not.toHaveBeenCalled();
 });

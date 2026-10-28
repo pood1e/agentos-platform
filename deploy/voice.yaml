@@ -29,7 +29,6 @@
           ansible.builtin.set_fact:
             voice_api_key: "{{ lookup('ansible.builtin.password', '/dev/null', length=24, chars=['ascii_letters', 'digits']) }}"
             voice_api_secret: "{{ lookup('ansible.builtin.password', '/dev/null', length=64, chars=['ascii_letters', 'digits']) }}"
-            voice_api_token: "{{ lookup('ansible.builtin.password', '/dev/null', length=64, chars=['ascii_letters', 'digits']) }}"
           when: voice_credentials.resources | length == 0
           no_log: true
 
@@ -45,7 +44,6 @@
               data:
                 api-key: "{{ voice_api_key | b64encode }}"
                 api-secret: "{{ voice_api_secret | b64encode }}"
-                api-token: "{{ voice_api_token | b64encode }}"
                 keys.yaml: "{{ {voice_api_key: voice_api_secret} | to_nice_yaml | b64encode }}"
           when: voice_credentials.resources | length == 0
           no_log: true

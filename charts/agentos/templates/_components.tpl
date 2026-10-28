@@ -15,9 +15,14 @@
 - {name: AGENTOS_RELEASE, value: {{ $name }}}
 - {name: AGENTOS_SPEECH_SECRET, value: {{ $name }}-speech}
 {{- if .Values.voice.enabled }}
-- {name: AGENTOS_VOICE_URL, value: "http://{{ $name }}-voice:8080"}
-- name: AGENTOS_VOICE_TOKEN
-  valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-token}}
+- {name: AGENTOS_VOICE_AGENT, value: {{ $name }}-voice}
+- {name: AGENTOS_VOICE_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-voice"}
+- name: AGENTOS_LIVEKIT_URL
+  value: {{ default (printf "wss://%s/livekit" .Values.route.hosts.console) .Values.voice.publicURL | quote }}
+- name: LIVEKIT_API_KEY
+  valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-key}}
+- name: LIVEKIT_API_SECRET
+  valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-secret}}
 {{- end }}
 - {name: AGENTOS_HARNESS, value: {{ .Values.defaultHarness | quote }}}
 - {name: AGENTOS_GATEWAY_NAME, value: {{ printf "%s-gateway" $name | quote }}}

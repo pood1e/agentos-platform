@@ -48,7 +48,6 @@ spec:
             - --skip-provider-button=true
             - --api-route=^/agentos\.
             - --api-route=^/pack/
-            - --api-route=^/speech/
             - --request-logging=false
             - --silence-ping-logging=true
           env:

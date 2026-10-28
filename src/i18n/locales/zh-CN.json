@@ -321,8 +321,6 @@
     "transcriptionFailed": "语音转写失败，请重试或输入文字。",
     "playbackFailed": "语音播放失败，请重试。",
     "unavailable": "语音服务暂不可用，请稍后重试。",
-    "tooLarge": "音频过长，请缩短录音或朗读内容。",
-    "invalidAudio": "语音服务无法处理这段音频。",
     "invalidText": "朗读内容需为 1–8,000 个字符。",
     "language": "识别语言",
     "autoLanguage": "自动识别",
@@ -341,11 +339,8 @@
     "call_connecting": "正在接通…",
     "call_listening": "正在聆听，说完后自动发送",
     "call_speaking": "正在回答，可以直接说话打断",
-    "callWaiting": "等待助手处理，仍可继续说话",
-    "callRetry": "重试发送",
-    "callFailed": "语音通话失败，请重试。",
-    "callQueueFull": "待处理的语音过多，请等待当前任务完成后再说。",
-    "callUnsent": "以下内容尚未发送："
+    "call_thinking": "正在处理，可以直接说话打断",
+    "callFailed": "语音通话失败，请重试。"
   },
   "mcpApp": {
     "unavailable": "视图暂时无法加载",

@@ -8,10 +8,6 @@ export const transport = createConnectTransport({
   baseUrl: window.location.origin,
 });
 export const consoleClient = createClient(ConsoleService, transport);
-export const speechClient = createClient(
-  ConsoleService,
-  createConnectTransport({ baseUrl: window.location.origin, useBinaryFormat: true }),
-);
 
 export const managementClient = createClient(ManagementService, transport);
 export const automationClient = createClient(AutomationService, transport);

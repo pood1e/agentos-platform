@@ -1,11 +1,39 @@
 import { RoomAudioRenderer, RoomContext, StartAudio } from "@livekit/components-react";
-import { Mic, MicOff, Phone, PhoneOff, RotateCcw } from "lucide-react";
+import { Mic, MicOff, Phone, PhoneOff } from "lucide-react";
+import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { VoiceCall } from "./use-voice-call.js";
+import { useVoiceCall } from "../../../../shared/browser/voice/use-voice-call.js";
+import { useAccess } from "../../../lib/access.js";
+import { consoleClient } from "../../../lib/console.js";
+import { useSpeechCapabilities } from "../../../lib/speech.js";
 
-export function VoiceCallControls({ call, disabled }: { call: VoiceCall; disabled: boolean }) {
-  const { t } = useTranslation();
+export function VoiceCallControls({
+  contextId,
+  disabled,
+  onActive,
+  onStarted,
+}: {
+  contextId: string;
+  disabled: boolean;
+  onActive: (active: boolean) => void;
+  onStarted: (contextId: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const access = useAccess();
+  const capabilities = useSpeechCapabilities();
+  const report = useCallback((key: string) => void toast.error(t(key)), [t]);
+  const call = useVoiceCall({
+    client: consoleClient,
+    contextId,
+    scope: JSON.stringify([access.data?.workspace, access.data?.subject]),
+    language: localStorage.getItem("speech-language") ?? i18n.resolvedLanguage?.split("-")[0] ?? "",
+    capabilities: capabilities.data,
+    report,
+    started: onStarted,
+  });
+  useEffect(() => onActive(call.active), [call.active, onActive]);
   if (!call.available && !call.active) return null;
   return (
     <div className="shrink-0 space-y-2 px-3 pb-2 sm:px-4">
@@ -22,13 +50,7 @@ export function VoiceCallControls({ call, disabled }: { call: VoiceCall; disable
         >
           <div className="min-w-0 flex-1">
             <p role="status" className="text-xs font-medium">
-              {t(
-                call.muted
-                  ? "speech.callMuted"
-                  : call.queue.count
-                    ? "speech.callWaiting"
-                    : `speech.call_${call.phase}`,
-              )}
+              {t(call.muted ? "speech.callMuted" : `speech.call_${call.phase}`)}
             </p>
             {call.draft && (
               <p dir="auto" className="mt-1 truncate text-xs text-muted-foreground">
@@ -36,12 +58,6 @@ export function VoiceCallControls({ call, disabled }: { call: VoiceCall; disable
               </p>
             )}
           </div>
-          {call.queue.failed && (
-            <Button size="sm" variant="outline" onClick={call.retry}>
-              <RotateCcw />
-              {t("speech.callRetry")}
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -65,11 +81,6 @@ export function VoiceCallControls({ call, disabled }: { call: VoiceCall; disable
           <Phone />
           {t("speech.callStart")}
         </Button>
-      )}
-      {!call.active && call.unsent && (
-        <p className="whitespace-pre-wrap text-xs text-muted-foreground" dir="auto">
-          {t("speech.callUnsent")} {call.unsent}
-        </p>
       )}
     </div>
   );

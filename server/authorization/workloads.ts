@@ -24,6 +24,39 @@ export function workloadConfiguration() {
   return fromJsonString(WorkloadAuthenticationSchema, readFileSync(path, "utf8"));
 }
 
+/** TokenReview of a projected service account token issued for one audience. */
+export function serviceAccountTokens(api: Pick<AuthenticationV1Api, "createTokenReview">) {
+  const { middleware } = createConfiguration({
+    promiseMiddleware: [
+      {
+        async pre(request) {
+          request.setSignal(AbortSignal.timeout(5_000));
+          return request;
+        },
+        post: async (response) => response,
+      },
+    ],
+  });
+  return async (token: string, audience: string, subjects: string[]) => {
+    const { status } = await api.createTokenReview(
+      {
+        body: {
+          apiVersion: "authentication.k8s.io/v1",
+          kind: "TokenReview",
+          spec: { token, audiences: [audience] },
+        },
+      },
+      { middleware, middlewareMergeStrategy: "append" },
+    );
+    if (
+      !status?.authenticated ||
+      !status.audiences?.includes(audience) ||
+      !subjects.includes(status.user?.username ?? "")
+    )
+      throw new ConnectError("Workload identity is invalid", Code.Unauthenticated);
+  };
+}
+
 /** Workload authentication does not grant a user execution or tool authority. */
 export function workloadIdentity(
   config: WorkloadAuthentication,
@@ -36,36 +69,10 @@ export function workloadIdentity(
     !config.mcpAudience
   )
     throw new Error("Kubernetes workload trust is incomplete");
-  const { middleware } = createConfiguration({
-    promiseMiddleware: [
-      {
-        async pre(request) {
-          request.setSignal(AbortSignal.timeout(5_000));
-          return request;
-        },
-        post: async (response) => response,
-      },
-    ],
-  });
+  const review = serviceAccountTokens(api);
   const providers = new Map<string, Promise<ReturnType<typeof createRemoteJWKSet>>>();
-  async function kubernetes(headers: IncomingHttpHeaders, audience: string, subjects: string[]) {
-    const { status } = await api.createTokenReview(
-      {
-        body: {
-          apiVersion: "authentication.k8s.io/v1",
-          kind: "TokenReview",
-          spec: { token: bearer(headers), audiences: [audience] },
-        },
-      },
-      { middleware, middlewareMergeStrategy: "append" },
-    );
-    if (
-      !status?.authenticated ||
-      !status.audiences?.includes(audience) ||
-      !subjects.includes(status.user?.username ?? "")
-    )
-      throw new ConnectError("Workload identity is invalid", Code.Unauthenticated);
-  }
+  const kubernetes = (headers: IncomingHttpHeaders, audience: string, subjects: string[]) =>
+    review(bearer(headers), audience, subjects);
   return {
     config,
     async controller(headers: IncomingHttpHeaders, method: string) {

@@ -9,6 +9,7 @@ const processor = unified()
   .use(remarkGfm)
   .use(stripMarkdown, { remove: ["image", "imageReference"], keep: ["table", "tableCell"] });
 
+/** Plain text of a Markdown answer, with table rows read as comma-separated cells. */
 export function speechText(markdown: string) {
   const root = processor.runSync(processor.parse(markdown));
   return root.children

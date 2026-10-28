@@ -27,8 +27,9 @@
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/management/connections.ts` | 原生父对象与凭据保存；编译结果的管理页投影 |
 | `server/knowledge` | 团队知识检索 |
-| `server/speech`、`src/features/chat/speech` | 语音设置 Secret、音频 API 适配与 assistant-ui 听写、朗读 |
-| `shared/browser` | 对外发布的听写、流式朗读、LiveKit 通话适配器与官方 MCP AppBridge 生命周期封装 |
+| `server/voice` | 可选语音：设置 Secret、语音会话签发与 voice worker 的 `VoiceService` |
+| `voice/agentos_voice` | LiveKit Agents worker：听写、朗读与通话，AgentOS 对话作为通话的 LLM |
+| `shared/browser` | 对外发布的 LiveKit 听写、朗读、通话适配器与官方 MCP AppBridge 生命周期封装 |
 | `server/team-sessions` | 协作 MCP：发现 Agent、创建与续接会话、知识检索、角色起草 |
 | `server/governance` | AccessPlan Informer、已编译工具授权、原生暂停与外部审批协调 |
 | `shared/` | 前后端共用模型 |

@@ -3,7 +3,6 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "buf/validate/validate.proto";
-import "google/api/httpbody.proto";
 
 message SpeechConfiguration {
   SpeechTranscription transcription = 1;
@@ -72,56 +71,39 @@ message SpeechVoice {
 message GetSpeechCapabilitiesRequest {}
 
 message GetSpeechCapabilitiesResponse {
-  bool transcription = 1;
-  bool synthesis = 2;
-  repeated string transcription_languages = 3;
-  bool voice_calls = 4;
+  // The deployment includes the voice worker.
+  bool enabled = 1;
+  bool transcription = 2;
+  bool synthesis = 3;
+  repeated string transcription_languages = 4;
 }
 
-message StartVoiceCallRequest {
-  string call_id = 1 [(buf.validate.field).string.uuid = true];
-  string language_code = 2 [(buf.validate.field).string.pattern = "^([a-z]{2,3})?$"];
+enum VoiceMode {
+  VOICE_MODE_UNSPECIFIED = 0;
+  VOICE_MODE_DICTATION = 1;
+  VOICE_MODE_READ_ALOUD = 2;
+  VOICE_MODE_CALL = 3;
 }
 
-message VoiceCallConnection {
-  string call_id = 1;
-  string url = 2;
-  string token = 3;
-  repeated string synthesis_languages = 4;
-}
-
-message StartVoiceCallResponse {
-  VoiceCallConnection connection = 1;
-}
-
-message EndVoiceCallRequest {
-  string call_id = 1 [(buf.validate.field).string.uuid = true];
-}
-
-message EndVoiceCallResponse {}
-
-message TranscribeAudioRequest {
-  google.api.HttpBody audio = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "speech.audio_size"
-      message: "audio must contain between 1 byte and 1 MiB"
-      expression: "size(this.data) > 0 && size(this.data) <= 1048576"
-    }
-  ];
-}
-
-message TranscribeAudioResponse {
-  string text = 1;
-}
-
-message SynthesizeSpeechRequest {
-  string text = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 8000
+message StartVoiceSessionRequest {
+  option (buf.validate.message).cel = {
+    id: "voice.read_aloud_text"
+    message: "read-aloud sessions require text"
+    expression: "this.mode != 2 || size(this.text) > 0"
+  };
+  VoiceMode mode = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
   }];
+  // Transcription language; empty detects it.
+  string language_code = 2 [(buf.validate.field).string.pattern = "^([a-z]{2,3})?$"];
+  // Markdown answer to read aloud.
+  string text = 3 [(buf.validate.field).string.max_len = 8000];
+  // Conversation of a call; empty starts one with the first turn.
+  string context_id = 4 [(buf.validate.field).string.max_len = 128];
 }
 
-message SynthesizeSpeechResponse {
-  google.api.HttpBody audio = 1;
+message StartVoiceSessionResponse {
+  string url = 1;
+  string token = 2;
 }
