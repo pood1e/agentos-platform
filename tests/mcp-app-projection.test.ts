@@ -13,6 +13,23 @@ import { conversation } from "../server/read-model/views/conversation.js";
 import { mcpAppsEnvironment } from "./fixtures/mcp-apps.js";
 import { publishTargets } from "./harness.js";
 
+it("resolves an App by the exact discovered tool name", async () => {
+  const env = await mcpAppsEnvironment();
+  const name = "lab-views_show__topology.v2";
+  const discover = env.clients.tools.listMCPAppTools.bind(env.clients.tools);
+  vi.spyOn(env.clients.tools, "listMCPAppTools").mockImplementation(async (request, options) => {
+    const result = await discover(request, options);
+    for (const tool of result.tools) if (tool.name === "lab-views_show_topology") tool.name = name;
+    return result;
+  });
+  const view = create(ConversationSchema, {
+    messages: [{ parts: [{ content: { case: "toolCall", value: { id: "app", name } } }] }],
+  });
+  await env.apps.project(view, new TaskGraph(), env.projection.fullTask);
+  const part = view.messages[0].parts[0].content;
+  expect(part.case === "toolCall" && part.value.uiResourceUri).toBe("ui://lab-views/topology.html");
+});
+
 it("discovers independent App services together before either metadata response arrives", async () => {
   const env = await mcpAppsEnvironment();
   env.fake.toolServers.push(create(ToolServerSchema, { ref: "agentos/lab-other" }));

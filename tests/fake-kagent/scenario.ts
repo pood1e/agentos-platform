@@ -28,7 +28,7 @@ export function awaitingApproval(task: Task, now = Date.now()): Task {
     return (
       event?.kind === "function_response" &&
       callIds.has(event.id) &&
-      toolOutcome(event.response).kind === "error"
+      toolOutcome(event.response)?.kind === "error"
     );
   });
   const kept = new Set(parts.slice(0, marker + 1).map(({ part }) => part));

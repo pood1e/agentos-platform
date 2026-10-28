@@ -7,7 +7,7 @@ import { agentInfo, type SessionInfo, sessionInfo } from "../../server/read-mode
 import { ingest, type TaskEntry } from "../../server/read-model/entry.js";
 import { TaskGraph } from "../../server/read-model/graph.js";
 
-/** Sanitized tasks recorded from the agentos kagent environment. */
+/** Sanitized kagent recordings with canonical tool response envelopes. */
 const read = (name: string) =>
   JSON.parse(
     readFileSync(new URL(`./kagent/${name}.json`, import.meta.url), "utf8"),

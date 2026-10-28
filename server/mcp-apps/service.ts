@@ -18,7 +18,6 @@ import { viewer, visibleGraph } from "../console/history.js";
 import type { BindingView, ToolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { appOnly, appResource, appVisible, type ToolMetadata } from "../kagent/tool-metadata.js";
-import { toolBaseName } from "../read-model/decode/tools.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import type { FullTask } from "../read-model/views/conversation.js";
@@ -88,7 +87,7 @@ export function mcpApps({
   const denied = () => new ConnectError("MCP App tool access denied", Code.PermissionDenied);
   async function source(call: ToolCall, selectedPolicy?: ToolBindings) {
     const policy = selectedPolicy ?? (await access());
-    const name = toolBaseName(call.name);
+    const name = call.name;
     const target = policy
       .catalogs()
       .toSorted((a, b) => b.service.length - a.service.length)

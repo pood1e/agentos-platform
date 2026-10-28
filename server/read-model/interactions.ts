@@ -11,7 +11,6 @@ import type { HitlTool } from "../../gen/kagent/api/v1/interactions_pb.js";
 import type { Approval, CallEntry } from "./calls.js";
 import { type HitlPayload, hitlExtension, hitlPayload, isHitlResponse } from "./decode/hitl.js";
 import { millis, object, timeline } from "./decode/messages.js";
-import { toolBaseName } from "./decode/tools.js";
 
 interface Request {
   message: Message;
@@ -99,7 +98,7 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
     const approval = request.payload.type === "tool_approval_request";
     const call = approval
       ? calls.findLast((item) => request.tools.some((tool) => tool.callId === item.id))
-      : calls.findLast((item) => toolBaseName(item.name) === "ask_user");
+      : calls.findLast((item) => item.name === "ask_user");
     const hint = request.payload.type === "tool_approval_request" ? request.payload.value.hint : "";
     const answer = hitlPayload(request.response);
     return [

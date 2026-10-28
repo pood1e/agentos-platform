@@ -1,6 +1,6 @@
 # kagent 协议来源
 
-全部协议来自 [pood1e/kagent 的固定提交 `bc53238fea13dd3619e22dc29057de7fdb8a0f29`](https://github.com/pood1e/kagent/tree/bc53238fea13dd3619e22dc29057de7fdb8a0f29/proto)，基于上游 `v1.0.0-alpha17`，与部署固定的运行时镜像使用同一份源码。[`ci/verify-runtime-protos.sh`](../../ci/verify-runtime-protos.sh) 逐份校验协议一致性。
+全部协议来自 [pood1e/kagent 的固定提交 `0b8ccd8c0fa7771581f178d5bc07195c0d0b9639`](https://github.com/pood1e/kagent/tree/0b8ccd8c0fa7771581f178d5bc07195c0d0b9639/proto)，基于上游 `v1.0.0-alpha17`，与部署固定的运行时镜像使用同一份源码。[`ci/verify-runtime-protos.sh`](../../ci/verify-runtime-protos.sh) 逐份校验协议一致性。
 
 `kagent/api/v1/interactions.proto` 和 `collaboration.proto` 提供 HITL、工具活动及协作 MCP 的共享类型；`kagent/runtime/v1` 提供原生持久化协议。
 

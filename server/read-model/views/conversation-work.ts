@@ -6,7 +6,6 @@ import {
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../decode/messages.js";
-import { toolBaseName } from "../decode/tools.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { taskActivity, terminal } from "../state.js";
@@ -105,7 +104,7 @@ export function conversationParts(
           const at = millis(item.requestedAt);
           const call = entry.calls.findLast(
             (call) =>
-              toolBaseName(call.name) === "ask_user" &&
+              call.name === "ask_user" &&
               (at === undefined || call.startedAt === undefined || call.startedAt <= at),
           );
           return call?.id === callId;

@@ -28,27 +28,20 @@ function task(name: string, args: JsonValue, response: JsonValue) {
   });
 }
 
-describe("native Harness tool activity", () => {
-  it("projects Codex MCP arguments and structured delegation results into the shared task graph", () => {
+describe("canonical native tool activity", () => {
+  it("projects native delegation identities without harness-specific decoding", () => {
     const current = task(
-      "kagent-collaboration.invoke_session",
-      { arguments: { session_id: "child-session", message_id: "child-message" } },
+      "invoke_session",
+      { session_id: "child-session", message_id: "child-message" },
       {
-        result: {
-          result: {
-            structuredContent: {
-              session_id: "child-session",
-              task_id: "child-task",
-              state: "TASK_STATE_COMPLETED",
-            },
-            content: [{ type: "text", text: "Child completed" }],
-          },
-          error: null,
+        output: {
+          session_id: "child-session",
+          task_id: "child-task",
+          state: "TASK_STATE_COMPLETED",
         },
       },
     );
-    const [entry] = callEntries(current, new Map());
-    expect(entry).toMatchObject({
+    expect(callEntries(current, new Map())[0]).toMatchObject({
       id: "call",
       state: ActivityState.SUCCEEDED,
       delegation: {
@@ -58,18 +51,13 @@ describe("native Harness tool activity", () => {
         taskId: "child-task",
       },
     });
-    const [call] = toolCalls(current, "agentos/inspection", new Map());
-    expect(call?.args && toJson(ValueSchema, call.args)).toEqual({
-      session_id: "child-session",
-      message_id: "child-message",
-    });
   });
 
-  it("resolves Claude MCP text results and preserves background delegation order", () => {
+  it("reads background delegation from a native A2A response", () => {
     const current = task(
-      "mcp__team-sessions__dispatch_session",
+      "dispatch_session",
       { session_id: "child-session", message_id: "child-message", message: "Work" },
-      { result: [{ type: "text", text: JSON.stringify({ task: { id: "child-task" } }) }] },
+      { output: { task: { id: "child-task" } } },
     );
     expect(callEntries(current, new Map())[0]?.delegation).toMatchObject({
       kind: "background",
@@ -79,16 +67,31 @@ describe("native Harness tool activity", () => {
     });
   });
 
-  it("marks native runtime and MCP failures as failed calls", () => {
-    const responses: JsonValue[] = [
-      { isError: true, result: [{ type: "text", text: "Query failed" }] },
-      { result: { result: { isError: true, content: [{ type: "text", text: "Query failed" }] } } },
-    ];
-    for (const response of responses) {
-      const current = task("tools.query", { arguments: {} }, response);
-      const [call] = toolCalls(current, "agentos/inspection", new Map());
-      expect(call?.state).toBe(ActivityState.FAILED);
-      expect(call?.output && toJson(ValueSchema, call.output)).toBe("Query failed");
-    }
+  it.each<JsonValue>([false, null, 0, "", { arguments: 1, result: 2, output: 3 }])(
+    "preserves application arguments and output %j",
+    (output) => {
+      const args = { arguments: { value: 1 } };
+      const [call] = toolCalls(
+        task("query.with.dots", args, { output }),
+        "agentos/inspection",
+        new Map(),
+      );
+      expect(call?.state).toBe(ActivityState.SUCCEEDED);
+      expect(call?.args && toJson(ValueSchema, call.args)).toEqual(args);
+      expect(call?.output && toJson(ValueSchema, call.output)).toEqual(output);
+    },
+  );
+
+  it.each<["error" | "pending", JsonValue, ActivityState]>([
+    ["error", "Query failed", ActivityState.FAILED],
+    ["pending", { questions: ["Which namespace?"] }, ActivityState.AWAITING_INPUT],
+  ])("projects the native %s outcome", (kind, value, state) => {
+    const [call] = toolCalls(task("query", {}, { [kind]: value }), "agentos/inspection", new Map());
+    expect(call?.state).toBe(state);
+    expect(call?.output && toJson(ValueSchema, call.output)).toEqual(value);
+  });
+
+  it("keeps a call unobserved when the result has no native outcome", () => {
+    expect(callEntries(task("query", {}, {}), new Map())[0]?.state).toBe(ActivityState.UNOBSERVED);
   });
 });

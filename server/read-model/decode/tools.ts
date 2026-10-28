@@ -5,7 +5,10 @@ import {
   type InvokeSessionOutput,
   InvokeSessionOutputSchema,
 } from "../../../gen/kagent/api/v1/collaboration_pb.js";
-import { ToolActivitySchema } from "../../../gen/kagent/api/v1/interactions_pb.js";
+import {
+  ToolActivitySchema,
+  type ToolResponse,
+} from "../../../gen/kagent/api/v1/interactions_pb.js";
 import { object, partTypeKey, text } from "./messages.js";
 
 const lenient = { ignoreUnknownFields: true };
@@ -15,7 +18,7 @@ export interface ToolEvent {
   id: string;
   name: string;
   args?: JsonValue;
-  response?: JsonValue;
+  response?: ToolResponse;
 }
 
 export const toolEventId = (event: ToolEvent, source: string, position: number) =>
@@ -31,66 +34,28 @@ export function toolEvent(part: Part): ToolEvent | undefined {
       object(toJson(ValueSchema, part.content.value)),
       lenient,
     );
-    let args = activity.args && toJson(ValueSchema, activity.args);
-    let response = activity.response && toJson(ValueSchema, activity.response);
-    // The pinned Codex adapter wraps MCP input and output one level below the common envelope.
-    if (activity.name.includes(".")) {
-      if ("arguments" in object(args)) args = object(args).arguments;
-      const result = object(object(response).result);
-      if ("result" in result) response = { ...object(response), result: result.result ?? null };
-    }
+    if (kind === "function_response" && !activity.response?.outcome.case) return undefined;
     return {
       kind,
       id: activity.id,
       name: activity.name,
-      args,
-      response,
+      args: activity.args && toJson(ValueSchema, activity.args),
+      response: activity.response,
     };
   } catch {
     return undefined;
   }
 }
 
-/** Native adapters use server__tool, mcp__server__tool or server.tool. */
-export { toolBaseName } from "../../../shared/tool-name.js";
-
-import { toolBaseName } from "../../../shared/tool-name.js";
-
-export type Outcome =
-  | { kind: "output"; value: JsonValue | undefined }
-  | { kind: "error"; value: string }
-  | { kind: "pending"; value: JsonValue | undefined };
-
-/**
- * adk-go MCP tools respond with `{output}` or `{error}`; kagent function tools
- * return their own maps, and ask_user returns `{status: "pending"}` before the answer.
- */
-export function toolOutcome(response: JsonValue | undefined): Outcome {
-  const envelope = object(response);
-  if (typeof envelope.error === "string") return { kind: "error", value: envelope.error };
-  if (envelope.status === "pending") return { kind: "pending", value: response };
-  const result =
-    "output" in envelope ? envelope.output : "result" in envelope ? envelope.result : response;
-  const value = mcpOutput(result);
-  if (envelope.isError === true || object(result).isError === true)
-    return {
-      kind: "error",
-      value: typeof value === "string" ? value : (JSON.stringify(value) ?? ""),
-    };
-  return { kind: "output", value };
+export interface Outcome {
+  kind: "output" | "error" | "pending";
+  value: JsonValue;
 }
 
-function mcpOutput(value: JsonValue | undefined): JsonValue | undefined {
-  const result = object(value);
-  if (result.structuredContent != null) return result.structuredContent;
-  const content = Array.isArray(value) ? value : result.content;
-  if (
-    Array.isArray(content) &&
-    content.length &&
-    content.every((item) => object(item).type === "text")
-  )
-    return content.map((item) => text(object(item).text)).join("\n");
-  return value;
+export function toolOutcome(response: ToolResponse | undefined): Outcome | undefined {
+  const outcome = response?.outcome;
+  if (!outcome?.case) return undefined;
+  return { kind: outcome.case, value: toJson(ValueSchema, outcome.value) };
 }
 
 /** Tool text results may carry JSON documents; structured values are kept as is. */
@@ -146,7 +111,7 @@ export function delegationRef(
   output?: JsonValue,
 ): DelegationRef | undefined {
   const args = object(event.args);
-  switch (toolBaseName(event.name)) {
+  switch (event.name) {
     case "invoke_session": {
       const result = invocation(output);
       return {

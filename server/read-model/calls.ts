@@ -3,6 +3,7 @@ import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { Task } from "../../gen/a2a_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { type ToolCall, ToolCallSchema } from "../../gen/agentos/execution/v1/task_pb.js";
+import type { ToolResponse } from "../../gen/kagent/api/v1/interactions_pb.js";
 import { hitlPayload } from "./decode/hitl.js";
 import { intentKey, taskSources, text, timeline } from "./decode/messages.js";
 import {
@@ -10,7 +11,6 @@ import {
   delegationRef,
   structured,
   type ToolEvent,
-  toolBaseName,
   toolEvent,
   toolEventId,
   toolOutcome,
@@ -24,7 +24,7 @@ interface Draft {
   name: string;
   intent: string;
   args?: JsonValue;
-  responses: JsonValue[];
+  responses: ToolResponse[];
   startedAt?: number;
   endedAt?: number;
 }
@@ -62,7 +62,7 @@ function drafts(task: Task): Draft[] {
       const id = toolEventId(event, source.key, index);
       const previous = calls.get(id);
       const name = event.name || previous?.name || "";
-      if (toolBaseName(name) === "adk_request_confirmation") continue;
+      if (name === "adk_request_confirmation") continue;
       const call = previous ?? { id, name, intent: "", responses: [] };
       const at = timeline(part.metadata) ?? source.at;
       if (event.kind === "function_call") {
@@ -71,7 +71,7 @@ function drafts(task: Task): Draft[] {
         call.startedAt = at;
         narration = "";
       } else {
-        call.responses.push(event.response ?? null);
+        if (event.response) call.responses.push(event.response);
         call.endedAt = at;
       }
       calls.set(id, call);
@@ -85,7 +85,7 @@ const effectiveResponses = (call: Draft, approval?: Approval) =>
   approval === "approved"
     ? call.responses.length > 1
       ? call.responses.slice(1)
-      : call.responses.filter((response) => toolOutcome(response).kind === "output")
+      : call.responses.filter((response) => toolOutcome(response)?.kind === "output")
     : call.responses;
 
 function resolve(call: Draft, task: Task, approval?: Approval) {
