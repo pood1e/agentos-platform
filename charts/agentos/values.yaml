@@ -52,7 +52,6 @@ voice:
     requests: {cpu: 250m, memory: 512Mi}
     limits: {cpu: '2', memory: 2Gi}
 identity:
-  mode: password
   issuer: ''
   clientId: ''
   audience: ''
@@ -125,18 +124,6 @@ harnesses:
       snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
 knowledgeMemory:
   ttlDays: 3650
-embedding:
-  image: ollama/ollama:0.40.3@sha256:adca95a12c2b386a8f9a995e7fa0600e187e3323b5e5522f5a6c3b1ec73eff99
-  model: embeddinggemma:300m
-  digest: 85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1
-  storage: 2Gi
-  resources:
-    requests:
-      cpu: 250m
-      memory: 512Mi
-    limits:
-      cpu: '2'
-      memory: 2Gi
 systemAgents:
   assistant:
     systemPrompt: ''
@@ -194,12 +181,6 @@ gateway:
           secretRef:
             name: model-credentials
             key: api-key
-  - name: knowledge-embedding
-    spec:
-      provider: Ollama
-      match:
-        model: embeddinggemma:300m
-      baseURL: http://knowledge-embedding:11434/v1
   mcps:
   - name: team-sessions
     spec:

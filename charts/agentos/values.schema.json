@@ -412,40 +412,6 @@
       },
       "required": ["ttlDays"]
     },
-    "embedding": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "image": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "@sha256:[a-f0-9]{64}$"
-        },
-        "model": {
-          "type": "string",
-          "minLength": 1
-        },
-        "digest": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[a-f0-9]{64}$"
-        },
-        "storage": {
-          "type": "string",
-          "minLength": 1
-        },
-        "resources": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": {
-              "type": ["string", "number"]
-            }
-          }
-        }
-      },
-      "required": ["image", "model", "digest", "storage", "resources"]
-    },
     "gateway": {
       "type": "object",
       "additionalProperties": false,
@@ -544,30 +510,23 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "mode",
-        "issuer",
-        "clientId",
-        "audience",
-        "writerRole",
-        "secretRef",
-        "returnOrigins"
-      ],
+      "required": ["issuer", "clientId", "audience", "writerRole", "secretRef", "returnOrigins"],
       "properties": {
-        "mode": {
-          "enum": ["password", "oidc"]
-        },
         "issuer": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^https://[^\\s]+$"
         },
         "clientId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "audience": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "writerRole": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "secretRef": {
           "type": "string",
@@ -581,34 +540,7 @@
             "pattern": "^https://[a-z0-9][a-z0-9.-]+(:[0-9]+)?$"
           }
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "mode": {
-                "const": "oidc"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "issuer": {
-                "pattern": "^https://[^\\s]+$"
-              },
-              "clientId": {
-                "minLength": 1
-              },
-              "writerRole": {
-                "minLength": 1
-              },
-              "audience": {
-                "minLength": 1
-              }
-            }
-          }
-        }
-      ]
+      }
     },
     "execution": {
       "type": "object",
@@ -835,7 +767,6 @@
     "modelConfig",
     "harnesses",
     "knowledgeMemory",
-    "embedding",
     "gateway",
     "systemAgents",
     "pack",

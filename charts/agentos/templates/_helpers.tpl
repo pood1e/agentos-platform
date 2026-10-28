@@ -48,3 +48,12 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.runtimeURL" -}}
 {{- printf "http://%s.%s.svc.cluster.local:9091" (include "agentos.dataplaneService" .) .Release.Namespace -}}
 {{- end -}}
+
+{{- define "agentos.origins" -}}
+{{- $hosts := .Values.route.hosts -}}
+{{- dict
+  "console" (printf "https://%s" (required "route.hosts.console is required" $hosts.console))
+  "api" (printf "https://%s" (required "route.hosts.api is required" $hosts.api))
+  "sandbox" (ternary (printf "https://%s" $hosts.sandbox) "" (ne $hosts.sandbox ""))
+  | toJson -}}
+{{- end -}}

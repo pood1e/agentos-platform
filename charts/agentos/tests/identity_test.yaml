@@ -1,4 +1,4 @@
-suite: browser sessions, delegation and identity sources
+suite: browser sessions, delegation and the site identity provider
 values:
 - ../../../tests/fixtures/chart-values.yaml
 release: {name: agentos, namespace: agentos}
@@ -26,8 +26,6 @@ tests:
       content:
         name: AGENTOS_COOKIE_SECRET
         valueFrom: {secretKeyRef: {name: agentos-sessions, key: delegation}}
-  - template: identity.yaml
-    hasDocuments: {count: 0}
 - it: registers additional frontends as delegation return origins
   set:
     identity.returnOrigins: [https://controller.example.test]
@@ -50,50 +48,6 @@ tests:
   - matchRegex:
       path: data["oauth2-proxy.yaml"]
       pattern: 'issuerURL: "https://identity.example.test/realms/operations"'
-- it: issues standard tokens from the built-in password source on the console host
-  set:
-    identity: {mode: password, issuer: '', clientId: '', audience: '', writerRole: ''}
-  asserts:
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: AGENTOS_OIDC_ISSUER, value: https://agentos.example.test/identity}
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_OIDC_CLIENT_SECRET
-        valueFrom: {secretKeyRef: {name: agentos-identity-keys, key: client-secret}}
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: AGENTOS_USER_TOKEN_EXCHANGE, value: 'false'}
-  - template: identity.yaml
-    documentIndex: 0
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_IDENTITY_PASSWORD
-        valueFrom: {secretKeyRef: {name: agentos-identity, key: password}}
-  - template: identity.yaml
-    documentIndex: 0
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_IDENTITY_REDIRECT_URIS
-        value: '["https://agentos.example.test/oauth2/callback","https://api.agentos.example.test/delegation/callback"]'
-  - template: routes.yaml
-    documentIndex: 0
-    contains:
-      path: spec.rules
-      content:
-        matches: [{path: {type: PathPrefix, value: /identity}}]
-        backendRefs: [{name: agentos-identity, port: 8080}]
-  - template: web-deployment.yaml
-    documentIndex: 0
-    equal:
-      path: spec.template.spec.volumes[0].projected.sources[1].secret.name
-      value: agentos-identity-keys
 - it: attaches every public route to the site gateway
   template: routes.yaml
   asserts:

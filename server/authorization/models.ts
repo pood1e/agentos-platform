@@ -4,6 +4,7 @@ import type { ModelAuthorization } from "../../gen/agentos/authorization/v1/work
 import { ModelPurpose } from "../../gen/agentos/management/v1/management_pb.js";
 import { modelPurpose } from "../../shared/model-purpose.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { knowledgeModel } from "../knowledge/config.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { actorTokenHeader } from "./actor.js";
 import type { ExecutionRuntime } from "./runtime.js";
@@ -69,7 +70,7 @@ export function modelAuthorization(
         );
     } else {
       await workloads.model(headers);
-      const selected = await model("knowledge-embedding", ModelPurpose.EMBEDDING);
+      const selected = await model(knowledgeModel, ModelPurpose.EMBEDDING);
       if (
         request.method !== "POST" ||
         request.path !== "/v1/embeddings" ||

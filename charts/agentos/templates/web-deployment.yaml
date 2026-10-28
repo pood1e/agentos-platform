@@ -1,6 +1,5 @@
 {{- $name := include "agentos.name" . -}}
 {{- $origins := include "agentos.origins" . | fromJson -}}
-{{- $identity := include "agentos.identity" . | fromJson -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -89,7 +88,7 @@ spec:
             sources:
               - configMap: {name: {{ $name }}-web}
               - secret:
-                  name: {{ $identity.secret }}
+                  name: {{ .Values.identity.secretRef }}
                   items: [{key: client-secret, path: client-secret}]
         - {name: nginx-config, emptyDir: {sizeLimit: 1Mi}}
         - {name: nginx-runtime, emptyDir: {sizeLimit: 64Mi}}

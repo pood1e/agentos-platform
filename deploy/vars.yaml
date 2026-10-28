@@ -32,6 +32,7 @@ helm_binary: "{{ agentos_cache }}/helm/linux-amd64/helm"
 cert_manager_version: v1.21.2
 cloudflare_token_file: ""
 model_key_file: ""
+identity_client_secret_file: ""
 registry_config_file: ""
 skill_repository_credential_file: ""
 agentgateway_version: v1.6.0

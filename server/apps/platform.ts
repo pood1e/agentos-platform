@@ -73,7 +73,6 @@ export async function executionServices(
   const environmentToken = environmentTokens(
     operations,
     environmentCredentials(config.kube, config.workspace),
-    process.env.AGENTOS_USER_TOKEN_EXCHANGE !== "false",
   );
   const metadata = toolMetadata(clients);
   const { oauth, identity } = await userIdentity();

@@ -40,7 +40,7 @@ export async function managementEnvironment() {
     knowledge: {
       url: `${url}/v1`,
       token: "test-gateway-token",
-      model: "embeddinggemma:300m",
+      model: { namespace: "agentos", name: "knowledge-embedding" },
       scope: { agentName: "agentos/knowledge", userId: "agentos", ttlDays: 3650 },
     },
   };
