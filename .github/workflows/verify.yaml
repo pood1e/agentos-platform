@@ -110,7 +110,7 @@ jobs:
           go -C controller test -race ./...
           go -C controller vet ./...
       - run: |
-          node_modules/.bin/buf generate --template buf.python.gen.yaml
+          node_modules/.bin/buf generate --template contracts/buf.python.gen.yaml
           ruff check
           ruff format --check
           pytest

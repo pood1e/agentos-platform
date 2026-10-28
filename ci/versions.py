@@ -30,7 +30,7 @@ def versions():
             raise ValueError("Release tag and package version differ")
         if os.environ.get("CI_COMMIT_REF_PROTECTED") != "true":
             raise ValueError("Formal releases require a protected tag")
-        manifest = json.loads(Path(".release-please-manifest.json").read_text())
+        manifest = json.loads(Path(".github/.release-please-manifest.json").read_text())
         if manifest["."] != current:
             raise ValueError("Release manifest and package version differ")
         reference = git(
@@ -43,8 +43,8 @@ def versions():
         if refs.get(f"refs/tags/{tag}^{{}}", refs.get(f"refs/tags/{tag}")) != revision:
             raise ValueError("GitHub and GitLab release tag revisions differ")
         return Versions(revision, current, current)
-    released = json.loads(Path(".release-please-manifest.json").read_text())["."]
-    baseline = json.loads(Path("release-please-config.json").read_text())["bootstrap-sha"]
+    released = json.loads(Path(".github/.release-please-manifest.json").read_text())["."]
+    baseline = json.loads(Path(".github/release-please-config.json").read_text())["bootstrap-sha"]
     git("merge-base", "--is-ancestor", baseline, revision)
     count = int(git("rev-list", "--count", f"{baseline}..{revision}"))
     major, minor, _ = map(int, current.split("."))

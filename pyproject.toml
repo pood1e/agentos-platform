@@ -1,4 +1,5 @@
 [tool.ruff]
+cache-dir = ".cache/ruff"
 target-version = "py311"
 line-length = 100
 include = ["automation/**/*.py", "voice/**/*.py"]
@@ -7,6 +8,7 @@ include = ["automation/**/*.py", "voice/**/*.py"]
 select = ["E4", "E7", "E9", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
 
 [tool.pytest.ini_options]
+cache_dir = ".cache/pytest"
 pythonpath = ["gen/python", "automation"]
 testpaths = ["automation/tests"]
 asyncio_mode = "auto"

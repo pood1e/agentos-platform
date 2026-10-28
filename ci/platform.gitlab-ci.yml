@@ -67,6 +67,8 @@ build-platform-controller:
 build-image:
   extends: .build-image
   needs: [verify]
+  variables:
+    AGENTOS_DOCKERFILE_DIR: server
 
 build-web:
   extends: .build-image
