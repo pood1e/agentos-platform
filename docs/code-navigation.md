@@ -42,6 +42,7 @@
 | `web` | nginx、oauth2-proxy 与沙箱页配置 |
 | `controller/api`、`controller/config/crd/bases` | AccessPlan / Preset 类型与 CRD |
 | `controller/internal/compile`、`controller/internal/reconcile` | 资源编译、SSA、所有权与状态收敛 |
+| `controller/internal/connections` | kagent 可选 agentgateway 模块的平台配置 |
 | `charts/agentos`、`charts/agentos-controller` | 平台应用与共享控制器 library Chart |
 | `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台连接 release |
 | `runtime` | kagent fork 构建、Substrate 启动修复与 Harness 基础镜像 |

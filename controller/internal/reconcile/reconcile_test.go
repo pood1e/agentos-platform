@@ -1,24 +1,29 @@
 package reconcile
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
 	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
+	"github.com/kagent-dev/kagent/go/integrations/agentgateway"
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"github.com/pood1e/agentos-platform/controller/internal/compile"
+	"github.com/pood1e/agentos-platform/controller/internal/connections"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -117,26 +122,66 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal("user ownership not recorded")
 		}
 	})
-	t.Run("model parent converges idempotently", func(t *testing.T) {
-		model := "gpt-test"
-		p := &agw.AgentgatewayModel{ObjectMeta: metav1.ObjectMeta{Name: "model", Namespace: ns.Name, Annotations: map[string]string{"agentos.dev/connection": "true"}}, Spec: agw.AgentgatewayModelSpec{Provider: ptr.To(agw.ModelProviderOpenAI), ParentRefs: []gw.ParentReference{{Name: "gateway"}}, Match: &agw.ModelMatch{Model: &model}}}
-		must(t, c.Create(ctx, p))
-		p.Spec.Policies = &agw.ModelPolicies{Auth: &agw.ModelBackendAuth{SecretRef: &agw.LocalSecretKeyRef{Name: "model-credential"}}}
-		must(t, c.Update(ctx, p))
-		controller := &Connection{Client: c, Scheme: scheme, Model: true, Gateway: platform.PlatformGateway{URL: "http://gateway:8080", ModelSecret: "model-client"}}
-		if _, err := controller.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(p)}); err == nil {
-			t.Fatal("connection became ready before its credential existed")
+	t.Run("native connections use deployed gateway CRDs", func(t *testing.T) {
+		manager, err := ctrl.NewManager(config, ctrl.Options{
+			Scheme: scheme, Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{ns.Name: {}}},
+			Metrics: metricsserver.Options{BindAddress: "0"}, HealthProbeBindAddress: "0",
+		})
+		must(t, err)
+		gateway := connections.Config(platform.PlatformGateway{
+			Name: "gateway", URL: "http://models.test:8080", MCPURL: "http://mcp.test:8080",
+			ActorIssuer: "https://actors.test", ActorKeys: "actor-keys", ModelSecret: "gateway-credential",
+		})
+		must(t, agentgateway.SetupWithManager(manager, gateway))
+		managerContext, cancel := context.WithCancel(t.Context())
+		done := make(chan error, 1)
+		go func() { done <- manager.Start(managerContext) }()
+		t.Cleanup(func() {
+			cancel()
+			select {
+			case err := <-done:
+				must(t, err)
+			case <-time.After(10 * time.Second):
+				t.Error("connection manager did not stop")
+			}
+		})
+		if !manager.GetCache().WaitForCacheSync(managerContext) {
+			t.Fatal("connection cache did not sync")
 		}
-		credential := &core.Secret{ObjectMeta: metav1.ObjectMeta{Name: "model-credential", Namespace: ns.Name}, Data: map[string][]byte{"Authorization": []byte("secret")}}
-		must(t, c.Create(ctx, credential))
-		for range 2 {
-			_, err := controller.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(p)})
-			must(t, err)
+		model := &agw.AgentgatewayModel{
+			ObjectMeta: metav1.ObjectMeta{Name: "native-model", Namespace: ns.Name, Annotations: map[string]string{agentgateway.ConnectionAnnotation: "true"}},
+			Spec:       agw.AgentgatewayModelSpec{Provider: new(agw.ModelProviderOpenAI), ParentRefs: []gw.ParentReference{gateway.Gateway}},
 		}
-		child := &kagent.ModelConfig{}
-		must(t, c.Get(ctx, client.ObjectKeyFromObject(p), child))
-		if child.Spec.Model != model || !metav1.IsControlledBy(child, p) {
-			t.Fatal("model consumer did not converge")
+		backend := &agw.AgentgatewayBackend{
+			ObjectMeta: metav1.ObjectMeta{Name: "native-tools", Namespace: ns.Name, Annotations: map[string]string{agentgateway.ConnectionAnnotation: "true"}},
+			Spec: agw.AgentgatewayBackendSpec{MCP: &agw.MCPBackend{Targets: []agw.McpTargetSelector{{
+				Name: "tools", Static: &agw.McpTarget{Host: new("tools.test"), Port: 8080},
+			}}}},
+		}
+		must(t, c.Create(ctx, model))
+		must(t, c.Create(ctx, backend))
+		deadline := time.After(15 * time.Second)
+		ticker := time.NewTicker(50 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-deadline:
+				t.Fatalf("native connections did not converge: model=%+v backend=%+v", model.Status, backend.Status)
+			case <-ticker.C:
+				must(t, c.Get(ctx, client.ObjectKeyFromObject(model), model))
+				must(t, c.Get(ctx, client.ObjectKeyFromObject(backend), backend))
+				ready := false
+				for _, parent := range model.Status.Parents {
+					ready = ready || parent.ControllerName == "kagent.dev/agentgateway-connections" && meta.IsStatusConditionTrue(parent.Conditions, agentgateway.ReadyCondition)
+				}
+				if ready && meta.IsStatusConditionTrue(backend.Status.Conditions, agentgateway.ReadyCondition) {
+					must(t, c.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "native-model"}, &kagent.ModelConfig{}))
+					must(t, c.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "native-tools"}, &kagent.RemoteMCPServer{}))
+					must(t, c.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "mcp-native-tools"}, &gw.HTTPRoute{}))
+					must(t, c.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "native-tools-runtime-auth"}, &agw.AgentgatewayPolicy{}))
+					return
+				}
+			}
 		}
 	})
 }

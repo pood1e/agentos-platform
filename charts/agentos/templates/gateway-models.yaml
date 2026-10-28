@@ -10,7 +10,7 @@ spec:
       metadata:
         name: {{ .name }}
         annotations:
-          agentos.dev/connection: 'true'
+          kagent.dev/connection: 'true'
           {{- if eq .name "default-model-config" }}
           agentos.dev/model-config: {{ $.Values.modelConfig.spec | toJson | quote }}
           {{- else if eq .name "knowledge-embedding" }}

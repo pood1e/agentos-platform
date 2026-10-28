@@ -492,7 +492,7 @@
                       "x-kubernetes-list-type": "atomic"
                     },
                     "crossAppAccess": {
-                      "description": "Cross App Access (Identity Assertion / ID-JAG) authentication.",
+                      "description": "Cross App Access (Identity Assertion / ID-JAG) authentication.\nIf this configuration is invalid, requests using it are rejected.",
                       "properties": {
                         "accessTokenScopes": {
                           "description": "Scopes requested when exchanging the ID-JAG for an access token.\nWhen omitted, defaults to Scopes. Set to an empty list to omit scope.",
@@ -1368,7 +1368,7 @@
                       ]
                     },
                     "oauthTokenExchange": {
-                      "description": "OAuth 2.0 token exchange (RFC 8693) / jwt-bearer (RFC 7523) authentication.",
+                      "description": "OAuth 2.0 token exchange (RFC 8693) / jwt-bearer (RFC 7523) authentication.\nIf this configuration is invalid, requests using it are rejected.",
                       "properties": {
                         "actorToken": {
                           "description": "RFC 8693 delegation actor token. TokenExchange grant only.",
@@ -2301,7 +2301,7 @@
                           "x-kubernetes-list-type": "atomic"
                         },
                         "crossAppAccess": {
-                          "description": "Cross App Access (Identity Assertion / ID-JAG) authentication.",
+                          "description": "Cross App Access (Identity Assertion / ID-JAG) authentication.\nIf this configuration is invalid, requests using it are rejected.",
                           "properties": {
                             "accessTokenScopes": {
                               "description": "Scopes requested when exchanging the ID-JAG for an access token.\nWhen omitted, defaults to Scopes. Set to an empty list to omit scope.",
@@ -3181,7 +3181,7 @@
                           ]
                         },
                         "oauthTokenExchange": {
-                          "description": "OAuth 2.0 token exchange (RFC 8693) / jwt-bearer (RFC 7523) authentication.",
+                          "description": "OAuth 2.0 token exchange (RFC 8693) / jwt-bearer (RFC 7523) authentication.\nIf this configuration is invalid, requests using it are rejected.",
                           "properties": {
                             "actorToken": {
                               "description": "RFC 8693 delegation actor token. TokenExchange grant only.",
