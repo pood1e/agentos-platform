@@ -238,7 +238,7 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
             ~/.cache/golangci-lint
-          key: go-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles('mise.lock', 'runtime/**/*.patch') }}
+          key: go-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles('mise.lock', 'runtime/**/*.patch', 'ci/verify-controller.sh', 'ci/prepare-substrate.sh') }}
           restore-keys: |
             go-${{ runner.os }}-${{ matrix.component }}-
       - run: |

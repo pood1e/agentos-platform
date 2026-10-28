@@ -4,7 +4,7 @@ import {
   type GetExecutionRequest,
   GetExecutionResponseSchema,
 } from "../../gen/agentos/execution/v1/service_pb.js";
-import type { InvokeSessionOutput } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import type { InvokeSessionOutput } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import { redact } from "../../shared/redact.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { TaskProjection } from "../read-model/projection.js";

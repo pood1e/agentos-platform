@@ -10,7 +10,7 @@ plugins:
       - agentos.execution.v1.RunExecutionRequest
       - agentos.execution.v1.GetExecutionRequest
       - agentos.execution.v1.GetExecutionResponse
-      - agentos.kagent.v1.InvokeSessionOutput
+      - kagent.api.v1.InvokeSessionOutput
       - agentos.voice.v1.VoiceService
       - agentos.voice.v1.VoiceEvent
       - ateapi.Control

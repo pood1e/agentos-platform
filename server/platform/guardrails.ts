@@ -6,7 +6,7 @@ import {
   McpRequestResultSchema,
   McpResponseResultSchema,
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { ListSessionsOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { ListSessionsOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import { actorTokenHeader } from "../authorization/actor.js";
 import type { ExecutionRuntime } from "../authorization/runtime.js";
 import type { KagentClients } from "../kagent/clients.js";

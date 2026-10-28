@@ -4,7 +4,7 @@ package agentos.governance.v1;
 
 import "agentos/execution/v1/state.proto";
 import "agentos/execution/v1/task.proto";
-import "agentos/kagent/v1/wire.proto";
+import "kagent/api/v1/interactions.proto";
 import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
@@ -77,7 +77,7 @@ message ApprovalContext {
   string request_id = 4 [(buf.validate.field).string.min_len = 1];
   string intent = 5;
   string prompt = 6;
-  agentos.kagent.v1.HitlTool tool = 7 [(buf.validate.field).required = true];
+  .kagent.api.v1.HitlTool tool = 7 [(buf.validate.field).required = true];
   repeated agentos.execution.v1.ToolCall calls = 8;
 }
 

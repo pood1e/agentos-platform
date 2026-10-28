@@ -18,7 +18,7 @@ plugins:
       - kagent.api.v1.ListAgentsRequest
       - kagent.api.v1.CreateSessionRequest
       - kagent.api.v1.ListToolServersRequest
-      - agentos.kagent.v1.InvokeSessionInput
+      - kagent.api.v1.InvokeSessionInput
       - agentos.execution.v1.RunExecutionRequest
       - agentos.execution.v1.ExecutionReference
       - agentos.execution.v1.GetExecutionRequest

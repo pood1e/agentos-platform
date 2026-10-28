@@ -10,7 +10,10 @@ import {
   ApprovalSchema,
   type GovernanceConfig,
 } from "../../gen/agentos/governance/v1/governance_pb.js";
-import { HitlToolSchema, ToolApprovalResponseSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import {
+  HitlToolSchema,
+  ToolApprovalResponseSchema,
+} from "../../gen/kagent/api/v1/interactions_pb.js";
 import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { Coordinator } from "../jobs/coordination.js";
 import { withApprovalDecisions } from "../read-model/decode/approval-decisions.js";

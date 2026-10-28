@@ -117,8 +117,8 @@ it("retains a completed delegated App even when the child has no text answer", a
               : {
                   response: {
                     output: {
-                      sessionId: child.id,
-                      taskId: childTask.id,
+                      session_id: child.id,
+                      task_id: childTask.id,
                       state: TaskState.COMPLETED,
                     },
                   },

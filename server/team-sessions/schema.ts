@@ -8,10 +8,11 @@ interface SchemaBundle {
   $defs: Record<string, object>;
 }
 
-export const inputSchema = (bundle: SchemaBundle) =>
+export const inputSchema = (bundle: SchemaBundle, required?: string[]) =>
   fromJsonSchema<JsonValue>({
     ...bundle.$defs[bundle.$ref.slice("#/$defs/".length)],
     $defs: bundle.$defs,
+    ...(required ? { required } : {}),
   });
 
 export function result(schema: DescMessage, message: Message) {

@@ -12,7 +12,7 @@ import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governanc
 import {
   AskUserResponseSchema,
   ToolApprovalResponseSchema,
-} from "../../gen/agentos/kagent/v1/wire_pb.js";
+} from "../../gen/kagent/api/v1/interactions_pb.js";
 import { pendingInteractions } from "../../shared/conversation-interactions.js";
 import { shortTitle } from "../../shared/title.js";
 import type { Executions } from "../authorization/executions.js";

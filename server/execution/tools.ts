@@ -10,7 +10,7 @@ import {
   GetExecutionResponseSchema,
   RunExecutionRequestSchema,
 } from "../../gen/agentos/execution/v1/service_pb.js";
-import { InvokeSessionOutputSchema } from "../../gen/agentos/kagent/v1/wire_pb.js";
+import { InvokeSessionOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import referenceSchema from "../../gen/schema/agentos.execution.v1.ExecutionReference.jsonschema.bundle.json" with {
   type: "json",

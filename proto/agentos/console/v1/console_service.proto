@@ -12,7 +12,7 @@ import "agentos/console/v1/task.proto";
 import "agentos/console/v1/tool.proto";
 import "agentos/execution/v1/state.proto";
 import "agentos/governance/v1/governance.proto";
-import "agentos/kagent/v1/wire.proto";
+import "kagent/api/v1/interactions.proto";
 import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
 import "kagent/api/v1/agents.proto";
@@ -220,7 +220,7 @@ message RespondInteractionRequest {
   oneof decision {
     option (buf.validate.oneof).required = true;
     AnswerDecision answer = 4;
-    agentos.kagent.v1.ToolApprovalResponse approval = 5;
+    .kagent.api.v1.ToolApprovalResponse approval = 5;
   }
 }
 

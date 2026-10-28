@@ -5,7 +5,7 @@ import { expect, it, onTestFinished, vi } from "vitest";
 import { TaskState } from "../gen/a2a_pb.js";
 import { ExecutionSourceSchema } from "../gen/agentos/authorization/v1/workload_pb.js";
 import { GetExecutionResponseSchema } from "../gen/agentos/execution/v1/service_pb.js";
-import { InvokeSessionOutputSchema } from "../gen/agentos/kagent/v1/wire_pb.js";
+import { InvokeSessionOutputSchema } from "../gen/kagent/api/v1/collaboration_pb.js";
 import { executionPrincipal } from "../server/authorization/workload-principal.js";
 import { executionTools } from "../server/execution/tools.js";
 import { environment } from "./harness.js";
