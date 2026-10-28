@@ -36,7 +36,7 @@ func TestReconciliation(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
 	environment := &envtest.Environment{CRDDirectoryPaths: []string{
 		filepath.Join(root, "controller/config/crd/bases"), filepath.Join(root, ".cache/chart-check/agentgateway-crds-v1.7.0.yaml"),
-		filepath.Join(root, ".cache/chart-check/kagent-crds-a12c1a39b208fb16f2502703688799838bc05edf.yaml"), filepath.Join(root, ".cache/chart-check/gateway-crds-v1.6.1.yaml"),
+		filepath.Join(root, ".cache/chart-check/kagent-crds-482e1cd56dc43a66a4d407f35c71d1b5fb187314.yaml"), filepath.Join(root, ".cache/chart-check/gateway-crds-v1.6.1.yaml"),
 	}, ErrorIfCRDPathMissing: true}
 	config, err := environment.Start()
 	if err != nil {
