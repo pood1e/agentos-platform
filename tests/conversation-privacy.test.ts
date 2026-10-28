@@ -208,7 +208,7 @@ it("lets administrators read shared service sessions of workspace agents without
   const user = identity("user:alice");
   const administrator = create(ExecutionIdentitySchema, {
     subject: "user:administrator",
-    capabilities: [Capability.TASKS_MANAGE],
+    capabilities: [Capability.MODELS_MANAGE],
     credential: { case: "service", value: true },
   });
   const agent = { namespace: "agentos", name: "inspection" };

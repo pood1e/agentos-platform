@@ -12,11 +12,9 @@
 | `agentos-knowledge-manage` | 团队知识新增、删除、清空与 Agent 写入 |
 | `agentos-models-manage` | 模型连接与凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
-| `agentos-tasks-manage` | 共享服务任务标签 |
 
 角色可以组合；IdP 可用 `agentos-admin` 组合角色并在令牌中展开实际权限。
 管理 RPC 与浏览器共用 proto `Capability`，发布包的 `authorization.json` 由同一协议生成，供站点映射身份。
-个人任务标签由发起人维护，共享服务任务标签需要任务管理角色；标签按工作空间存储并使用乐观锁更新。
 
 ## 执行权限
 

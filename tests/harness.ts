@@ -23,7 +23,6 @@ import { agentRef } from "../server/read-model/agents.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskProjection } from "../server/read-model/projection.js";
 import { reconciler } from "../server/read-model/reconcile.js";
-import { taskTagStore } from "../server/tasks/store.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
@@ -110,10 +109,12 @@ export async function environment(tasks: Task[] = fixtureTasks()) {
   await store.saveIdentity(operator);
   await bindTasks(store, fake, tasks);
   const workspace = `test-${randomUUID()}`;
-  const [projection, tags] = await Promise.all([
-    taskProjection({ uri: database(), workspace, clients, executions: store }),
-    taskTagStore(database(), workspace),
-  ]);
+  const projection = await taskProjection({
+    uri: database(),
+    workspace,
+    clients,
+    executions: store,
+  });
   await projection.listen();
   const reconcile = reconciler(projection, clients, "agentos", silent, 50);
   return {
@@ -123,10 +124,9 @@ export async function environment(tasks: Task[] = fixtureTasks()) {
     executions: executions(store),
     projection,
     reconcile,
-    tags,
     async close() {
       reconcile.close();
-      await Promise.all([projection.close(), tags.close()]);
+      await projection.close();
     },
   };
 }
@@ -172,7 +172,6 @@ export function consoleClient(
     projection: env.projection,
     clients: env.clients,
     executions: env.executions,
-    tags: env.tags,
     namespace: "agentos",
     access: testBindings(env.fake),
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },

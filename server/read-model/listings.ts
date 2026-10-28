@@ -4,7 +4,6 @@ import { TaskState } from "../../gen/a2a_pb.js";
 import type { ListTasksRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
 import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
-import { normalizeTags } from "../tasks/tags.js";
 import { decodeCursor, encodeCursor, type PageRequest } from "./page.js";
 import type { ReadStore } from "./store.js";
 import { stamp } from "./views/runs.js";
@@ -79,39 +78,27 @@ export function listings({ sql, workspace }: Pick<ReadStore, "sql" | "workspace"
     },
     async operations(
       viewer: Viewer,
-      request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer" | "tags">>,
+      request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer">>,
     ) {
       const needle = request.query.trim().toLowerCase();
       const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
-      const tags = normalizeTags(request.tags ?? []);
       const engineer = request.engineer ?? "";
-      const scope = `tasks:${JSON.stringify([states, engineer, tags, viewer.systemOnly === true])}`;
-      const owned = () => sql`o.workspace = ${workspace} and ${visible(sql, "o.subject", viewer)}`;
-      const filter = () => sql`${owned()}
+      const scope = `tasks:${JSON.stringify([states, engineer, viewer.systemOnly === true])}`;
+      const filter = () => sql`o.workspace = ${workspace} and ${visible(sql, "o.subject", viewer)}
         and (${!states.length} or o.state = any(${states}::int[]))
         and (${!engineer} or ${engineer} = any(o.members))
-        and coalesce(t.tags, '{}') @> ${tags}::text[]
-        and (o.search || ' ' || lower(array_to_string(coalesce(t.tags, '{}'), ' '))) like ${like(needle)}`;
-      const from = () => sql`agentos_read.operations o left join agentos_console.task_tags t
-        on t.workspace = o.workspace and t.task_id = o.task_id`;
-      const [rows, [count], available] = await Promise.all([
-        sql`select o.task_id, o.updated_at, o.summary, t.tags, t.version from ${from()}
+        and o.search like ${like(needle)}`;
+      const [rows, [count]] = await Promise.all([
+        sql`select o.task_id, o.updated_at, o.summary from agentos_read.operations o
           where ${filter()} and ${after(sql, request, scope, "o.task_id")}
           order by o.updated_at desc, o.task_id limit ${(request.pageSize || 12) + 1}`,
-        sql`select count(*)::int as total from ${from()} where ${filter()}`,
-        sql`select distinct unnest(t.tags) as tag from ${from()} where ${owned()} order by tag`,
+        sql`select count(*)::int as total from agentos_read.operations o where ${filter()}`,
       ]);
       const result = page(rows, request, scope, (row) => row.task_id);
       return {
-        tasks: result.rows.map((row) =>
-          Object.assign(fromBinary(TaskSummarySchema, row.summary), {
-            tags: row.tags ?? [],
-            tagsVersion: row.version === null ? "0" : String(row.version),
-          }),
-        ),
+        tasks: result.rows.map((row) => fromBinary(TaskSummarySchema, row.summary)),
         totalSize: count?.total ?? 0,
         nextPageToken: result.nextPageToken,
-        availableTags: available.map((row) => row.tag as string),
       };
     },
     /** Per-agent activity over the viewer's executions. */

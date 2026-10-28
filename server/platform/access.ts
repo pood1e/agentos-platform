@@ -19,7 +19,6 @@ const selfServiceMethods = new Set([
   "DeleteSession",
   "RespondInteraction",
   "CancelTask",
-  "UpdateTaskTags",
   "StartVoiceSession",
 ]);
 

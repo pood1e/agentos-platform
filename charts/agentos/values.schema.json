@@ -1246,8 +1246,7 @@
                   "CAPABILITY_MCP_MANAGE",
                   "CAPABILITY_KNOWLEDGE_MANAGE",
                   "CAPABILITY_MODELS_MANAGE",
-                  "CAPABILITY_HARNESSES_MANAGE",
-                  "CAPABILITY_TASKS_MANAGE"
+                  "CAPABILITY_HARNESSES_MANAGE"
                 ],
                 "type": "string"
               },

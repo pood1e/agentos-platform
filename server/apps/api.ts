@@ -15,7 +15,6 @@ import { workspaceContext } from "../platform/access.js";
 import { registerEnvironmentApis } from "../platform/environment-api.js";
 import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
-import { taskTagStore } from "../tasks/store.js";
 import { continuationJobs } from "../team-sessions/continuation.js";
 import { voiceFeature } from "../voice/feature.js";
 import { speechSettingsStore } from "../voice/settings.js";
@@ -38,7 +37,6 @@ const { access, operations, environmentToken, metadata, oauth, identity, executi
 const { projection, jobs } = await projectionServices(config, clients, execution.store, app.log);
 enqueueCoordination(projection, jobs, [continuationJobs]);
 await projection.listen();
-const tags = await taskTagStore(config.database.uri, workspace, config.database.ca);
 
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
@@ -101,7 +99,6 @@ await registerConsole(app, {
     roleDefaults: roleDefaults(),
     replaceTemplate: templateWriter(config.kube),
     pack: loadPack(packRoot),
-    tags,
     voice: voice?.console,
     executions: execution.registry,
     entryAgent,
@@ -128,7 +125,6 @@ closeOnSignal(app, [
   configuration.close,
   access.close,
   execution.close,
-  tags.close,
   ...(voice ? [voice.close] : []),
 ]);
 await voice?.listen(listenConfig().host);

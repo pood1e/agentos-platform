@@ -28,7 +28,7 @@
 | `server/jobs` | 续接队列、消费与死信重放 |
 | `server/mcp-apps` | 模板读取、视图投影与当前查看者的工具回调 |
 | `server/platform` | 网关与 MCP 接线、gRPC 生命周期、访问上下文和环境 API 中转 |
-| `server/tasks`、`server/identity` | 任务标签与内置密码身份源 |
+| `server/identity` | 内置密码身份源 |
 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
 | `server/shared`、`shared` | 服务端基础设施与前后端共享代码 |
 

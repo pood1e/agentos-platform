@@ -211,11 +211,6 @@ export async function taskProjection(options: {
       await apply([{ task, agentId: tenant }]);
       return task;
     },
-    /** Wakes the viewers of a task's tree after platform-owned metadata changed. */
-    async touch(taskId: string) {
-      const root = (await store.entry(taskId))?.root;
-      if (root) await store.write((writer) => writer.notify({ roots: [root], ids: [taskId] }));
-    },
     /** Subscribes viewers of this replica to committed changes of every writer. */
     async listen() {
       await subscribe();

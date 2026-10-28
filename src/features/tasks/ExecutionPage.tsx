@@ -5,8 +5,6 @@ import { useNavigate, useParams } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
-import { can } from "../../../shared/permissions.js";
 import { useAccess } from "../../lib/access.js";
 import { WorkingAgents } from "../chat/AgentPresence.js";
 import { ConversationRuntime } from "../chat/ConversationRuntime.js";
@@ -15,7 +13,7 @@ import { useChat } from "../chat/use-chat.js";
 
 const started = () => {};
 
-/** A shared execution is a read-only native session; task managers maintain its tags. */
+/** Displays a shared execution as a read-only native session. */
 export function ExecutionPage() {
   const { agent = "", session = "" } = useParams();
   const navigate = useNavigate();
@@ -52,10 +50,7 @@ export function ExecutionPage() {
       ) : chat.conversation ? (
         <ConversationRuntime chat={chat}>
           <ThreadPrimitive.Root className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border">
-            <ConversationTranscript
-              chat={chat}
-              tagsEditable={can(access.data, Capability.TASKS_MANAGE)}
-            />
+            <ConversationTranscript chat={chat} />
             <WorkingAgents chat={chat} entryAgentId={`${ref.namespace}/${ref.name}`} />
           </ThreadPrimitive.Root>
         </ConversationRuntime>

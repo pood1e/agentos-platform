@@ -45,7 +45,7 @@ api、dataplane 与 worker 使用同一镜像，分别配置 Service、NetworkPo
 
 ## 状态与资源
 
-kagent 保存原始会话、消息、工具调用与 HITL。平台 PostgreSQL 保存执行绑定、加密离线凭据、任务标签、读投影及续接队列。
+kagent 保存原始会话、消息、工具调用与 HITL。平台 PostgreSQL 保存执行绑定、加密离线凭据、读投影及续接队列。
 TaskStore 接入在原生写入成功后更新投影，api 与协作 MCP 记录自身写入，worker 对账补齐运行时变化。
 列表在 SQL 中完成归属过滤、搜索与分页；执行树摘要在事务内更新，提交后通知各 api 副本刷新订阅。
 

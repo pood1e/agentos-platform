@@ -14,9 +14,6 @@ message TaskSummary {
   string prompt = 3;
   agentos.execution.v1.ActivityState state = 4;
   google.protobuf.Timestamp updated_at = 5;
-  repeated string tags = 6;
-  // Opaque concurrency token for tag edits; independent of runtime execution versions.
-  string tags_version = 7;
   // Conversation that delegated this operation, when one exists.
   string conversation_context_id = 8;
   // Native session that runs the operation root.
