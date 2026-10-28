@@ -1,6 +1,6 @@
 # 构建、发布与 Chart 配置
 
-平台发布 Chart、镜像与契约；参考部署由独立的站点发行版固定平台版本后签名发布，安装步骤与站点变量随发行版提供。
+平台发布 Chart、镜像与契约；参考部署由 [agentos-deploy](https://github.com/pood1e/agentos-deploy) 固定平台版本后签名发布，安装步骤与站点变量见该仓库。
 工具版本由 [mise.toml](../mise.toml) / [mise.lock](../mise.lock) 固定，Harness 默认镜像由 kagent fork 发布并在 Chart 值中按摘要固定。
 
 ## 路由与身份

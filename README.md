@@ -9,7 +9,7 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 
 ## 部署
 
-平台发布 Chart、镜像与契约，Chart 值与制品验签见[构建与配置](docs/delivery.md)。参考部署由独立的站点发行版固定平台版本后签名发布，安装 K3s、运行时与平台 Chart，运行节点需支持 KVM。
+平台发布 Chart、镜像与契约，Chart 值与制品验签见[构建与配置](docs/delivery.md)。参考部署由 [agentos-deploy](https://github.com/pood1e/agentos-deploy) 固定平台版本后签名发布，安装 K3s、运行时与平台 Chart，运行节点需支持 KVM。
 目标系统接入见[环境接入](docs/environments.md)；kagent 与 Substrate 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/agentos/1.0.0-alpha17) 与 [pood1e/substrate](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 的 `agentos/*` 分支构建并发布镜像。
 
 ## 开发
@@ -43,7 +43,7 @@ mise exec -- npm run dev
 | 主题 | 文档 |
 | --- | --- |
 | 架构与源码 | [架构](docs/architecture.md)、[代码导航](docs/code-navigation.md)、[Kubernetes 控制器](docs/kubernetes-controller.md) |
-| 构建与配置 | [构建、发布与 Chart 配置](docs/delivery.md) |
+| 构建与配置 | [构建、发布与 Chart 配置](docs/delivery.md)、[参考部署](https://github.com/pood1e/agentos-deploy) |
 | 授权与环境 | [执行授权](docs/execution-authorization.md)、[环境接入](docs/environments.md) |
 | 业务扩展 | [扩展契约](docs/extension.md)、[MCP Apps](docs/mcp-app.md) |
 | 语音 | [听写、朗读与 LiveKit 通话](docs/speech.md) |

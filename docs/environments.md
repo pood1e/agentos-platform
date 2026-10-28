@@ -15,7 +15,7 @@ flowchart LR
 ## 组成
 
 `agentos-environment` Chart 在目标集群部署环境网关、证书声明、身份路由和网络策略；`agentos-connections` Chart 在平台工作空间登记环境 CA、准入配置、服务目录与身份视图。
-参考部署的环境剧本、站点变量与身份变更流程随站点发行版提供。
+参考部署的环境剧本、站点变量与身份变更流程见 [agentos-deploy 环境接入](https://github.com/pood1e/agentos-deploy/blob/main/docs/environments.md)。
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 只用于服务工具发现。
 客户端 `agentos-<identity>` 的标识与密钥分别保存在平台 `<environment>-<identity>` 和环境网关同名身份 Secret 中，键为 `client-id`、`client-secret`。
