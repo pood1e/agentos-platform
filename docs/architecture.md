@@ -1,130 +1,106 @@
 # 架构
 
-聊天的语音输入与朗读由平台的可选 ASR/TTS 接入提供，能力查询、音频请求沿用平台 API 的令牌校验。
-前端按能力挂载 assistant-ui 官方适配器和控件；转写进入原输入框，发送与执行继续使用既有会话及 OBO 链路。
-模型推理由站点独立部署，平台以标准音频接口调用，配置见[构建与部署](delivery.md#语音)。
-实时通话使用 LiveKit 的音频与轮次管理，复用原聊天入口和执行授权，接线见[实时语音](voice-calls.md)。
+AgentOS 基于 kagent、Agent Substrate 与 agentgateway，提供 Agent 团队运行、工具治理、知识和控制台。
+业务 Agent、Skill、环境连接器与审批服务由方案包交付。
 
 ## 组件
 
 ```mermaid
 flowchart LR
     Browser[浏览器] -->|会话 Cookie| Web[web · oauth2-proxy]
-    Web -->|Bearer · Connect RPC| Console[console]
-    Clients[Controller UI / CLI] -->|Bearer · Connect RPC| Console
-    Web -.->|登录| Identity[身份提供方 · 内置密码或站点 OIDC]
-    Console -->|官方 gRPC| Kagent[kagent 控制面]
-    Console -->|CRD| K8s[Kubernetes API]
+    Web -->|Bearer · Connect RPC| API[平台 API]
+    Clients[外部前端 / CLI] -->|Bearer| API
+    Web -.->|OIDC 登录| Identity[内置密码或站点身份源]
+    API -->|官方 gRPC| Kagent[kagent]
+    API -->|父资源与凭据| K8s[Kubernetes API]
     Controller[平台控制器] -->|SSA| K8s
-    K8s -->|AccessPlan status| Console
-    Team[Agent 团队 / microVM] -->|模型 / MCP| Gateway[平台网关 · agentgateway]
-    Team -->|签名 Actor · 持久化 RPC| Console
-    Gateway -->|逐次执行授权| Console
-    Gateway -->|模型| Models[内置推理 / 外部模型]
-    Gateway -->|嵌入| Embedding[嵌入模型]
-    Gateway -->|协作 MCP| Console
-    Gateway -->|会话 MCP| Kagent
-    Gateway -->|按 Agent 身份| EnvGateway[环境网关 · agentgateway]
-    EnvGateway -->|连接器| Connectors[方案包的 MCP 服务]
-    Console -->|可选 ApprovalService| Policy[方案包的审批服务]
-    EnvGateway -->|可选执行守卫| Policy
-    Kagent --> Substrate[Agent Substrate · microVM]
-    Kagent --> PG[(CNPG PostgreSQL · pgvector)]
-    Substrate --> PG
+    K8s -->|AccessPlan status| API
+    Team[Agent · microVM] -->|模型 / MCP| Gateway[平台网关]
+    Team -->|Actor JWT · TaskStore / Memory| API
+    Gateway -->|执行授权 / 协作 MCP| API
+    Gateway --> Models[模型服务]
+    Gateway -->|环境身份| Environment[环境网关与连接器]
+    API -->|可选 ApprovalService| Approval[业务审批服务]
+    Kagent --> Substrate[Agent Substrate]
+    API & Kagent & Substrate --> PG[(PostgreSQL · pgvector)]
     Substrate --> S3[(S3 快照)]
-    Bus[(NATS JetStream)] <-->|源事件 / 案例事实| Automation[案例自动化 · Temporal]
+    Automation[案例自动化 · Temporal] <-->|源事件与案例事实| Bus[(NATS JetStream)]
     Automation -->|案例 MCP| Gateway
 ```
 
-| 层 | 组件 | 来源 | 职责 |
-| --- | --- | --- | --- |
-| 底座 | kagent 控制面 | 上游 1.0.0-alpha17 与固定补丁 | Agent 编译为不可变 revision，会话与 A2A 历史、原生 HITL、MemoryService、会话 MCP |
-| 底座 | Agent Substrate | 上游 0.6.0-alpha3 与固定补丁 | 每会话一个 Actor，Cloud Hypervisor microVM 隔离，快照与按目标主机注入凭据 |
-| 底座 | agentgateway | 上游 v1.6.0 官方 Chart | 平台网关与环境网关：模型接入、MCP 汇聚、身份映射、读写视图、ExtMCP |
-| 平台服务 | console | 本仓库 | 平台 API：聊天、工具调用与审批状态，团队、Skill、知识、连接、Harness 与环境管理；只接受 Bearer 令牌 |
-| 平台服务 | web | 本仓库与 oauth2-proxy | 前端静态资源与 MCP App 沙箱页（nginx），浏览器会话（oauth2-proxy），向平台 API 注入访问令牌 |
-| 平台服务 | identity | 本仓库，基于 oidc-provider | 密码模式的内置身份源：只校验站点密码，为单一共享主体签发标准令牌 |
-| 平台控制器 | agentos-controller | controller-runtime 与原生 Kubernetes API 类型 | 编译 AccessPlan、维护连接派生资源与方案预置 |
-| 平台服务 | team-sessions | 本仓库 | 协作 MCP：委派、续接、知识检索、角色起草；可选外部审批协调 |
-| 环境侧 | 案例自动化 | 本仓库 | 把源 CloudEvents 映射为版本化案例，以 Temporal 工作流交指定 Agent 处理；发布案例事实，受理人工反馈 |
-| 平台资源 | 嵌入模型 | Ollama 与 EmbeddingGemma | 团队知识的 768 维向量 |
-| 存储 | CNPG PostgreSQL、S3 | 上游 | kagent 与 Substrate 状态、记忆向量、Actor 快照 |
-
-平台 API 在同一进程提供管理接口、协作 MCP、会话续接与治理协调，共享 PostgreSQL 中的任务投影：运行时写入经 TaskStore 代理进入投影，kagent 侧变化由水位对账补齐。业务审批、方案与执行守卫由方案包独立部署。依赖方向固定为平台服务调用 kagent，Agent 只经网关访问平台服务与环境，
-平台授权服务处于工具执行路径，控制台页面通过 RPC 管理和观察任务。
-
-交互视图采用 MCP Apps，由环境 MCP 服务交付单文件 HTML，在独立源沙箱中运行。控制台从 kagent ToolService 读取目录元数据和模板，
-视图取数经控制台校验会话归属、同服务、可见性及只读分级后，以当前查看者凭证直接访问环境网关。视图不能执行写操作或替用户发送消息，详见[对话视图](mcp-app.md)。
-
-审批协调与嵌套 HITL 续接通过 pg-boss 复用执行 PostgreSQL。队列仅保存原生任务、交互和子任务引用，
-以工作空间及稳定业务键限制并发；作业在观察到变化的投影写入事务内入队，提交即不丢失。
-业务等待使用延迟任务，错误使用组件原生退避和死信；延迟入队与当前任务确认在同一数据库事务提交。
-每次处理重新核验执行授权，原生回复使用确定性 messageId，外部审批按任务与工具引用幂等。
-
-配置读取采用 Kubernetes 官方 Informer，订阅 Agent、AgentTemplate、ModelConfig、Harness 与 AgentgatewayBackend。
-运行时授权通过 Informer 读取已就绪的 AccessPlan 编译结果；订阅故障使实例未就绪并拒绝授权。
-当前 Actor、执行绑定、撤销与用户身份继续逐次核验。管理 API 只写原生连接父对象与凭据 Secret，控制器维护派生对象。
-方案预置由 Preset 以 SSA 维护，未修改的对象随升级更新，用户编辑后移交所有权。
-资源边界与部署验证见 [Kubernetes 控制器](kubernetes-controller.md)。
-会话观测只响应本会话及委派树的变化，订阅恢复仅遍历活动任务；原始历史仍由 kagent 保存，完整任务缓存上限为 64 MiB。
-全局紧凑任务索引与首次历史同步仍随历史量增长，持久化分页索引属于后续工作。
-
-## 数据一致性
-
-模型与 MCP 连接更新先对全部关联资源执行 Kubernetes dry-run，再写入连接、凭据和派生资源。
-后续失败时按逆序恢复已确认的写入，以 resourceVersion 避免覆盖并发编辑。写入结果不确定或补偿冲突返回明确的部分保存错误；该流程没有跨资源事务或进程崩溃恢复保证。
-
-团队知识清理使用完整记录 ID 集合的 ETag 确认快照，只逐条删除该快照内的记录。同数量替换会使旧快照失效，确认后新增的知识保留。
-生成模型与向量模型通过原生资源用途声明区分，角色配置和运行时模型 API 均校验用途。
-
-## 调用链路
-
-- 对话与协作：普通聊天统一通过 `entryAgent` 进入，用户历史按发起人隔离。助手经 `list_agents`、`create_session`、原生 `invoke_session` 或异步 `dispatch_session` 委派专业 Agent，目标直接使用 kagent 资源引用。重试与续接复用原生会话和确定性 messageId。
-- 委派契约：同步与后台委派共用 `session_id`、`message_id`、`message` 三个输入字段；平台构造原生 A2A 用户消息。角色由 Agent 的 `template.ref` 决定，工具上限绑定该模板，资源标签不参与角色授权。
-- 工具访问：Agent 的模型与 MCP 请求只到平台网关，凭据由 Substrate 按目标主机注入。环境工具经环境网关，平台逐次校验用户、会话和 Agent 工具权限；环境按显式执行类型选择用户 OBO 或服务身份，目标系统原生权限决定资源上限。
-- 工具确认：声明需要确认的调用以 kagent 原生 HITL 暂停。默认由控制台提交精确工具 ID 的批准或拒绝；配置外部 `ApprovalService` 后，由服务决定、准备执行并接收结果，控制台展示状态和链接。外部服务不可用时保留暂停。同一次暂停的工具使用同一类决定来源。
-- 团队知识：知识角色以带向量记忆的 Harness 写入原生 MemoryService；其他成员经 `search_knowledge` 只读检索，范围与服务用户由服务端固定。
-- 轨迹：每条消息、委派、工具调用与审批都在 A2A 任务历史中，聊天按原始顺序展示，不另建 trace 存储。
-
-任务列表按操作树的状态、参与成员和标签筛选，分页游标绑定完整筛选条件。标签仅从当前用户可见的操作根任务汇总。顶栏待审批入口定位到任务与原生审批记录，原生确认在控制台完成，外部审批在对应服务完成。
-停止操作通过原生 A2A 取消当前会话各轮委派树中的所有未结束任务，包含后台任务，并等待执行确认；重新读取原生状态后继续取消期间创建的子任务。已执行的副作用保留在原生历史中，仍需核验。
-续接器遇到已取消的任务或祖先时停止自动续接。会话仍可接收新消息，删除会话才撤销其执行绑定及后代授权。
-
-## 部署形态
-
-| 形态 | 平台 | 环境侧 |
+| 组件 | 来源 | 职责 |
 | --- | --- | --- |
-| 独立 | 单独的集群或虚机，一个平台接入多套环境 | 每套环境部署环境网关与方案包连接器，按需接入业务审批与执行守卫 |
-| 内嵌 | 目标集群中的独立命名空间 | 同上，与平台同集群 |
+| kagent | 1.0.0-alpha17 与固定补丁 | Agent revision、原生会话与 A2A 历史、HITL、MemoryService、会话 MCP |
+| Agent Substrate | 0.6.0-alpha3 与固定补丁 | 每会话一个 Actor、Cloud Hypervisor microVM、快照与目标凭据注入 |
+| agentgateway | v1.6.0 官方 Chart | 平台和环境网关、模型接入、MCP 路由、身份映射与 ExtMCP |
+| 平台 API | 本仓库的 console 进程 | 聊天与管理 RPC、执行授权、运行时代理、协作 MCP、投影与后台协调 |
+| web | nginx 与 oauth2-proxy | 静态前端、浏览器会话、访问令牌转发与 MCP App 沙箱页 |
+| identity | oidc-provider | 密码模式身份源，为站点共享主体签发令牌 |
+| 平台控制器 | controller-runtime 与官方 Kubernetes 类型 | 编译 AccessPlan、维护连接派生对象与方案预置 |
+| 团队知识 | 原生 MemoryService、Ollama 与 EmbeddingGemma | 共享知识及 768 维向量检索 |
+| 案例自动化 | Temporal 与 NATS JetStream | 在环境侧映射事件、调用指定 Agent、处理超时与人工反馈 |
 
-平台需要有 KVM 的节点运行 microVM。平台 Chart 包含单一 API、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent；
-环境套件通过 `agentos-environment` 与 `agentos-connections` 两个 Chart 管理环境网关和平台预置接入；kagent、Substrate、agentgateway 与 CNPG 由部署脚本以固定版本安装。
-平台 API 使用滚动更新，新实例就绪后才移除旧实例；HTTP/2 连接通过 GOAWAY 排空已接收的 RPC。发布脚本在应用更新完成后刷新平台协作工具目录，保持网关与原生工具发现一致。
-浏览器以鉴权心跳判断平台连接，单个资源或观测流失败保留在对应页面。空闲观测流每 15 秒发送心跳，并在 5 分钟后正常轮换；断网恢复时重新订阅，登录失效时重新认证并保留当前 URL。
-案例自动化以镜像随平台发布，在环境侧按需部署，依赖 NATS JetStream 与 Temporal。
+平台 API 以单进程部署。
+运行时补丁与回归范围见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
 
-## 安全边界
+## 状态与一致性
 
-- Agent 运行在 microVM 中，出站按目标主机默认拒绝；模型与 MCP 凭据由 Substrate 注入，运行时拿不到明文。
-- 平台网关验证短期 Actor JWT 与 Kubernetes 绑定 ServiceAccount 令牌。模型请求按 Agent 的模型配置和 API 校验，MCP 调用按当前模板与具体服务工具绑定校验；发现令牌仅用于元数据。后端凭据存于 Secret，NetworkPolicy 只放行声明的调用方。
-- 每个 Agent 在每个目标系统有独立账号，平台访问策略、目标系统账号权限与人工审批分别承担调用授权、实际权限上限与执行确认。
-- 平台 API 只接受 `Authorization: Bearer`，验证签名、issuer、audience 和角色；浏览器会话由 web 的 oauth2-proxy 持有，Cookie 为 `SameSite=Lax`，跨站写请求不携带会话。身份源为内置密码或站点 OIDC，两种模式走同一授权路径。认证用户可聊天及发起只读查询，平台资源配置使用独立应用角色，目标写角色决定运维写上限。后台执行使用用户经 `/delegation/start` 授予的离线授权，加密存于服务端，浏览器退出与访问令牌过期后仍可续期并保持原用户权限上限；会话取消撤销整条委派链，审批不扩大权限。目标系统支持时采用原生 OBO，其余连接器通过逐次授权的服务身份桥接。
-- 执行凭证、审批账号密钥不进入提示词与浏览器响应；外部审批链路不承诺跨审批系统、数据库与目标系统的分布式事务，执行后故障须查询核验实际结果。
+原始会话、消息、工具调用与审批由 kagent 保存。平台在同一 PostgreSQL 中维护执行绑定、加密凭据、任务标签、读投影与协调队列。
 
-执行身份、会话隔离、运行时入口和环境 OBO 接线见[执行授权](execution-authorization.md)；逐资源业务授权的后续范围见[实施计划](authorization-plan.md)。
+读投影按列保存任务、会话、发起人及执行树。TaskStore 代理在原生写入成功后更新投影，
+平台 API 和协作 MCP 写入各自产生的变更；后台对账通过持久化水位补齐 kagent 侧变化，首次接入回填历史。
+列表在 SQL 中完成归属过滤、搜索、标签筛选与分页，详情按执行树加载；委派关系取自任务 ID 和确定性 messageId。
 
-## 执行记录与自动化
+同一执行树的摘要在事务锁内重算，提交后经 `pg_notify` 唤醒各实例订阅。
+文本增量由被查看会话的 A2A 订阅提供。原生状态与紧凑投影分别承担执行记录和查询职责。
 
-可选遥测复用 kagent 原生 OpenTelemetry SDK，以 OTLP 将控制面和 Agent 运行时的信号发送到站点提供的接收端。
-Traces、metrics、logs 分别配置，默认关闭导出与内容采集，接线见[遥测](delivery.md#遥测)。
+审批协调与续接使用 pg-boss，作业和投影变更在同一事务入队，以工作空间及稳定业务键限制并发。
+每次处理重新核验执行授权，原生回复使用确定性 messageId，外部审批按任务与工具引用幂等。
+组件负责延迟、退避和死信，恢复入口见[后台协调](delivery.md#后台协调)。
 
-案例自动化按方案包的 `CaseTrigger` 映射源事件并选择原生 Agent：同一案例复用原生会话与确定性 messageId，超时取消并升级，事实类型的命名空间由方案包决定。
-会话侧栏提供新建、搜索、执行状态和删除入口，手机端使用抽屉。会话状态聚合前台、后台和人工交互中的工作；所有关联工作结束后，所有者可通过原生 Session API 删除会话，执行授权随之撤销。浏览器断开仅结束观测连接，退出登录仅清除浏览器会话，后台执行继续使用独立离线授权。
+管理 API 写入原生连接父对象，再保存其拥有的凭据 Secret。控制器以 SSA 维护 ModelConfig、RemoteMCPServer、路由与认证策略，
+通过状态条件报告就绪或失败；凭据保存失败后可重试收敛。
+Preset 首次应用方案资源，后续更新由 SSA 所有权决定；用户编辑后取得对象所有权，方案升级保留其修改与删除结果。
+资源归属见 [Kubernetes 控制器](kubernetes-controller.md)。
 
-聊天使用 assistant-ui，输入区上方展示正在工作或等待输入的 Agent，包括后台执行的 Agent。子 Agent 仅在完成后将结果嵌入委派位置，聊天页保留任务标签和人工审批。消息按原始 A2A 顺序投影为带稳定 ID 的内容片段，保留过程说明、并行工具调用和最终答复的交错顺序；连续工具调用由官方 GroupedParts 组件合并为紧凑的服务图标行，点击图标查看参数和结果，工具状态按调用 ID 更新。过程与草稿映射为 reasoning，完成后的最终答复映射为 text；官方朗读动作仅获取最终答复，再经 remark 转为可朗读文本，保留最终答复表格中的数据。系统任务位于 `/system-tasks/:scheduleId?`，所有具有平台管理能力的管理员共享定义和执行历史，普通用户不可读取；执行记录通过 `/system-tasks?agent=<name>&session=<id>` 以只读会话展开，任务管理角色维护其标签。定时任务复用 kagent `ScheduledRunService` 持久化、调度和记录运行历史；配置维护和手动触发要求 `tasks.manage`。
-每次定时运行通过原生执行记录核对会话、创建者和 Agent 后绑定独立只读服务主体；首次任务落盘前使用消息 ID 查找原生执行记录，ID 本身不授予权限。
-方案包可通过 `externallyDispatchedPresets` 为预置任务启用执行前判定。kagent 按周期持久化每次执行，环境通过显式绑定预置任务的工作负载身份调用 `dispatch_scheduled_run_execution`，决定启动或跳过并记录原因。判定前不创建 Agent 会话；未收到判定的执行按原生截止时间超时。重复相同决定幂等，冲突决定拒绝，历史记录和用户配置的周期、启停状态保留。执行判定权限独立于结果读取和运维写权限。
+团队知识清理以完整记录 ID 集合的 ETag 确认快照，逐条删除该快照中的记录。
+生成模型与向量模型使用原生资源用途声明，配置和执行均校验用途。
 
-聊天与协作创建请求的幂等键分别按发起人和父会话派生，重试保持稳定，并与系统任务的创建空间隔离。
-方案预置只在首次接入时创建，通过稳定方案键引用原生任务；用户编辑、启停与执行历史由 kagent 保留。预置任务支持暂停和周期调整，生命周期由方案包管理；自建任务支持删除并保留运行历史。事件入口的启用状态来自平台配置，来源环境负责投递与 worker 运行。
-触发器契约见[扩展契约](extension.md#案例自动化)。环境侧部署接线由[目标架构 Issue](https://github.com/pood1e/agentos-platform/issues/6) 跟踪。
+## 执行与授权
+
+- 聊天通过 `entryAgent` 进入统一助手，再经 A2A 委派专业 Agent。同步与后台委派共用原生会话、消息 ID 和消息契约。
+- 用户身份、会话及父链、Agent 工具绑定和环境身份共同决定权限上限。控制器编译 AccessPlan，运行时在每次调用时读取就绪决策并核验当前执行身份。
+- Agent 在 microVM 中运行，出站按目标 origin 放行，宿主注入短期 Actor JWT。平台逐次验证签名、受众、当前 Actor UID 与 Session。
+- 平台 API 校验 Bearer 令牌的签名、issuer、audience 与角色；浏览器会话由 web 管理。后台任务使用加密持久化的离线授权，账号与身份提供方决定续期有效性。
+- 模型与 MCP 入口分别校验 Actor 或绑定 ServiceAccount 身份。工作负载 TokenReview、目标凭据和 NetworkPolicy 共同限定调用范围。
+- 工具确认使用原生 HITL。外部 ApprovalService 可承担业务决定、执行准备与结果记录，平台在各阶段复验原执行授权。
+- 取消经原生 A2A 覆盖当前执行及其委派树，并等待终态确认；删除会话撤销绑定及后代授权。外部副作用由原生历史和目标系统核验。
+
+角色、凭据生命周期与会话隔离见[执行授权](execution-authorization.md)，环境 OBO 接线见[环境接入](environments.md)。
+
+## 控制台与自动化
+
+聊天使用 assistant-ui，按原始 A2A 顺序展示过程、并行工具调用、审批与最终答复。
+子 Agent 完成后在委派位置展示结果，工具调用按稳定调用 ID 更新；个人任务在聊天中展示。
+
+MCP Apps 由环境 MCP 服务交付单文件 HTML，在独立源沙箱中运行。
+宿主校验来源会话、服务、可见性与只读分级，再以当前查看者身份访问环境网关，接入见[对话视图](mcp-app.md)。
+语音输入、朗读和 LiveKit 通话复用聊天与执行授权，配置见[语音](speech.md)。
+
+系统任务在 `/system-tasks/:scheduleId?` 展示共享定义与运行历史，读取要求平台管理能力，维护与手动触发要求 `tasks.manage`。
+定时任务由 kagent ScheduledRunService 持久化和调度，每次运行核对原生执行记录后绑定独立只读服务主体。
+方案预置保留用户编辑的启停、周期与历史；外部判定可决定启动或跳过一次执行，权限单独绑定至预置任务。
+
+案例自动化在环境侧运行，以版本化 CloudEvents 映射源事件，同一案例复用会话和确定性 messageId，
+超时取消并升级。触发器、结果读取与外部审批契约见[扩展契约](extension.md)。
+
+## 部署与观测
+
+平台可独立部署或位于目标集群的专用命名空间，每个平台接入多套环境。
+KVM 节点承载 microVM；CNPG 与 S3 保存数据库和快照。kagent、Substrate、agentgateway 与 CNPG 由参考部署按固定版本安装。
+平台和环境 Chart 声明控制器、AccessPlan 与 Preset，Gateway API HTTPRoute 暴露 web、API 及可选沙箱主机名。
+
+API 滚动更新在新实例就绪后排空旧实例的 HTTP/2 连接。观测流每 15 秒发送心跳、5 分钟轮换，浏览器恢复连接后重新订阅。
+kagent 原生 OpenTelemetry 通过 OTLP 接入站点接收端，默认关闭导出与内容采集。
+
+制品、签名、站点变量和部署步骤见[构建与部署](delivery.md)。

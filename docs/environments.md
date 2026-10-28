@@ -18,7 +18,6 @@ flowchart LR
 | --- | --- |
 | `environments/deploy.yaml` | 安装固定版本控制器与 `agentos-environment` Chart，发布平台连接 release |
 | `environments/connections.yaml` | 安装 `agentos-connections` Chart，统一管理平台环境 CA、准入配置、服务目录与身份视图 |
-| `environments/connect.yaml` | 等待原生工具发现，初始化新增连接的默认工具绑定 |
 | `environments/lifecycle.yaml` | 对比原 release 的身份范围，识别需要撤销目标凭据的身份 |
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 只用于服务工具发现。
@@ -106,7 +105,7 @@ agentgateway 按 MCP SEP-414 将 W3C 上下文同步到 MCP `_meta`。Baggage �
 | `environment_state` | `present` 或 `absent`，控制所属环境 release 生命周期 |
 
 ```sh
-ansible-playbook agentos.platform.environments -i <site>/environments.yaml -e @<site>/environments-vars.yaml
+ansible-playbook agentos.platform.access -i <site>/environments.yaml -e @<site>/environments-vars.yaml
 ansible-playbook agentos.platform.connections -i <site>/environments.yaml -e @<site>/environments-vars.yaml
 ```
 
