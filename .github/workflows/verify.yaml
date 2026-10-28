@@ -2,7 +2,21 @@ name: Verify
 on:
   push:
     branches: [main]
-    paths: ['runtime/**', 'third_party/**', 'ci/**', 'mise.toml', 'mise.lock', '.github/workflows/verify.yaml']
+    paths:
+      - 'controller/**'
+      - 'runtime/**'
+      - 'third_party/kagent/**'
+      - 'third_party/substrate/**'
+      - 'ci/prepare-substrate.sh'
+      - 'ci/verify-controller.sh'
+      - 'ci/verify-substrate.sh'
+      - 'ci/generate-controller.sh'
+      - 'ci/chart-schemas.py'
+      - 'ci/requirements.txt'
+      - 'deploy/vars.yaml'
+      - 'mise.toml'
+      - 'mise.lock'
+      - '.github/workflows/verify.yaml'
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,7 +30,9 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.paths.outputs.code }}
+      controller: ${{ steps.paths.outputs.controller }}
       runtime: ${{ steps.paths.outputs.runtime }}
+      voice: ${{ steps.paths.outputs.voice }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -28,12 +44,18 @@ jobs:
               - '**'
               - '!**/*.md'
               - '!LICENSE'
+            controller:
+              - '{controller/**,ci/{generate-controller.sh,chart-schemas.py,requirements.txt},deploy/vars.yaml,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '!**/*.md'
             runtime:
-              - '{runtime/**,third_party/**,ci/**,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '{runtime/**,third_party/{kagent,substrate}/**,ci/{prepare-substrate,verify-controller,verify-substrate}.sh,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '!**/*.md'
+            voice:
+              - '{voice/**,proto/**,contracts/**,third_party/**/*.proto,package*.json,pyproject.toml,mise.toml,mise.lock,ci/{contracts,node-contracts}.py,ci/{requirements,voice-test-requirements}.txt,.github/workflows/verify.yaml}'
               - '!**/*.md'
   application:
     needs: changes
-    if: github.event_name != 'push' && needs.changes.outputs.code == 'true'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name != 'push' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -56,21 +78,22 @@ jobs:
           install_args: node go go:github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-jsonschema
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-${{ hashFiles('controller/**/*.go') }}
+          restore-keys: |
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci --prefer-offline
       - run: npm run verify
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: application
-          path: |
-            build/
-            dist/
-            gen/
-          retention-days: 1
   deployment:
     needs: changes
-    if: github.event_name != 'push' && needs.changes.outputs.code == 'true'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name != 'push' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-24.04
     env:
       ANSIBLE_CONFIG: deploy/ansible.cfg
@@ -82,6 +105,15 @@ jobs:
       - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
           version: 2026.10.18
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-${{ hashFiles('controller/**/*.go') }}
+          restore-keys: |
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
       - run: |
           uv venv .cache/venv
           uv pip install --python .cache/venv/bin/python -r deploy/requirements.txt -r ci/python-requirements.txt -r contracts/requirements.txt
@@ -98,31 +130,59 @@ jobs:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci --prefer-offline
-      - run: |
+      - name: Ansible validation
+        run: |
           ansible-lint deploy environments
           ansible-playbook deploy/deploy.yaml --syntax-check
           ansible-playbook deploy/validate.yaml --syntax-check
           ansible-playbook environments/deploy.yaml --syntax-check
           ansible-playbook environments/connect.yaml --syntax-check
-          ci/check-charts.sh
-          python ci/test-artifacts.py
-          export KUBEBUILDER_ASSETS="$(setup-envtest use 1.37 -p path)"
-          go -C controller test -race ./...
-          go -C controller vet ./...
-      - run: |
-          node_modules/.bin/buf generate --template contracts/buf.python.gen.yaml
+      - run: ci/check-charts.sh
+      - run: python ci/test-artifacts.py
+      - name: Python checks and contracts
+        run: |
+          python ci/contracts.py
           ruff check
           ruff format --check
           pytest
-          python ci/contracts.py
           python ci/test-release.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-contracts
           path: dist/contracts/*.whl
           retention-days: 1
+  controller:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.controller == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+          install_args: go helm python uv go:sigs.k8s.io/controller-runtime/tools/setup-envtest
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-${{ hashFiles('controller/**/*.go') }}
+          restore-keys: |
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-${{ github.job }}-
+            platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
+      - run: |
+          ci/generate-controller.sh
+          git diff --exit-code -- controller/api controller/config/crd/bases
+          uv venv .cache/venv
+          uv pip install --python .cache/venv/bin/python -r ci/requirements.txt
+          .cache/venv/bin/python ci/chart-schemas.py
+          KUBEBUILDER_ASSETS="$(setup-envtest use 1.37 -p path)"
+          export KUBEBUILDER_ASSETS
+          go -C controller test -race -count=1 ./...
+          go -C controller vet ./...
   voice:
-    needs: deployment
+    needs: [changes, deployment]
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.voice == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -148,7 +208,7 @@ jobs:
           .cache/voice-venv/bin/pytest -o 'pythonpath=voice' voice/tests
   runtime:
     needs: changes
-    if: needs.changes.outputs.runtime == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -180,14 +240,18 @@ jobs:
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: go-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles('mise.lock', 'runtime/**/*.patch') }}
-      - run: echo "KUBEBUILDER_ASSETS=$(setup-envtest use 1.37 -p path)" >> "$GITHUB_ENV"
+          restore-keys: |
+            go-${{ runner.os }}-${{ matrix.component }}-
+      - run: |
+          assets="$(setup-envtest use 1.37 -p path)"
+          echo "KUBEBUILDER_ASSETS=$assets" >> "$GITHUB_ENV"
         if: matrix.component == 'controller'
       - run: psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
       - run: ci/verify-${{ matrix.component }}.sh
   required:
     name: Required checks
     if: always()
-    needs: [changes, application, deployment, voice, runtime]
+    needs: [changes, application, deployment, controller, voice, runtime]
     runs-on: ubuntu-24.04
     env:
       RESULTS: ${{ toJSON(needs.*.result) }}
