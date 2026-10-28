@@ -8,4 +8,4 @@ spec:
       kind: ConfigMap
       metadata: {name: {{ include "agentos.name" . }}-skills}
       data:
-        catalog.json: {{ dict "items" (include "agentos.skills" . | fromYamlArray) | toJson | quote }}
+        catalog.json: {{ dict "items" .Values.global.agentos.skills | toJson | quote }}

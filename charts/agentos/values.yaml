@@ -5,10 +5,6 @@ global:
     toolsets: {}
     identities: []
     skills: []
-    skillRepository:
-      host: ''
-      path: ''
-      secretRef: agentos-skill-repository
 image:
   repository: registry.example.com/agentos
   digest: ''

@@ -9,7 +9,7 @@
         "agentos": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["environments", "toolsets", "identities", "skills", "skillRepository"],
+          "required": ["environments", "toolsets", "identities", "skills"],
           "properties": {
             "environments": {
               "items": {
@@ -247,25 +247,6 @@
               "items": {
                 "type": "object",
                 "required": ["skill"]
-              }
-            },
-            "skillRepository": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["host", "path", "secretRef"],
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "pattern": "^([a-z0-9]([a-z0-9.-]*[a-z0-9])?)?$"
-                },
-                "path": {
-                  "type": "string",
-                  "pattern": "^(/([a-zA-Z0-9_-]+/)+[a-zA-Z0-9_-]+\\.git)?$"
-                },
-                "secretRef": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-                }
               }
             }
           }
