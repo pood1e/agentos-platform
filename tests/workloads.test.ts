@@ -91,39 +91,42 @@ it("validates the registered environment issuer, audience, client and service-ac
   if (!address || typeof address === "string") throw new Error("Identity server unavailable");
   const issuer = `https://127.0.0.1:${address.port}`;
   const trust = config();
-  trust.automationSources.push({
-    $typeName: "agentos.authorization.v1.AutomationSource",
-    environment: "production",
+  trust.executionSources.push({
+    $typeName: "agentos.authorization.v1.ExecutionSource",
     issuer,
-    audience: "agentos-automation",
-    clientId: "case-worker",
+    audience: "agentos-executions",
+    clientId: "execution-client",
     subject: "service-account-123",
-    scheduledRunPresets: [],
-    scheduledRunDispatchPresets: [],
-    caseAgents: [],
+    agents: [
+      { $typeName: "kagent.api.v1.ResourceReference", namespace: "agentos", name: "inspection" },
+    ],
     write: false,
     capabilities: [],
   });
+  const source = trust.executionSources[0];
+  if (!source) throw new Error("Execution source missing");
+  trust.executionSources.unshift({ ...source, audience: "another-execution-api", write: true });
   const identity = workloadIdentity(trust, {
     createTokenReview: vi.fn<AuthenticationV1Api["createTokenReview"]>(),
   });
   try {
-    const authorized = await token(issuer, "agentos-automation", "service-account-123", {
-      azp: "case-worker",
+    const authorized = await token(issuer, "agentos-executions", "service-account-123", {
+      azp: "execution-client",
     });
-    expect((await identity.automation({ authorization: authorized })).environment).toBe(
-      "production",
+    expect((await identity.execution({ authorization: authorized })).clientId).toBe(
+      "execution-client",
     );
+    expect((await identity.execution({ authorization: authorized })).write).toBe(false);
     for (const [audience, subject, azp] of [
-      ["other-audience", "service-account-123", "case-worker"],
-      ["agentos-automation", "human-user", "case-worker"],
-      ["agentos-automation", "service-account-123", "other-client"],
+      ["other-audience", "service-account-123", "execution-client"],
+      ["agentos-executions", "human-user", "execution-client"],
+      ["agentos-executions", "service-account-123", "other-client"],
     ])
       await expect(
-        identity.automation({ authorization: await token(issuer, audience, subject, { azp }) }),
+        identity.execution({ authorization: await token(issuer, audience, subject, { azp }) }),
       ).rejects.toThrow();
     await expect(
-      identity.automation({ authorization: authorized.slice(0, -10) + "0".repeat(10) }),
+      identity.execution({ authorization: authorized.slice(0, -10) + "0".repeat(10) }),
     ).rejects.toThrow();
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));

@@ -1,9 +1,6 @@
 import { resolve } from "node:path";
 import { CoreV1Api } from "@kubernetes/client-node";
 import { registerDelegation } from "../authorization/delegation.js";
-import { automationPresets } from "../automation/presets.js";
-import { automationService } from "../automation/service.js";
-import { presetStore } from "../automation/store.js";
 import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { consoleService } from "../console/service.js";
@@ -43,7 +40,6 @@ const { projection, jobs } = await projectionServices(config, clients, execution
 enqueueCoordination(projection, jobs, [continuationJobs, approvalJobs(operations)]);
 await projection.listen();
 const tags = await taskTagStore(config.database.uri, workspace, config.database.ca);
-const presets = await presetStore(config.database.uri, workspace, config.database.ca);
 
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
@@ -73,7 +69,6 @@ const voice = await voiceFeature(app, {
   initiator: (subject) => execution.background.resolve(subject),
   agent: { namespace: workspace, name: entryAgent },
 });
-const automation = automationPresets(workspace, packRoot);
 const knowledge = knowledgeConfig(config.kagent);
 const gateway = {
   name: process.env.AGENTOS_GATEWAY_NAME ?? "agentos-gateway",
@@ -127,14 +122,6 @@ await registerConsole(app, {
     knowledge,
     speech: speechSettings,
   }),
-  automation: automationService(
-    clients,
-    workspace,
-    { eventTriggers: automation.eventTriggers, scheduledRuns: presets.list },
-    operations.environments.flatMap((entry) => entry.environment?.name ?? []),
-    process.env.AGENTOS_EVENT_AUTOMATION_ENABLED === "true",
-    projection,
-  ),
   packRoot,
 });
 registerHealth(app, () => projection.healthy() && configuration.healthy() && access.healthy());
@@ -145,7 +132,6 @@ closeOnSignal(app, [
   access.close,
   execution.close,
   tags.close,
-  presets.close,
   ...(voice ? [voice.close] : []),
 ]);
 await voice?.listen(listenConfig().host);

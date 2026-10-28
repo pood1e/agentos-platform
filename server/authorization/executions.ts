@@ -3,6 +3,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { decodeJwt } from "jose";
 import { LRUCache } from "lru-cache";
 import {
+  type ExecutionBinding,
   ExecutionBindingSchema,
   type ExecutionIdentity,
 } from "../../gen/agentos/execution/v1/identity_pb.js";
@@ -17,8 +18,8 @@ const denied = () => new ConnectError("Execution access denied", Code.Permission
 export function executions(
   store: ExecutionStore,
   verify?: ReturnType<typeof jwtIdentity>,
-  adopt?: (session: Session, messageIds: string[]) => Promise<ExecutionIdentity | undefined>,
   renew?: (subject: string, saved: ExecutionIdentity) => Promise<ExecutionIdentity | undefined>,
+  service?: (root: ExecutionBinding) => ExecutionIdentity | undefined,
 ) {
   const remembered = new LRUCache<string, ExecutionIdentity>({ max: 512, ttl: 60_000 });
   const narrowed = (identity: ExecutionIdentity, ceiling: ExecutionIdentity) => ({
@@ -63,21 +64,16 @@ export function executions(
     throw denied();
   }
 
-  async function record(session: Session, allowRevoked = false, messageIds: string[] = []) {
-    let chain = await store.chain(session.id);
-    if (!chain.length && adopt) {
-      const identity = await adopt(session, messageIds);
-      if (identity) {
-        await bind(session, identity);
-        chain = await store.chain(session.id);
-      }
-    }
+  async function record(session: Session, allowRevoked = false) {
+    const chain = await store.chain(session.id);
     const [binding] = chain;
+    const root = chain.at(-1);
     if (
       !binding ||
+      !root ||
       binding.agent?.namespace !== session.agent?.namespace ||
       binding.agent?.name !== session.agent?.name ||
-      chain.at(-1)?.sessionId !== binding.rootSessionId
+      root.sessionId !== binding.rootSessionId
     )
       throw denied();
     let write = binding.write,
@@ -95,11 +91,11 @@ export function executions(
       write &&= ancestor.write;
       capabilities = intersectCapabilities(capabilities, ancestor.capabilities);
     }
-    return { binding, write, capabilities };
+    return { binding, root, write, capabilities };
   }
 
   async function resolve(session: Session) {
-    const { binding, write, capabilities } = await record(session);
+    const { binding, root, write, capabilities } = await record(session);
     const saved = (await store.identity(binding.subject))?.value;
     if (!saved) throw denied();
     const identity =
@@ -108,7 +104,9 @@ export function executions(
           ? await renew(binding.subject, saved)
           : await verify?.(new Headers({ authorization: `Bearer ${saved.credential.value}` }))
         : saved.credential.case === "service" && saved.credential.value
-          ? saved
+          ? service
+            ? service(root)
+            : saved
           : undefined;
     if (!identity || identity.subject !== binding.subject) throw denied();
     return {

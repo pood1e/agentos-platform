@@ -30,7 +30,7 @@ capabilities: {drop: [ALL]}
 {{- $audiences | toJson -}}
 {{- end -}}
 {{- define "agentos.workloadAuth" -}}
-{{- dict "controllerSubject" (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) "platformSubjects" (list (printf "system:serviceaccount:%s:%s" .Release.Namespace (include "agentos.apiService" .)) (printf "system:serviceaccount:%s:%s" .Release.Namespace (include "agentos.dataplaneService" .))) "modelAudience" (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "mcpAudience" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "automationSources" .Values.automation.sources | toJson -}}
+{{- dict "controllerSubject" (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) "platformSubjects" (list (printf "system:serviceaccount:%s:%s" .Release.Namespace (include "agentos.apiService" .)) (printf "system:serviceaccount:%s:%s" .Release.Namespace (include "agentos.dataplaneService" .))) "modelAudience" (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "mcpAudience" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "executionSources" .Values.execution.sources | toJson -}}
 {{- end -}}
 {{- define "agentos.workloadAuthName" -}}
 {{- printf "%s.%s-workload-auth" .Release.Namespace (include "agentos.name" .) -}}

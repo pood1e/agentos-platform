@@ -87,7 +87,6 @@ export async function executionServices(
     verify: identity,
     oauth,
     metadata,
-    nativeCreator: config.kagent.userId,
   });
   return { access, operations, environmentToken, metadata, oauth, identity, execution };
 }

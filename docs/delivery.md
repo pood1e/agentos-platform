@@ -9,10 +9,10 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | --- | --- |
 | `verify` | 生成、构建、Biome / buf lint / tsc / Knip 与单元测试；PostgreSQL 使用独立服务容器 |
 | `deployment-check` | ansible-lint 与语法检查；平台 Chart 和[示例方案 Chart](../tests/fixtures/solution-chart) 的渲染断言、kubeconform 严格校验与 post-renderer 测试；环境套件的渲染断言与 kubeconform 校验 |
-| `python-verify` | 生成 Python 契约；ruff 检查与格式校验；案例自动化的单元测试，案例工作流使用 Temporal 时间跳跃环境 |
+| `python-verify` | 生成 Python 契约；ruff 检查与格式校验 |
 | `controller-verify`、`substrate-verify` | 对固定上游源码应用 `runtime/` 补丁，执行 race 测试、lint 并编译；每次发布均从当前提交构建 |
 | `platform-controller-verify` | 平台控制器 race、真实 API Server 集成测试、vet 与编译 |
-| `build-*` | rootless BuildKit 构建平台 API、web、平台控制器、kagent、Substrate、Harness、语音与自动化镜像，写入源码提交标签 |
+| `build-*` | rootless BuildKit 构建平台 API、web、平台控制器、kagent、Substrate、Harness 与语音镜像，写入源码提交标签 |
 | `build-contracts` | 提前构建 Node SDK 与 Python protobuf wheel，并验证发布打包 |
 | `voice-verify` | 语音、协议或相关依赖变更时，在本次构建的语音镜像中校验源码与单元测试；tag、手动及完整定时流水线执行全量校验 |
 | `package-check` | 校验所有平台镜像的源码提交，打包四个 Chart 与参考部署 collection；功能分支同样执行 |
@@ -62,7 +62,6 @@ PostgreSQL 使用原生服务容器，npm 与 Go 缓存由 CI 管理。镜像按
 
 平台在执行数据库的 `agentos_jobs` schema 使用 pg-boss，队列按工作空间隔离。各进程在投影写入事务内入队，worker 消费并维护队列。
 审批与续接采用 `stately` 策略和稳定业务键，调用错误退避重试 12 次后进入 `<namespace>.failed`，记录保留 90 天；外部决定未出使用延迟任务继续等待。
-worker 每次启动时以 `presets` 单例作业创建方案预置的原生定时任务，并在 `agentos_automation.presets` 记录引用。
 
 排查提供方故障或恢复授权后，在 worker 容器内先检查死信，再按原生引用重放：
 
@@ -97,7 +96,7 @@ kagent_telemetry:
 消息内容和原始 API 请求体采集默认关闭，分别由原生 `captureContent` 与 `captureRawApiBodies` 控制。
 部署变量应用于 `config.telemetry` 和 `config.runtimeDefaults.telemetry`，更新后由运行时部署流程生效。
 
-平台进程以 OpenTelemetry Node SDK 导出指标，平台 Chart 的 `telemetry.metrics` 配置 OTLP 出口，`protocol` 支持 `grpc` 与 `http/protobuf`，未配置端点时关闭 SDK：
+平台遥测默认关闭，配置端点后使用 OpenTelemetry Node SDK 导出指标。平台 Chart 的 `telemetry.metrics` 配置 OTLP 出口，`protocol` 支持 `grpc` 与 `http/protobuf`：
 
 ```yaml
 telemetry:
@@ -105,6 +104,9 @@ telemetry:
     endpoint: https://otlp.example.com/v1/metrics
     protocol: http/protobuf
 ```
+
+镜像直启和本地开发使用 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` 或 `OTEL_EXPORTER_OTLP_ENDPOINT` 配置端点，协议使用原生 `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL`。`OTEL_SDK_DISABLED=true` 或 `OTEL_METRICS_EXPORTER=none` 关闭遥测。未启用时使用官方 API 的空操作实现；接收端不可用时平台继续处理请求。
+指标导出默认超时 1 秒，可通过 `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 调整，单位为毫秒。
 
 | 指标 | 内容 |
 | --- | --- |

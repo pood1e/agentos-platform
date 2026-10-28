@@ -9,7 +9,7 @@ plugins:
     strategy: all
     out: gen/schema
     types:
-      - agentos.authorization.v1.AutomationSource
+      - agentos.authorization.v1.ExecutionSource
       - agentos.governance.v1.EnvironmentApi
       - agentos.console.v1.RoleDefinition
       - agentos.management.v1.SearchKnowledgeRequest
@@ -19,9 +19,7 @@ plugins:
       - kagent.api.v1.CreateSessionRequest
       - kagent.api.v1.ListToolServersRequest
       - agentos.kagent.v1.InvokeSessionInput
-      - agentos.automation.v1.CaseRequest
-      - agentos.automation.v1.CaseReference
-      - agentos.automation.v1.ScheduledExecutionQuery
-      - agentos.automation.v1.GetScheduledRunExecutionResultRequest
-      - kagent.api.v1.DispatchScheduledRunExecutionRequest
+      - agentos.execution.v1.RunExecutionRequest
+      - agentos.execution.v1.ExecutionReference
+      - agentos.execution.v1.GetExecutionRequest
     opt: [target=json-bundle]

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package agentos.execution.v1;
+
+import "agentos/execution/v1/task.proto";
+import "agentos/kagent/v1/wire.proto";
+import "buf/validate/validate.proto";
+import "kagent/api/v1/common.proto";
+
+message ExecutionReference {
+  string request_id = 1 [(buf.validate.field).string.uuid = true];
+  .kagent.api.v1.ResourceReference agent = 2 [(buf.validate.field).required = true];
+}
+
+message RunExecutionRequest {
+  ExecutionReference execution = 1 [(buf.validate.field).required = true];
+  string message = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 24000
+  }];
+}
+
+message GetExecutionRequest {
+  ExecutionReference execution = 1 [(buf.validate.field).required = true];
+  .kagent.api.v1.PageRequest page = 2;
+}
+
+message GetExecutionResponse {
+  agentos.kagent.v1.InvokeSessionOutput execution = 1;
+  repeated TaskRun runs = 2;
+  .kagent.api.v1.PageResponse page = 3;
+}

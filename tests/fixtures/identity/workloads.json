@@ -6,5 +6,5 @@
   ],
   "modelAudience": "http://127.0.0.1:8094",
   "mcpAudience": "http://agentos-mcp-gateway:8080",
-  "automationSources": []
+  "executionSources": []
 }

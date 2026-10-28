@@ -1,10 +1,10 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { Configuration } from "openid-client";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { scheduledIdentity } from "../automation/identity.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
+import { agentKey } from "../read-model/agents.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
 import { agentRoles } from "./agent-role.js";
 import { executions } from "./executions.js";
@@ -12,6 +12,8 @@ import { offlineCredentials } from "./offline.js";
 import type { jwtIdentity } from "./oidc.js";
 import { executionStore } from "./store.js";
 import { authorizeToolSelection } from "./tools.js";
+import { executionPrincipal } from "./workload-principal.js";
+import { workloadConfiguration } from "./workloads.js";
 
 export interface ExecutionAccessOptions {
   database: { uri: string; ca?: string };
@@ -22,8 +24,6 @@ export interface ExecutionAccessOptions {
   verify: ReturnType<typeof jwtIdentity>;
   oauth: Configuration;
   metadata: ToolMetadata;
-  /** kagent creator of scheduled runs, whose sessions receive service identities. */
-  nativeCreator: string;
 }
 
 /** Execution bindings, offline grants and tool authorization shared by every platform process. */
@@ -36,12 +36,14 @@ export async function executionAccess(options: ExecutionAccessOptions) {
     options.database.ca,
   );
   const background = offlineCredentials(persistent, options.oauth, verify);
-  const registry = executions(
-    persistent,
-    verify,
-    scheduledIdentity(clients, workspace, options.nativeCreator),
-    background.resolve,
-  );
+  const registry = executions(persistent, verify, background.resolve, (root) => {
+    const source = workloadConfiguration().executionSources.find(
+      (entry) =>
+        executionPrincipal(entry).subject === root.subject &&
+        entry.agents.some((agent) => agentKey(agent) === agentKey(root.agent)),
+    );
+    return source && executionPrincipal(source);
+  });
   const agentRole = agentRoles(clients);
   const authorizeTools = async (session: Session, tools: string[]) => {
     const context = await registry.resolve(session);

@@ -121,7 +121,8 @@
     "tagsConflict": "Tags changed. Close the editor and reopen it to try again.",
     "tagsDenied": "You cannot edit tags on this task.",
     "tagsFailed": "Could not save tags. Try again.",
-    "noPending": "No tasks awaiting approval"
+    "noPending": "No tasks awaiting approval",
+    "execution": "Execution"
   },
   "common": {
     "close": "Close",

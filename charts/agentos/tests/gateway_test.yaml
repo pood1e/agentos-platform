@@ -5,6 +5,18 @@ release:
   name: agentos
   namespace: agentos
 tests:
+- it: leaves the external execution entry point undeployed without registered sources
+  template: external-executions.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+- it: rejects the removed automation configuration
+  set:
+    automation.enabled: true
+  template: external-executions.yaml
+  asserts:
+  - failedTemplate:
+      errorPattern: 'automation'
 - it: uses a public SDK placeholder while authorization comes from Actor JWTs
   template: model-client.yaml
   asserts:
@@ -37,10 +49,15 @@ tests:
   - contains:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       content: http://agentos-mcp-gateway.agentos.svc.cluster.local:8080
-- it: authenticates automation before MCP initialization and on upstream transport
+- it: authenticates external executions before MCP initialization and on upstream transport
   set:
-    automation.enabled: true
-  template: automation.yaml
+    execution.sources:
+    - issuer: https://idp.example.com/realms/production
+      audience: agentos-executions
+      clientId: analysis-controller
+      subject: service-account-analysis
+      agents: [{namespace: agentos, name: diagnosis}]
+  template: external-executions.yaml
   documentSelector:
     path: kind
     value: AgentgatewayBackend
@@ -56,11 +73,10 @@ tests:
       value: FailClosed
   - equal:
       path: spec.policies.extAuth.http.path
-      value: '''/authorize/automation'''
+      value: '''/authorize/executions'''
   - equal:
       path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-      value: mcp.tool.name in ['run_case', 'observe_case', 'cancel_case', 'list_scheduled_run_executions', 'get_scheduled_run_execution_result',
-        'dispatch_scheduled_run_execution']
+      value: mcp.tool.name in ['run_execution', 'get_execution', 'cancel_execution']
 - it: consumes model transport credentials before injecting provider credentials
   template: gateway-auth.yaml
   asserts:

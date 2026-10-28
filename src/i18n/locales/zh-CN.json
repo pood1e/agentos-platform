@@ -121,7 +121,8 @@
     "tagsConflict": "标签已被其他人修改，请关闭后重新编辑。",
     "tagsDenied": "没有权限修改此任务的标签。",
     "tagsFailed": "保存标签失败，请重试。",
-    "noPending": "暂无待审批任务"
+    "noPending": "暂无待审批任务",
+    "execution": "执行记录"
   },
   "common": {
     "close": "关闭",

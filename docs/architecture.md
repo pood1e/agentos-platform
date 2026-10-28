@@ -25,8 +25,7 @@ flowchart LR
     Kagent --> Substrate[Agent Substrate]
     API & Dataplane & Worker & Kagent & Substrate --> PG[(PostgreSQL · pgvector)]
     Substrate --> S3[(S3 快照)]
-    Automation[案例自动化 · Temporal] <-->|源事件与案例事实| Bus[(NATS JetStream)]
-    Automation -->|案例 MCP| Gateway
+    External[外部业务服务] -->|执行 MCP| Gateway
     Browser -.->|WebRTC| LiveKit[LiveKit Server]
     LiveKit -.->|可选 · 语音会话| Voice[voice worker]
     Voice -.->|工作负载身份| API
@@ -44,7 +43,6 @@ flowchart LR
 | identity | oidc-provider | 密码模式身份源，为站点共享主体签发令牌 |
 | 平台控制器 | controller-runtime 与官方 Kubernetes 类型 | 编译 AccessPlan、维护连接派生对象与方案预置 |
 | 团队知识 | 原生 MemoryService、Ollama 与 EmbeddingGemma | 共享知识及 768 维向量检索 |
-| 案例自动化 | Temporal 与 NATS JetStream | 在环境侧映射事件、调用指定 Agent、处理超时与人工反馈 |
 | voice worker | LiveKit Agents | 可选组件：听写、朗读与通话，通话轮次以发起人身份进入会话绑定的对话 |
 
 api、dataplane 与 worker 使用同一镜像，各自配置 Service、NetworkPolicy 与最小权限 ServiceAccount；Agent 只经网关与运行时控制面访问 dataplane。
@@ -85,7 +83,7 @@ Preset 首次应用方案资源，后续更新由 SSA 所有权决定；用户�
 
 角色、凭据生命周期与会话隔离见[执行授权](execution-authorization.md)，环境 OBO 接线见[环境接入](environments.md)。
 
-## 控制台与自动化
+## 控制台与外部执行
 
 聊天使用 assistant-ui，按原始 A2A 顺序展示过程、并行工具调用、审批与最终答复。
 子 Agent 完成后在委派位置展示结果，工具调用按稳定调用 ID 更新；个人任务在聊天中展示。
@@ -94,21 +92,5 @@ MCP Apps 由环境 MCP 服务交付单文件 HTML，在独立源沙箱中运行�
 宿主校验来源会话、服务、可见性与只读分级，再以当前查看者身份访问环境网关，接入见[对话视图](mcp-app.md)。
 语音为可选组件，听写、朗读与通话经 LiveKit 由 voice worker 处理，配置见[语音](speech.md)。
 
-系统任务在 `/system-tasks/:scheduleId?` 展示共享定义与运行历史，读取要求平台管理能力，维护与手动触发要求 `tasks.manage`。
-定时任务由 kagent ScheduledRunService 持久化和调度，每次运行核对原生执行记录后绑定独立只读服务主体。
-方案预置保留用户编辑的启停、周期与历史；外部判定可决定启动或跳过一次执行，权限单独绑定至预置任务。
-
-案例自动化在环境侧运行，以版本化 CloudEvents 映射源事件，同一案例复用会话和确定性 messageId，
-超时取消并升级。触发器、结果读取与外部审批契约见[扩展契约](extension.md)。
-
-## 部署与观测
-
-平台可独立部署或位于目标集群的专用命名空间，每个平台接入多套环境。
-KVM 节点承载 microVM；CNPG 与 S3 保存数据库和快照。kagent、Substrate、agentgateway 与 CNPG 由参考部署按固定版本安装。
-平台和环境 Chart 声明控制器、AccessPlan 与 Preset，Gateway API HTTPRoute 暴露 web、API 及可选沙箱主机名。
-
-平台进程滚动更新在新实例就绪后排空旧实例的 HTTP/2 连接。dataplane 至少两副本并配置 PodDisruptionBudget；
-worker 多副本时由 PostgreSQL 会话锁选出对账实例，会话命令以咨询锁跨 api 副本互斥。观测流每 15 秒发送心跳、5 分钟轮换，浏览器恢复连接后重新订阅。
-kagent 原生 OpenTelemetry 通过 OTLP 接入站点接收端，默认关闭导出与内容采集；平台进程以 OpenTelemetry Node SDK 输出授权耗时、kagent 请求与进程资源指标。
-
-制品、签名、站点变量和部署步骤见[构建与部署](delivery.md)。
+外部服务通过可选的 `/mcp/executions` 入口运行、查询和取消授权 Agent 的任务。原生会话、任务与执行树由 kagent 管理；
+事件接收、业务触发条件、调度及持久化工作流由外部服务管理。站点按 OIDC 客户端和目标 Agent 登记来源，默认不部署外部执行入口。

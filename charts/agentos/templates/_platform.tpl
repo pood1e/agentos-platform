@@ -23,6 +23,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- $identity := include "agentos.identity" $root | fromJson -}}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
+- {name: AGENTOS_WORKLOAD_AUTH_CONFIG, value: /etc/agentos/workloads.json}
 - {name: KAGENT_URL, value: {{ $root.Values.kagent.endpoint | quote }}}
 - {name: KAGENT_NAMESPACE, value: {{ $root.Release.Namespace | quote }}}
 - {name: KAGENT_USER_ID, value: {{ $root.Values.kagent.userId | quote }}}
@@ -124,6 +125,7 @@ spec:
           securityContext:
             {{- include "agentos.containerSecurityContext" $root | nindent 12 }}
           volumeMounts:
+            - {name: tools, mountPath: /etc/agentos, readOnly: true}
             - {name: pack, mountPath: /etc/agentos-pack}
       {{- end }}
       containers:
@@ -159,6 +161,7 @@ spec:
           securityContext:
             {{- include "agentos.containerSecurityContext" $root | nindent 12 }}
           volumeMounts:
+            - {name: tools, mountPath: /etc/agentos, readOnly: true}
             - {name: execution-database, mountPath: /etc/agentos-database, readOnly: true}
             {{- if $environments }}
             - {name: environment-ca, mountPath: /etc/agentos-environments, readOnly: true}
@@ -171,6 +174,8 @@ spec:
             {{- . | nindent 12 }}
             {{- end }}
       volumes:
+        - name: tools
+          configMap: {name: {{ include "agentos.name" $root }}-tools}
         - name: execution-database
           secret:
             secretName: {{ $root.Values.execution.databaseCASecret }}

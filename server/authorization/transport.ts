@@ -13,7 +13,7 @@ import type { modelAuthorization } from "./models.js";
 import { tokenRejected } from "./token-errors.js";
 import type { WorkloadIdentity } from "./workloads.js";
 
-const routes = ["/authorize/environment", "/authorize/model", "/authorize/automation"];
+const routes = ["/authorize/environment", "/authorize/model", "/authorize/executions"];
 
 /** Native HTTP external authorization on the gateway-only guardrails listener. */
 export function gatewayAuthorization(
@@ -65,7 +65,7 @@ export function gatewayAuthorization(
             request.headers,
           );
         else {
-          await workloads.automation(request.headers);
+          await workloads.execution(request.headers);
           response.writeHead(200, {
             authorization: request.headers.authorization ?? "",
             "cache-control": "no-store",

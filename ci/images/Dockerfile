@@ -17,7 +17,6 @@ RUN mise install --locked && mise reshim && rm -rf /root/go /root/.cache /tmp/mi
 COPY ci/ ci/
 COPY deploy/requirements.txt deploy/requirements.yaml deploy/
 COPY contracts/requirements.txt contracts/
-COPY automation/requirements.in automation/
 RUN uv venv /opt/agentos-ci/venv --python "$(mise which python)" \
     && uv pip install --python /opt/agentos-ci/venv/bin/python \
        -r ci/python-requirements.txt -r deploy/requirements.txt -r contracts/requirements.txt \

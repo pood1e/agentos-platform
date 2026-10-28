@@ -27,12 +27,12 @@ async function taggedWorkspace() {
     capabilities: allCapabilities,
     credential: { case: "service", value: true },
   });
-  const automation = create(ExecutionIdentitySchema, {
-    subject: "service:automation:example",
+  const serviceExecution = create(ExecutionIdentitySchema, {
+    subject: "service:execution:example",
     write: true,
     credential: { case: "service", value: true },
   });
-  const owners = [alice, bob, automation];
+  const owners = [alice, bob, serviceExecution];
   const sessions = owners.map((owner) =>
     create(SessionSchema, {
       id: owner.subject,
@@ -134,7 +134,7 @@ it("lets read-only owners tag revoked executions while keeping personal metadata
 it("requires the dedicated capability for shared task tags and streams their changes", async () => {
   const env = await taggedWorkspace();
   const { client, shared, agent, alice } = env;
-  const session = "service:automation:example";
+  const session = "service:execution:example";
   const id = `task-${session}`;
   try {
     await expect(shared(session)).rejects.toMatchObject({ code: Code.NotFound });

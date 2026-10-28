@@ -20,7 +20,7 @@ it("authenticates model and MCP transports without adding runtime identity heade
   const server = grpcServer(app, {
     routes: () => {},
     fallback: gatewayAuthorization(authorize, authorizeModel, {
-      automation: async () => {
+      execution: async () => {
         throw new Error("not configured");
       },
     } as unknown as import("../server/authorization/workloads.js").WorkloadIdentity),

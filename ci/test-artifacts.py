@@ -241,7 +241,6 @@ class OCITest(unittest.TestCase):
                 "/web",
                 "/platform-controller",
                 "/voice",
-                "/automation",
                 "/kagent-controller",
                 "/claude-harness",
                 "/standard-harness",

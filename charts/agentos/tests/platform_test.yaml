@@ -25,7 +25,7 @@ tests:
     equal:
       path: spec.template.spec.containers[0].startupProbe
       value: {httpGet: {path: /healthz, port: http}, periodSeconds: 2, failureThreshold: 90}
-- it: runs each entry point from the same image with the telemetry SDK preloaded
+- it: runs each entry point from the same image with optional telemetry initialization
   asserts:
   - template: api-deployment.yaml
     equal:
@@ -98,8 +98,6 @@ tests:
   - template: api-deployment.yaml
     equal: {path: 'spec.template.spec.initContainers[0].name', value: pack}
   - template: worker-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
+    notExists: {path: spec.template.spec.initContainers}
   - template: dataplane-deployment.yaml
     notExists: {path: spec.template.spec.initContainers}

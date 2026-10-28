@@ -28,7 +28,6 @@ import { execute } from "./behavior.js";
 import { templates, toolServers } from "./catalog.js";
 import { FakeMemory } from "./memory.js";
 import { FakeResources } from "./resources.js";
-import { FakeSchedules } from "./schedules.js";
 
 const part = (kind: "function_response", data: JsonValue) => ({
   content: { case: "data" as const, value: fromJson(ValueSchema, data) },
@@ -46,7 +45,6 @@ export class FakeKagent {
   readonly toolServers = toolServers();
   readonly resources: FakeResources;
   readonly memory = new FakeMemory();
-  readonly schedules: FakeSchedules;
   readonly received: Message[] = [];
   readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
   readonly fetched: string[] = [];
@@ -59,7 +57,6 @@ export class FakeKagent {
     this.agents = fixtures.agents;
     this.load(fixtures);
     this.resources = new FakeResources(this);
-    this.schedules = new FakeSchedules(this);
   }
 
   /** Replaces sessions and tasks; restored tasks get a new status time so readers see a change. */

@@ -12,9 +12,9 @@
 | `agentos-knowledge-manage` | 团队知识的新增、删除、清空与 Agent 写入 |
 | `agentos-models-manage` | 模型连接及其凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
-| `agentos-tasks-manage` | 系统任务的定时配置、手动触发和共享标签 |
+| `agentos-tasks-manage` | 共享任务标签 |
 
-角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。认证用户可浏览智能体、Skill、MCP、模型接入、Harness 和团队知识的列表与详情，并检索团队知识。平台依据 proto 定义的 `Capability` 校验管理 RPC；浏览器使用相同能力控制新增、修改、删除和运行配置。系统任务使用管理角色限制。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
+角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。认证用户可浏览智能体、Skill、MCP、模型接入、Harness 和团队知识的列表与详情，并检索团队知识。平台依据 proto 定义的 `Capability` 校验管理 RPC；浏览器使用相同能力控制新增、修改、删除和运行配置。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
 
 应用角色授予配置管理能力；目标系统仍执行自身授权。平台管理角色保留用户私聊归属边界。
 
@@ -50,13 +50,13 @@ agentgateway v1.6.0 对 Service 后端的远程 JWKS 按 BackendTLSPolicy 校验
 | Agent | Substrate Actor JWT，按模型与 MCP 入口区分 audience | 当前 Actor、Session、执行授权、模型配置或模板工具绑定 |
 | kagent 控制器 | 绑定 ServiceAccount JWT，audience `agentos-mcp-discovery` | initialize、ping、工具发现等元数据方法 |
 | 平台 API | 绑定 ServiceAccount JWT，audience 为模型入口 | 配置的团队知识嵌入模型与 `/v1/embeddings` |
-| 环境自动化 worker | 已登记环境的 client credentials JWT | 对应环境的案例运行、观察与取消 |
+| 外部执行服务 | 已登记的 client credentials JWT | 授权 Agent 的任务运行、查询与取消 |
 
 Kubernetes 工作负载通过官方客户端调用 TokenReview，显式传入目标 audience，并校验认证结果、返回 audience 与精确 ServiceAccount 主体。每次请求重新审核，绑定对象撤销与签名密钥轮换由 API Server 处理；平台仅拥有创建 TokenReview 的权限，请求须通过 API 审核后放行。
 网关 JWT 策略只解析 Actor 专用头。无 Actor 的环境发现先经 HTTP 外部授权完成 TokenReview，再换取环境发现令牌；平台 MCP 与模型入口分别在其授权处理器中审核工作负载，调用权限取自完整的身份审核结果。
 
 平台模型与协作 MCP 分别使用独立入口 audience。每个平台 MCP 服务只注册一次，ExtMCP 按具体服务及工具校验当前 Agent 的绑定，工具按服务与名称共同绑定。
-自动化客户端精确匹配 issuer、audience、azp、服务账号 sub，入口仅接受已登记的环境服务身份。
+外部执行客户端精确匹配 issuer、audience、azp、服务账号 sub 与 Agent 范围；每次执行重新核验当前登记配置。
 
 原生 Harness SDK 使用 ModelConfig 的非空占位值完成客户端初始化，实际授权取自宿主注入的 Actor JWT。平台 API 从 Kubernetes 投射卷逐次读取轮换后的短期令牌。
 
@@ -74,7 +74,7 @@ Kubernetes 工作负载通过官方客户端调用 TokenReview，显式传入目
 
 平台 API 只接受 Bearer 访问令牌。浏览器登录由 web 的 oauth2-proxy 以授权码与 PKCE 完成，会话 Cookie 为 Secure、HttpOnly、`SameSite=Lax`，请求转发时注入 `Authorization`。后台执行另需用户授予离线授权：`GetAccessProfile` 返回 `delegated` 与 `delegation_url`，未授权时 `SendMessage` 返回 `FAILED_PRECONDITION`（`delegation.required`）；`/delegation/start` 以授权码、PKCE、state 与 nonce 请求 `offline_access`，`return_to` 限定为登记的前端源，授权事务只保存在 10 分钟的签名 Cookie 中。离线 refresh token 按用户主体加密保存于服务端执行存储。
 
-后台任务按需续期短期 access token，再以原用户令牌执行 OBO。浏览器退出、关闭页面和 access token 到期后，后台任务通过独立离线授权继续执行。离线授权失效、账号禁用或身份提供方拒绝续期时停止后续调用；停止任务等待原生执行取消，用户任务始终保持原发起人。无人值守系统任务使用独立的显式服务身份。
+后台任务按需续期短期 access token，再以原用户令牌执行 OBO。浏览器退出、关闭页面和 access token 到期后，后台任务通过独立离线授权继续执行。离线授权失效、账号禁用或身份提供方拒绝续期时停止后续调用；停止任务等待原生执行取消，用户任务始终保持原发起人。外部服务任务使用独立的显式服务身份。
 
 有效访问令牌的签名和权限直接核验。同一用户的令牌刷新在进程内合并，并通过 PostgreSQL 行锁在 api、dataplane 与 worker 的各副本间串行执行。新令牌反映当前角色，执行时始终与会话创建时的权限上限相交；既有任务维持创建时的权限上限。短期令牌尚有效时，身份提供方变更的传播上限由 access token 有效期决定。
 
@@ -88,4 +88,4 @@ OIDC 用户的聊天、任务、消息、工具参数与实时订阅按执行绑
 
 `ListApprovalRequests` 提供按状态分页的审批请求队列及待审批总数。普通用户读取本人及已有共享任务的请求；平台管理员可审核工作空间内的审批材料，访问范围限定请求、外部审批状态及其 MCP App，私人聊天和任务详情仍按发起人隔离。列表从任务投影读取，打开详情时才查询外部审批服务。审批 App 写操作使用当前审核人的 OBO 身份，复验原任务状态及目标系统授权；批准沿用原执行身份和权限上限。业务单据、审批规则与审批人资格由方案包及环境实现。
 
-浏览器历史定位与查询缓存按工作空间和用户主体分区。运行时私人记忆的用户范围由服务端从执行身份确定；会话发现限定在同一执行树。显式团队知识与服务身份发起的自动化运维记录在工作空间内向平台管理员共享。
+浏览器历史定位与查询缓存按工作空间和用户主体分区。运行时私人记忆的用户范围由服务端从执行身份确定；会话发现限定在同一执行树。显式团队知识与服务身份发起的执行记录在工作空间内向平台管理员共享。

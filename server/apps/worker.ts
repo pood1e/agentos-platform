@@ -1,6 +1,4 @@
 import { relatedExecutions } from "../authorization/executions.js";
-import { automationPresets } from "../automation/presets.js";
-import { presetStore } from "../automation/store.js";
 import { approvalCoordinator } from "../governance/coordinator.js";
 import { consumeCoordination, enqueueCoordination } from "../jobs/coordination.js";
 import { reconciler } from "../read-model/reconcile.js";
@@ -57,15 +55,6 @@ const coordinators = [
 enqueueCoordination(projection, jobs, coordinators);
 const stopCoordination = await consumeCoordination(jobs, coordinators);
 
-const presets = await presetStore(config.database.uri, workspace, config.database.ca);
-const pack = automationPresets(workspace, process.env.AGENTOS_PACK_DIR);
-const presetQueue = jobs.queue("presets");
-const presetWorker = await jobs.boss.work(presetQueue, { batchSize: 1 }, async () => {
-  await presets.replace(await pack.seed(clients));
-});
-// Each start reserves pack schedules once across replicas; failures retry with backoff.
-await jobs.boss.send(presetQueue, {}, { singletonKey: "presets" });
-
 const reconcile = reconciler(projection, clients, workspace, app.log);
 const lease = advisoryLease(config.database, `agentos_reconcile:${workspace}`);
 reconcile.start(lease.held);
@@ -75,11 +64,9 @@ closeOnSignal(app, [
   reconcile.close,
   lease.release,
   stopCoordination,
-  () => jobs.boss.offWork(presetQueue, { id: presetWorker }),
   () => jobs.boss.stop({ graceful: true, timeout: 40_000 }),
   projection.close,
   access.close,
   execution.close,
-  presets.close,
 ]);
 await app.listen(listenConfig());

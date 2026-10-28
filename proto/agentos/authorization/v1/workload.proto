@@ -2,23 +2,22 @@ syntax = "proto3";
 
 package agentos.authorization.v1;
 
-import "buf/validate/validate.proto";
 import "agentos/authorization/v1/permission.proto";
+import "buf/validate/validate.proto";
 import "kagent/api/v1/common.proto";
 
-// Exact workload subjects and environment issuers for one deployment.
+// Exact workload subjects and trusted issuers for one deployment.
 message WorkloadAuthentication {
   string controller_subject = 3;
   // Platform processes that call the gateway's embedding model with their own identity.
   repeated string platform_subjects = 4;
   string model_audience = 5;
   string mcp_audience = 6;
-  repeated AutomationSource automation_sources = 7;
+  repeated ExecutionSource execution_sources = 7;
 }
 
-// An environment's client-credentials identity; human tokens do not match it.
-message AutomationSource {
-  string environment = 1 [(buf.validate.field).string.min_len = 1];
+// A registered client-credentials identity for external execution.
+message ExecutionSource {
   string issuer = 2 [(buf.validate.field).string = {
     uri: true
     prefix: "https://"
@@ -26,11 +25,9 @@ message AutomationSource {
   string audience = 3 [(buf.validate.field).string.min_len = 1];
   string client_id = 4 [(buf.validate.field).string.min_len = 1];
   string subject = 5 [(buf.validate.field).string.min_len = 1];
-  repeated string scheduled_run_presets = 6;
-  repeated kagent.api.v1.ResourceReference case_agents = 7;
+  repeated kagent.api.v1.ResourceReference agents = 7 [(buf.validate.field).repeated.min_items = 1];
   bool write = 8;
   repeated Capability capabilities = 9;
-  repeated string scheduled_run_dispatch_presets = 10;
 }
 
 // Gateway-provided HTTP context, separate from the MCP authorization protocol.

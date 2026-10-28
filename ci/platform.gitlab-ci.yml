@@ -97,7 +97,6 @@ package-check:
     - build-contracts
     - build-image
     - build-web
-    - build-automation
     - build-voice
     - build-platform-controller
     - job: verify

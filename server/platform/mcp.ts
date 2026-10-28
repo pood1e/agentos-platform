@@ -1,15 +1,12 @@
-import { create } from "@bufbuild/protobuf";
 import type { FastifyInstance } from "fastify";
 import { decodeJwt } from "jose";
-import type { ScheduledRunPreset } from "../../gen/agentos/automation/v1/service_pb.js";
-import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { actorTokenHeader } from "../authorization/actor.js";
 import { scopedCollaboration } from "../authorization/context.js";
-import { relatedExecutions } from "../authorization/executions.js";
 import { discoveryMethods } from "../authorization/mcp.js";
 import type { ExecutionRuntime } from "../authorization/runtime.js";
+import { executionPrincipal } from "../authorization/workload-principal.js";
 import type { WorkloadIdentity } from "../authorization/workloads.js";
-import { scheduledSourceTools } from "../automation/source-tools.js";
+import { executionTools } from "../execution/tools.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { knowledgeService } from "../knowledge/service.js";
@@ -17,7 +14,6 @@ import type { TaskProjection } from "../read-model/projection.js";
 import type { KagentConfig } from "../shared/config.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { sessionTools } from "../team-sessions/tools.js";
-import { automationTools } from "./automation.js";
 
 export async function registerPlatformMcp(
   app: FastifyInstance,
@@ -28,7 +24,6 @@ export async function registerPlatformMcp(
   workloads: WorkloadIdentity,
   access: BindingView,
   knowledge: ReturnType<typeof knowledgeService>,
-  presets: () => Promise<ScheduledRunPreset[]>,
 ) {
   const tools = sessionTools(clients, config.namespace, access, knowledge, projection);
   await registerTeamSessions(app, tools, async (headers, method, tool) => {
@@ -40,66 +35,18 @@ export async function registerPlatformMcp(
     const actorProof =
       headers[actorTokenHeader] ?? (claims?.iss === execution.issuer ? authorization : undefined);
     if (actorProof === undefined) {
-      if (workloads.config.automationSources.some((source) => source.issuer === claims?.iss)) {
-        const source = await workloads.automation(headers);
-        const { environment, subject } = source;
-        if (source.scheduledRunPresets.length || source.scheduledRunDispatchPresets.length) {
-          if (source.caseAgents.length || source.write || source.capabilities.length)
-            throw new Error(
-              "A scheduled source requires an isolated identity without operation write grants",
-            );
-          return {
-            clientId: subject,
-            scopes: [
-              "list_scheduled_run_executions",
-              "get_scheduled_run_execution_result",
-              ...(source.scheduledRunDispatchPresets.length
-                ? ["dispatch_scheduled_run_execution"]
-                : []),
-            ],
-            handler: scheduledSourceTools(
-              clients,
-              projection,
-              config.namespace,
-              presets,
-              source.scheduledRunPresets,
-              source.scheduledRunDispatchPresets,
-            ),
-          };
-        }
-        if (
-          !source.caseAgents.length ||
-          source.caseAgents.some((agent) => agent.namespace !== config.namespace)
-        )
-          throw new Error("Source Agent bindings are required");
+      if (workloads.config.executionSources.some((source) => source.issuer === claims?.iss)) {
+        const source = await workloads.execution(headers);
         return {
-          clientId: subject,
-          scopes: ["run_case", "observe_case", "cancel_case"],
-          handler: automationTools(
+          clientId: source.subject,
+          scopes: ["run_execution", "get_execution", "cancel_execution"],
+          handler: executionTools(
             clients,
             projection,
             config.namespace,
-            environment,
-            async (session, cancel, contexts) => {
-              const principal = create(ExecutionIdentitySchema, {
-                subject: `service:automation:${environment}:${subject}`,
-                write: source.write,
-                capabilities: source.capabilities,
-                credential: { case: "service", value: true },
-              });
-              await execution.registry.bind(session, principal);
-              if (cancel) {
-                await relatedExecutions(
-                  execution.registry,
-                  clients.sessions,
-                  session,
-                  contexts ?? [],
-                  true,
-                );
-                await execution.registry.revoke(session, principal);
-              }
-            },
-            source.caseAgents.map((agent) => agent.name),
+            execution.registry,
+            executionPrincipal(source),
+            source.agents,
           ),
         };
       }
