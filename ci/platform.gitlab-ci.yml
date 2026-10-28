@@ -21,7 +21,7 @@ verify:
     expire_in: 1 day
 
 deployment-check:
-  extends: .agentos-ci
+  extends: [.agentos-ci, .agentos-go-cache]
   stage: verify
   variables:
     ANSIBLE_CONFIG: deploy/ansible.cfg
@@ -41,10 +41,10 @@ deployment-check:
 platform-controller-verify:
   extends: .agentos-go
   stage: verify
-  needs: [deployment-check]
+  needs: []
   script:
     - ci/generate-controller.sh
-    - go -C controller test -race ./...
+    - go -C controller test -race -count=1 ./...
     - go -C controller vet ./...
     - mkdir -p .cache/platform-controller-image
     - CGO_ENABLED=0 go -C controller build -trimpath -ldflags='-s -w' -o ../.cache/platform-controller-image/agentos-controller ./cmd/controller
@@ -108,6 +108,7 @@ package-check:
       artifacts: false
     - job: voice-verify
       artifacts: false
+      optional: true
     - job: build-controller
     - job: build-claude-harness
     - job: build-standard-harness
