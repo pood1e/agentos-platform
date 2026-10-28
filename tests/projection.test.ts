@@ -205,7 +205,6 @@ describe("task projection", () => {
         (await env.projection.conversations(stranger, "agentos/assistant", page)).totalSize,
       ).toBe(0);
       expect((await env.projection.operations(stranger, page)).totalSize).toBe(0);
-      expect(await env.projection.approvals(stranger)).toEqual([]);
       expect((await env.projection.operations(reader, page)).totalSize).toBeGreaterThan(0);
     } finally {
       await env.close();

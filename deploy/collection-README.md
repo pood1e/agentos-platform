@@ -11,4 +11,4 @@ playbook 在安装前校验 Chart 和平台镜像的同一组签名属性。发�
 ansible-playbook agentos.platform.install -i inventory.yaml -e @site.yaml
 ```
 
-详细变量和控制器说明见源码仓库 `docs/delivery.md` 与 `docs/kubernetes-controller.md`。
+站点变量与安装步骤见[构建与部署](https://github.com/pood1e/agentos-platform/blob/main/docs/delivery.md)，环境接入见[环境配置](https://github.com/pood1e/agentos-platform/blob/main/docs/environments.md)。

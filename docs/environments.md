@@ -1,6 +1,6 @@
 # 环境接入
 
-环境套件在目标集群部署 HTTPS 环境网关与身份路由，在平台登记环境资源、信任根及读写工具视图。目标系统、MCP 连接器、身份提供方与目标账号由方案包和站点提供。AgentOS 展示智能体、工具连接、执行与审批，目标系统门户由所属环境管理。
+环境套件在目标集群部署 HTTPS 环境网关与身份路由，在平台登记环境资源、信任根及读写工具视图。目标系统、MCP 连接器、身份提供方与目标账号由方案包和站点提供。AgentOS 展示 Agent、工具连接、执行与原生 HITL，业务门户和审批由所属环境管理。
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ flowchart LR
 
 原生控制器通过 `agentos.dev/discovery-auth: kubernetes` 的 RemoteMCPServer 使用可刷新绑定 ServiceAccount 凭据。发现请求保留 MCP 路径，统一发送到配置的平台网关，凭据仅在该网关使用，重定向终止。Agent 继续使用按服务隔离的地址与 Actor JWT。平台分别验证签发者、受众和控制器主体，工具调用额外校验执行绑定、权限上限和已选工具。
 
-每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。Substrate 按请求目标 origin 签发 Actor JWT；RemoteMCPServer 地址、Service 与网关策略的 audience 必须一致。
+每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。RemoteMCPServer 地址、Service origin 与 Actor JWT audience 保持一致。
 
 ## 连接器契约
 
@@ -38,7 +38,6 @@ flowchart LR
 | 身份提供方 | HTTPS OIDC Discovery；每身份机密客户端支持 client credentials 与 RFC 8693 |
 | OAuth 目标 | `auth.oauthTokenExchange` 消费环境令牌，签发目标 audience 的访问令牌 |
 | API 令牌目标 | 每身份独立有限期凭据，存于环境 Secret，由方案包定期轮换 |
-| 外部审批 | 可选 proto `ApprovalService`；默认通过 catalog 环境令牌认证，服务端校验业务决定与执行约束 |
 
 `environment_connectors` 使用 agentgateway 原生 BackendAuth。`<identity>`、`<environment>`、`<issuer>` 分别替换为身份、环境名与 issuer。`access` 可限制某目标的访问级别。同一服务内的目标采用同一类凭据消费方式。
 
@@ -99,7 +98,6 @@ agentgateway 按 MCP SEP-414 将 W3C 上下文同步到 MCP `_meta`。Baggage �
 | `environment_connectors` | 连接器后端定义 |
 | `platform_cidr` | 允许访问环境网关的平台地址段 |
 | `platform_kubeconfig` | 平台集群访问配置 |
-| `approval_service_url` | 可选，外部审批 HTTPS Connect 地址 |
 | `registry_config_file` | 可选，镜像拉取凭据 Docker JSON |
 | `environment_chart_repository`、`environment_chart_version` | 已验签 collection 固化的 OCI Chart 仓库与平台版本 |
 | `environment_state` | `present` 或 `absent`，控制所属环境 release 生命周期 |
@@ -110,8 +108,7 @@ ansible-playbook agentos.platform.connections -i <site>/environments.yaml -e @<s
 ```
 
 环境与连接 Chart 声明 AccessPlan，控制器统一编译工具范围和原生派生资源。
-方案的 Preset 从编译结果补齐默认工具绑定；用户修改后的原生 AgentTemplate 由用户维护。
-原生 RemoteMCPServer 控制器负责工具发现与刷新，实际授权由平台、环境网关与目标系统共同校验。
+Preset 从编译结果补齐默认工具绑定；原生控制器负责发现与刷新，逐调用授权见[执行授权](execution-authorization.md)。
 
 ## 资源归属与生命周期
 

@@ -6,7 +6,7 @@ import {
 import type { EnvironmentConnection } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { environmentUrl, withEnvironmentHttp } from "../shared/environment-http.js";
 
-export async function withEnvironmentMcpClient<T>(
+async function withEnvironmentMcpClient<T>(
   connection: EnvironmentConnection,
   url: URL,
   token: string,

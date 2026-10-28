@@ -1,9 +1,7 @@
 import { type Interaction, InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
-import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { Executions } from "../authorization/executions.js";
-import { approvalEnvironment } from "../governance/client.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { TaskProjection } from "../read-model/projection.js";
 
@@ -13,7 +11,6 @@ export type AuthorizeTools = (session: Session, tools: string[]) => Promise<void
 export function interactionPermissions(
   projection: Pick<TaskProjection, "entry">,
   clients: KagentClients,
-  operations: GovernanceConfig,
   executions: Executions,
   authorizeTools?: AuthorizeTools,
 ) {
@@ -32,10 +29,7 @@ export function interactionPermissions(
       if (
         !operate ||
         interaction.kind !== InteractionKind.APPROVAL ||
-        interaction.state !== ActivityState.AWAITING_APPROVAL ||
-        interaction.tools.some(
-          (tool) => approvalEnvironment(operations.environments, tool.name)?.approvalUrl,
-        )
+        interaction.state !== ActivityState.AWAITING_APPROVAL
       )
         continue;
       try {

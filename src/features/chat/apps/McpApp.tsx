@@ -35,7 +35,7 @@ export function McpApp({ call }: { call: ToolCall }) {
   });
   const reference = create(AppReferenceSchema, {
     taskId: call.taskId,
-    origin: { case: "callId", value: call.id },
+    callId: call.id,
   });
   const [open, setOpen] = useState(false);
   return (

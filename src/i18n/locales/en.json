@@ -52,7 +52,7 @@
     "coordinator": {
       "name": "Coordinator",
       "shortName": "Coordinator",
-      "description": "Plan work, coordinate approvals and summarize results"
+      "description": "Coordinate agents and summarize results"
     }
   },
   "approval": {
@@ -64,18 +64,13 @@
     "validationFailed": "Validation failed",
     "rejected": "Rejected",
     "answered": "Answered",
-    "operationNotice": "Review the approval request in the target environment. The Agent will resume after approval.",
-    "appNotice": "Review the request in the approval view below. The Agent will resume after the decision.",
     "rejectionReason": "Reason for rejection (optional)",
     "approveAndExecute": "Approve and execute",
     "reject": "Reject",
     "submitAnswer": "Submit answer",
     "answerPlaceholder": "Enter an answer",
     "submitFailed": "This request is stale or submission failed. Refresh and check its current state.",
-    "operationsApproved": "Operations approved",
-    "operationsRejected": "Operations rejected",
     "approve": "Approve and continue",
-    "externalDecision": "Use the approval request in the target environment to decide this operation.",
     "executionDenied": "Execution permissions do not allow this approval.",
     "rawArguments": "Raw arguments",
     "reasons": {
@@ -86,9 +81,7 @@
       "Execution access denied": "Execution delegation is unavailable or revoked. Sign in again to start a new task.",
       "User delegation expired or was revoked": "User delegation expired or was revoked. Sign in again to start a new task.",
       "User delegation requires renewed consent": "Background execution requires renewed consent. Sign in again.",
-      "App-only tools cannot be called by Agents": "This tool is reserved for interactive views and cannot be called by Agents.",
-      "An identical operation is already awaiting execution": "An identical operation is already awaiting execution; this duplicate was rejected.",
-      "The operation was declined": "The approval authority declined this operation."
+      "App-only tools cannot be called by Agents": "This tool is reserved for interactive views and cannot be called by Agents."
     },
     "singleAnswerHint": "Choose one option or enter your own answer.",
     "multipleAnswerHint": "Choose options, add details, or enter your own answer.",

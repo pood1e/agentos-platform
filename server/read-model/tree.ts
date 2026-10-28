@@ -20,7 +20,6 @@ function children(graph: TaskGraph, entry: TaskEntry): string[] {
   return [
     ...entry.calls.flatMap((call) => graph.target(entry, call) ?? []),
     ...(relations.continuations.get(entry.id) ?? []),
-    ...(relations.reviews.get(entry.id) ?? []),
   ];
 }
 

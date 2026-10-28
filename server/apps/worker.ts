@@ -1,5 +1,4 @@
 import { relatedExecutions } from "../authorization/executions.js";
-import { approvalCoordinator } from "../governance/coordinator.js";
 import { consumeCoordination, enqueueCoordination } from "../jobs/coordination.js";
 import { reconciler } from "../read-model/reconcile.js";
 import { listenConfig } from "../shared/config.js";
@@ -19,11 +18,7 @@ const config = platformConfig();
 const { workspace } = config;
 const app = platformApp();
 const clients = platformClients(config);
-const { access, operations, environmentToken, execution } = await executionServices(
-  config,
-  clients,
-  app.log,
-);
+const { access, execution } = await executionServices(config, clients, app.log);
 const { projection, jobs } = await projectionServices(
   config,
   clients,
@@ -37,19 +32,6 @@ const coordinators = [
     if (!parent) throw new Error("Execution session is unavailable");
     await relatedExecutions(execution.registry, clients.sessions, parent, contexts);
   }),
-  approvalCoordinator(
-    projection,
-    operations,
-    async (contextId, tools) => {
-      const { session } = await clients.sessions.getSession(
-        { sessionId: contextId },
-        { timeoutMs: 5_000 },
-      );
-      if (!session) throw new Error("Execution session is unavailable");
-      await execution.authorizeTools(session, tools);
-    },
-    environmentToken,
-  ),
 ];
 // The worker's own reconciliation writes enqueue coordination like every other writer.
 enqueueCoordination(projection, jobs, coordinators);

@@ -5,7 +5,6 @@ import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
-import { approvalJobs } from "../governance/coordinator.js";
 import { enqueueCoordination } from "../jobs/coordination.js";
 import { configurationClients } from "../kagent/configuration.js";
 import { knowledgeConfig } from "../knowledge/config.js";
@@ -37,7 +36,7 @@ const configuration = await configurationClients(config.kube, workspace, clients
 const { access, operations, environmentToken, metadata, oauth, identity, execution } =
   await executionServices(config, configuration.clients, app.log);
 const { projection, jobs } = await projectionServices(config, clients, execution.store, app.log);
-enqueueCoordination(projection, jobs, [continuationJobs, approvalJobs(operations)]);
+enqueueCoordination(projection, jobs, [continuationJobs]);
 await projection.listen();
 const tags = await taskTagStore(config.database.uri, workspace, config.database.ca);
 
@@ -99,8 +98,6 @@ await registerConsole(app, {
     clients,
     namespace: workspace,
     access,
-    operations,
-    environmentToken,
     roleDefaults: roleDefaults(),
     replaceTemplate: templateWriter(config.kube),
     pack: loadPack(packRoot),

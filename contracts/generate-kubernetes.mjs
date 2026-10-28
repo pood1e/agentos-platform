@@ -87,11 +87,10 @@ save("agentos-environment", {
 const apiBundle = read("gen/schema/agentos.governance.v1.EnvironmentApi.jsonschema.bundle.json");
 const { $schema, ...api } = apiBundle.$defs["agentos.governance.v1.EnvironmentApi.jsonschema.json"];
 const connectionEnvironment = structuredClone(environment);
+connectionEnvironment.additionalProperties = false;
 connectionEnvironment.properties.gateway.properties.ca = text;
 Object.assign(connectionEnvironment.properties, {
   apis: { type: "array", items: api },
-  approvalUrl: https,
-  authorization: text,
 });
 save("agentos-connections", {
   $schema: "http://json-schema.org/draft-07/schema#",

@@ -36,7 +36,7 @@ export function AppView({
   const { t, i18n } = useTranslation();
   const { resolvedTheme } = useTheme();
   const taskId = reference.taskId;
-  const source = reference.origin;
+  const callId = reference.callId;
   const canMessage = Boolean(onMessage);
   const label = useToolText()(input.tool);
   const container = useRef<HTMLDivElement>(null);
@@ -72,13 +72,10 @@ export function AppView({
   useEffect(() => {
     setError(false);
     setReady(false);
-    if (!source.case || !resource.data || !resource.dataUpdatedAt || resource.isError) return;
+    if (!callId || !resource.data || !resource.dataUpdatedAt || resource.isError) return;
     const app = create(AppReferenceSchema, {
       taskId,
-      origin:
-        source.case === "callId"
-          ? { case: "callId", value: source.value }
-          : { case: "approvalToolId", value: source.value },
+      callId,
     });
     const element = frame.current;
     if (!element) return;
@@ -130,21 +127,13 @@ export function AppView({
       deliver.current = () => {};
       bridge.current = undefined;
     };
-  }, [
-    taskId,
-    source.case,
-    source.value,
-    canMessage,
-    resource.data,
-    resource.dataUpdatedAt,
-    resource.isError,
-  ]);
+  }, [taskId, callId, canMessage, resource.data, resource.dataUpdatedAt, resource.isError]);
   const failed = error || resource.isError;
   return (
     <div
       ref={container}
       data-testid="mcp-app-view"
-      data-call-id={reference.origin.value}
+      data-call-id={reference.callId}
       className="min-w-0 overflow-hidden bg-background"
     >
       <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5 text-xs font-medium">

@@ -8,7 +8,6 @@ import type {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
-import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import {
   AskUserResponseSchema,
   ToolApprovalResponseSchema,
@@ -16,7 +15,6 @@ import {
 import { pendingInteractions } from "../../shared/conversation-interactions.js";
 import { shortTitle } from "../../shared/title.js";
 import type { Executions } from "../authorization/executions.js";
-import { approvalEnvironment } from "../governance/client.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { agentKey, sessionInfo } from "../read-model/agents.js";
 import { hitlExtension, hitlReply } from "../read-model/decode/hitl.js";
@@ -33,7 +31,6 @@ export function messageCommands(
   clients: KagentClients,
   namespace: string,
   executions: Executions,
-  governance?: GovernanceConfig,
   authorizeTools?: (
     session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
     tools: string[],
@@ -147,12 +144,6 @@ export function messageCommands(
               .map((tool) => tool.name),
           );
         }
-        if (
-          pending.tools.some(
-            (tool) => approvalEnvironment(governance?.environments ?? [], tool.name)?.approvalUrl,
-          )
-        )
-          throw precondition("approval.externalDecision");
         const decisions = decision.value.approvals;
         const ids = new Set(decisions.map((item) => item.id));
         if (

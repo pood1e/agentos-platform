@@ -38,7 +38,6 @@
       ansible.builtin.set_fact:
         environment_issuer: "{{ environment_issuer }}"
         gateway_resource: "{{ gateway_resource }}"
-        approval_service_url: "{{ approval_service_url }}"
     - name: Create private environment state directory
       tags:
         - always

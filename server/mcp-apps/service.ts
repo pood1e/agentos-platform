@@ -24,7 +24,6 @@ import type { TaskProjection } from "../read-model/projection.js";
 import type { FullTask } from "../read-model/views/conversation.js";
 import { taskRun } from "../read-model/views/run.js";
 import { notFound, unavailable } from "../shared/errors.js";
-import { approvalApps } from "./approvals.js";
 import { callEnvironmentAppTool } from "./client.js";
 import { projectAppViews } from "./projection.js";
 
@@ -67,7 +66,6 @@ export function mcpApps({
   log,
   invoke = callEnvironmentAppTool,
 }: Dependencies) {
-  const approval = approvalApps(projection, clients, operations, token);
   const agentRole = agentRoles(clients);
   const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
   const resources = new LRUCache<
@@ -112,12 +110,12 @@ export function mcpApps({
     identity: ExecutionIdentity,
   ) {
     const reference = request.app;
-    if (reference?.origin.case !== "callId") throw notFound("mcpApp.unavailable");
+    if (!reference?.callId) throw notFound("mcpApp.unavailable");
     const view = await visibleGraph(projection, viewer(identity), { taskId: reference.taskId });
     const entry = view?.entry(reference.taskId);
     if (!entry) throw notFound("task.notFound");
     const run = await taskRun(entry, projection.fullTask);
-    const call = run?.calls.find((call) => call.id === reference.origin.value);
+    const call = run?.calls.find((call) => call.id === reference.callId);
     const origin = call && (await source(call));
     if (!origin) throw notFound("mcpApp.unavailable");
     return { ...origin, call };
@@ -157,10 +155,6 @@ export function mcpApps({
       signal: AbortSignal,
     ) {
       if (!sandboxOrigin) throw unavailable();
-      if (request.app?.origin.case === "approvalToolId") {
-        const result = resourceResult(await approval.resource(request.app, identity, signal));
-        return { result: { value: result }, sandboxOrigin };
-      }
       const origin = await original(request, identity);
       const key = `${origin.server.ref}:${origin.uri}`;
       signal.throwIfAborted();
@@ -173,29 +167,6 @@ export function mcpApps({
     },
     async callTool(request: CallAppToolRequest, identity: ExecutionIdentity, signal: AbortSignal) {
       if (!sandboxOrigin) throw unavailable();
-      if (request.app?.origin.case === "approvalToolId") {
-        const audit = {
-          initiator: identity.subject,
-          taskId: request.app.taskId,
-          tool: request.name,
-        };
-        try {
-          const result = CallToolResultSchema.parse(
-            await approval.call(
-              request.app,
-              request.name,
-              request.arguments?.value ?? {},
-              identity,
-              signal,
-            ),
-          );
-          log?.info({ ...audit, failed: result.isError ?? false }, "Approval MCP App tool call");
-          return { result: { value: result as JsonObject } };
-        } catch (error) {
-          log?.info({ ...audit, failed: true }, "Approval MCP App tool call");
-          throw error;
-        }
-      }
       const origin = await original(request, identity);
       const tool = origin.tools.find(
         (tool) => origin.unprefix(tool.name) === origin.unprefix(request.name),
@@ -217,7 +188,7 @@ export function mcpApps({
       const audit = {
         initiator: identity.subject,
         taskId: request.app?.taskId,
-        callId: request.app?.origin.value,
+        callId: request.app?.callId,
         environment: origin.target.environment,
         service: origin.target.project,
         tool: origin.unprefix(tool.name),

@@ -52,7 +52,7 @@
     "coordinator": {
       "name": "协调者",
       "shortName": "协调",
-      "description": "调度团队成员、跟进审批并汇总结果"
+      "description": "调度团队成员并汇总结果"
     }
   },
   "approval": {
@@ -64,18 +64,13 @@
     "validationFailed": "系统校验未通过",
     "rejected": "拒绝",
     "answered": "已回答",
-    "operationNotice": "请在所属环境的审批单中处理，通过后将自动继续。",
-    "appNotice": "请在下方审批视图中处理，完成后将自动继续。",
     "rejectionReason": "拒绝原因（可选）",
     "approveAndExecute": "批准并执行",
     "reject": "拒绝",
     "submitAnswer": "提交回答",
     "answerPlaceholder": "请输入回答",
     "submitFailed": "审批提交失败，请刷新后核对当前状态。",
-    "operationsApproved": "操作已批准",
-    "operationsRejected": "操作已拒绝",
     "approve": "批准并继续",
-    "externalDecision": "请通过此操作所属环境的审批单进行审批。",
     "executionDenied": "执行权限不足，无法批准此操作。",
     "rawArguments": "原始参数",
     "reasons": {
@@ -86,9 +81,7 @@
       "Execution access denied": "任务的委托授权不可用或已撤销，请重新登录后发起任务。",
       "User delegation expired or was revoked": "用户的委托授权已过期或撤销，请重新登录后发起任务。",
       "User delegation requires renewed consent": "后台执行授权需要重新确认，请重新登录。",
-      "App-only tools cannot be called by Agents": "此工具仅供交互视图使用，智能体无法直接调用。",
-      "An identical operation is already awaiting execution": "相同操作已在等待执行，本次重复请求已拒绝。",
-      "The operation was declined": "此操作已被审批方拒绝。"
+      "App-only tools cannot be called by Agents": "此工具仅供交互视图使用，智能体无法直接调用。"
     },
     "singleAnswerHint": "可选择一个选项，或直接输入自己的回答。",
     "multipleAnswerHint": "可选择多个选项，也可以补充或直接输入回答。",

@@ -22,7 +22,7 @@ describe("environment service boundaries", () => {
       ).kind,
     ).toBe("valid");
   });
-  it("uses native human decisions when no external approval service is configured", () => {
+  it("models native tool confirmation with environment OAuth", () => {
     const environment = create(EnvironmentSchema, {
       name: "publishing",
       governance: Governance.APPROVAL,
@@ -31,17 +31,6 @@ describe("environment service boundaries", () => {
       validator.validate(
         EnvironmentConnectionSchema,
         create(EnvironmentConnectionSchema, { environment, ...oauth }),
-      ).kind,
-    ).toBe("valid");
-    expect(
-      validator.validate(
-        EnvironmentConnectionSchema,
-        create(EnvironmentConnectionSchema, {
-          environment,
-          ...oauth,
-          approvalUrl: "https://decisions.example",
-          authorization: "Bearer service-credential",
-        }),
       ).kind,
     ).toBe("valid");
   });

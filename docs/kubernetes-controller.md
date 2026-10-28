@@ -17,7 +17,7 @@ CRD 统一存于 `controller/config/crd/bases`，源码验证与发布打包时�
 `Ready=True` 且 `observedGeneration` 等于当前 generation 时，`AccessPlan.status.targets` 才可参与授权。
 Informer 断开、计划未就绪、冲突的编译结果、未知工具均拒绝授权。
 `shared/access-plans.ts` 与 `shared/tool-bindings.ts` 随 npm 契约发布，平台治理与环境审批服务共用编译结果读取接口。
-环境模式同时发布目录与各身份的工具决策，审批属性取自环境的治理模式。
+环境模式同时发布目录与各身份的工具决策，原生工具确认属性取自环境治理模式。
 
 管理 API 每次只写一次原生连接父对象，凭据单独写入该对象拥有的 Secret。
 凭据写入失败时父对象保留，控制器记录 `AgentOSReady=False`；重试保存后继续收敛。
@@ -29,8 +29,6 @@ Informer 断开、计划未就绪、冲突的编译结果、未知工具均拒�
 ## 部署
 
 平台与环境 Chart 安装 CRD 和相应控制器，方案通过 AccessPlan 与 Preset 声明期望状态。
-首次安装由站点提供凭据 Secret 和执行加密 Secret，Helm values 指定相应名称。
-
 安装后检查 AccessPlan / Preset 的 Ready、连接父对象的 AgentOSReady 条件，以及应用授权就绪状态。
 更新工具分级或身份范围后，控制器重新编译；旧 generation 的决策停止参与授权。
 删除父对象由 Kubernetes 回收派生资源，预置升级保留已归用户的对象。
@@ -42,4 +40,4 @@ Informer 断开、计划未就绪、冲突的编译结果、未知工具均拒�
 | `ci/check-charts.sh` | 平台、方案示例与环境 Chart 的模板、原生 schema 和跨资源策略 |
 | `controller/internal/compile` | 工具分级、身份视图、连接与预置编译 |
 | `controller/internal/reconcile` | 真实 API Server 上的中断恢复、资源回收、凭据恢复与用户所有权 |
-| `ci/test-artifacts.py` | 两个 Chart 共用 CRD 的打包、签名和内容校验 |
+| `ci/test-artifacts.py` | 共享 CRD 与交付包的签名和内容校验 |

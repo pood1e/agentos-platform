@@ -18,6 +18,24 @@ tests:
   asserts:
   - failedTemplate:
       errorPattern: actorJWKS|Additional property
+- it: rejects the removed business approval endpoint
+  set:
+    environments:
+    - name: lab
+      governance: direct
+      approvalUrl: https://reviews.example.test
+  asserts:
+  - failedTemplate:
+      errorPattern: approvalUrl|Additional property
+- it: rejects the removed business approval credential
+  set:
+    environments:
+    - name: lab
+      governance: direct
+      authorization: Bearer obsolete-credential
+  asserts:
+  - failedTemplate:
+      errorPattern: authorization|Additional property
 - it: routes each service origin through the platform gateway
   template: services.yaml
   documentSelector:

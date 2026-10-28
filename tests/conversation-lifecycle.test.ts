@@ -59,7 +59,6 @@ async function workspace(state = TaskState.COMPLETED) {
             executions: registry,
             namespace: "agentos",
             access: testBindings(env.fake),
-            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
             pack: create(PackSchema),

@@ -10,7 +10,7 @@ import type { TaskProjection } from "../../server/read-model/projection.js";
 import { continuations } from "../../server/team-sessions/continuation.js";
 
 /** Starts coordination before the projection observes native state, as the platform does. */
-export async function startJobs(
+async function startJobs(
   projection: TaskProjection,
   log: FastifyBaseLogger,
   processors: Coordinator[],

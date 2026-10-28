@@ -7,12 +7,9 @@ import {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
-import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { isAdministrator } from "../../shared/permissions.js";
-import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import type { Executions } from "../authorization/executions.js";
 import type { BindingView } from "../governance/bindings.js";
-import { approvals } from "../governance/views.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { McpApps } from "../mcp-apps/service.js";
@@ -28,8 +25,6 @@ import { engineers } from "../read-model/views/engineers.js";
 import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import type { TaskTagStore } from "../tasks/tags.js";
 import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
-import { approvalQueue } from "./approval-queue.js";
-import { approvalReferences } from "./approval-references.js";
 import { cancellationCommands } from "./cancellation.js";
 import { conversationTranscript } from "./conversation-transcript.js";
 import { conversationCommands } from "./conversations.js";
@@ -44,12 +39,10 @@ import { watch } from "./watch.js";
 export interface ConsoleDependencies {
   apps?: McpApps;
   metadata?: ToolMetadata;
-  environmentToken?: EnvironmentTokens;
   projection: TaskProjection;
   clients: KagentClients;
   namespace: string;
   access: BindingView;
-  operations: GovernanceConfig;
   roleDefaults: RoleDefaults;
   replaceTemplate: TemplateWriter;
   pack: Pack;
@@ -74,8 +67,6 @@ export function consoleService({
   clients,
   namespace,
   access,
-  operations,
-  environmentToken,
   roleDefaults,
   replaceTemplate,
   pack,
@@ -88,14 +79,7 @@ export function consoleService({
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const taskTags = taskTagCommands(clients, tags, executions);
   const cancel = cancellationCommands(projection, clients, executions);
-  const messages = messageCommands(
-    projection,
-    clients,
-    namespace,
-    executions,
-    operations,
-    authorizeTools,
-  );
+  const messages = messageCommands(projection, clients, namespace, executions, authorizeTools);
   const conversations = conversationCommands(
     projection,
     clients,
@@ -104,11 +88,9 @@ export function consoleService({
     executions,
   );
   const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
-  const withApprovals = approvalReferences(projection, operations, environmentToken);
   const { canOperate, approvalsFor } = interactionPermissions(
     projection,
     clients,
-    operations,
     executions,
     authorizeTools,
   );
@@ -201,7 +183,7 @@ export function consoleService({
           if (view.interactions.length)
             await approvalsFor(view.interactions, identity.subject, view.operate);
           return create(WatchConversationResponseSchema, {
-            conversation: conversationTranscript(await withApprovals(view)),
+            conversation: conversationTranscript(view),
           });
         },
         {
@@ -230,31 +212,5 @@ export function consoleService({
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
     explainTools: (request) => roles.explain(request.engineer),
-    async listApprovals(request, context) {
-      const identity = context.values.get(requestIdentity);
-      if (!isAdministrator(identity) && !(await visible(identity, request.taskId)))
-        throw notFound("task.notFound");
-      return approvals(
-        projection,
-        operations,
-        request.taskId,
-        request.requestId,
-        { signal: context.signal },
-        environmentToken,
-      );
-    },
-    async listApprovalRequests(request, context) {
-      const identity = context.values.get(requestIdentity);
-      const { interactions } = await withApprovals({
-        interactions: await projection.approvals(viewer(identity)),
-      });
-      const result = approvalQueue(interactions, request, identity.subject);
-      await approvalsFor(
-        result.requests.filter((item) => !item.external),
-        identity.subject,
-        true,
-      );
-      return result;
-    },
   };
 }

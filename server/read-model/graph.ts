@@ -9,7 +9,6 @@ export interface Relations {
   /** Explicit task references and delegation calls, excluding chronological session grouping. */
   causalParents: Map<string, string>;
   continuations: Map<string, string[]>;
-  reviews: Map<string, string[]>;
   resumed: Set<string>;
   roots: TaskEntry[];
 }
@@ -88,7 +87,6 @@ export class TaskGraph {
     const targets = new Map<string, string>();
     const parents = new Map<string, string>();
     const continuations = new Map<string, string[]>();
-    const reviews = new Map<string, string[]>();
     const resumed = new Set<string>();
     const operational = new Set<string>();
     const append = (map: Map<string, string[]>, key: string, id: string) =>
@@ -107,10 +105,6 @@ export class TaskGraph {
         parents.set(entry.id, entry.parentTaskId);
       }
       if (entry.resumedTaskId) resumed.add(entry.resumedTaskId);
-      if (entry.reviewOfTaskId) {
-        append(reviews, entry.reviewOfTaskId, entry.id);
-        parents.set(entry.id, entry.reviewOfTaskId);
-      }
     }
     const causalParents = new Map(parents);
     for (const entries of this.contexts.values()) {
@@ -120,7 +114,7 @@ export class TaskGraph {
       for (let position = 1; position < rounds.length; position++) {
         const entry = rounds[position];
         const previous = rounds[position - 1];
-        if (!entry || !previous || entry.parentTaskId || entry.reviewOfTaskId) continue;
+        if (!entry || !previous || entry.parentTaskId) continue;
         append(continuations, previous.id, entry.id);
         parents.set(entry.id, previous.id);
         operational.add(entry.id);
@@ -129,10 +123,9 @@ export class TaskGraph {
     const roots = [...this.entries.values()].filter(
       (entry) =>
         !systemRoles.has(this.roleOf(entry.agentId)) &&
-        !entry.reviewOfTaskId &&
         !operational.has(entry.id) &&
         !entry.parentTaskId,
     );
-    return { targets, parents, causalParents, continuations, reviews, resumed, roots };
+    return { targets, parents, causalParents, continuations, resumed, roots };
   }
 }

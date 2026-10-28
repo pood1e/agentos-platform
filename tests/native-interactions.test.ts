@@ -1,12 +1,12 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { Code } from "@connectrpc/connect";
-import { expect, it } from "vitest";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import {
   RespondInteractionRequestSchema,
   SendMessageRequestSchema,
 } from "../gen/agentos/console/v1/console_service_pb.js";
-import { Governance, GovernanceConfigSchema } from "../gen/agentos/governance/v1/governance_pb.js";
+import { ToolApprovalResponseSchema } from "../gen/kagent/api/v1/interactions_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { messageCommands } from "../server/console/messages.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
@@ -70,7 +70,7 @@ it("runs a selected Agent without a coordinator, external approvals or a solutio
   }
 });
 
-async function pending(external = false) {
+async function pending() {
   const question = create(MessageSchema, {
     messageId: "confirmation",
     role: Role.AGENT,
@@ -109,23 +109,7 @@ async function pending(external = false) {
   await env.reconcile.refresh();
   const interaction = (await env.projection.entry(task.id))?.interactions[0];
   if (!interaction) throw new Error("Native confirmation is missing");
-  const governance = create(GovernanceConfigSchema, {
-    environments: external
-      ? [
-          {
-            environment: { name: "publishing", governance: Governance.APPROVAL },
-            approvalUrl: "https://reviews.example",
-          },
-        ]
-      : [],
-  });
-  const commands = messageCommands(
-    env.projection,
-    env.clients,
-    "agentos",
-    env.executions,
-    governance,
-  );
+  const commands = messageCommands(env.projection, env.clients, "agentos", env.executions);
   return {
     ...env,
     interaction,
@@ -153,25 +137,62 @@ it("resumes native tool confirmation only after an exact human decision", async 
   }
 });
 
-it("rejects mismatched tool decisions and browser overrides of an external authority", async () => {
-  for (const external of [false, true]) {
-    const env = await pending(external);
-    try {
-      await expect(
-        env.respond(
-          create(RespondInteractionRequestSchema, {
-            taskId: env.interaction.taskId,
-            requestId: env.interaction.requestId,
-            decision: {
-              case: "approval",
-              value: { approvals: [{ id: external ? "publish" : "foreign", approved: true }] },
-            },
-          }),
-        ),
-      ).rejects.toThrow();
-      expect(env.fake.received).toHaveLength(0);
-    } finally {
-      await env.close();
-    }
+it("rejects mismatched tool decisions before resuming the native task", async () => {
+  const env = await pending();
+  try {
+    await expect(
+      env.respond(
+        create(RespondInteractionRequestSchema, {
+          taskId: env.interaction.taskId,
+          requestId: env.interaction.requestId,
+          decision: { case: "approval", value: { approvals: [{ id: "foreign", approved: true }] } },
+        }),
+      ),
+    ).rejects.toThrow();
+    expect(env.fake.received).toHaveLength(0);
+  } finally {
+    await env.close();
+  }
+});
+
+it("rechecks current tool authorization for approval while allowing the owner to reject", async () => {
+  const env = await pending();
+  const authorize = vi.fn(async () => {
+    throw new ConnectError("Execution permission revoked", Code.PermissionDenied);
+  });
+  const commands = messageCommands(
+    env.projection,
+    env.clients,
+    "agentos",
+    env.executions,
+    authorize,
+  );
+  const request = create(RespondInteractionRequestSchema, {
+    taskId: env.interaction.taskId,
+    requestId: env.interaction.requestId,
+    decision: { case: "approval", value: { approvals: [{ id: "publish", approved: true }] } },
+  });
+  try {
+    await expect(commands.respond(request, operator)).rejects.toMatchObject({
+      code: Code.PermissionDenied,
+    });
+    expect(authorize).toHaveBeenCalledWith(expect.objectContaining({ id: "publish-context" }), [
+      "publishing-cms_publish",
+    ]);
+    expect(env.fake.received).toHaveLength(0);
+    request.decision = {
+      case: "approval",
+      value: create(ToolApprovalResponseSchema, {
+        approvals: [{ id: "publish", approved: false }],
+      }),
+    };
+    await commands.respond(request, operator);
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(hitlPayload(env.fake.received.at(-1))).toMatchObject({
+      type: "tool_approval_response",
+      value: { approvals: [{ id: "publish", approved: false }] },
+    });
+  } finally {
+    await env.close();
   }
 });

@@ -6,10 +6,4 @@
 {% for project, connector in environment_connectors.items() %}
 {% set unused = connection.titles.update({project: connector.title | default(project)}) %}
 {% endfor %}
-{% if approval_service_url %}
-{% set unused = connection.update({'approvalUrl': approval_service_url}) %}
-{% if approval_service_authorization_file %}
-{% set unused = connection.update({'authorization': lookup('ansible.builtin.file', approval_service_authorization_file)}) %}
-{% endif %}
-{% endif %}
 {{ connection | to_nice_json }}

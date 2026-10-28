@@ -1,96 +1,65 @@
 # 架构
 
-AgentOS 基于 kagent、Agent Substrate 与 agentgateway，提供 Agent 团队运行、工具治理、知识和控制台。
-业务 Agent、Skill、环境连接器与审批服务由方案包交付。
+AgentOS 是基于 kagent 的交互与接入层，提供 Web 控制台、输入增强、身份授权和模型与 MCP 接入。
+Agent 执行、会话、任务持久化与原生 HITL 由 kagent 提供；业务 Agent、Skill、连接器和业务流程由方案包交付。
 
-## 组件
+## 组件边界
 
 ```mermaid
 flowchart LR
-    Browser[浏览器] -->|会话 Cookie| Web[web · oauth2-proxy]
-    Web -->|Bearer · Connect RPC| API[平台 API]
-    Clients[外部前端 / CLI] -->|Bearer| API
-    Web -.->|OIDC 登录| Identity[内置密码或站点身份源]
-    API -->|官方 gRPC| Kagent[kagent]
-    API -->|父资源与凭据| K8s[Kubernetes API]
-    Controller[平台控制器] -->|SSA| K8s
-    K8s -->|AccessPlan status| Dataplane[dataplane]
-    Team[Agent · microVM] -->|模型 / MCP| Gateway[平台网关]
-    Team -->|Actor JWT · TaskStore / Memory| Dataplane
-    Gateway -->|执行授权 / 协作 MCP| Dataplane
-    Gateway --> Models[模型服务]
-    Gateway -->|环境身份| Environment[环境网关与连接器]
-    Dataplane & Worker[worker] -->|官方 gRPC| Kagent
-    Worker -->|可选 ApprovalService| Approval[业务审批服务]
-    Kagent --> Substrate[Agent Substrate]
-    API & Dataplane & Worker & Kagent & Substrate --> PG[(PostgreSQL · pgvector)]
-    Substrate --> S3[(S3 快照)]
-    External[外部业务服务] -->|执行 MCP| Gateway
-    Browser -.->|WebRTC| LiveKit[LiveKit Server]
-    LiveKit -.->|可选 · 语音会话| Voice[voice worker]
-    Voice -.->|工作负载身份| API
+    Browser[浏览器] --> Web
+    Clients[外部前端 / CLI] --> API
+    subgraph Platform[AgentOS]
+        Web[web · 控制台与登录会话] -->|Connect RPC| API[api · 聊天与资源管理]
+        Gateway[agentgateway · 模型与 MCP 接入] -->|逐调用鉴权| Dataplane[dataplane · 授权与协议接入]
+        Worker[worker · 后台协调]
+        Controller[资源控制器]
+        API & Dataplane & Worker --> PG[(平台状态 · PostgreSQL)]
+    end
+    Web -.->|OIDC| Identity[内置或站点身份源]
+    API & Dataplane & Worker -->|原生 API| Runtime[kagent / Agent Substrate]
+    API & Controller -->|资源管理| K8s[Kubernetes API]
+    Dataplane -->|AccessPlan| K8s
+    Runtime -->|模型与 MCP| Gateway
+    Runtime -->|持久化接入| Dataplane
+    Gateway --> Targets[模型服务与环境连接器]
+    External[外部业务服务] -->|可选执行 MCP| Gateway
+    Browser -.->|WebRTC| Voice[可选语音接入]
+    Voice -.->|对话请求| API
 ```
 
-| 组件 | 来源 | 职责 |
-| --- | --- | --- |
-| kagent | 1.0.0-alpha17 与固定补丁 | Agent revision、原生会话与 A2A 历史、HITL、MemoryService、会话 MCP |
-| Agent Substrate | 0.6.0-alpha3 与固定补丁 | 每会话一个 Actor、Cloud Hypervisor microVM、快照与目标凭据注入 |
-| agentgateway | v1.6.0 官方 Chart | 平台和环境网关、模型接入、MCP 路由、身份映射与 ExtMCP |
-| api | 本仓库 | 聊天与管理 RPC、离线委派、环境 API 中转、方案包资源与语音会话 |
-| dataplane | 本仓库 | 网关外部鉴权、ExtMCP、TaskStore 与 Memory 代理、协作 MCP、Actor 公钥 |
-| worker | 本仓库 | 外部审批协调、嵌套续接、kagent 对账与方案预置 |
-| web | nginx 与 oauth2-proxy | 静态前端、浏览器会话、访问令牌转发与 MCP App 沙箱页 |
-| identity | oidc-provider | 密码模式身份源，为站点共享主体签发令牌 |
-| 平台控制器 | controller-runtime 与官方 Kubernetes 类型 | 编译 AccessPlan、维护连接派生对象与方案预置 |
-| 团队知识 | 原生 MemoryService、Ollama 与 EmbeddingGemma | 共享知识及 768 维向量检索 |
-| voice worker | LiveKit Agents | 可选组件：听写、朗读与通话，通话轮次以发起人身份进入会话绑定的对话 |
+| 组件 | 职责 |
+| --- | --- |
+| api | 控制台与管理 RPC、离线委派、环境 API 中转、方案包资源与语音会话 |
+| dataplane | 网关鉴权、ExtMCP、TaskStore / Memory 接入、协作 MCP 与 Actor 公钥转发 |
+| worker | 读投影对账与委派结果续接 |
+| web | React 控制台、oauth2-proxy 登录会话与 MCP App 沙箱页 |
+| identity | 密码模式的 oidc-provider 身份源 |
+| 平台控制器 | 编译 AccessPlan，以 SSA 维护连接派生资源与 Preset |
+| agentgateway | 使用官方 Chart，承载模型与 MCP 路由、身份映射和 ExtMCP |
+| Agent 运行时 | kagent 与 Agent Substrate，提供执行、原生状态、HITL 和协作 API |
+| voice worker | 可选的 LiveKit Agents 组件，提供听写、朗读与通话 |
 
-api、dataplane 与 worker 使用同一镜像，各自配置 Service、NetworkPolicy 与最小权限 ServiceAccount；Agent 只经网关与运行时控制面访问 dataplane。
-运行时补丁与回归范围见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
+api、dataplane 与 worker 使用同一镜像，分别配置 Service、NetworkPolicy 和 ServiceAccount。
+运行时来源与构建见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
 
-## 状态与一致性
+## 状态与资源
 
-原始会话、消息、工具调用与审批由 kagent 保存。平台在同一 PostgreSQL 中维护执行绑定、加密凭据、任务标签、读投影与协调队列。
+kagent 保存原始会话、消息、工具调用与 HITL。平台 PostgreSQL 保存执行绑定、加密离线凭据、任务标签、读投影及续接队列。
+TaskStore 接入在原生写入成功后更新投影，api 与协作 MCP 记录自身写入，worker 对账补齐运行时变化。
+列表在 SQL 中完成归属过滤、搜索与分页；执行树摘要在事务内更新，提交后通知各 api 副本刷新订阅。
 
-读投影按列保存任务、会话、发起人及执行树。dataplane 的 TaskStore 代理在原生写入成功后更新投影，
-api 和协作 MCP 写入各自产生的变更；worker 通过持久化水位对账补齐 kagent 侧变化，首次接入回填历史。
-列表在 SQL 中完成归属过滤、搜索、标签筛选与分页，详情按执行树加载；委派关系取自任务 ID 和确定性 messageId。
+管理 API 保存连接父对象及其凭据 Secret，控制器维护 ModelConfig、RemoteMCPServer、路由与认证策略。
+Preset 更新未修改的预置，用户编辑后的资源归用户维护，详见 [Kubernetes 控制器](kubernetes-controller.md)。
+团队知识复用原生 MemoryService 和嵌入模型，生成模型与向量模型通过原生用途声明区分。
 
-同一执行树的摘要在事务锁内重算，提交后经 `pg_notify` 唤醒各 api 副本的订阅；NOTIFY 心跳确认送达，中断后重新订阅并刷新观测流。
-文本增量由被查看会话的 A2A 订阅提供。原生状态与紧凑投影分别承担执行记录和查询职责。
+## 执行与扩展
 
-审批协调与续接使用 pg-boss，各进程在投影写入的同一事务入队，worker 消费，以工作空间及稳定业务键限制并发。
-每次处理重新核验执行授权，原生回复使用确定性 messageId，外部审批按任务与工具引用幂等。
-组件负责延迟、退避和死信，恢复入口见[后台协调](delivery.md#后台协调)。
+聊天通过 `entryAgent` 进入统一助手，再经原生协作 API 委派其他 Agent。
+每次工具调用校验发起人、会话及父链权限、Agent 工具绑定与环境身份范围；原生持久化身份通过 kagent 验证。
+工具确认与用户提问使用 kagent HITL，控制台展示请求并提交回复，恢复执行前复验当前授权。
+取消经 A2A 覆盖执行与委派树；删除会话撤销对应绑定及后代授权。细节见[执行授权](execution-authorization.md)。
 
-管理 API 写入原生连接父对象，再保存其拥有的凭据 Secret。控制器以 SSA 维护 ModelConfig、RemoteMCPServer、路由与认证策略，
-通过状态条件报告就绪或失败；凭据保存失败后可重试收敛。
-Preset 首次应用方案资源，后续更新由 SSA 所有权决定；用户编辑后取得对象所有权，方案升级保留其修改与删除结果。
-资源归属见 [Kubernetes 控制器](kubernetes-controller.md)。
-
-团队知识清理以完整记录 ID 集合的 ETag 确认快照，逐条删除该快照中的记录。
-生成模型与向量模型使用原生资源用途声明，配置和执行均校验用途。
-
-## 执行与授权
-
-- 聊天通过 `entryAgent` 进入统一助手，再经 A2A 委派专业 Agent。同步与后台委派共用原生会话、消息 ID 和消息契约。
-- 用户身份、会话及父链、Agent 工具绑定和环境身份共同决定权限上限。控制器编译 AccessPlan，运行时在每次调用时读取就绪决策并核验当前执行身份。
-- Agent 在 microVM 中运行，出站按目标 origin 放行，宿主注入短期 Actor JWT。平台逐次验证签名、受众、当前 Actor UID 与 Session。
-- 平台 API 校验 Bearer 令牌的签名、issuer、audience 与角色；浏览器会话由 web 管理。后台任务使用加密持久化的离线授权，账号与身份提供方决定续期有效性。
-- 模型与 MCP 入口分别校验 Actor 或绑定 ServiceAccount 身份。工作负载 TokenReview、目标凭据和 NetworkPolicy 共同限定调用范围。
-- 工具确认使用原生 HITL。外部 ApprovalService 可承担业务决定、执行准备与结果记录，平台在各阶段复验原执行授权。
-- 取消经原生 A2A 覆盖当前执行及其委派树，并等待终态确认；删除会话撤销绑定及后代授权。外部副作用由原生历史和目标系统核验。
-
-角色、凭据生命周期与会话隔离见[执行授权](execution-authorization.md)，环境 OBO 接线见[环境接入](environments.md)。
-
-## 控制台与外部执行
-
-聊天使用 assistant-ui，按原始 A2A 顺序展示过程、并行工具调用、审批与最终答复。
-子 Agent 完成后在委派位置展示结果，工具调用按稳定调用 ID 更新；个人任务在聊天中展示。
-
-MCP Apps 由环境 MCP 服务交付单文件 HTML，在独立源沙箱中运行。
-宿主校验来源会话、服务、可见性与只读分级，再以当前查看者身份访问环境网关，接入见[对话视图](mcp-app.md)。
-语音为可选组件，听写、朗读与通话经 LiveKit 由 voice worker 处理，配置见[语音](speech.md)。
-
-外部服务通过可选的 `/mcp/executions` 入口运行、查询和取消授权 Agent 的任务。原生会话、任务与执行树由 kagent 管理；
-事件接收、业务触发条件、调度及持久化工作流由外部服务管理。站点按 OIDC 客户端和目标 Agent 登记来源，默认不部署外部执行入口。
+MCP Apps 由连接器提供，在独立源沙箱中运行，取数以当前查看者身份授权，见[对话视图](mcp-app.md)。
+语音与 OpenTelemetry 按站点配置启用，见[语音](speech.md)和[遥测](delivery.md#遥测)。
+外部服务通过可选的 `/mcp/executions` 运行、查询和取消任务；业务审批、事件、调度与持久化工作流由业务服务管理，见[扩展契约](extension.md)。
