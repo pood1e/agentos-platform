@@ -10,7 +10,7 @@ Agent 执行、会话、任务持久化与工具确认使用 kagent；方案包�
 ## 部署
 
 参考部署使用 Ansible collection 安装 K3s、原生运行时与平台 Chart，Agent 运行节点需支持 KVM。
-制品验签、站点变量与安装步骤见[构建与部署](docs/delivery.md)，目标系统接入见[环境接入](docs/environments.md)。
+制品验签、站点变量与安装步骤见[构建与部署](docs/delivery.md)，目标系统接入见[环境接入](docs/environments.md)，kagent 源码与构建方式见[运行时构建](runtime/kagent/README.md)。
 
 ## 开发
 

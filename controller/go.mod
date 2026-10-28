@@ -79,3 +79,5 @@ require (
 replace go.ate.dev/substrate => github.com/kagent-dev/substrate v0.6.0-alpha3
 
 replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agentgateway/api v0.0.0-20261002153356-ea5608642b9d
+
+replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261028054728-a144127e59c2
