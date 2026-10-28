@@ -175,7 +175,6 @@ export function consoleClient(
     tags: env.tags,
     namespace: "agentos",
     access: testBindings(env.fake),
-    operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
     replaceTemplate: async (template) => env.fake.replaceTemplate(template),
     pack: create(PackSchema),

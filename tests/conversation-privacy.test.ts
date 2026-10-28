@@ -86,7 +86,6 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
             namespace: "agentos",
             access: testBindings(env.fake),
             executions: registry,
-            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (t) => env.fake.replaceTemplate(t),
             pack: loadPack(),
@@ -132,9 +131,6 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
           }),
         ),
       ).rejects.toMatchObject({ code: Code.NotFound });
-      await expect(
-        client.listApprovals({ taskId: `task-${foreign.subject}`, requestId: "probe" }),
-      ).rejects.toMatchObject({ code: Code.NotFound });
       await expect(client.cancelTask({ taskId: `task-${foreign.subject}` })).rejects.toMatchObject({
         code: Code.NotFound,
       });
@@ -178,7 +174,6 @@ it("interrupts a foreground run while preserving the owner's conversation and to
             namespace: "agentos",
             access: testBindings(env.fake),
             executions: registry,
-            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
             pack: loadPack(),
@@ -251,7 +246,6 @@ it("lets administrators read shared service sessions of workspace agents without
             namespace: "agentos",
             access: testBindings(env.fake),
             executions: registry,
-            operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
             pack: loadPack(),

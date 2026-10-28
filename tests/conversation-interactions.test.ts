@@ -143,72 +143,34 @@ it("anchors a reused worker's new approval to the later delegation without movin
   }
 });
 
-it("shows real human reviews while leaving preflight failures in tool details and preserving the audit", () => {
-  const interactions = [
-    create(InteractionSchema, {
-      id: "preflight",
-      external: true,
-      state: ActivityState.FAILED,
-      approvals: [
-        { id: "internal", state: ActivityState.FAILED, reason: "Complete the operation plan" },
-      ],
-    }),
-    create(InteractionSchema, {
-      id: "old-preflight",
-      external: true,
-      state: ActivityState.REJECTED,
-    }),
-    create(InteractionSchema, {
-      id: "human-rejection",
-      external: true,
-      state: ActivityState.REJECTED,
-      approvals: [{ id: "reviewed", state: ActivityState.REJECTED, decidedBy: "Alice" }],
-    }),
-    create(InteractionSchema, {
-      id: "pending",
-      external: true,
-      state: ActivityState.AWAITING_APPROVAL,
-      approvals: [{ id: "ticket", app: { tool: "show_ticket" } }],
-    }),
-    create(InteractionSchema, {
-      id: "execution-failure",
-      external: true,
-      state: ActivityState.FAILED,
-      approvals: [
-        {
-          id: "failed-ticket",
-          state: ActivityState.FAILED,
-          link: { name: "Review", url: "https://review.example/1" },
-        },
-      ],
-    }),
-    create(InteractionSchema, { id: "local-failure", state: ActivityState.FAILED }),
-  ];
+it("updates native HITL cards without moving their transcript positions", () => {
+  const interaction = create(InteractionSchema, {
+    id: "confirmation",
+    state: ActivityState.SUCCEEDED,
+    approve: false,
+  });
   const view = create(ConversationSchema, {
-    interactions,
+    interactions: [interaction],
     messages: [
       {
         parts: [
+          { id: "result", content: { case: "toolCall", value: { id: "call" } } },
           {
-            id: "tool",
-            content: { case: "toolCall", value: { id: "call", state: ActivityState.FAILED } },
+            id: "confirmation",
+            content: {
+              case: "interaction",
+              value: {
+                ...interaction,
+                state: ActivityState.AWAITING_APPROVAL,
+                approve: true,
+              },
+            },
           },
-          ...interactions.map((interaction) => ({
-            id: interaction.id,
-            content: { case: "interaction" as const, value: { ...interaction, external: false } },
-          })),
         ],
       },
     ],
   });
   const result = conversationTranscript(view);
-  expect(result.messages[0].parts.map((part) => part.id)).toEqual([
-    "tool",
-    "human-rejection",
-    "pending",
-    "execution-failure",
-    "local-failure",
-  ]);
-  expect(result.interactions).toHaveLength(6);
-  expect(result.messages[0].parts[1].content.value).toBe(result.interactions[2]);
+  expect(result.messages[0].parts.map((part) => part.id)).toEqual(["result", "confirmation"]);
+  expect(result.messages[0].parts[1].content.value).toBe(result.interactions[0]);
 });

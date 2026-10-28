@@ -3,7 +3,6 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "agentos/execution/v1/state.proto";
-import "agentos/governance/v1/governance.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "kagent/api/v1/common.proto";
@@ -63,8 +62,5 @@ message Interaction {
   google.protobuf.Timestamp answered_at = 11;
   repeated Answer answers = 12;
   string rejection_reason = 13;
-  // Decisions and external references supplied by the configured approval service.
-  repeated agentos.governance.v1.Approval approvals = 14;
-  bool external = 15;
   bool approve = 16;
 }

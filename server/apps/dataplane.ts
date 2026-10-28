@@ -7,7 +7,6 @@ import { platformToolAuthorization } from "../authorization/platform-tools.js";
 import { executionRuntime } from "../authorization/runtime.js";
 import { gatewayAuthorization } from "../authorization/transport.js";
 import { workloadConfiguration, workloadIdentity } from "../authorization/workloads.js";
-import { approvalJobs } from "../governance/coordinator.js";
 import { enqueueCoordination } from "../jobs/coordination.js";
 import { configurationClients } from "../kagent/configuration.js";
 import { knowledgeConfig } from "../knowledge/config.js";
@@ -33,13 +32,13 @@ const { workspace } = config;
 const app = platformApp();
 const clients = platformClients(config);
 const configuration = await configurationClients(config.kube, workspace, clients, app.log);
-const { access, operations, environmentToken, metadata, execution } = await executionServices(
+const { access, environmentToken, metadata, execution } = await executionServices(
   config,
   configuration.clients,
   app.log,
 );
 const { projection, jobs } = await projectionServices(config, clients, execution.store, app.log);
-enqueueCoordination(projection, jobs, [continuationJobs, approvalJobs(operations)]);
+enqueueCoordination(projection, jobs, [continuationJobs]);
 const runtime = executionRuntime(
   execution,
   configuration.clients,

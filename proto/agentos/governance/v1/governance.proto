@@ -2,12 +2,7 @@ syntax = "proto3";
 
 package agentos.governance.v1;
 
-import "agentos/execution/v1/state.proto";
-import "agentos/execution/v1/task.proto";
-import "kagent/api/v1/interactions.proto";
-import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
-import "google/protobuf/struct.proto";
 
 enum Governance {
   GOVERNANCE_UNSPECIFIED = 0;
@@ -15,15 +10,7 @@ enum Governance {
   GOVERNANCE_DIRECT = 2;
 }
 
-message Link {
-  string name = 1 [(buf.validate.field).string.min_len = 1];
-  string url = 2 [(buf.validate.field).string.uri = true];
-}
-
 message Environment {
-  reserved 3;
-  reserved "links";
-
   string name = 1 [(buf.validate.field).string.min_len = 1];
   Governance governance = 2 [(buf.validate.field).enum = {
     defined_only: true
@@ -31,11 +18,9 @@ message Environment {
   }];
 }
 
-// Environment OAuth resource and optional external decision service.
+// Environment OAuth resource, gateway and service APIs.
 message EnvironmentConnection {
   Environment environment = 1 [(buf.validate.field).required = true];
-  optional string approval_url = 2 [(buf.validate.field).string.uri = true];
-  optional string authorization = 3 [(buf.validate.field).string.min_len = 1];
   string issuer = 4 [(buf.validate.field).string = {
     uri: true
     prefix: "https://"
@@ -57,72 +42,13 @@ message EnvironmentApi {
 
 message GatewayEndpoint {
   string address = 1 [(buf.validate.field).string.min_len = 1];
-  uint32 port = 2 [(buf.validate.field).uint32 = {gte: 1, lte: 65535}];
+  uint32 port = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 65535
+  }];
   string tls_server_name = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message GovernanceConfig {
   repeated EnvironmentConnection environments = 1;
-}
-
-message ApprovalReference {
-  string task_id = 1 [(buf.validate.field).string.min_len = 1];
-  string tool_id = 2 [(buf.validate.field).string.min_len = 1];
-}
-
-message ApprovalContext {
-  string agent_id = 1 [(buf.validate.field).string.min_len = 1];
-  string task_id = 2 [(buf.validate.field).string.min_len = 1];
-  string context_id = 3 [(buf.validate.field).string.min_len = 1];
-  string request_id = 4 [(buf.validate.field).string.min_len = 1];
-  string intent = 5;
-  string prompt = 6;
-  .kagent.api.v1.HitlTool tool = 7 [(buf.validate.field).required = true];
-  repeated agentos.execution.v1.ToolCall calls = 8;
-}
-
-message Approval {
-  string id = 1;
-  agentos.execution.v1.ActivityState state = 2;
-  string reason = 3;
-  string decided_by = 4;
-  optional Link link = 5;
-  string description = 6;
-  agentos.mcp.v1.AppView app = 7;
-  ApprovalReference reference = 8;
-}
-
-service ApprovalService {
-  // Creation, preparation and recording are idempotent by ApprovalReference.
-  rpc ReviewApproval(ReviewApprovalRequest) returns (ReviewApprovalResponse);
-  rpc GetApproval(GetApprovalRequest) returns (GetApprovalResponse);
-  rpc PrepareApproval(PrepareApprovalRequest) returns (PrepareApprovalResponse);
-  rpc RecordApprovalResult(RecordApprovalResultRequest) returns (RecordApprovalResultResponse);
-}
-
-message ReviewApprovalRequest {
-  ApprovalContext context = 1 [(buf.validate.field).required = true];
-}
-message ReviewApprovalResponse {
-  Approval approval = 1;
-}
-message GetApprovalRequest {
-  ApprovalReference reference = 1 [(buf.validate.field).required = true];
-}
-message GetApprovalResponse {
-  Approval approval = 1;
-}
-message PrepareApprovalRequest {
-  ApprovalReference reference = 1 [(buf.validate.field).required = true];
-}
-message PrepareApprovalResponse {
-  Approval approval = 1;
-}
-message RecordApprovalResultRequest {
-  ApprovalReference reference = 1 [(buf.validate.field).required = true];
-  bool failed = 2;
-  google.protobuf.Value output = 3;
-}
-message RecordApprovalResultResponse {
-  Approval approval = 1;
 }

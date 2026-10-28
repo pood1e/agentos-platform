@@ -13,7 +13,7 @@ import { environment, silent, until } from "./harness.js";
 const it = test.skipIf(!process.env.CHANGE_TEST_DATABASE_URL);
 const reference = create(CoordinationJobSchema, {
   taskId: "native-task",
-  work: { case: "approvalId", value: "native-pause" },
+  work: { case: "childId", value: "native-child" },
 });
 
 it("serializes a business key across replicas and recovers after an external side effect", async () => {
@@ -28,7 +28,7 @@ it("serializes a business key across replicas and recovers after an external sid
     complete = false;
   const external = new Set<string>();
   const processor: Coordinator = {
-    name: "approvals",
+    name: "continuations",
     select: () => (complete ? [] : [reference]),
     async run(job) {
       active++;
@@ -45,7 +45,10 @@ it("serializes a business key across replicas and recovers after an external sid
       }
     },
   };
-  await first.boss.updateQueue(first.queue("approvals"), { retryDelay: 0, retryBackoff: false });
+  await first.boss.updateQueue(first.queue("continuations"), {
+    retryDelay: 0,
+    retryBackoff: false,
+  });
   enqueueCoordination(env.projection, first, [processor]);
   enqueueCoordination(env.projection, second, [processor]);
   const stopFirst = await consumeCoordination(first, [processor]);
@@ -77,7 +80,7 @@ it("retains exhausted references and redrives them through the native dead-lette
   let healthy = false,
     complete = false;
   const processor: Coordinator = {
-    name: "approvals",
+    name: "continuations",
     select: () => [reference],
     async run() {
       if (!healthy) throw new Error("Provider is unavailable");
@@ -85,14 +88,14 @@ it("retains exhausted references and redrives them through the native dead-lette
       return;
     },
   };
-  await jobs.boss.updateQueue(jobs.queue("approvals"), { retryLimit: 0 });
+  await jobs.boss.updateQueue(jobs.queue("continuations"), { retryLimit: 0 });
   enqueueCoordination(env.projection, jobs, [processor]);
   const stop = await consumeCoordination(jobs, [processor]);
   await env.reconcile.refresh();
   try {
     await until(async () => (await jobs.boss.previewRedrive(jobs.failed)).total > 0);
     const preview = await jobs.boss.previewRedrive(jobs.failed);
-    expect(preview.destinations).toEqual([{ name: jobs.queue("approvals"), count: 1 }]);
+    expect(preview.destinations).toEqual([{ name: jobs.queue("continuations"), count: 1 }]);
     healthy = true;
     expect(await jobs.boss.redrive(jobs.failed)).toBe(1);
     await until(() => complete);

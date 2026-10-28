@@ -37,9 +37,6 @@ export interface TaskEntry {
   progress: string;
   calls: CallEntry[];
   interactions: Interaction[];
-  managedApprovals?: string[];
-  reviewOfTaskId?: string;
-  reviewRequestId?: string;
   parentTaskId: string;
   resumedTaskId: string;
   decision?: Decision;
@@ -77,13 +74,7 @@ export function ingest(task: Task, agentId: string): TaskEntry {
     ...taskOutput(task),
     calls,
     interactions: interactions(task, agentId, calls),
-    managedApprovals: task.history.flatMap((message) => {
-      const id = metadataText(message, "agentos.dev/approval-request");
-      return id ? [id] : [];
-    }),
     parentTaskId: firstMetadata(task, parentTaskKey),
-    reviewOfTaskId: firstMetadata(task, "agentos.dev/review-task"),
-    reviewRequestId: firstMetadata(task, "agentos.dev/review-request"),
     resumedTaskId: firstMetadata(task, resumedTaskKey),
     decision: latestDecision(task),
   };

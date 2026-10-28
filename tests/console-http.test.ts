@@ -22,7 +22,6 @@ it("serves typed RPC errors and separates liveness from subscribed readiness", a
       ...env,
       namespace: "agentos",
       access: testBindings(env.fake),
-      operations: { $typeName: "agentos.governance.v1.GovernanceConfig", environments: [] },
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
       pack: loadPack(),

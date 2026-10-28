@@ -33,11 +33,7 @@ export async function createSchema(sql: postgres.Sql) {
       workspace text not null, task_id text not null, root_session_id text not null,
       subject text not null, state integer not null, members text[] not null, search text not null,
       updated_at bigint not null, summary bytea not null, primary key (workspace, task_id))`;
-    await tx`create table if not exists agentos_read.approvals (
-      workspace text not null, id text not null, root_session_id text not null,
-      subject text not null, requested_at bigint not null, interaction bytea not null,
-      primary key (workspace, id))`;
-    for (const table of ["sessions", "tasks", "conversations", "operations", "approvals"])
+    for (const table of ["sessions", "tasks", "conversations", "operations"])
       await tx`create index if not exists ${tx(`${table}_root`)}
         on ${tx(`agentos_read.${table}`)} (workspace, root_session_id)`;
     await tx`create index if not exists tasks_context on agentos_read.tasks (workspace, context_id)`;

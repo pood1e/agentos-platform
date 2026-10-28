@@ -38,11 +38,10 @@ export async function jobQueue(
   });
   boss.on("error", (error) => log.error({ err: error }, "Job queue failed"));
   await boss.start();
-  const queue = (name: "approvals" | "continuations" | "failed") => `${workspace}.${name}`;
+  const queue = (name: "continuations" | "failed") => `${workspace}.${name}`;
   const failed = queue("failed");
   await boss.createQueue(failed, { retentionSeconds: 90 * 86400 });
-  for (const name of ["approvals", "continuations"] as const)
-    await boss.createQueue(queue(name), { ...policy, deadLetter: failed });
+  await boss.createQueue(queue("continuations"), { ...policy, deadLetter: failed });
   return { boss, queue, failed };
 }
 

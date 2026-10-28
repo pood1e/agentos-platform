@@ -1,10 +1,5 @@
 import { toBinary } from "@bufbuild/protobuf";
-import { timestampMs } from "@bufbuild/protobuf/wkt";
-import {
-  InteractionKind,
-  InteractionSchema,
-  TaskSummarySchema,
-} from "../../gen/agentos/console/v1/task_pb.js";
+import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
 import type { TaskGraph } from "./graph.js";
 import type { ReadWriter } from "./store.js";
 import { taskTree } from "./tree.js";
@@ -44,16 +39,7 @@ export function summarize(graph: TaskGraph) {
       },
     ];
   });
-  const approvals = graph.all().flatMap((entry) =>
-    entry.interactions
-      .filter((item) => item.kind === InteractionKind.APPROVAL)
-      .map((item) => ({
-        id: item.id,
-        requested_at: item.requestedAt ? timestampMs(item.requestedAt) : 0,
-        interaction: Buffer.from(toBinary(InteractionSchema, item)),
-      })),
-  );
-  return { conversations, operations, approvals };
+  return { conversations, operations };
 }
 
 /** Replaces the summaries of one tree; the caller holds the tree's advisory lock. */
@@ -72,9 +58,6 @@ export async function storeSummaries(
   await tx`delete from agentos_read.operations
     where workspace = ${workspace} and root_session_id = ${root}
       and not (task_id = any(${rows.operations.map((row) => row.task_id)}))`;
-  await tx`delete from agentos_read.approvals
-    where workspace = ${workspace} and root_session_id = ${root}
-      and not (id = any(${rows.approvals.map((row) => row.id)}))`;
   if (rows.conversations.length)
     await tx`insert into agentos_read.conversations ${tx(owned(rows.conversations))}
       on conflict (workspace, context_id) do update set root_session_id = excluded.root_session_id,
@@ -85,9 +68,4 @@ export async function storeSummaries(
       on conflict (workspace, task_id) do update set root_session_id = excluded.root_session_id,
         subject = excluded.subject, state = excluded.state, members = excluded.members,
         search = excluded.search, updated_at = excluded.updated_at, summary = excluded.summary`;
-  if (rows.approvals.length)
-    await tx`insert into agentos_read.approvals ${tx(owned(rows.approvals))}
-      on conflict (workspace, id) do update set root_session_id = excluded.root_session_id,
-        subject = excluded.subject, requested_at = excluded.requested_at,
-        interaction = excluded.interaction`;
 }

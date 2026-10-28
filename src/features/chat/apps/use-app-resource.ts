@@ -5,7 +5,7 @@ import { consoleClient } from "../../../lib/console.js";
 
 export function useAppResource(reference: AppReference) {
   return useQuery({
-    queryKey: ["app-resource", reference.taskId, reference.origin.case, reference.origin.value],
+    queryKey: ["app-resource", reference.taskId, reference.callId],
     queryFn: ({ signal }) =>
       consoleClient.getAppResource({ app: reference }, { signal, timeoutMs: 20_000 }),
     staleTime: 60_000,

@@ -34,7 +34,7 @@ export async function executionResult(
   };
   const ordered = graph
     .all()
-    .filter((entry) => belongs(entry.id) && !entry.reviewOfTaskId)
+    .filter((entry) => belongs(entry.id))
     .sort((a, b) => a.id.localeCompare(b.id));
   const token = request.page?.pageToken ?? "";
   const offset = token ? ordered.findIndex((entry) => entry.id === token) + 1 : 0;

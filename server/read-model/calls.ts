@@ -17,7 +17,7 @@ import {
 } from "./decode/tools.js";
 import { taskActivity, terminal } from "./state.js";
 
-export type Approval = "pending" | "approved" | "rejected" | "failed" | "abandoned";
+export type Approval = "pending" | "approved" | "rejected" | "abandoned";
 
 interface Draft {
   id: string;
@@ -95,7 +95,6 @@ function resolve(call: Draft, task: Task, approval?: Approval) {
   let state: ActivityState;
   if (approval === "pending") state = ActivityState.AWAITING_APPROVAL;
   else if (approval === "rejected") state = ActivityState.REJECTED;
-  else if (approval === "failed") state = ActivityState.FAILED;
   else if (approval === "abandoned") state = ActivityState.CANCELED;
   else if (!outcome)
     state = terminal(task.status?.state) ? ActivityState.UNOBSERVED : ActivityState.WORKING;

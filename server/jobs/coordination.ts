@@ -8,7 +8,7 @@ import type { TaskProjection } from "../read-model/projection.js";
 import type { JobQueue } from "./queue.js";
 
 export interface Coordinator {
-  name: "approvals" | "continuations";
+  name: "continuations";
   /** Work for the changed tasks of one execution tree. */
   select(graph: TaskGraph, changed: ReadonlySet<string>): CoordinationJob[];
   run(reference: CoordinationJob): Promise<number | undefined>;

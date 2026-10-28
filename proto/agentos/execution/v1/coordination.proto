@@ -6,7 +6,6 @@ package agentos.execution.v1;
 message CoordinationJob {
   string task_id = 1;
   oneof work {
-    string approval_id = 2;
     string child_id = 3;
   }
 }

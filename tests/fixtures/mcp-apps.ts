@@ -56,7 +56,6 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     ...env,
     namespace: "agentos",
     access,
-    operations,
     metadata,
     apps,
     executions: registry,
@@ -71,7 +70,7 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     }),
   );
   const request = {
-    app: { taskId: scenario.task.id, origin: { case: "callId" as const, value: scenario.callId } },
+    app: { taskId: scenario.task.id, callId: scenario.callId },
   };
   return {
     ...env,

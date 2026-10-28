@@ -204,18 +204,11 @@
               "title": "Environment Api",
               "type": "object"
             }
-          },
-          "approvalUrl": {
-            "type": "string",
-            "pattern": "^https://[^/]+"
-          },
-          "authorization": {
-            "type": "string",
-            "minLength": 1
           }
         },
         "required": ["governance", "name"],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       }
     }
   },

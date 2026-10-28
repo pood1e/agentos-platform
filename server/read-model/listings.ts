@@ -3,7 +3,7 @@ import type postgres from "postgres";
 import { TaskState } from "../../gen/a2a_pb.js";
 import type { ListTasksRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
-import { InteractionSchema, TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
+import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
 import { normalizeTags } from "../tasks/tags.js";
 import { decodeCursor, encodeCursor, type PageRequest } from "./page.js";
 import type { ReadStore } from "./store.js";
@@ -134,14 +134,6 @@ export function listings({ sql, workspace }: Pick<ReadStore, "sql" | "workspace"
           },
         ]),
       );
-    },
-    /** Administrators review approval material across the workspace. */
-    async approvals(viewer: Viewer) {
-      const rows = await sql`select interaction from agentos_read.approvals
-        where workspace = ${workspace}
-          and (${viewer.administrator} or ${visible(sql, "subject", viewer)})
-        order by requested_at desc, id`;
-      return rows.map((row) => fromBinary(InteractionSchema, row.interaction));
     },
   };
 }
