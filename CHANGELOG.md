@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.43.0](https://github.com/pood1e/agentos-platform/compare/v0.42.0...v0.43.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runtime:** 运行时与 Harness 镜像改从 ghcr.io/pood1e/kagent 与 ghcr.io/pood1e/substrate 拉取，站点需能访问 GHCR。
+* **console:** GetPack RPC 已删除，pack 只能通过 console 主机的 /pack/pack.json 读取；Kubernetes 工具译文需由方案包 locales 提供。
+* **platform:** 必须配置 identity.issuer、clientId、audience、writerRole 与客户端密钥 Secret；identity.mode 与 embedding.* 值已删除，knowledge-embedding 连接需由站点提供。
+
+### Bug Fixes
+
+* **ci:** reuse Go caches across dependency lock updates ([#190](https://github.com/pood1e/agentos-platform/issues/190)) ([73a5672](https://github.com/pood1e/agentos-platform/commit/73a5672ba29668c9c9c8a5c89af6ba78fe7e2c05))
+
+
+### Code Refactoring
+
+* **console:** 方案包展示资源由 web 托管 ([#187](https://github.com/pood1e/agentos-platform/issues/187)) ([be1e721](https://github.com/pood1e/agentos-platform/commit/be1e7217f29c08e67614018feae52fa6207637a2)), closes [#177](https://github.com/pood1e/agentos-platform/issues/177)
+* **platform:** 身份源与嵌入模型改由站点提供 ([#185](https://github.com/pood1e/agentos-platform/issues/185)) ([180acdc](https://github.com/pood1e/agentos-platform/commit/180acdc15ab7d9f5c062f732be16e31ccd2c5c18)), closes [#177](https://github.com/pood1e/agentos-platform/issues/177)
+
+
+### Build System
+
+* **runtime:** 运行时镜像改由 kagent 与 Substrate fork 发布 ([#189](https://github.com/pood1e/agentos-platform/issues/189)) ([44fcf75](https://github.com/pood1e/agentos-platform/commit/44fcf756e656d5e783b6d7d03e01b402f219c51a)), closes [#177](https://github.com/pood1e/agentos-platform/issues/177)
+
 ## [0.42.0](https://github.com/pood1e/agentos-platform/compare/v0.41.0...v0.42.0) (2026-10-28)
 
 
