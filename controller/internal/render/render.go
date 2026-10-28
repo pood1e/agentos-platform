@@ -6,8 +6,10 @@ import (
 	"io"
 
 	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
+	"github.com/kagent-dev/kagent/go/integrations/agentgateway"
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"github.com/pood1e/agentos-platform/controller/internal/compile"
+	"github.com/pood1e/agentos-platform/controller/internal/connections"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -104,8 +106,9 @@ func Expand(objects []*unstructured.Unstructured, scheme *runtime.Scheme, namesp
 		}
 	}
 	parents := append([]*unstructured.Unstructured{}, result...)
+	connectionConfig := connections.Config(gateway)
 	for _, object := range parents {
-		if object.GetAnnotations()["agentos.dev/connection"] != "true" {
+		if object.GetAnnotations()[agentgateway.ConnectionAnnotation] != "true" {
 			continue
 		}
 		var children []client.Object
@@ -116,13 +119,15 @@ func Expand(objects []*unstructured.Unstructured, scheme *runtime.Scheme, namesp
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &model); err != nil {
 				return nil, err
 			}
-			children, err = compile.Model(&model, gateway)
+			var child client.Object
+			child, err = connectionConfig.Model(&model)
+			children = []client.Object{child}
 		case "AgentgatewayBackend":
 			var backend agw.AgentgatewayBackend
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &backend); err != nil {
 				return nil, err
 			}
-			children, err = compile.MCP(&backend, gateway)
+			children, err = connectionConfig.MCP(&backend)
 		}
 		if err != nil {
 			return nil, err

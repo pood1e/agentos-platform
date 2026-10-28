@@ -268,7 +268,7 @@ export function connectionCommands(
           annotations: {
             ...object(meta(value).annotations),
             "agentos.dev/system-connection": "false",
-            "agentos.dev/connection": "true",
+            "kagent.dev/connection": "true",
             ...(kind === ConnectionKind.MODEL && connection.model?.resource?.value?.spec
               ? { "agentos.dev/model-config": JSON.stringify(connection.model.resource.value.spec) }
               : {}),
