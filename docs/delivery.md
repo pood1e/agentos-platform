@@ -1,7 +1,7 @@
 # 构建与部署
 
 参考部署通过 Ansible collection 在支持 KVM 的 Ubuntu 主机安装单节点 K3s、运行时、网关与平台 Chart。
-工具版本由 [mise.toml](../mise.toml) / [mise.lock](../mise.lock) 固定，上游版本与运行时镜像摘要见 [deploy/vars.yaml](../deploy/vars.yaml)，Helm 使用仓库锁定的 4.x 版本。
+工具版本由 [mise.toml](../mise.toml) / [mise.lock](../mise.lock) 固定，上游版本与运行时镜像摘要见 [deploy/vars.yaml](../deploy/vars.yaml)，运行时镜像由 kagent 与 Substrate fork 发布，Helm 使用仓库锁定的 4.x 版本。
 
 ## 安装与升级
 
@@ -116,7 +116,7 @@ gateway:
 
 ## 方案 Harness
 
-方案可继承平台 Harness 基础镜像，由自身 CI 发布并固定摘要。`defaultHarness` 选择系统助手与新建 Agent 的默认配置，Agent 以 `spec.harnessRef.name` 独立选择：
+方案可继承 kagent fork 发布的 Harness 基础镜像，由自身 CI 发布并固定摘要。`defaultHarness` 选择系统助手与新建 Agent 的默认配置，Agent 以 `spec.harnessRef.name` 独立选择：
 
 ```yaml
 agentos:
