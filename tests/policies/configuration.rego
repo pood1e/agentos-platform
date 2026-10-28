@@ -18,11 +18,19 @@ actor_jwks_direct(provider) if {
 	object.get(tls, "insecureSkipVerify", "") == ""
 }
 
+actor_issuer := trim_prefix(argument, "--actor-issuer=") if {
+	some controller in objects
+	controller.kind == "Deployment"
+	controller.metadata.labels["app.kubernetes.io/name"] == "agentos-controller"
+	some argument in controller.spec.template.spec.containers[0].args
+	startswith(argument, "--actor-issuer=")
+}
+
 deny contains sprintf("%s lacks direct verified Actor JWKS", [policy.metadata.name]) if {
 	some policy in objects
 	policy.kind == "AgentgatewayPolicy"
 	some provider in policy.spec.traffic.jwtAuthentication.providers
-	provider.issuer == api_environment.AGENTOS_ACTOR_ISSUER.value
+	provider.issuer == actor_issuer
 	not actor_jwks_direct(provider)
 }
 
@@ -40,7 +48,7 @@ configuration_permission(deployment, group, resource, verb) if {
 }
 
 deny contains sprintf("%s cannot watch configuration %s/%s", [workload.metadata.name, group, resource]) if {
-	some workload in [api, dataplane]
+	workload := api
 	some group, resources in {
 		"api.kagent.dev": ["agents", "agenttemplates", "modelconfigs", "harnesses"],
 		"agentgateway.dev": ["agentgatewaybackends"],
@@ -48,6 +56,17 @@ deny contains sprintf("%s cannot watch configuration %s/%s", [workload.metadata.
 	}
 	some resource in resources
 	not configuration_permission(workload, group, resource, "watch")
+}
+
+deny contains "the dataplane cannot watch AccessPlan decisions" if {
+	not configuration_permission(dataplane, "agentos.dev", "accessplans", "watch")
+}
+
+deny contains "the dataplane can read resources beyond AccessPlan decisions" if {
+	some rule in role_of(dataplane).rules
+	some group in rule.apiGroups
+	some resource in rule.resources
+	not [group, resource] == ["agentos.dev", "accessplans"]
 }
 
 deny contains sprintf("%s can mutate derived resource %s/%s", [workload.metadata.name, group, resource]) if {

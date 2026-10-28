@@ -9,7 +9,7 @@ import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
-import { bindTasks, consoleClient, environment } from "./harness.js";
+import { consoleClient, environment } from "./harness.js";
 
 async function workbench(tasks?: Task[]) {
   const env = await environment(tasks);
@@ -26,29 +26,6 @@ async function rejection(call: Promise<unknown>) {
 }
 
 describe("console service", () => {
-  it("cancels an operation through a child task and closes its pending approval interval", async () => {
-    const { client, projection, fake, close } = await workbench(pendingApprovalTasks());
-    try {
-      await client.cancelTask({ taskId: ids.approved });
-      expect(fake.task(ids.approved).status?.state).toBe(TaskState.CANCELED);
-      expect(fake.task(ids.approvalRoot).status?.state).toBe(TaskState.COMPLETED);
-      expect(
-        (await client.listTasks({ states: [ActivityState.AWAITING_APPROVAL] })).totalSize,
-      ).toBe(0);
-      expect((await client.listTasks({ query: ids.approvalRoot })).tasks[0]?.state).toBe(
-        ActivityState.CANCELED,
-      );
-      const approval = (await projection.entry(ids.approved))?.interactions[0];
-      expect(approval?.state).toBe(ActivityState.CANCELED);
-      expect(approval?.requestedAt).toBeDefined();
-      expect(approval?.answeredAt).toBeDefined();
-      await expect(client.cancelTask({ taskId: "missing" })).rejects.toMatchObject({
-        code: Code.NotFound,
-      });
-    } finally {
-      await close();
-    }
-  });
   it("keeps native approval pending and rejects direct workbench decisions", async () => {
     const { client, fake, projection, close } = await workbench(pendingApprovalTasks());
     expect(
@@ -119,7 +96,7 @@ describe("console service", () => {
   });
 
   it("loads a newly observed conversation before deciding that it is unavailable", async () => {
-    const { client, fake, store, projection, close } = await workbench([]);
+    const { client, fake, projection, close } = await workbench([]);
     const agent = { namespace: "agentos", name: "assistant" };
     const session = create(SessionSchema, { id: "newly-observed", agent });
     const task = create(TaskSchema, {
@@ -130,7 +107,6 @@ describe("console service", () => {
       artifacts: [{ parts: [{ content: { case: "text", value: "同步后的回答" } }] }],
     });
     fake.load({ sessions: [session], tasks: [task] });
-    await bindTasks(store, fake, [task]);
     expect((await projection.session(session.id))?.id).toBe(session.id);
     const controller = new AbortController();
     try {
@@ -190,18 +166,7 @@ describe("console service", () => {
     const knowledge = configuration.engineerTools.find(
       (item) => item.engineer?.name === "knowledge",
     );
-    expect(knowledge?.builtinTools.map((tool) => tool.name)).toEqual([
-      "ask_user",
-      "read_file",
-      "write_file",
-      "edit_file",
-      "bash",
-      "list_files",
-      "grep_file",
-      "save_memory",
-      "load_memory",
-      "preload_memory",
-    ]);
+    expect(knowledge?.builtinCatalog).toBeUndefined();
     expect(configuration.roles.find((role) => role.name === "knowledge")?.tools).toEqual([]);
     const role = {
       name: "service-health",

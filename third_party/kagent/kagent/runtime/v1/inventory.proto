@@ -1,0 +1,20 @@
+syntax = "proto3";
+package kagent.runtime.v1;
+
+import "buf/validate/validate.proto";
+import "kagent/api/v1/tools.proto";
+
+option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/runtime/v1;runtimev1";
+// ToolInventoryService binds SDK observations to the verified Actor's revision.
+service ToolInventoryService {
+  rpc Report(ToolInventoryServiceReportRequest) returns (ToolInventoryServiceReportResponse);
+}
+message ToolInventoryServiceReportRequest {
+  repeated kagent.api.v1.DiscoveredTool tools = 1 [(buf.validate.field).repeated.max_items = 256];
+  option (buf.validate.message).cel = {
+    id: "inventory.tools"
+    message: "tool names must be nonempty and unique, with bounded descriptions"
+    expression: "this.tools.all(t, size(t.name) > 0 && size(t.name) <= 256 && size(t.description) <= 16384) && this.tools.all(t, this.tools.filter(other, other.name == t.name).size() == 1)"
+  };
+}
+message ToolInventoryServiceReportResponse {}

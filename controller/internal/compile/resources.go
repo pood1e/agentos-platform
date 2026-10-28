@@ -50,7 +50,7 @@ func Route(namespace, gateway, section, name, path, backend string, exact bool) 
 
 // Remote exposes a gateway-backed MCP server to kagent discovery.
 func Remote(namespace, name, description, url string) *kagent.RemoteMCPServer {
-	return &kagent.RemoteMCPServer{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Annotations: map[string]string{"agentos.dev/discovery-auth": "kubernetes"}}, Spec: kagent.RemoteMCPServerSpec{Description: description, Protocol: kagent.RemoteMCPServerProtocolStreamableHttp, URL: url, Timeout: &metav1.Duration{Duration: 10 * time.Minute}}}
+	return &kagent.RemoteMCPServer{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}, Spec: kagent.RemoteMCPServerSpec{Description: description, Protocol: kagent.RemoteMCPServerProtocolStreamableHttp, URL: url, Timeout: &metav1.Duration{Duration: 10 * time.Minute}}}
 }
 
 func routePolicy(namespace, name, route string) *agw.AgentgatewayPolicy {

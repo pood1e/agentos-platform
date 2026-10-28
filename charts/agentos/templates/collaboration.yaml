@@ -1,0 +1,16 @@
+apiVersion: api.kagent.dev/v1alpha3
+kind: RemoteMCPServer
+metadata:
+  name: kagent-collaboration
+  annotations:
+    agentos.dev/system-connection: 'true'
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+spec:
+  description: Native kagent collaboration and team memory
+  url: {{ printf "%s/mcp" (trimSuffix "/" .Values.kagent.endpoint) | quote }}
+  protocol: STREAMABLE_HTTP
+  timeout: 10m
+  discoveryAuth:
+    serviceAccount:
+      serviceAccountRef: {name: {{ include "agentos.name" . }}-discovery}
+      audience: kagent-invocation

@@ -1,6 +1,5 @@
 import { ConnectError, type Interceptor } from "@connectrpc/connect";
 import { codeToString } from "@connectrpc/connect/protocol-connect";
-import type { ConnectNodeAdapterOptions } from "@connectrpc/connect-node";
 import { metrics } from "@opentelemetry/api";
 
 // Instruments resolve the global provider that `server/apps/telemetry.ts` registers before startup.
@@ -24,11 +23,6 @@ const rpcDurations = {
     description: "Duration of incoming Connect RPCs, including gateway authorization",
   }),
 };
-const httpDuration = meter.createHistogram("http.server.request.duration", {
-  ...seconds,
-  description: "Duration of gateway external authorization requests",
-});
-
 /** Records Connect RPCs with the OpenTelemetry RPC semantic conventions. */
 export function rpcMetrics(kind: "client" | "server"): Interceptor {
   return (next) => async (request) => {
@@ -46,22 +40,5 @@ export function rpcMetrics(kind: "client" | "server"): Interceptor {
         "rpc.response.status_code": status,
       });
     }
-  };
-}
-
-type HttpHandler = NonNullable<ConnectNodeAdapterOptions["fallback"]>;
-
-/** Records plain HTTP handlers by route, method and status; unknown paths share one route. */
-export function httpMetrics(routes: readonly string[], handler: HttpHandler): HttpHandler {
-  return (request, response) => {
-    const start = performance.now();
-    response.once("close", () =>
-      httpDuration.record((performance.now() - start) / 1000, {
-        "http.route": routes.find((route) => route === request.url) ?? "unmatched",
-        "http.request.method": request.method ?? "",
-        "http.response.status_code": response.statusCode,
-      }),
-    );
-    return handler(request, response);
   };
 }

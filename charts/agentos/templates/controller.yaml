@@ -3,10 +3,11 @@
   "gateway" (printf "%s-gateway" $name)
   "gateway-url" (printf "http://%s-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace)
   "mcp-url" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace)
-  "model-secret" (printf "%s-model-client" $name)
-  "dataplane" (include "agentos.dataplaneService" .)
+  "native-authority-backend" (printf "%s-native-authority" $name)
+  "discovery-service-account" (printf "%s-discovery" $name)
+  "writer-role" .Values.identity.writerRole
   "actor-jwks-backend" (include "agentos.actorJWKSBackend" .)
-  "actor-issuer" .Values.execution.actorIssuer
+  "actor-issuer" .Values.runtime.actorIssuer
 -}}
 {{- if .Values.voice.enabled -}}
 {{- $_ := set $options "speech-secret" (printf "%s-speech" $name) -}}

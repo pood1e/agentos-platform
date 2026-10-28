@@ -1,6 +1,9 @@
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // Toolset declares disjoint capability tiers for one service.
 type Toolset struct {
@@ -49,6 +52,9 @@ type EnvironmentGateway struct {
 
 // Environment declares one external environment's authorization boundary.
 type Environment struct {
+	// DiscoveryAuth authenticates the native controller catalog refresh.
+	// +optional
+	DiscoveryAuth *kagent.MCPDiscoveryAuth `json:"discoveryAuth,omitempty"`
 	// +kubebuilder:validation:Pattern=`^[a-z0-9]+(-[a-z0-9]+)*$`
 	// +kubebuilder:validation:MaxLength=32
 	Name string `json:"name"`
@@ -72,13 +78,14 @@ type Environment struct {
 
 // PlatformGateway supplies the native gateway and the platform service endpoints.
 type PlatformGateway struct {
-	Name             string `json:"name"`
-	URL              string `json:"url"`
-	MCPURL           string `json:"mcpURL"`
-	ModelSecret      string `json:"modelSecret"`
-	Dataplane        string `json:"dataplane"`
-	ActorJWKSBackend string `json:"actorJWKSBackend"`
-	ActorIssuer      string `json:"actorIssuer"`
+	Name                    string `json:"name"`
+	URL                     string `json:"url"`
+	MCPURL                  string `json:"mcpURL"`
+	NativeAuthorityBackend  string `json:"nativeAuthorityBackend"`
+	DiscoveryServiceAccount string `json:"discoveryServiceAccount"`
+	WriterRole              string `json:"writerRole"`
+	ActorJWKSBackend        string `json:"actorJWKSBackend"`
+	ActorIssuer             string `json:"actorIssuer"`
 }
 
 // AccessPlanSpec is the sole source of tool tiers and identity compilation.

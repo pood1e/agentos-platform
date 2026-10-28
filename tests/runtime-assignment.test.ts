@@ -1,4 +1,3 @@
-import type { JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
@@ -72,10 +71,8 @@ describe("joint Harness and model configuration", () => {
     ]) {
       const result = await client.setEngineerRuntime(await request(harness, model));
       expect(object(result.agent?.resource?.value?.spec).harnessRef).toEqual({ name: harness });
-      expect(object(result.agentTemplate?.resource?.value?.spec)).toMatchObject({
-        modelConfig: { name: model },
-        systemPrompt: prompt,
-      });
+      expect(object(result.agent?.resource?.value?.spec).modelConfigRef).toEqual({ name: model });
+      expect(object(result.agentTemplate?.resource?.value?.spec).systemPrompt).toBe(prompt);
     }
     expect([...env.fake.sessions.values()]).toEqual(sessions);
   });
@@ -118,7 +115,7 @@ describe("joint Harness and model configuration", () => {
     });
   });
 
-  it("preserves a concurrent template edit when compensation can no longer restore its own version", async () => {
+  it("preserves a concurrent template edit when the atomic Agent write fails", async () => {
     const save = env.store.save.bind(env.store);
     vi.spyOn(env.store, "save").mockImplementation(async (kind, value, create) => {
       if (kind === "agents") {
@@ -131,46 +128,22 @@ describe("joint Harness and model configuration", () => {
     });
     await expect(
       client.setEngineerRuntime(await request("claude", "messages-model")),
-    ).rejects.toThrow("harness.partialSave");
+    ).rejects.toMatchObject({ code: Code.Unavailable });
     expect(object(env.fake.template("diagnosis").resource?.value?.spec)).toMatchObject({
-      modelConfig: { name: "messages-model" },
+      modelConfig: { name: "default-model-config" },
       systemPrompt: "Concurrent prompt edit",
     });
   });
 
-  it("keeps other engineers sharing the role compatible with the selected model", async () => {
+  it("keeps shared template defaults and other engineers unchanged", async () => {
+    const previous = structuredClone(env.fake.template("diagnosis"));
+    const sibling = await env.store.get("agents", "diagnosis");
+    sibling.metadata = { ...object(sibling.metadata), name: "diagnosis-peer" };
+    await env.store.save("agents", sibling, true);
     await client.setEngineerRuntime(await request("claude", "messages-model"));
-    const original = await env.store.get("agents", "diagnosis");
-    await env.store.save(
-      "agents",
-      {
-        ...original,
-        metadata: { name: "diagnosis-two" },
-      },
-      true,
-    );
-    await expect(
-      client.setEngineerRuntime(await request("codex", "responses-model")),
-    ).rejects.toThrow("harness.sharedModel");
-    expect(object(env.fake.template("diagnosis").resource?.value?.spec).modelConfig).toEqual({
-      name: "messages-model",
+    expect(env.fake.template("diagnosis")).toEqual(previous);
+    expect(object((await env.store.get("agents", "diagnosis-peer")).spec).harnessRef).toEqual({
+      name: "standard",
     });
-  });
-
-  it("updates an inline native template and Harness in a single engineer write", async () => {
-    const original = await env.store.get("agents", "diagnosis");
-    const spec: JsonObject = {
-      ...object(original.spec),
-      template: { inline: object(env.fake.template("diagnosis").resource?.value?.spec) },
-    };
-    await env.store.save("agents", { ...original, spec }, false);
-    const save = vi.spyOn(env.store, "save");
-    const result = await client.setEngineerRuntime(await request("claude", "messages-model"));
-    expect(object(result.agent?.resource?.value?.spec)).toMatchObject({
-      template: { inline: { modelConfig: { name: "messages-model" } } },
-      harnessRef: { name: "claude" },
-    });
-    expect(result.agentTemplate).toBeUndefined();
-    expect(save).toHaveBeenCalledTimes(1);
   });
 });

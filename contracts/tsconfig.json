@@ -4,5 +4,5 @@
     "outDir": "../.cache/node-contracts",
     "declaration": true
   },
-  "include": ["../gen/**/*.ts", "../shared/**/*.ts"]
+  "include": ["../gen/**/*.ts"]
 }

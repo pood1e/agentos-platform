@@ -243,10 +243,10 @@ export function RoleEditor({
             <div className="p-4 sm:p-6">
               <RoleTools
                 role={draft}
-                builtinTools={
+                builtinCatalog={
                   configuration.engineerTools.find(
                     (item) => `${item.engineer?.namespace}/${item.engineer?.name}` === engineer,
-                  )?.builtinTools ?? []
+                  )?.builtinCatalog
                 }
                 servers={configuration.toolServers}
                 requirements={access.data?.requirements}

@@ -1,8 +1,8 @@
-import { create } from "@bufbuild/protobuf";
 import Fastify from "fastify";
-import { expect, it, vi } from "vitest";
-import { MemoryServiceSearchResponseSchema } from "../gen/kagent/runtime/v1/memory_pb.js";
-import { discoveryMethods } from "../server/authorization/mcp.js";
+import { expect, it } from "vitest";
+
+const discoveryMethods = new Set(["initialize", "notifications/initialized", "ping", "tools/list"]);
+
 import { registerTeamSessions } from "../server/team-sessions/app.js";
 import { sessionTools } from "../server/team-sessions/tools.js";
 import { fakeKagent, testBindings } from "./harness.js";
@@ -12,16 +12,15 @@ async function setup(discovery = false) {
   const app = Fastify();
   await registerTeamSessions(
     app,
-    sessionTools(clients, "agentos", testBindings(fake), {
-      search: vi.fn(async () => create(MemoryServiceSearchResponseSchema, { memories: [] })),
-    }),
+    sessionTools(clients, "agentos", testBindings(fake)),
     async (headers, method) => {
       if (headers.authorization !== "Bearer verified-workload") throw new Error("Invalid identity");
       if (discovery && !discoveryMethods.has(method))
         throw new Error("Discovery cannot execute tools");
       return {
         clientId: "verified-caller",
-        scopes: discovery ? ["create_session"] : ["search_knowledge"],
+        headers: new Headers(),
+        scopes: discovery ? ["prepare_role"] : ["list_role_tools"],
       };
     },
   );
@@ -48,8 +47,8 @@ it("exposes the verified caller's scopes and ignores caller-supplied roles", asy
     const response = await request("tools/list", {});
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body).toContain("search_knowledge");
-    expect(body).not.toContain("create_session");
+    expect(body).toContain("list_role_tools");
+    expect(body).not.toContain("prepare_role");
     const sessions = env.fake.sessions.size;
     const denied = await request("tools/call", {
       name: "create_session",
@@ -116,7 +115,7 @@ it("allows discovery and rejects method-header spoofing before native creation",
     const sessions = env.fake.sessions.size;
     const response = await request("tools/list");
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("create_session");
+    expect(await response.text()).toContain("prepare_role");
     expect((await request("tools/call")).status).toBe(403);
     expect(env.fake.sessions.size).toBe(sessions);
   } finally {

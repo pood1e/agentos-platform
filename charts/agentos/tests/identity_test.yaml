@@ -54,3 +54,27 @@ tests:
   - equal: {path: spec.parentRefs, value: [{name: site, sectionName: https}]}
   - documentIndex: 1
     equal: {path: spec.hostnames, value: [api.agentos.example.test]}
+- it: trusts the same private IdP CA for browser login and background authorization
+  set:
+    identity.caCertificateRef: {name: identity-ca, key: issuer.pem}
+  asserts:
+  - template: api-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos/identity/ca.crt}
+  - template: api-deployment.yaml
+    contains:
+      path: spec.template.spec.volumes
+      content:
+        name: identity-ca
+        configMap: {name: identity-ca, items: [{key: issuer.pem, path: ca.crt}]}
+  - template: web-deployment.yaml
+    documentIndex: 0
+    contains:
+      path: spec.template.spec.containers[0].args
+      content: --provider-ca-file=/etc/agentos/identity/ca.crt
+  - template: web-deployment.yaml
+    documentIndex: 0
+    contains:
+      path: spec.template.spec.containers[0].volumeMounts
+      content: {name: identity-ca, mountPath: /etc/agentos/identity, readOnly: true}

@@ -1,9 +1,8 @@
 import { create } from "@bufbuild/protobuf";
-import { createClient, createRouterTransport } from "@connectrpc/connect";
+import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
 import { onTestFinished, vi } from "vitest";
+import { UserIdentitySchema } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
-import { executions } from "../../server/authorization/executions.js";
 import { consoleService } from "../../server/console/service.js";
 import { toolMetadata } from "../../server/kagent/tool-metadata.js";
 import { mcpApps } from "../../server/mcp-apps/service.js";
@@ -15,13 +14,18 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
   const env = await environment([]);
   onTestFinished(() => env.close());
   const scenario = appScenario(env.fake);
-  const owner = create(ExecutionIdentitySchema, {
-    subject: "alice",
-    credential: { case: "accessToken", value: "latest-alice-token" },
+  const owner = create(UserIdentitySchema, {
+    subject: "user:operator",
   });
   let caller = owner;
-  const registry = executions(env.store, async () => owner);
-  await registry.bind(scenario.session, owner);
+  let token = "latest-alice-token";
+  const getSession = env.clients.sessions.getSession;
+  vi.spyOn(env.clients.sessions, "getSession").mockImplementation(async (request, options) => {
+    const result = await getSession(request, options);
+    if (result.session?.authority?.initiatorId !== caller.subject)
+      throw new ConnectError("native ownership denied", Code.NotFound);
+    return result;
+  });
   const metadata = toolMetadata(env.clients);
   const access = testBindings(env.fake);
   const invoke = vi.fn(async () => ({
@@ -43,13 +47,19 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     access,
     metadata,
     apps,
-    executions: registry,
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-    replaceTemplate: async (value) => env.fake.replaceTemplate(value),
   });
   const client = createClient(
     ConsoleService,
     createRouterTransport((router) => router.service(ConsoleService, service), {
+      transport: {
+        interceptors: [
+          (next) => (request) => {
+            if (token) request.header.set("authorization", `Bearer ${token}`);
+            return next(request);
+          },
+        ],
+      },
       router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] },
     }),
   );
@@ -61,11 +71,13 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     ...scenario,
     client,
     metadata,
-    registry,
     apps,
     invoke,
     owner,
     request,
+    bearer: (value: string) => {
+      token = value;
+    },
     caller: (value: typeof owner) => {
       caller = value;
     },

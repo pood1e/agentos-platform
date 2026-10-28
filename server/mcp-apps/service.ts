@@ -4,17 +4,18 @@ import { CallToolResultSchema, ReadResourceResultSchema } from "@modelcontextpro
 import { RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/app-bridge";
 import type { FastifyBaseLogger } from "fastify";
 import { LRUCache } from "lru-cache";
+import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import type {
   CallAppToolRequest,
   GetAppResourceRequest,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Conversation } from "../../gen/agentos/console/v1/conversation_pb.js";
-import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
 import { agentRoles } from "../authorization/agent-role.js";
 import { viewer, visibleGraph } from "../console/history.js";
 import type { BindingView, ToolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { nativeHeaders } from "../kagent/context.js";
 import { appOnly, appResource, appVisible, type ToolMetadata } from "../kagent/tool-metadata.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { TaskQueries } from "../read-model/queries.js";
@@ -102,7 +103,7 @@ export function mcpApps({
   }
   async function original(
     request: GetAppResourceRequest | CallAppToolRequest,
-    identity: ExecutionIdentity,
+    identity: UserIdentity,
   ) {
     const reference = request.app;
     if (!reference?.callId) throw notFound("mcpApp.unavailable");
@@ -144,11 +145,7 @@ export function mcpApps({
         log?.info({ component: "mcp-apps" }, "MCP App metadata unavailable");
       }
     },
-    async getResource(
-      request: GetAppResourceRequest,
-      identity: ExecutionIdentity,
-      signal: AbortSignal,
-    ) {
+    async getResource(request: GetAppResourceRequest, identity: UserIdentity, signal: AbortSignal) {
       if (!sandboxOrigin) throw unavailable();
       const origin = await original(request, identity);
       const key = `${origin.server.ref}:${origin.uri}`;
@@ -160,7 +157,7 @@ export function mcpApps({
       signal.throwIfAborted();
       return { result: { value: result }, sandboxOrigin };
     },
-    async callTool(request: CallAppToolRequest, identity: ExecutionIdentity, signal: AbortSignal) {
+    async callTool(request: CallAppToolRequest, identity: UserIdentity, signal: AbortSignal) {
       if (!sandboxOrigin) throw unavailable();
       const origin = await original(request, identity);
       const tool = origin.tools.find(
@@ -176,7 +173,11 @@ export function mcpApps({
       const { engineer } = await agentRole(session);
       const policy = await access();
       if (!policy.permitsCall(engineer, [origin.target.service], tool.name, false)) throw denied();
-      if (identity.credential.case !== "accessToken" || !identity.credential.value)
+      const token = nativeHeaders
+        .getStore()
+        ?.get("authorization")
+        ?.match(/^Bearer ([^\s,]+)$/)?.[1];
+      if (!token)
         throw new ConnectError("MCP App viewer credential required", Code.Unauthenticated);
       const audit = {
         initiator: identity.subject,
@@ -193,7 +194,7 @@ export function mcpApps({
             origin.target.environment,
             engineer,
             origin.target.project,
-            identity.credential.value,
+            token,
             { name: origin.unprefix(tool.name), arguments: request.arguments?.value },
             signal,
           ),

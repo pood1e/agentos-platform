@@ -4,50 +4,41 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `proto/agentos/console/v1` | 控制台 RPC、会话、任务、角色与方案展示 |
-| `proto/agentos/management/v1` | 连接、模型、Harness、Skill 与知识管理 |
-| `proto/agentos/execution/v1` | 外部执行、执行身份、任务与工具调用视图 |
-| `proto/agentos/governance/v1` | 环境、工具确认模式与环境服务连接 |
-| `proto/agentos/mcp/v1` | MCP App 视图引用 |
-| `third_party` | 上游 proto、CRD schema、许可证与版本来源 |
-| `contracts` | Buf 生成配置、CRD / 管理表单生成、Node SDK 与 Python wheel 打包 |
+| `proto/agentos/{console,management}/v1` | 控制台、资源管理、知识与方案展示 RPC |
+| `proto/agentos/authorization/v1` | 原生主体的 UI 能力投影 |
+| `proto/agentos/execution/v1` | 原生执行的 UI 状态与工具视图 |
+| `proto/agentos/{governance,mcp,voice}/v1` | 环境声明、MCP App 引用与语音接口 |
+| `third_party` | 固定版本原生 proto、CRD schema 与许可证 |
+| `contracts` | Buf、schema / CRD 类型生成与契约包配置 |
 
-## 平台服务
+## 服务与控制器
 
 | 路径 | 内容 |
 | --- | --- |
-| `server/apps` | api、dataplane 入口与可选遥测初始化 |
-| `server/console` | 控制台 RPC、原生 HITL 回复与角色管理 |
-| `server/authorization` | 用户与工作负载认证、离线委派、执行绑定、凭据和逐调用授权 |
-| `server/execution` | 可选外部执行 MCP、来源身份与分页结果 |
-| `server/governance` | 环境配置、AccessPlan Informer 与已编译工具决策 |
-| `server/kagent` | 原生客户端、配置索引、Harness 与工具元数据 |
-| `server/management`、`server/knowledge` | 原生资源管理与团队知识检索 |
-| `server/read-model` | 原生任务查询、执行树、归属过滤、分页与订阅 |
-| `server/team-sessions` | 协作会话 MCP 与角色起草 |
-| `server/mcp-apps` | 模板读取、视图投影与当前查看者的工具回调 |
-| `server/platform` | 网关与 MCP 接线、gRPC 生命周期与访问上下文 |
+| `server/apps` | api、dataplane 与可选遥测入口 |
+| `server/kagent` | 原生客户端、请求凭据上下文、编译准入 |
+| `server/authorization` | 原生身份投影、应用能力、委托授权入口与业务 MCP 发现认证 |
+| `server/console` | 控制台 RPC、原生发送 / HITL / 取消与角色管理 |
+| `server/read-model` | 原生分页、可信执行树投影、历史与订阅 |
+| `server/management` | 原生资源 CRUD、模型 / MCP 连接与运行配置 |
+| `server/knowledge` | 原生团队 MemoryService 客户端 |
+| `server/governance` | AccessPlan Informer 与已编译工具决策 |
+| `server/team-sessions` | 角色工具目录与起草 MCP |
+| `server/mcp-apps` | 原生归属校验、视图投影与查看者工具回调 |
 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
-| `controller/internal/speech`、`controller/internal/reconcile/speech.go` | 原生语音路由、工作负载认证与供应商凭据引用 |
-| `server/shared`、`shared` | 服务端基础设施与前后端共享代码 |
+| `controller/api`、`controller/config/crd/bases` | AccessPlan / Preset 类型与 CRD |
+| `controller/internal/{compile,reconcile}` | 原生资源编译、SSA 与所有权收敛 |
+| `controller/internal/{connections,speech}` | kagent agentgateway 模块与语音接线 |
 
-## 控制台、资源与交付
+## 控制台与交付
 
 | 路径 | 内容 |
 | --- | --- |
-| `src/app`、`src/components` | 路由、布局与通用组件 |
-| `src/features` | 聊天、执行记录、Agent 团队和管理页面；`chat/apps` 为 MCP Apps 宿主接线 |
-| `src/lib`、`src/i18n` | RPC 客户端、方案展示与平台文案 |
-| `shared/browser` | 对外发布的语音适配器与 MCP AppBridge 封装 |
-| `web` | nginx、oauth2-proxy、方案包资源与沙箱页配置 |
-| `controller/api`、`controller/config/crd/bases` | AccessPlan / Preset 类型与 CRD |
-| `controller/internal/compile`、`controller/internal/reconcile` | 资源编译、SSA、所有权与状态收敛 |
-| `controller/internal/connections` | kagent 可选 agentgateway 模块的平台配置 |
-| `charts/agentos`、`charts/agentos-controller` | 平台应用与共享控制器 library Chart |
-| `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台连接 release、原生浏览器 API / MCP 授权 |
-| `.github`、`ci` | 合并检查、构建、验签、版本与发布 |
-| `mise.toml`、`mise.lock` | 开发与 CI 工具版本及来源锁定 |
-| `tests` | 单元与集成回归；`fake-kagent` 为录制驱动替身，`proofs` 为真实组件验证 |
-| `tests/fixtures/solution-chart`、`tests/fixtures/pack` | 扩展契约的方案示例 |
+| `src/{app,components,features}` | 控制台、聊天、Agent 团队与管理页 |
+| `src/{lib,i18n}`、`shared` | RPC、展示文案与平台内部共享代码 |
+| `web` | nginx、oauth2-proxy 与 MCP App 沙箱 |
+| `charts/agentos*` | 平台、控制器、环境网关与连接 Chart |
+| `.github`、`ci` | 检查、镜像、契约与 Chart 发布 |
+| `tests` | 平台边界回归、原生客户端替身与真实组件验证 |
 
-常用校验入口为 `npm run verify`、`ci/check-charts.sh` 与 `ci/test-artifacts.py`；控制器验证见 [Kubernetes 控制器](kubernetes-controller.md#验证)。
+校验入口为 `npm run verify`、`ci/check-charts.sh`、`ci/contracts.py` 和 `go -C controller test -race ./...`。站点安装与签名 collection 见 [agentos-deploy](https://github.com/pood1e/agentos-deploy)。

@@ -10,7 +10,7 @@
 | 环境 | `global.agentos.environments` 与 proto `EnvironmentConnection` 声明工具确认模式、OAuth 资源、网关与 API |
 | 连接器 | 环境 MCP 服务及 `environment_connectors`，由方案包提供目标系统和各身份凭据 |
 | 对话视图 | MCP Apps 元数据、`ui://` HTML 与只读取数工具，平台提供沙箱和宿主回调 |
-| 外部执行 | 可选 `/mcp/executions`，外部服务管理业务触发、调度和工作流 |
+| 外部执行 | 原生 A2A 与受限机器身份；业务服务管理触发、调度和工作流 |
 | 模型 | 原生 `AgentgatewayModel`，平台同步 `ModelConfig` 并提供管理界面 |
 | 语音 | 可选 `SpeechConfiguration`，站点提供 ASR / TTS 服务与凭据 |
 | 展示 | proto `Pack` 对应的 `pack.json` 和资源镜像，提供标题、角色、图标与文案 |
@@ -84,29 +84,14 @@ Harness 使用平台内置运行时图标，工具优先使用方案图标。
 
 ## 外部执行
 
-站点在 `execution.sources` 登记 OIDC client credentials 身份与允许启动的 Agent；列表为空时部署省略 `/mcp/executions`：
-
-```yaml
-execution:
-  sources:
-    - issuer: https://identity.example.com/realms/operations
-      audience: agentos-executions
-      clientId: analysis-controller
-      subject: <service-account-user-id>
-      agents: [{namespace: agentos, name: diagnosis}]
-```
-
-- `run_execution`：请求使用 `RunExecutionRequest`，调用方生成 UUID；同请求重试复用原生会话和 messageId，输入保持一致。
-- `get_execution`：按执行引用读取本调用方的任务与因果子任务，结果脱敏、分页并限制响应大小。
-- `cancel_execution`：撤销执行授权并取消未结束委派，尚未确认接收的请求亦可取消。
-
-签名、issuer、audience、azp、sub 与 Agent 范围逐次核验，后台调用保留执行树初始权限上限。
-外部服务独立管理事件、触发条件、频率、截止时间、业务结果及工作流存储。
+外部服务使用站点 IdP 签发的机器访问令牌，直接调用 kagent `SessionService` 与原生 A2A。原生 OIDC `ScopeRule` 按主体、client 与允许 Agent 限定资源和执行操作。
+客户端生成稳定的 Session requestId 与消息 messageId，重试复用原请求；任务、可信委派树与取消结果通过原生 API 查询。
+业务事件、调度、截止时间、审批和工作流状态由方案服务维护。
 
 ## 环境 API 与模型
 
 `EnvironmentConnection.apis` 声明 `service`、`readMethods` 与 `writeMethods`。
-平台 `/environments/{environment}/rpc/{service}/{method}` 按当前用户交换令牌，只转发白名单 unary Connect JSON，并保留环境服务错误。
+agentgateway 的 `/environments/{environment}/rpc/{service}/{method}` 按当前查看者交换令牌，提供白名单 unary Connect JSON 路由。
 读写名单互斥，写方法需要用户写权限；资源和业务角色由环境服务校验。
 
 `AgentgatewayModel` 注解 `agentos.dev/model-purpose` 区分 `language` 与 `embedding`，默认用于对话；用途同步到原生 `ModelConfig`，管理页和执行均校验用途。

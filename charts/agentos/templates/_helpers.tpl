@@ -20,7 +20,7 @@ capabilities: {drop: [ALL]}
 {{- end -}}
 
 {{- define "agentos.actorAudiences" -}}
-{{- $audiences := list (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (include "agentos.runtimeURL" .) -}}
+{{- $audiences := list (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) -}}
 {{- range .Values.global.agentos.environments -}}
 {{- $environment := .name -}}
 {{- range $service, $_ := $.Values.global.agentos.toolsets -}}
@@ -29,13 +29,6 @@ capabilities: {drop: [ALL]}
 {{- end -}}
 {{- $audiences | toJson -}}
 {{- end -}}
-{{- define "agentos.workloadAuth" -}}
-{{- dict "controllerSubject" (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) "platformSubjects" (list (printf "system:serviceaccount:%s:%s" .Release.Namespace (include "agentos.apiService" .)) (printf "system:serviceaccount:%s:%s" .Release.Namespace (include "agentos.dataplaneService" .))) "modelAudience" (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "mcpAudience" (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) "executionSources" .Values.execution.sources | toJson -}}
-{{- end -}}
-{{- define "agentos.workloadAuthName" -}}
-{{- printf "%s.%s-workload-auth" .Release.Namespace (include "agentos.name" .) -}}
-{{- end -}}
-
 {{- define "agentos.apiService" -}}
 {{- printf "%s-api" (include "agentos.name" .) -}}
 {{- end -}}
@@ -45,8 +38,8 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.actorJWKSBackend" -}}
 {{- printf "%s-actor-jwks" (include "agentos.name" .) -}}
 {{- end -}}
-{{- define "agentos.runtimeURL" -}}
-{{- printf "http://%s.%s.svc.cluster.local:9091" (include "agentos.dataplaneService" .) .Release.Namespace -}}
+{{- define "agentos.controllerSubject" -}}
+{{- default (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) .Values.kagent.controllerSubject -}}
 {{- end -}}
 
 {{- define "agentos.origins" -}}
@@ -56,4 +49,8 @@ capabilities: {drop: [ALL]}
   "api" (printf "https://%s" (required "route.hosts.api is required" $hosts.api))
   "sandbox" (ternary (printf "https://%s" $hosts.sandbox) "" (ne $hosts.sandbox ""))
   | toJson -}}
+{{- end -}}
+
+{{- define "agentos.workloadAuthName" -}}
+{{- printf "%s.%s-workload-auth" .Release.Namespace (include "agentos.name" .) -}}
 {{- end -}}

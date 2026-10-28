@@ -193,6 +193,106 @@
       "items": {
         "description": "Environment declares one external environment's authorization boundary.",
         "properties": {
+          "discoveryAuth": {
+            "description": "DiscoveryAuth authenticates the native controller catalog refresh.",
+            "properties": {
+              "oauth2": {
+                "description": "MCPDiscoveryOAuth2 uses the OAuth 2.0 client credentials grant.",
+                "properties": {
+                  "caCertificateRef": {
+                    "description": "CACertificateRef adds a PEM certificate bundle to system trust for the token endpoint.",
+                    "properties": {
+                      "key": {
+                        "description": "The key to select from the ConfigMap's Data field.\nKeys in the BinaryData field are not currently propagated to container env vars.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "default": "",
+                        "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                        "type": "string"
+                      },
+                      "optional": {
+                        "description": "Specify whether the ConfigMap or its key must be defined",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["key"],
+                    "type": "object",
+                    "x-kubernetes-map-type": "atomic"
+                  },
+                  "clientId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "clientSecretRef": {
+                    "description": "ClientSecretRef selects a same-namespace Secret.",
+                    "properties": {
+                      "key": {
+                        "description": "The key of the secret to select from.  Must be a valid secret key.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "default": "",
+                        "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                        "type": "string"
+                      },
+                      "optional": {
+                        "description": "Specify whether the Secret or its key must be defined",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["key"],
+                    "type": "object",
+                    "x-kubernetes-map-type": "atomic"
+                  },
+                  "scopes": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "tokenEndpoint": {
+                    "pattern": "^https://[^/?#@]+[^#]*$",
+                    "type": "string"
+                  }
+                },
+                "required": ["clientId", "clientSecretRef", "tokenEndpoint"],
+                "type": "object"
+              },
+              "serviceAccount": {
+                "description": "MCPDiscoveryServiceAccount requests a short-lived Kubernetes token.",
+                "properties": {
+                  "audience": {
+                    "maxLength": 512,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "serviceAccountRef": {
+                    "description": "ServiceAccountRef selects a same-namespace ServiceAccount.",
+                    "properties": {
+                      "name": {
+                        "default": "",
+                        "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "x-kubernetes-map-type": "atomic"
+                  }
+                },
+                "required": ["audience", "serviceAccountRef"],
+                "type": "object"
+              }
+            },
+            "type": "object",
+            "x-kubernetes-validations": [
+              {
+                "message": "exactly one of the fields in [oauth2 serviceAccount] must be set",
+                "rule": "(has(self.oauth2)?1:0)+(has(self.serviceAccount)?1:0) == 1"
+              }
+            ]
+          },
           "gateway": {
             "description": "EnvironmentGateway is the TLS gateway exposed by a connected environment.",
             "properties": {
@@ -364,7 +464,16 @@
             "pattern": "^https://[^/]+"
           }
         },
-        "required": ["governance", "name", "issuer", "resource", "gateway", "tokenEndpointURL"],
+        "required": [
+          "governance",
+          "name",
+          "issuer",
+          "resource",
+          "gateway",
+          "tokenEndpointURL",
+          "jwksURL",
+          "discoveryAuth"
+        ],
         "type": "object",
         "additionalProperties": false
       }

@@ -17,10 +17,9 @@ export interface TaskTree {
 
 function children(graph: TaskGraph, entry: TaskEntry): string[] {
   const relations = graph.relations();
-  return [
-    ...entry.calls.flatMap((call) => graph.target(entry, call) ?? []),
-    ...(relations.continuations.get(entry.id) ?? []),
-  ];
+  return [...relations.parents.entries()].flatMap(([child, parent]) =>
+    parent === entry.id ? [child] : [],
+  );
 }
 
 function reach(graph: TaskGraph, start: string[]): Set<string> {
@@ -42,11 +41,7 @@ export function taskTree(graph: TaskGraph, rootId: string): TaskTree | undefined
   const entries = [...ids].flatMap((id) => graph.entry(id) ?? []);
   const background = reach(
     graph,
-    entries.flatMap((entry) =>
-      entry.calls.flatMap((call) =>
-        call.delegation?.kind === "background" ? (graph.target(entry, call) ?? []) : [],
-      ),
-    ),
+    entries.filter((entry) => entry.execution?.background).map((entry) => entry.id),
   );
   const latest =
     entries

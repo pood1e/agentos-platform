@@ -17,7 +17,8 @@ spec:
           {{- include "agentos.labels" $ | nindent 10 }}
       spec:
         {{- $spec := tpl (toYaml .spec) $ | fromYaml }}
-        {{- $processors := list (dict "methods" (dict "*" "Full") "remote" (dict "backendRef" (dict "name" (include "agentos.dataplaneService" $) "port" 9090) "failureMode" "FailClosed" "allowedRequestHeaders" (list "x-substrate-actor-token" "authorization") "metadata" (dict "workspace" ($.Release.Namespace | squote) "platformService" (.name | squote) "toolName" "has(mcp.tool) ? mcp.tool.name : ''" "runtimeIdentity" "'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'] : ''"))) }}
-        {{- $_ := set $spec "policies" (mergeOverwrite (deepCopy ($spec.policies | default dict)) (dict "mcp" (dict "guardrails" (dict "processors" $processors)))) }}
+        {{- $_ := unset ($spec.policies | default dict | dig "mcp" dict) "authorization" }}
+        {{- $native := dict "transformation" (dict "request" (dict "remove" (list "x-substrate-actor-token" "cookie" "x-forwarded-access-token"))) }}
+        {{- $_ := set $spec "policies" (mergeOverwrite (deepCopy ($spec.policies | default dict)) $native) }}
         {{- toYaml $spec | nindent 8 }}
     {{- end }}

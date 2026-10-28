@@ -139,7 +139,7 @@ it.each(["destroy", "model_only", "other-service_graph_data", "unclassified", "m
 
 it("requires the current viewer's credential before calling the gateway", async () => {
   const env = await setup();
-  env.caller({ ...env.owner, credential: { case: "accessToken", value: "" } });
+  env.bearer("");
   await expect(
     env.client.callAppTool({ ...env.request, name: "graph_data" }),
   ).rejects.toMatchObject({ code: Code.Unauthenticated });

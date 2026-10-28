@@ -45,18 +45,3 @@ variables:
   tags: [$AGENTOS_GO_RUNNER]
   variables:
     GOMEMLIMIT: 4GiB
-
-.agentos-postgres:
-  services:
-    - name: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
-      alias: postgres
-  variables:
-    POSTGRES_DB: agentos
-    POSTGRES_USER: postgres
-    POSTGRES_PASSWORD: agentos-ci
-    PGHOST: postgres
-    PGUSER: postgres
-    PGPASSWORD: agentos-ci
-    CHANGE_TEST_DATABASE_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable
-    KAGENT_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable
-    SUBSTRATE_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@postgres:5432/agentos?sslmode=disable

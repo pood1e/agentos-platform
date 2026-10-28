@@ -1,15 +1,15 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { expect, it } from "vitest";
+import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
-import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { ConnectionKind, ManagementService } from "../gen/agentos/management/v1/management_pb.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities, capabilityRole, roleCapabilities } from "../shared/permissions.js";
 
 it("enforces each resource permission independently at every public mutation", async () => {
-  const principal = create(ExecutionIdentitySchema, { subject: "user:alice", write: true });
+  const principal = create(UserIdentitySchema, { subject: "user:alice", write: true });
   const transport = createRouterTransport(
     (router) => {
       router.service(ConsoleService, {

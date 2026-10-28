@@ -1,0 +1,10 @@
+syntax = "proto3";
+package agentos.authorization.v1;
+import "agentos/authorization/v1/permission.proto";
+
+// Request-scoped business permissions projected from the native principal.
+message UserIdentity {
+ string subject = 1;
+ bool write = 2;
+ repeated Capability capabilities = 3;
+}

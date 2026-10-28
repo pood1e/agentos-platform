@@ -12,8 +12,8 @@ gateway:
   image:
     registry: cr.agentgateway.dev
     repository: agentgateway
-    tag: v1.6.0
-    digest: sha256:9d3e6044ddcdc0878b1787f77bd401252b95e22684203fb5e874c4c42d2ed90c
+    tag: v1.7.0
+    digest: sha256:60216aafb03d37f94e952ff3d51d2f630a65b10ecaebdc0a864882f92610c45b
 toolsets: {}
 identities: []
 connectors: {}

@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2
 	buf.build/go/protovalidate v1.4.0
+	cel.dev/cel-go v0.32.0
 	github.com/agentgateway/agentgateway v1.7.0
 	github.com/kagent-dev/kagent/go v0.0.0-20261027205517-bc8002dbaa78
 	github.com/kagent-dev/kagent/go/integrations/agentgateway v0.0.0-20261028095952-285b83638e97
@@ -19,7 +20,6 @@ require (
 )
 
 require (
-	cel.dev/cel-go v0.32.0 // indirect
 	cel.dev/expr v0.25.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -90,6 +90,6 @@ replace go.ate.dev/substrate => github.com/kagent-dev/substrate v0.6.0-alpha3
 
 replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agentgateway/api v0.0.0-20261027162624-26f5aebe99a3
 
-replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261028081249-20923c716154
+replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261028213257-482e1cd56dc4
 
 replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261028095952-285b83638e97

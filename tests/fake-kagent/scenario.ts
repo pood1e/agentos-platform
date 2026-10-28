@@ -55,16 +55,6 @@ export function pendingApprovalTasks(): Task[] {
     .map((task) => (task.id === fixtureIds.approved ? awaitingApproval(task) : task));
 }
 
-/** Recorded tasks after the decision, before the coordinator was told about it. */
-export function decidedTasks(): Task[] {
-  const later = new Set([
-    fixtureIds.approvalContinuation,
-    fixtureIds.question,
-    fixtureIds.approvalFinal,
-  ]);
-  return fixtureTasks().filter((task) => !later.has(task.id));
-}
-
 /** Additional read-only inspection operations with distinct sessions. */
 export function syntheticOperations(count: number) {
   const template = fixtureTasks().find((task) => task.id === fixtureIds.inspection);

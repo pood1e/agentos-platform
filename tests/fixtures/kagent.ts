@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { fromJson, type JsonValue } from "@bufbuild/protobuf";
+import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { type Task, TaskSchema } from "../../gen/a2a_pb.js";
 import { type Agent, AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
+import { TaskExecutionSchema, TaskRelation } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { agentInfo, type SessionInfo, sessionInfo } from "../../server/read-model/agents.js";
 import { ingest, type TaskEntry } from "../../server/read-model/entry.js";
@@ -38,10 +39,16 @@ export const fixtureIds = {
 
 /** Projected fixture state that view tests amend before building an execution graph. */
 export function fixtureState(tasks = fixtureTasks()) {
-  const sessions = new Map(fixtureSessions().map((session) => [session.id, sessionInfo(session)]));
+  const sessions = new Map<string, SessionInfo>(
+    fixtureSessions().map((session) => [session.id, sessionInfo(session)]),
+  );
   const entries = new Map(
     tasks.map((task) => {
-      const entry = ingest(task, sessions.get(task.contextId)?.agentId ?? "");
+      const entry = ingest(
+        task,
+        sessions.get(task.contextId)?.agentId ?? "",
+        fixtureExecution(task),
+      );
       return [entry.id, entry] as const;
     }),
   );
@@ -55,3 +62,38 @@ export function fixtureState(tasks = fixtureTasks()) {
 }
 
 export const fixtureGraph = (tasks = fixtureTasks()) => fixtureState(tasks).graph();
+
+// Explicit native records accompany the sanitized A2A recording.
+const ancestry: Record<string, [string, string?, boolean?]> = {
+  [fixtureIds.approved]: [fixtureIds.approvalRoot],
+  [fixtureIds.approvalContinuation]: [fixtureIds.approvalRoot, fixtureIds.approved],
+  [fixtureIds.question]: [fixtureIds.approvalContinuation],
+  [fixtureIds.approvalFinal]: [fixtureIds.approvalContinuation, fixtureIds.question],
+  [fixtureIds.inspection]: [fixtureIds.dispatchRoot],
+  [fixtureIds.background]: [fixtureIds.dispatchRoot, undefined, true],
+  [fixtureIds.chatRoot]: [fixtureIds.chat],
+  "01a1330a-e23f-777e-b890-4ddbadb2a02d": [fixtureIds.chatRoot],
+  [fixtureIds.retiredMember]: [fixtureIds.chatRoot],
+};
+export function fixtureExecution(task: Task) {
+  const tasks = fixtureTasks();
+  const ref = (id: string) => ({
+    taskId: id,
+    sessionId: tasks.find((t) => t.id === id)?.contextId ?? task.contextId,
+  });
+  const [parent, resumed, background] = ancestry[task.id] ?? [];
+  let root = task.id;
+  while (ancestry[root]) root = ancestry[root][0];
+  return create(TaskExecutionSchema, {
+    task: ref(task.id),
+    root: ref(root),
+    parent: parent ? ref(parent) : undefined,
+    resumedTask: resumed ? ref(resumed) : undefined,
+    background: background ?? false,
+    relation: resumed
+      ? TaskRelation.CONTINUATION
+      : parent
+        ? TaskRelation.DELEGATION
+        : TaskRelation.ROOT,
+  });
+}

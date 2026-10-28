@@ -83,7 +83,22 @@
           "writeMethods": ["UpdateResource"]
         }
       ],
-      "tokenEndpointURL": "https://identity.example.test/realms/env-approval/protocol/openid-connect/token"
+      "tokenEndpointURL": "https://identity.example.test/realms/env-approval/protocol/openid-connect/token",
+      "jwksURL": "https://identity.example.test/realms/env-approval/protocol/openid-connect/certs",
+      "discoveryAuth": {
+        "oauth2": {
+          "tokenEndpoint": "https://identity.example.test/realms/env-approval/protocol/openid-connect/token",
+          "clientId": "agentos-catalog",
+          "clientSecretRef": {
+            "name": "env-approval-catalog",
+            "key": "client-secret"
+          },
+          "caCertificateRef": {
+            "name": "env-approval-gateway-ca",
+            "key": "ca.crt"
+          }
+        }
+      }
     },
     {
       "name": "env-direct",
@@ -141,7 +156,22 @@
         "kubernetes": "Kubernetes",
         "tickets": "Tickets"
       },
-      "tokenEndpointURL": "https://identity.example.test/realms/env-direct/protocol/openid-connect/token"
+      "tokenEndpointURL": "https://identity.example.test/realms/env-direct/protocol/openid-connect/token",
+      "jwksURL": "https://identity.example.test/realms/env-direct/protocol/openid-connect/certs",
+      "discoveryAuth": {
+        "oauth2": {
+          "tokenEndpoint": "https://identity.example.test/realms/env-direct/protocol/openid-connect/token",
+          "clientId": "agentos-catalog",
+          "clientSecretRef": {
+            "name": "env-direct-catalog",
+            "key": "client-secret"
+          },
+          "caCertificateRef": {
+            "name": "env-direct-gateway-ca",
+            "key": "ca.crt"
+          }
+        }
+      }
     }
   ]
 }

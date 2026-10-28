@@ -7,7 +7,6 @@ import {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import { isAdministrator } from "../../shared/permissions.js";
-import type { Executions } from "../authorization/executions.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
@@ -29,7 +28,6 @@ import { chatTarget, systemConversation, viewer, visibleGraph } from "./history.
 import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
-import type { TemplateWriter } from "./template-writer.js";
 import { watch } from "./watch.js";
 
 export interface ConsoleDependencies {
@@ -40,9 +38,7 @@ export interface ConsoleDependencies {
   namespace: string;
   access: BindingView;
   roleDefaults: RoleDefaults;
-  replaceTemplate: TemplateWriter;
   voice?: VoiceConsole;
-  executions: Executions;
   entryAgent?: string;
   authorizeTools?: AuthorizeTools;
   /** Where browsers obtain the offline grant for background execution. */
@@ -62,29 +58,16 @@ export function consoleService({
   namespace,
   access,
   roleDefaults,
-  replaceTemplate,
   voice = voiceDisabled,
-  executions,
   entryAgent = "assistant",
   authorizeTools,
   delegationUrl = "",
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
-  const cancel = cancellationCommands(projection, clients, executions);
-  const messages = messageCommands(projection, clients, namespace, executions, authorizeTools);
-  const conversations = conversationCommands(
-    projection,
-    clients,
-    namespace,
-    entryAgent,
-    executions,
-  );
-  const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
-  const { canOperate, approvalsFor } = interactionPermissions(
-    projection,
-    clients,
-    executions,
-    authorizeTools,
-  );
+  const cancel = cancellationCommands(projection, clients);
+  const messages = messageCommands(projection, clients, namespace, authorizeTools);
+  const conversations = conversationCommands(clients, namespace, entryAgent);
+  const roles = roleCommands(clients, namespace, access, roleDefaults, metadata);
+  const { canOperate, approvalsFor } = interactionPermissions(projection, clients, authorizeTools);
   const visible = async (identity: Parameters<typeof viewer>[0], taskId: string) =>
     (await visibleGraph(projection, viewer(identity), { taskId }))?.entry(taskId);
   return {
@@ -99,7 +82,7 @@ export function consoleService({
     },
     async getAccessProfile(_request, context) {
       const profile = clone(AccessProfileSchema, context.values.get(accessProfile));
-      profile.delegated = await executions.delegated(profile.subject);
+      profile.delegated = (await clients.execution.getDelegationCredentialStatus({})).renewable;
       profile.delegationUrl = delegationUrl;
       return { profile };
     },
@@ -149,7 +132,7 @@ export function consoleService({
             graph = new TaskGraph(
               tree.all().map((entry) => {
                 const task = streams.task(entry.id);
-                return task ? ingest(task, entry.agentId) : entry;
+                return task ? ingest(task, entry.agentId, entry.execution) : entry;
               }),
               tree.sessions(),
               tree.agents(),
@@ -176,14 +159,14 @@ export function consoleService({
     async sendMessage(request, context) {
       const identity = context.values.get(requestIdentity);
       chatTarget(namespace, entryAgent, request.agent, identity);
-      if (!(await executions.delegated(identity.subject)))
+      if (!(await clients.execution.getDelegationCredentialStatus({})).renewable)
         throw precondition("delegation.required");
       return messages.send(request, identity);
     },
     async respondInteraction(request, context) {
       const identity = context.values.get(requestIdentity);
       if (!(await visible(identity, request.taskId))) throw notFound("task.notFound");
-      return messages.respond(request, identity);
+      return messages.respond(request);
     },
     getConfiguration: () => roles.configuration(),
     createRole: (request) => roles.createRole(required(request.role), request.harness),

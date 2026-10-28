@@ -3,7 +3,9 @@ syntax = "proto3";
 package kagent.api.v1;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
 import "kagent/api/v1/common.proto";
+import "kagent/api/v1/tools.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
 
@@ -14,6 +16,8 @@ service AgentService {
   rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
   rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse);
   rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse);
+  // Compiles a candidate definition through the installed native Harness.
+  rpc ValidateAgent(ValidateAgentRequest) returns (ValidateAgentResponse);
 }
 
 message Agent {
@@ -21,6 +25,8 @@ message Agent {
 
   // Complete Agent CR, including its inline or referenced configuration and status.
   StructuredObject resource = 2;
+  // Runtime-observed tools of the effective revision. Absent until observed.
+  BuiltinToolCatalog builtin_tools = 3;
 }
 
 message ListAgentsRequest {
@@ -67,7 +73,23 @@ message UpdateAgentResponse {
 }
 
 message DeleteAgentRequest {
+  // Optional Kubernetes optimistic concurrency precondition.
+  string resource_version = 2 [(buf.validate.field).string.max_len = 128];
   ResourceReference ref = 1 [(buf.validate.field).required = true];
 }
 
 message DeleteAgentResponse {}
+
+message ValidateAgentRequest {
+  ResourceReference ref = 1 [(buf.validate.field).required = true];
+  StructuredObject resource = 2 [(buf.validate.field).required = true];
+}
+
+message ValidateAgentResponse {}
+
+// BuiltinToolCatalog contains SDK-registered tools, independently of MCP discovery.
+message BuiltinToolCatalog {
+  string revision = 1;
+  repeated DiscoveredTool tools = 2;
+  google.protobuf.Timestamp observed_at = 3;
+}

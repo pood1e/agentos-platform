@@ -25,7 +25,7 @@ export async function managementEnvironment() {
     contexts: [{ name: "test", cluster: "test", user: "test" }],
     currentContext: "test",
   });
-  const store = resourceStore(config, "agentos", "agentos-skills");
+  const store = resourceStore(config, "agentos", "agentos-skills", env.clients);
   const dependencies = {
     speech: speechSettingsStore(config.makeApiClient(CoreV1Api), "agentos", "agentos-speech"),
     store,
@@ -35,14 +35,9 @@ export async function managementEnvironment() {
       mcpUrl: url,
       namespace: "agentos",
       name: "agentos-gateway",
-      secret: "agentos-model-client",
+      nativeAuthorityBackend: "agentos-native-authority",
     },
-    knowledge: {
-      url: `${url}/v1`,
-      token: "test-gateway-token",
-      model: { namespace: "agentos", name: "knowledge-embedding" },
-      scope: { agentName: "agentos/knowledge", userId: "agentos", ttlDays: 3650 },
-    },
+    knowledge: { namespace: "agentos", ttlDays: 3650 },
   };
   return {
     ...env,

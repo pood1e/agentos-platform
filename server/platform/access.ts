@@ -1,17 +1,15 @@
 import { create } from "@bufbuild/protobuf";
 import { MethodOptions_IdempotencyLevel } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextKey, type Interceptor } from "@connectrpc/connect";
+import { UserIdentitySchema } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { AccessProfileSchema } from "../../gen/agentos/console/v1/access_pb.js";
-import {
-  type ExecutionIdentity,
-  ExecutionIdentitySchema,
-} from "../../gen/agentos/execution/v1/identity_pb.js";
 import { can } from "../../shared/permissions.js";
-import type { jwtIdentity } from "../authorization/oidc.js";
+import type { userIdentity } from "../authorization/identity.js";
 import { requiredCapability } from "../authorization/permissions.js";
+import { credentialHeaders, nativeHeaders, nativeStream } from "../kagent/context.js";
 
 export const accessProfile = createContextKey(create(AccessProfileSchema));
-export const requestIdentity = createContextKey(create(ExecutionIdentitySchema));
+export const requestIdentity = createContextKey(create(UserIdentitySchema));
 
 const selfServiceMethods = new Set([
   "SendMessage",
@@ -26,12 +24,11 @@ const selfServiceMethods = new Set([
 export function workspaceContext(
   workspace: string,
   entryAgent: string,
-  identity: ReturnType<typeof jwtIdentity>,
-  remember?: (identity: ExecutionIdentity) => Promise<ExecutionIdentity>,
+  identity: ReturnType<typeof userIdentity>,
 ): Interceptor {
   return (next) => async (request) => {
-    let principal = await identity(request.header);
-    principal = (await remember?.(principal)) ?? principal;
+    const headers = credentialHeaders(request.header);
+    const principal = await nativeHeaders.run(headers, () => identity(headers));
     if (
       request.method.idempotency !== MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS &&
       !(
@@ -54,6 +51,9 @@ export function workspaceContext(
         entryAgent: { namespace: workspace, name: entryAgent },
       }),
     );
-    return next(request);
+    const response = await nativeHeaders.run(headers, () => next(request));
+    return response.stream
+      ? { ...response, message: nativeStream(response.message, headers) }
+      : response;
   };
 }

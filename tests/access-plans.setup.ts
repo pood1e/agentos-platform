@@ -18,6 +18,10 @@ export default function setup(project: TestProject) {
     metadata: { name: "fixture", namespace: "agentos", generation: 1 },
     spec: {
       mode: "platform",
+      platform: {
+        writerRole: "agentos-platform-writer",
+        discoveryServiceAccount: "agentos-discovery",
+      },
       environments: [{ name: "lab", governance: "approval" }],
       toolsets,
       identities: ["assistant", "coordinator", "inspection", "diagnosis", "remediation"].map(

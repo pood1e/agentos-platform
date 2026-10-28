@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "kagent/api/v1/common.proto";
+import "kagent/api/v1/execution.proto";
 import "kagent/api/v1/runtime.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
@@ -54,6 +55,8 @@ message Session {
   // Output only. A2A conversation ID, equal to this session's ID.
   // Forks receive a new conversation ID and new task IDs.
   string context_id = 14;
+  // Output only. Immutable execution authority captured at creation.
+  SessionAuthority authority = 16;
 }
 
 message CreateSessionRequest {
@@ -69,6 +72,7 @@ message CreateSessionRequest {
     max_len: 200
     pattern: "^(?:$|[^\\p{Z}\\p{Cc}](?:[^\\p{Cc}]*[^\\p{Z}\\p{Cc}])?)$"
   }];
+  ScopeCeiling scope_ceiling = 6;
 }
 
 message CreateSessionResponse {
@@ -93,6 +97,8 @@ message ListSessionsRequest {
   reserved "agent_template", "harness";
   // Filters by the Agent that produced each session's pinned revision.
   ResourceReference agent = 6;
+  // Narrows the page to a native authority tree. Each Session is authorized.
+  string root_session_id = 7 [(buf.validate.field).string = {pattern: "^$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}];
 }
 
 message ListSessionsResponse {

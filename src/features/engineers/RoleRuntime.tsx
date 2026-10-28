@@ -36,7 +36,6 @@ export function RoleRuntime({
         agent={agent}
         role={role}
         models={configuration.modelConfigs}
-        servers={configuration.toolServers}
         harnesses={configuration.harnesses}
         onApplied={(template) => {
           if (template?.resource?.value) {
@@ -66,7 +65,6 @@ export function RoleRuntime({
           onChange((current) =>
             editRole(current, (next) => {
               const modelName = runtimeModel(
-                configuration.harnesses.find((item) => item.ref?.name === name),
                 configuration.modelConfigs,
                 current.modelConfig?.name ?? "default-model-config",
               );
@@ -77,12 +75,7 @@ export function RoleRuntime({
           );
         }}
       />
-      <RoleModel
-        role={role}
-        models={configuration.modelConfigs}
-        harness={configuration.harnesses.find((item) => item.ref?.name === harness)}
-        onChange={onChange}
-      />
+      <RoleModel role={role} models={configuration.modelConfigs} onChange={onChange} />
     </div>
   );
 }

@@ -23,11 +23,12 @@ app.kubernetes.io/component: {{ .component }}
 {{- $identity := $root.Values.identity -}}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
-- {name: AGENTOS_WORKLOAD_AUTH_CONFIG, value: /etc/agentos/workloads.json}
 - {name: KAGENT_URL, value: {{ $root.Values.kagent.endpoint | quote }}}
 - {name: KAGENT_NAMESPACE, value: {{ $root.Release.Namespace | quote }}}
-- {name: KAGENT_USER_ID, value: {{ $root.Values.kagent.userId | quote }}}
-{{ include "agentos.executionEnv" $root }}
+{{- if eq .component "api" }}
+{{- with $identity.caCertificateRef }}
+- {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos/identity/ca.crt}
+{{- end }}
 - {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" $identity.issuer | quote }}}
 - {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" $identity.clientId | quote }}}
 - {name: AGENTOS_OIDC_AUDIENCE, value: {{ required "identity.audience is required" $identity.audience | quote }}}
@@ -35,8 +36,6 @@ app.kubernetes.io/component: {{ .component }}
 - name: AGENTOS_OIDC_CLIENT_SECRET
   valueFrom:
     secretKeyRef: {name: {{ $identity.secretRef }}, key: client-secret}
-{{- if and (eq .component "dataplane") $root.Values.global.agentos.environments }}
-- {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
 {{- end }}
 {{ include "agentos.telemetryEnv" . }}
 {{- end -}}
@@ -44,23 +43,11 @@ app.kubernetes.io/component: {{ .component }}
 {{- define "agentos.knowledgeEnv" -}}
 - {name: AGENTOS_GATEWAY_URL, value: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace | quote }}}
 - {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
-- {name: AGENTOS_MODEL_TOKEN_FILE, value: /var/run/agentos-model/token}
-{{- end -}}
-
-{{- define "agentos.modelIdentityVolume" -}}
-- name: model-identity
-  projected:
-    sources:
-      - serviceAccountToken:
-          audience: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace | quote }}
-          expirationSeconds: 600
-          path: token
 {{- end -}}
 
 {{- define "agentos.platformDeployment" -}}
 {{- $root := .root -}}
 {{- $values := index $root.Values .component -}}
-{{- $environments := and (eq .component "dataplane") $root.Values.global.agentos.environments -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -118,7 +105,6 @@ spec:
             {{- with .env }}
             {{- . | nindent 12 }}
             {{- end }}
-          # The listener opens after identity discovery, Informer sync and schema setup.
           startupProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 2
@@ -136,29 +122,12 @@ spec:
             {{- toYaml $values.resources | nindent 12 }}
           securityContext:
             {{- include "agentos.containerSecurityContext" $root | nindent 12 }}
-          volumeMounts:
-            - {name: tools, mountPath: /etc/agentos, readOnly: true}
-            - {name: execution-database, mountPath: /etc/agentos-database, readOnly: true}
-            {{- if $environments }}
-            - {name: governance, mountPath: /etc/agentos-governance, readOnly: true}
-            {{- end }}
-            {{- with .mounts }}
-            {{- . | nindent 12 }}
-            {{- end }}
-      volumes:
-        - name: tools
-          configMap: {name: {{ include "agentos.name" $root }}-tools}
-        - name: execution-database
-          secret:
-            secretName: {{ $root.Values.execution.databaseCASecret }}
-            items: [{key: ca.crt, path: ca.crt}]
-        {{- if $environments }}
-        - name: governance
-          secret: {secretName: agentos-governance}
-        {{- end }}
-        {{- with .volumes }}
-        {{- . | nindent 8 }}
-        {{- end }}
+          {{- with .mounts }}
+          volumeMounts: {{ . | nindent 12 }}
+          {{- end }}
+      {{- with .volumes }}
+      volumes: {{ . | nindent 8 }}
+      {{- end }}
 {{- end -}}
 
 {{- define "agentos.platformServiceAccount" -}}

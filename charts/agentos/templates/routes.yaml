@@ -27,10 +27,6 @@ spec:
     - matches: [{path: {type: PathPrefix, value: /environments}}]
       backendRefs: [{name: {{ $name }}-gateway, port: 8080}]
     {{- end }}
-    {{- if .Values.execution.sources }}
-    - matches: [{path: {type: Exact, value: /mcp/executions}}]
-      backendRefs: [{name: {{ $name }}-gateway, port: 8080}]
-    {{- end }}
 {{- if $hosts.sandbox }}
 {{- if has $hosts.sandbox (list $hosts.console $hosts.api) }}{{ fail "route.hosts.sandbox must be a separate host" }}{{ end }}
 ---

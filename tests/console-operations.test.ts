@@ -1,14 +1,11 @@
-import { clone, create } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
-import { MessageSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
+import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { cancelTree } from "../server/read-model/cancel.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { runSummary } from "../server/read-model/views/runs.js";
-import { taskSummary } from "../server/read-model/views/task.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment, fakeKagent, operator } from "./harness.js";
@@ -75,108 +72,6 @@ it("binds cursors to normalized states and members", async () => {
   }
 });
 
-async function runningTree() {
-  const env = await environment();
-  for (const id of [ids.dispatchRoot, ids.inspection, ids.background])
-    env.fake.update(env.fake.task(id), TaskState.WORKING);
-  const graph = await env.projection.graphOf({ taskId: ids.dispatchRoot });
-  const tree = graph && taskTree(graph, ids.dispatchRoot);
-  if (!tree) throw new Error("missing operation tree");
-  const state = async (id: string) => (await env.projection.entry(id))?.state;
-  return { ...env, tree, state };
-}
-
-it("cancels all unfinished delegated tasks, including background work, and is repeatable", async () => {
-  const { clients, projection, state, close, tree, fake } = await runningTree();
-  const cancel = vi.spyOn(clients.a2a, "cancelTask");
-  try {
-    await cancelTree(clients, tree);
-    expect(cancel.mock.calls.map(([request]) => request.id)).toEqual(
-      expect.arrayContaining([ids.dispatchRoot, ids.inspection, ids.background]),
-    );
-    expect(await state(ids.inspection)).toBe(TaskState.CANCELED);
-    expect(fake.task(ids.background).status?.state).toBe(TaskState.CANCELED);
-    const graph = await projection.graphOf({ taskId: ids.dispatchRoot });
-    const again = graph && taskTree(graph, ids.dispatchRoot);
-    if (!graph || !again) throw new Error("missing operation");
-    expect(taskSummary(graph, again).state).toBe(ActivityState.CANCELED);
-    const count = cancel.mock.calls.length;
-    await cancelTree(clients, again);
-    expect(cancel).toHaveBeenCalledTimes(count + 1);
-    expect(cancel.mock.lastCall?.[0].id).toBe(again.root.id);
-  } finally {
-    await close();
-  }
-});
-
-it("attempts every cancellation and keeps native successes when one task fails", async () => {
-  const { clients, state, close, tree } = await runningTree();
-  const native = clients.a2a.cancelTask;
-  const cancel = vi
-    .spyOn(clients.a2a, "cancelTask")
-    .mockImplementation(async (request, options) => {
-      if (request.id === ids.dispatchRoot) throw new Error("native cancellation failed");
-      return native(request, options);
-    });
-  try {
-    await expect(cancelTree(clients, tree)).rejects.toThrow("native cancellation failed");
-    expect(cancel).toHaveBeenCalledWith(
-      expect.objectContaining({ id: ids.inspection }),
-      expect.anything(),
-    );
-    expect(await state(ids.inspection)).toBe(TaskState.CANCELED);
-    expect(await state(ids.dispatchRoot)).toBe(TaskState.WORKING);
-  } finally {
-    await close();
-  }
-});
-
-it("cancels unanswered tasks in one native session without overlapping its actor commands", async () => {
-  const { clients, projection, state, close, fake } = await runningTree();
-  const question = fake.task(ids.inspection);
-  const approval = clone(TaskSchema, question);
-  approval.id = "pending-approval";
-  approval.history = approval.history.map((message) => ({
-    ...message,
-    messageId: `approval-${message.messageId}`,
-  })) as typeof approval.history;
-  fake.update(question, TaskState.INPUT_REQUIRED);
-  fake.update(approval, TaskState.AUTH_REQUIRED);
-  const tree = {
-    entries: await Promise.all(
-      [ids.dispatchRoot, ids.inspection, ids.background, approval.id].map(async (id) => {
-        const entry = await projection.entry(id);
-        if (!entry) throw new Error("missing operation task");
-        return entry;
-      }),
-    ),
-  };
-  const native = clients.a2a.cancelTask;
-  const sessions = new Set<string>();
-  let concurrency = 0;
-  vi.spyOn(clients.a2a, "cancelTask").mockImplementation(async (request, options) => {
-    const contextId = fake.task(request.id ?? "").contextId;
-    if (sessions.has(contextId))
-      throw new ConnectError("session actor is handling cancellation", Code.InvalidArgument);
-    sessions.add(contextId);
-    concurrency = Math.max(concurrency, sessions.size);
-    try {
-      await new Promise<void>((resolve) => setImmediate(resolve));
-      return await native(request, options);
-    } finally {
-      sessions.delete(contextId);
-    }
-  });
-  try {
-    await cancelTree(clients, tree);
-    expect(concurrency).toBeGreaterThan(1);
-    for (const entry of tree.entries) expect(await state(entry.id)).toBe(TaskState.CANCELED);
-    expect(fake.received).toEqual([]);
-  } finally {
-    await close();
-  }
-});
-
 it("projects native run starts in summaries and full execution details", async () => {
   const { projection, close } = await environment();
   try {
@@ -189,37 +84,6 @@ it("projects native run starts in summaries and full execution details", async (
       const full = await taskRun(entry, projection.fullTask);
       expect(full?.startedAt).toEqual(run.startedAt);
     }
-  } finally {
-    await close();
-  }
-});
-
-it("accepts a native task that finishes between reading the tree and canceling it", async () => {
-  const { clients, state, close, tree, fake } = await runningTree();
-  const native = clients.a2a.cancelTask;
-  vi.spyOn(clients.a2a, "cancelTask").mockImplementation(async (request, options) => {
-    if (request.id !== ids.inspection) return native(request, options);
-    fake.update(fake.task(ids.inspection), TaskState.COMPLETED);
-    throw new ConnectError("task is already complete", Code.FailedPrecondition);
-  });
-  try {
-    await cancelTree(clients, tree);
-    expect(await state(ids.inspection)).toBe(TaskState.COMPLETED);
-    expect(await state(ids.dispatchRoot)).toBe(TaskState.CANCELED);
-  } finally {
-    await close();
-  }
-});
-
-it("does not report success before native execution acknowledges cancellation", async () => {
-  const { clients, close, tree } = await runningTree();
-  vi.spyOn(clients.a2a, "cancelTask").mockImplementation((request) =>
-    clients.a2a.getTask({ id: request.id, tenant: request.tenant }),
-  );
-  try {
-    await expect(cancelTree(clients, tree)).rejects.toMatchObject({
-      code: Code.FailedPrecondition,
-    });
   } finally {
     await close();
   }

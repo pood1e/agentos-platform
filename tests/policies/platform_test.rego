@@ -8,12 +8,6 @@ test_static_discovery_headers_are_rejected if {
 	"tools exposes static discovery headers" in messages
 }
 
-test_missing_discovery_identity_is_rejected if {
-	remote := {"kind": "RemoteMCPServer", "metadata": {"name": "tools"}, "spec": {"url": "http://agentos-mcp-gateway.agentos.svc.cluster.local:8080/mcp", "timeout": "10m"}}
-	messages := deny with input as [{"contents": remote}]
-	"tools does not use bound Kubernetes discovery" in messages
-}
-
 test_model_and_mcp_credentials_cannot_share_an_authority if {
 	remote := {"kind": "RemoteMCPServer", "metadata": {"name": "tools"}, "spec": {"url": "http://same.agentos.svc.cluster.local:8080/mcp"}}
 	model := {"kind": "ModelConfig", "metadata": {"name": "model"}, "spec": {"openAI": {"baseUrl": "http://same.agentos.svc.cluster.local:8080/v1"}}}
@@ -50,4 +44,12 @@ test_a_single_dataplane_replica_is_rejected if {
 	single := object.union(fixture_workload("dataplane"), {"spec": {"replicas": 1}})
 	messages := deny with input as [{"contents": single}]
 	"the dataplane lacks a second replica or its disruption budget" in messages
+}
+
+test_actor_key_discovery_requires_verified_direct_tls if {
+	controller := {"kind": "Deployment", "metadata": {"labels": {"app.kubernetes.io/name": "agentos-controller"}}, "spec": {"template": {"spec": {"containers": [{"args": ["--actor-issuer=https://actors.test"]}]}}}}
+	policy := {"kind": "AgentgatewayPolicy", "metadata": {"name": "gateway-auth"}, "spec": {"traffic": {"jwtAuthentication": {"providers": [{"issuer": "https://actors.test", "jwks": {"remote": {"jwksPath": "/openid/v1/jwks", "backendRef": {"group": "agentgateway.dev", "kind": "AgentgatewayBackend", "name": "actor-jwks"}}}}]}}}}
+	backend := {"kind": "AgentgatewayBackend", "metadata": {"name": "actor-jwks"}, "spec": {"static": {"host": "actors.test", "port": 443}, "policies": {"tls": {"insecureSkipVerify": "All"}}}}
+	messages := deny with input as [{"contents": controller}, {"contents": policy}, {"contents": backend}]
+	"gateway-auth lacks direct verified Actor JWKS" in messages
 }

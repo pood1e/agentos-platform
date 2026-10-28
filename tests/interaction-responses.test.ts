@@ -1,5 +1,5 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { Code } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState, TaskStatusSchema } from "../gen/a2a_pb.js";
 import {
@@ -11,7 +11,7 @@ import { messageCommands } from "../server/console/messages.js";
 import { hitlExtension, hitlPayload } from "../server/read-model/decode/hitl.js";
 import { ingest } from "../server/read-model/entry.js";
 import { fixtureIds } from "./fixtures/kagent.js";
-import { environment, operator, until } from "./harness.js";
+import { environment, operator } from "./harness.js";
 
 async function pending(kind: "question" | "approval") {
   const message = create(MessageSchema, {
@@ -45,12 +45,12 @@ async function pending(kind: "question" | "approval") {
         ? { case: "answer", value: { answers: [{ values: ["Current environment"] }] } }
         : { case: "approval", value: { approvals: [{ id: "tool", approved: true }] } },
   });
-  const commands = messageCommands(env.projection, env.clients, "agentos", env.executions);
+  const commands = messageCommands(env.projection, env.clients, "agentos");
   return {
     ...env,
     request,
     task,
-    respond: (value: typeof request) => commands.respond(value, operator),
+    respond: (value: typeof request) => commands.respond(value),
   };
 }
 
@@ -130,30 +130,15 @@ it.each(["question", "approval"] as const)(
 );
 
 it.each(["question", "approval"] as const)(
-  "accepts only one concurrent %s decision",
+  "preserves native concurrent %s admission rejection",
   async (kind) => {
     const env = await pending(kind);
-    let release = () => {};
-    const hold = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const send = env.projection.send;
-    const waiting = vi.spyOn(env.projection, "send").mockImplementation(async (...args) => {
-      await hold;
-      return send(...args);
-    });
-    const accepted = env.respond(env.request);
-    try {
-      await until(() => waiting.mock.calls.length === 1);
-      await expect(env.respond(env.request)).rejects.toMatchObject({
-        code: Code.Aborted,
-      });
-      expect(env.fake.received).toHaveLength(0);
-    } finally {
-      release();
-      await accepted;
-      expect(env.fake.received).toHaveLength(1);
-      await env.close();
-    }
+    const send = vi
+      .spyOn(env.projection, "send")
+      .mockRejectedValue(new ConnectError("native admission conflict", Code.Aborted));
+    await expect(env.respond(env.request)).rejects.toMatchObject({ code: Code.Aborted });
+    expect(send).toHaveBeenCalledOnce();
+    expect(env.fake.received).toHaveLength(0);
+    await env.close();
   },
 );

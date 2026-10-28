@@ -1,6 +1,8 @@
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { TaskExecutionSchema, TaskRelation } from "../gen/kagent/api/v1/execution_pb.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 
@@ -34,6 +36,14 @@ describe("conversation worker projection", () => {
       ...entry,
       id: "continued-worker",
       parentTaskId: entry.id,
+      execution: create(TaskExecutionSchema, {
+        root: entry.execution?.root,
+        background: entry.execution?.background,
+        task: { taskId: "continued-worker", sessionId: entry.contextId },
+        parent: entry.execution?.task,
+        resumedTask: entry.execution?.task,
+        relation: TaskRelation.CONTINUATION,
+      }),
       state: TaskState.WORKING,
       answer: "Unfinished follow-up",
       statusAt: 200,

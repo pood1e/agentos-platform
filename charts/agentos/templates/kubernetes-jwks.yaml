@@ -1,0 +1,6 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ include "agentos.name" . }}-kubernetes-jwks
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+spec: {{ toYaml .Values.runtime.kubernetesJWKS | nindent 2 }}

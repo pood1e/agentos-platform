@@ -5,4 +5,4 @@ metadata:
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:
-  {{- .Values.execution.actorJWKS | toYaml | nindent 2 }}
+  {{- .Values.runtime.actorJWKS | toYaml | nindent 2 }}

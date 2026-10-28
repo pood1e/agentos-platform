@@ -33,9 +33,9 @@ identity:
 `returnOrigins` 登记 console 之外的委派返回源。console 自动发起离线授权，其他客户端使用 `GetAccessProfile.delegation_url`。
 应用角色目录由契约包的 `authorization.json` 描述，权限和凭据生命周期见[执行授权](execution-authorization.md)。
 
-站点创建 `execution.keySecret`（默认 `agentos-execution`），`key` 为 Base64 编码的 32 字节密钥。
-执行数据库、加密密钥、身份和会话 Secret 一并备份。
-api 与 dataplane 使用同一镜像及独立 ServiceAccount / NetworkPolicy；dataplane 至少两副本并配置 PDB。
+kagent 配置 OIDC AuthProvider、ScopeRule、OAuthTokenSource 与持久凭据加密 Secret。平台 API 将离线授权交给原生凭据服务，kagent PostgreSQL 与密钥由站点统一备份。
+api 与 dataplane 使用独立 ServiceAccount / NetworkPolicy；dataplane 提供 `8080` 业务 MCP，原生协作 MCP 直连 kagent。
+`runtime.actorIssuer` / `runtime.actorJWKS` 固定 Substrate 身份源；`runtime.kubernetesIssuer` 与集群签发方一致；`runtime.kubernetesJWKS` 使用原生 HTTPS Backend 连接可供网关读取的 Kubernetes 公钥端点。参考部署为该公开公钥授予 `system:service-account-issuer-discovery` 只读权限。网关 origin 同步登记到 kagent `gatewayAudiences`。
 
 ## 模型连接
 
@@ -104,7 +104,7 @@ kagent 使用原生 `TelemetryConfig`，Collector 与遥测存储由站点提供
 
 | 作业 | 范围 |
 | --- | --- |
-| `verify`、`python-verify` | 生成、构建、静态检查与单元测试，数据库使用 PostgreSQL 服务容器 |
+| `verify`、`python-verify` | 生成、构建、静态检查与单元测试 |
 | `deployment-check` | Helm 单测与渲染、Conftest、kubeconform、制品验签 |
 | `platform-controller-verify` | 平台控制器 race、真实 API Server 回归与 vet |
 | `build-*`、`voice-verify` | rootless BuildKit 镜像、Node / Python 契约与按范围触发的语音验证 |
@@ -131,5 +131,7 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 | `AGENTOS_BUILDKIT_IMAGE`、`AGENTOS_REGISTRY_MIRROR` | BuildKit 摘要与可选 Docker Hub 镜像源 |
 | `COSIGN_PRIVATE_KEY`、`COSIGN_PASSWORD` | 受保护的签名私钥文件与隐藏密码 |
 
-SDK 通过标准包管理器消费：npm 配置项目 scope 注册表与原生令牌，Python 使用项目 PyPI 索引；锁文件固定版本和完整性。
+契约包仅包含 proto、生成绑定与 schema；Node 包同时提供 AccessPlan schema 类型和角色目录。消费者通过 Kubernetes 官方客户端读取 `AccessPlan.status` 的工具决策。
+
+契约通过标准包管理器消费：npm 配置项目 scope 注册表与原生令牌，Python 使用项目 PyPI 索引；锁文件固定版本和完整性。
 Chart 与交付校验入口为 `ci/check-charts.sh` 和 `ci/test-artifacts.py`，真实组件验证见 [tests/proofs](../tests/proofs/README.md)。

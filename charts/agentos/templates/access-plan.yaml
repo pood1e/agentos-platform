@@ -5,6 +5,15 @@ metadata:
   labels: {{ include "agentos.labels" . | nindent 4 }}
 spec:
   mode: platform
+  platform:
+    name: {{ printf "%s-gateway" (include "agentos.name" .) }}
+    url: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace }}
+    mcpURL: {{ printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace }}
+    nativeAuthorityBackend: {{ printf "%s-native-authority" (include "agentos.name" .) }}
+    actorJWKSBackend: {{ include "agentos.actorJWKSBackend" . }}
+    actorIssuer: {{ .Values.runtime.actorIssuer | quote }}
+    writerRole: {{ required "identity.writerRole is required" .Values.identity.writerRole | quote }}
+    discoveryServiceAccount: {{ printf "%s-discovery" (include "agentos.name" .) }}
   toolsets: {{ toYaml .Values.global.agentos.toolsets | nindent 4 }}
   identities: {{ toYaml .Values.global.agentos.identities | nindent 4 }}
   environments: {{ toYaml .Values.global.agentos.environments | nindent 4 }}

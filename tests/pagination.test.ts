@@ -3,7 +3,7 @@ import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { TaskSchema } from "../gen/a2a_pb.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
-import { bindTasks, environment, operator } from "./harness.js";
+import { environment, operator } from "./harness.js";
 
 const reader = { subject: operator.subject, administrator: false };
 
@@ -14,7 +14,6 @@ async function seededEnvironment() {
     sessions: [...env.fake.sessions.values(), ...seeded.sessions],
     tasks: [...env.fake.tasks.values(), ...seeded.tasks],
   });
-  await bindTasks(env.store, env.fake, seeded.tasks);
   return { env, seeded };
 }
 
@@ -35,7 +34,7 @@ describe("history cursors", () => {
       })) as typeof incoming.history;
       if (incoming.status) incoming.status.timestamp = timestampFromMs(Date.now() + 10_000);
 
-      env.fake.tasks.set(incoming.id, incoming);
+      env.fake.update(incoming, incoming.status?.state ?? 0);
       const next = await env.projection.operations(reader, {
         ...request,
         pageSize: 5,
@@ -86,7 +85,6 @@ describe("history cursors", () => {
   it("keeps conversation kinds and search queries in separate cursor scopes", async () => {
     const env = await environment();
     env.fake.createSession({ namespace: "agentos", name: "assistant" }, "extra-chat", "另一次对话");
-    await bindTasks(env.store, env.fake, []);
     try {
       const request = { query: "", pageSize: 1, pageToken: "" };
       const first = await env.projection.conversations(reader, "agentos/assistant", request);

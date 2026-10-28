@@ -1,135 +1,71 @@
-suite: platform gateway workload authentication
+suite: native runtime gateway authorization
 values:
 - ../../../tests/fixtures/chart-values.yaml
-release:
-  name: agentos
-  namespace: agentos
+release: {name: agentos, namespace: agentos}
 tests:
-- it: leaves the external execution entry point undeployed without registered sources
-  template: external-executions.yaml
-  asserts:
-  - hasDocuments:
-      count: 0
-- it: rejects the removed automation configuration
-  set:
-    automation.enabled: true
-  template: external-executions.yaml
-  asserts:
-  - failedTemplate:
-      errorPattern: 'automation'
-- it: uses a public SDK placeholder while authorization comes from Actor JWTs
-  template: model-client.yaml
-  asserts:
-  - equal:
-      path: stringData.placeholder
-      value: actor-jwt-required
-- it: keeps model and MCP transport audiences separate
+- it: keeps model and MCP Actor audiences separate from Kubernetes discovery
   template: gateway-auth.yaml
   asserts:
-  - equal:
-      path: spec.frontend.http.maxBufferSize
-      value: 16Mi
-  - notExists:
-      path: spec.traffic.apiKeyAuthentication
-  - lengthEqual:
-      path: spec.traffic.jwtAuthentication.providers
-      count: 1
-  - equal:
-      path: spec.traffic.jwtAuthentication.providers[0].jwks.remote
-      value:
-        backendRef:
-          group: agentgateway.dev
-          kind: AgentgatewayBackend
-          name: agentos-actor-jwks
-        jwksPath: /openid/v1/jwks
-  - notExists:
-      path: spec.traffic.jwtAuthentication.providers[0].jwks.inline
+  - lengthEqual: {path: spec.traffic.jwtAuthentication.providers, count: 2}
   - contains:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       content: http://agentos-gateway.agentos.svc.cluster.local:8080
   - contains:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       content: http://agentos-mcp-gateway.agentos.svc.cluster.local:8080
-- it: fetches native Actor keys over verified TLS with site trust
-  template: actor-jwks.yaml
-  asserts:
   - equal:
-      path: metadata.name
-      value: agentos-actor-jwks
-  - equal:
-      path: spec
-      value:
-        static: {host: idp.ate-system.svc, port: 443}
-        policies:
-          tls:
-            sni: idp.ate-system.svc
-            caCertificateRefs: [{name: substrate-service-dns-ca, kind: ConfigMap}]
-- it: preserves native endpoint and certificate references
-  template: actor-jwks.yaml
-  set:
-    execution.actorJWKS:
-      static: {host: idp.identity.svc, port: 8443}
-      policies:
-        tls:
-          sni: actors.example.com
-          verifySubjectAltNames: [actors.example.com]
-          caCertificateRefs: [{name: actor-service-ca, kind: ConfigMap, key: bundle.pem}]
-  asserts:
-  - equal:
-      path: spec
-      value:
-        static: {host: idp.identity.svc, port: 8443}
-        policies:
-          tls:
-            sni: actors.example.com
-            verifySubjectAltNames: [actors.example.com]
-            caCertificateRefs: [{name: actor-service-ca, kind: ConfigMap, key: bundle.pem}]
-- it: requires an explicit JWKS trust root
-  template: actor-jwks.yaml
-  set:
-    execution.actorJWKS.policies.tls.caCertificateRefs: []
-  asserts:
-  - failedTemplate:
-      errorPattern: 'caCertificateRefs'
-- it: requires JWKS certificate and hostname verification
-  template: actor-jwks.yaml
-  set:
-    execution.actorJWKS.policies.tls.insecureSkipVerify: Hostname
-  asserts:
-  - failedTemplate:
-      errorPattern: 'tls'
-- it: authenticates external executions before MCP initialization and on upstream transport
-  set:
-    execution.sources:
-    - issuer: https://idp.example.com/realms/production
-      audience: agentos-executions
-      clientId: analysis-controller
-      subject: service-account-analysis
-      agents: [{namespace: agentos, name: diagnosis}]
-  template: external-executions.yaml
-  documentSelector:
-    path: kind
-    value: AgentgatewayBackend
-  asserts:
-  - equal:
-      path: metadata.annotations["agentos.dev/connection-role"]
-      value: ingress
-  - equal:
-      path: metadata.annotations["agentos.dev/system-connection"]
-      value: 'true'
-  - equal:
-      path: spec.policies.extAuth.failureMode
-      value: FailClosed
-  - equal:
-      path: spec.policies.extAuth.http.path
-      value: '''/authorize/executions'''
-  - equal:
-      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-      value: mcp.tool.name in ['run_execution', 'get_execution', 'cancel_execution']
-- it: consumes model transport credentials before injecting provider credentials
+      path: spec.traffic.jwtAuthentication.providers[1].audiences
+      value: ['http://agentos-gateway.agentos.svc.cluster.local:8080', agentos-mcp-discovery]
+- it: resolves live model authority directly at native kagent
   template: gateway-auth.yaml
   asserts:
   - equal:
-      path: spec.traffic.extAuth.conditional[0].policy.http.allowedResponseHeaders
-      value:
-      - authorization
+      path: spec.traffic.extAuth.conditional[0].policy.backendRef
+      value: {group: agentgateway.dev, kind: AgentgatewayBackend, name: agentos-native-authority}
+  - equal:
+      path: spec.traffic.extAuth.conditional[0].policy.http.responseMetadata.models
+      value: json(response.body)
+- it: uses native collaboration with a separately scoped discovery identity
+  template: collaboration.yaml
+  asserts:
+  - equal: {path: spec.url, value: 'http://kagent-controller:8083/mcp'}
+  - equal:
+      path: spec.discoveryAuth.serviceAccount
+      value: {serviceAccountRef: {name: agentos-discovery}, audience: kagent-invocation}
+- it: fetches native Actor keys with verified site trust
+  template: actor-jwks.yaml
+  asserts:
+  - equal:
+      path: spec.policies.tls
+      value: {sni: idp.ate-system.svc, caCertificateRefs: [{name: substrate-service-dns-ca, kind: ConfigMap}]}
+- it: requires an explicit JWKS trust root
+  template: actor-jwks.yaml
+  set:
+    runtime.actorJWKS.policies.tls.caCertificateRefs: []
+  asserts:
+  - failedTemplate: {errorPattern: caCertificateRefs}
+- it: requires verified TLS for Actor key discovery
+  template: actor-jwks.yaml
+  set:
+    runtime.actorJWKS.policies.tls.insecureSkipVerify: Hostname
+  asserts:
+  - failedTemplate: {errorPattern: insecureSkipVerify}
+- it: runs business MCP on its single HTTP port
+  template: dataplane-service.yaml
+  asserts:
+  - equal:
+      path: spec.ports
+      value: [{name: http, port: 8080, targetPort: http}]
+- it: resolves an IPv6 native authority endpoint
+  template: native-authority.yaml
+  set:
+    kagent.endpoint: http://[fd00::1]:8083
+  asserts:
+  - equal: {path: spec.static, value: {host: 'fd00::1', port: 8083}}
+- it: uses the default HTTPS native authority port
+  template: native-authority.yaml
+  set:
+    kagent.endpoint: https://native.example.test
+  asserts:
+  - equal: {path: spec.static, value: {host: native.example.test, port: 443}}
+  - equal: {path: spec.policies.tls.sni, value: native.example.test}

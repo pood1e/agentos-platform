@@ -218,7 +218,9 @@
     },
     "conflict": "该智能体已被其他人修改，请关闭后重新打开再编辑。",
     "toolsTab": "工具",
-    "builtinTools": "内置工具"
+    "builtinTools": "内置工具",
+    "awaitingToolObservation": "等待运行时观测",
+    "mcpToolCount": "MCP {{count}} 个工具"
   },
   "activity": {
     "submitted": "已提交",
@@ -258,7 +260,6 @@
     "inUse": "此 Harness 仍有智能体使用，请先更换其运行时。",
     "incompatibleModel": "模型接口不匹配：Codex 使用 OpenAI Responses，Claude Code 使用 Anthropic Messages。",
     "selectModel": "选择兼容的模型接入",
-    "noCompatibleModel": "暂无兼容接入，请在模型管理中配置此运行时使用的接口。",
     "sharedModel": "同角色的其他智能体仍在使用不兼容的运行时，请先统一其运行时配置。",
     "partialSave": "模型已更新，但运行时保存失败且配置发生了并发修改，请刷新后核对运行时与模型。",
     "responsesRequired": "Codex 需要使用 Responses 协议的模型接入。",
@@ -293,7 +294,8 @@
       "memory": "知识记忆运行时",
       "codex": "Codex",
       "claude": "Claude Code"
-    }
+    },
+    "noLanguageModel": "请先配置语言模型连接"
   },
   "speech": {
     "requestRejected": "语音服务无法处理该请求。",

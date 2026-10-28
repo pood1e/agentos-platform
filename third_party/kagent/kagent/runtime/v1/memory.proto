@@ -2,15 +2,14 @@ syntax = "proto3";
 
 package kagent.runtime.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "buf/validate/validate.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/runtime/v1;runtimev1";
 
-// Memory is scoped to an agent and a user. Actor calls derive both from the
-// persisted session bound to the verified Actor JWT. User calls select an
-// agent and use the authenticated user's identity.
+// Memory supports personal Agent scopes and namespace-scoped team collections.
+// The control plane authorizes the scope before embedding or accessing content.
 service MemoryService {
   // Accepts an Actor JWT or user authentication.
   rpc AddSession(MemoryServiceAddSessionRequest) returns (MemoryServiceAddSessionResponse);
@@ -25,13 +24,36 @@ service MemoryService {
   rpc DeleteEntry(MemoryServiceDeleteEntryRequest) returns (MemoryServiceDeleteEntryResponse);
 }
 
+message MemoryScope {
+  oneof target {
+    option (buf.validate.oneof).required = true;
+    string agent_name = 1 [(buf.validate.field).string.min_len = 1];
+    string team_namespace = 2 [(buf.validate.field).string = {
+      min_len: 1
+      max_len: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }];
+  }
+}
+
 message SessionMemoryInput {
   reserved 1, 2;
   reserved "agent_name", "user_id";
-  string content = 3;
-  repeated float vector = 4;
+  string content = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32768
+  }];
+  repeated float vector = 4 [(buf.validate.field).repeated.items.float.finite = true];
+  option (buf.validate.message).cel = {
+    id: "memory.vector_dimensions"
+    message: "vector must be empty or contain 768 dimensions"
+    expression: "size(this.vector) == 0 || size(this.vector) == 768"
+  };
   google.protobuf.Struct metadata = 5;
-  optional int32 ttl_days = 6;
+  optional int32 ttl_days = 6 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 36500
+  }];
 }
 
 message MemorySearchResult {
@@ -51,10 +73,11 @@ message MemorySummary {
 }
 
 message MemoryServiceAddSessionRequest {
-  SessionMemoryInput memory = 1;
-  // User-authenticated management calls select their own authorized agent scope.
-  // Actor calls derive scope from their persisted session.
-  string management_agent = 2;
+  SessionMemoryInput memory = 1 [(buf.validate.field).required = true];
+  // Personal scopes bind to the caller; omitted Actor scopes use the Session Agent.
+  reserved 2;
+  reserved "management_agent";
+  MemoryScope scope = 3;
 }
 
 message MemoryServiceAddSessionResponse {
@@ -62,8 +85,13 @@ message MemoryServiceAddSessionResponse {
 }
 
 message MemoryServiceAddSessionBatchRequest {
-  repeated SessionMemoryInput items = 1;
-  string management_agent = 2;
+  repeated SessionMemoryInput items = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+  }];
+  reserved 2;
+  reserved "management_agent";
+  MemoryScope scope = 3;
 }
 
 message MemoryServiceAddSessionBatchResponse {
@@ -73,10 +101,26 @@ message MemoryServiceAddSessionBatchResponse {
 message MemoryServiceSearchRequest {
   reserved 1, 2;
   reserved "agent_name", "user_id";
-  repeated float vector = 3;
-  optional int32 limit = 4;
-  optional double min_score = 5;
-  string management_agent = 6;
+  repeated float vector = 3 [(buf.validate.field).repeated.items.float.finite = true];
+  optional int32 limit = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+  optional double min_score = 5 [(buf.validate.field).double = {
+    gte: -1
+    lte: 1
+    finite: true
+  }];
+  option (buf.validate.message).cel = {
+    id: "memory.search_input"
+    message: "supply a text query or a 768-dimensional vector"
+    expression: "(size(this.vector) == 768 && this.query == '') || (size(this.vector) == 0 && this.query.trim() != '')"
+  };
+  reserved 6;
+  reserved "management_agent";
+  MemoryScope scope = 7;
+  // Text queries are embedded by the control plane. Supply either query or vector.
+  string query = 8 [(buf.validate.field).string.max_len = 32768];
 }
 
 message MemoryServiceSearchResponse {
@@ -87,10 +131,9 @@ message MemoryServiceListRequest {
   reserved 2;
   reserved "user_id";
 
-  // User calls must supply the stored agent key. Actor-created memories use
-  // "namespace/name"; legacy keys remain valid for managing older memories.
-  // Actor calls ignore this field and use the agent from their persisted session.
-  string agent_name = 1;
+  reserved 1;
+  reserved "agent_name";
+  MemoryScope scope = 3;
 }
 
 message MemoryServiceListResponse {
@@ -101,10 +144,9 @@ message MemoryServiceDeleteRequest {
   reserved 2;
   reserved "user_id";
 
-  // User calls must supply the stored agent key. Actor-created memories use
-  // "namespace/name"; legacy keys remain valid for managing older memories.
-  // Actor calls ignore this field and use the agent from their persisted session.
-  string agent_name = 1;
+  reserved 1;
+  reserved "agent_name";
+  MemoryScope scope = 3;
 }
 
 message MemoryServiceDeleteResponse {
@@ -112,8 +154,13 @@ message MemoryServiceDeleteResponse {
 }
 
 message MemoryServiceDeleteEntryRequest {
-  string agent_name = 1;
-  string id = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  reserved 1;
+  reserved "agent_name";
+  MemoryScope scope = 3;
+  string id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
 }
 
 message MemoryServiceDeleteEntryResponse {}

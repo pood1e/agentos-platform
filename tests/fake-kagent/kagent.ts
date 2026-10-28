@@ -18,12 +18,19 @@ import {
   AgentTemplateSchema,
 } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { Agent } from "../../gen/kagent/api/v1/agents_pb.js";
+import {
+  SessionAuthoritySchema,
+  type TaskExecution,
+  TaskExecutionSchema,
+  TaskRelation,
+} from "../../gen/kagent/api/v1/execution_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
 import { hitlPayload } from "../../server/read-model/decode/hitl.js";
 import { createdAtKey, object, partTypeKey } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
 import { conflict } from "../../server/shared/errors.js";
+import { fixtureExecution } from "../fixtures/kagent.js";
 import { execute } from "./behavior.js";
 import { templates, toolServers } from "./catalog.js";
 import { FakeMemory } from "./memory.js";
@@ -39,7 +46,10 @@ const textPart = (value: string) => ({ content: { case: "text" as const, value }
 export class FakeKagent {
   readonly agents: Agent[];
   readonly sessions = new Map<string, Session>();
-  executionCreated?: (session: Session, parent: Session) => Promise<void>;
+  readonly executions = new Map<string, TaskExecution>();
+  readonly sessionParents = new Map<string, string>();
+  readonly credentials = new Map<string, string>();
+  renewable = true;
   readonly tasks = new Map<string, Task>();
   readonly templates = new Map(templates().map((item) => [item.ref?.name ?? "", item]));
   readonly toolServers = toolServers();
@@ -66,11 +76,25 @@ export class FakeKagent {
     this.requests.clear();
     this.sessions.clear();
     this.tasks.clear();
-    for (const session of fixtures.sessions) this.sessions.set(session.id, session);
+    this.executions.clear();
+    for (const session of fixtures.sessions) {
+      session.creator = "user:operator";
+      this.sessions.set(session.id, session);
+    }
     for (const task of fixtures.tasks) {
       if (task.status && !terminal(task.status.state))
         task.status.timestamp = timestampFromMs(this.now());
       this.tasks.set(task.id, task);
+      this.executions.set(task.id, fixtureExecution(task));
+    }
+    for (const session of this.sessions.values()) {
+      const execution = [...this.executions.values()].find((e) => e.task?.sessionId === session.id);
+      session.authority = create(SessionAuthoritySchema, {
+        sessionId: session.id,
+        initiatorId: session.creator,
+        rootSessionId: execution?.root?.sessionId ?? session.id,
+        scopes: [],
+      });
     }
   }
 
@@ -94,6 +118,20 @@ export class FakeKagent {
       message,
     });
     this.tasks.set(task.id, task);
+    if (!this.executions.has(task.id)) {
+      const parentSession = this.sessionParents.get(task.contextId);
+      const parent = [...this.tasks.values()].filter((t) => t.contextId === parentSession).at(-1);
+      const ref = { taskId: task.id, sessionId: task.contextId };
+      this.executions.set(
+        task.id,
+        create(TaskExecutionSchema, {
+          task: ref,
+          root: parent ? this.executions.get(parent.id)?.root : ref,
+          parent: parent ? { taskId: parent.id, sessionId: parent.contextId } : undefined,
+          relation: parent ? TaskRelation.DELEGATION : TaskRelation.ROOT,
+        }),
+      );
+    }
     this.updates.emit(task.id, task);
   }
 
@@ -105,13 +143,18 @@ export class FakeKagent {
       throw new ConnectError("request belongs to a deleted session", Code.FailedPrecondition);
     const session = create(SessionSchema, {
       id: randomUUID(),
-      creator: "agentos",
+      creator: "user:operator",
       agent,
       name,
       createdAt: timestampFromMs(this.now()),
       updatedAt: timestampFromMs(this.now()),
     });
     this.requests.set(requestId, session.id);
+    session.authority = create(SessionAuthoritySchema, {
+      sessionId: session.id,
+      rootSessionId: session.id,
+      initiatorId: session.creator,
+    });
     this.sessions.set(session.id, session);
     return session;
   }
@@ -125,7 +168,13 @@ export class FakeKagent {
     const parent = this.sessions.get(parentId);
     if (!parent) throw new Error("Fixture parent session missing");
     const child = this.createSession(agent, randomUUID(), name);
-    await this.executionCreated?.(child, parent);
+    this.sessionParents.set(child.id, parent.id);
+    child.authority = create(SessionAuthoritySchema, {
+      sessionId: child.id,
+      initiatorId: parent.creator,
+      parentSessionId: parent.id,
+      rootSessionId: parent.authority?.rootSessionId ?? parent.id,
+    });
     signal.throwIfAborted();
     return child;
   }

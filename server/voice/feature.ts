@@ -67,7 +67,7 @@ export async function voiceFeature(
         createRoom: rooms.createRoom.bind(rooms),
       },
       dependencies.clients,
-      dependencies.executions,
+      dependencies.agent,
     ),
     listen: (host: string) =>
       server.listen({ host, port: Number(process.env.AGENTOS_VOICE_PORT ?? "9093") }),

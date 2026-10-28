@@ -177,6 +177,13 @@ spec:
                             type: string
                         type: object
                         x-kubernetes-map-type: atomic
+                      teamNamespace:
+                        description: |-
+                          TeamNamespace selects the namespace-scoped shared collection.
+                          Runtime authorization confines access to the Agent namespace.
+                        maxLength: 63
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                        type: string
                       ttlDays:
                         description: TTLDays controls how many days a stored memory
                           entry remains valid.

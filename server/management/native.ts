@@ -9,7 +9,7 @@ export interface GatewayConfig {
   url: string;
   mcpUrl: string;
   namespace: string;
-  secret: string;
+  nativeAuthorityBackend: string;
 }
 export const meta = (value: JsonObject) => object(value.metadata);
 export function userResource(value: JsonObject): JsonObject {

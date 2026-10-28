@@ -4,6 +4,7 @@ package kagent.config.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/duration.proto";
+import "kagent/api/v1/common.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/config/v1;configv1";
 
@@ -88,6 +89,11 @@ message ChartConfig {
 // compiled into the ADK protobuf contract or native Harness configuration.
 message ControllerConfig {
   option (buf.validate.message).cel = {
+    id: "controller.execution_authentication"
+    message: "execution_authorization requires server.auth.mode oidc"
+    expression: "!has(this.execution_authorization) || this.server.auth.mode == 'oidc'"
+  };
+  option (buf.validate.message).cel = {
     id: "controller.database_read_write"
     message: "database.read_write.url_file and database.read_write.role are required"
     expression: "has(this.database) && this.database.read_write.url_file != '' && this.database.read_write.role != ''"
@@ -112,6 +118,74 @@ message ControllerConfig {
   RuntimeDefaultsConfig runtime_defaults = 13;
   HarnessImagesConfig harness_images = 14;
   PushConfig push = 15;
+  MemoryConfig memory = 16;
+  ExecutionAuthorizationConfig execution_authorization = 17;
+}
+
+// ExecutionAuthorizationConfig enables native scope policy and a durable
+// credential vault. Omission retains the explicitly selected OSS auth policy.
+message ExecutionAuthorizationConfig {
+  string scope_claim = 1 [(buf.validate.field).string.min_len = 1];
+  repeated ResourceScopeRule rules = 2 [(buf.validate.field).repeated.min_items = 1];
+  // File containing exactly 32 random bytes; mounted from a controller Secret.
+  string encryption_key_file = 3 [(buf.validate.field).string.min_len = 1];
+  OAuthCredentialConfig oauth = 4;
+  // Gateway origins accepted solely by the runtime ext-authz endpoint.
+  repeated string gateway_audiences = 5 [(buf.validate.field).repeated = {
+    max_items: 64
+    unique: true
+    items: {
+      string: {pattern: "^https?://[^/?#@]+$"}
+    }
+  }];
+}
+
+message ResourceScopeRule {
+  string resource_type = 1 [(buf.validate.field).string.min_len = 1];
+  repeated string verbs = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "get",
+          "list",
+          "create",
+          "update",
+          "delete"
+        ]
+      }
+    }
+  }];
+  // Empty permits authenticated callers; otherwise at least one scope is needed.
+  repeated string any_scope = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+        pattern: "^\\S+$"
+      }
+    }
+  }];
+}
+
+message OAuthCredentialConfig {
+  string token_endpoint = 1 [(buf.validate.field).string = {
+    uri: true
+    pattern: "^https://[^/?#]+"
+  }];
+  string client_id = 2 [(buf.validate.field).string.min_len = 1];
+  string client_secret_file = 3;
+  string ca_file = 4;
+}
+
+// MemoryConfig selects the control-plane embedding integration.
+message MemoryConfig {
+  // OpenAI-compatible embedding model. Credentials come from its Secret reference.
+  kagent.api.v1.ResourceReference model_config = 1;
+  // Projected service credential for ModelConfigs using tokenPassthrough.
+  string bearer_token_file = 2;
 }
 
 // HarnessImagesConfig supplies release defaults for built-in Harnesses. Empty
@@ -137,13 +211,37 @@ message ControllerServerConfig {
 }
 
 message AuthenticationConfig {
+  option (buf.validate.message).cel = {
+    id: "authentication.oidc"
+    message: "oidc configuration is required exactly when mode is oidc"
+    expression: "(this.mode == 'oidc') == has(this.oidc)"
+  };
   optional string mode = 1 [(buf.validate.field).string = {
     in: [
       "insecure",
-      "trusted-proxy"
+      "trusted-proxy",
+      "oidc"
     ]
   }];
   string user_id_claim = 2;
+  ServiceAccountAuthentication service_account = 3;
+  OIDCAuthentication oidc = 4;
+}
+
+// OIDCAuthentication verifies issuer-signed JWTs for the configured API audience.
+message OIDCAuthentication {
+  string issuer = 1 [(buf.validate.field).string = {
+    uri: true
+    pattern: "^https://[^/?#]+"
+  }];
+  string audience = 2 [(buf.validate.field).string.min_len = 1];
+  string ca_file = 3;
+}
+
+// Platform-owned invocation authentication for the fixed kagent-invocation audience,
+// independent of the Kubernetes API token.
+message ServiceAccountAuthentication {
+  string authority = 1 [(buf.validate.field).string.min_len = 1];
 }
 
 // DatabaseConfig names two PostgreSQL logins. The owner applies migrations; the

@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { ToolRequirement } from "../../../gen/agentos/console/v1/tool_pb.js";
-import type { DiscoveredTool, ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
+import type { BuiltinToolCatalog } from "../../../gen/kagent/api/v1/agents_pb.js";
+import type { ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
 import { useCapability } from "../../lib/access.js";
 import {
   connectionEnvironment,
@@ -30,13 +31,13 @@ import { useMCPServices } from "./use-mcp-services.js";
 
 export function RoleTools({
   role,
-  builtinTools,
+  builtinCatalog,
   servers: toolServers,
   requirements,
   onChange,
 }: {
   role: RoleDefinition;
-  builtinTools: DiscoveredTool[];
+  builtinCatalog?: BuiltinToolCatalog;
   servers: ToolServer[];
   requirements?: ToolRequirement[];
   onChange: (role: RoleDefinition) => void;
@@ -93,6 +94,7 @@ export function RoleTools({
     (server) => server.id,
   );
   const query = search.trim().toLowerCase();
+  const builtinTools = builtinCatalog?.tools ?? [];
   const builtins = builtinTools
     .map((tool) => ({ ...tool, label: toolText(tool.name, tool.description) }))
     .filter((tool) =>
@@ -134,16 +136,26 @@ export function RoleTools({
         onValueChange={setExpanded}
         className="rounded-lg border px-3"
       >
-        {!!builtins.length && (
+        {(!query || !!builtins.length) && (
           <AccordionItem value="builtin" data-testid="builtin-tools">
             <AccordionTrigger className="gap-3 text-xs">
               <ToolIcon name="kagent" className="size-7" />
               <span className="min-w-0 flex-1 text-left">{t("configuration.builtinTools")}</span>
               <span className="text-[11px] font-normal text-muted-foreground">
-                {t("configuration.toolCount", { count: builtinTools.length })}
+                {builtinCatalog
+                  ? t("configuration.toolCount", { count: builtinTools.length })
+                  : t("configuration.awaitingToolObservation")}
               </span>
             </AccordionTrigger>
             <AccordionContent className="space-y-3">
+              {!builtinCatalog && (
+                <p className="text-xs text-muted-foreground">
+                  {t("configuration.awaitingToolObservation")}
+                </p>
+              )}
+              {builtinCatalog && !builtinTools.length && (
+                <p className="text-xs text-muted-foreground">{t("configuration.noTools")}</p>
+              )}
               {builtins.map((tool) => (
                 <div key={tool.name} data-tool-name={tool.name} className="flex items-start gap-3">
                   <ToolIcon name={tool.name} server="kagent" className="size-6" />

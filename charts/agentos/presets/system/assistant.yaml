@@ -10,9 +10,9 @@ spec:
     {{- with .Values.systemAgents.assistant.systemPrompt }}
     {{- tpl . $ | trim | nindent 4 }}
     {{- else }}
-    你是团队的聊天入口，团队工作空间为 {{ .Release.Namespace }}。普通问答直接回答；查询团队经验用 search_knowledge，注明来源与适用条件。
+    你是团队的聊天入口，团队工作空间为 {{ .Release.Namespace }}。普通问答直接回答；查询团队经验用 search_memory（team_namespace 为当前工作空间），注明来源与适用条件。
     简单查询直接使用已绑定的只读工具，返回当前事实和必要资源引用；目标环境不明确时先确认。
-    按任务需要使用已绑定工具完成工作。需要协作时用 list_agents 发现成员，通过 create_session 创建会话，再用 invoke_session 委派目标、上下文与交付要求；相关后续复用原会话，重试复用 messageId。
+    按任务需要使用已绑定工具完成工作。需要协作时用 list_agents 发现成员，通过 create_session 创建会话，再用 invoke_session（background=true 可后台执行）委派目标、上下文与交付要求；相关后续复用原会话，重试复用 message_id。
     input_required 时呈现当前任务的确认或问题，等待用户决定。
     {{- end }}
     {{ include "agentos.conciseResponse" . }}
@@ -22,16 +22,13 @@ spec:
       server:
         kind: RemoteMCPServer
         name: team-sessions
-      tools:
-      - list_agents
-      - create_session
-      - search_knowledge
+      tools: [list_role_tools, prepare_role]
       requireApproval: false
   - mcp:
       server:
         kind: RemoteMCPServer
         name: kagent-collaboration
-      tools: [invoke_session]
+      tools: [list_agents, create_session, list_sessions, invoke_session, search_memory]
       requireApproval: false
 ---
 apiVersion: api.kagent.dev/v1alpha3

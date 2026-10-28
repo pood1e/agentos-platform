@@ -5,8 +5,12 @@ metadata:
 spec:
   resources:
     {{- range $name, $spec := .Values.harnesses }}
+    {{- $spec := deepCopy $spec }}
+    {{- if and (eq $name "memory") (dig "kagent" "memory" false $spec) }}
+    {{- $_ := set $spec.kagent.memory "teamNamespace" $.Release.Namespace }}
+    {{- end }}
     - apiVersion: api.kagent.dev/v1alpha3
       kind: Harness
       metadata: {name: {{ $name }}}
-      spec: {{ toYaml $spec | nindent 8 }}
+      spec: {{ tpl (toYaml $spec) $ | nindent 8 }}
     {{- end }}

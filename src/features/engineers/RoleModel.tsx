@@ -8,26 +8,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
-import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
-import { compatibleModels } from "../management/runtime-models.js";
+import { languageModels } from "../management/runtime-models.js";
 import { editRole } from "./role-draft.js";
 
 export function RoleModel({
   role,
   models,
   onChange,
-  harness,
   disabled = false,
 }: {
   role: RoleDefinition;
   models: ModelConfig[];
   onChange: (role: RoleDefinition) => void;
-  harness?: Harness;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
-  const available = compatibleModels(harness, models);
+  const available = languageModels(models);
   const selected = role.modelConfig?.name ?? "";
   const value = available.some((model) => model.ref?.name === selected) ? selected : "";
   return (
@@ -56,7 +53,7 @@ export function RoleModel({
         </SelectContent>
       </Select>
       {available.length === 0 && (
-        <p className="text-xs text-destructive">{t("harness.noCompatibleModel")}</p>
+        <p className="text-xs text-destructive">{t("harness.noLanguageModel")}</p>
       )}
     </div>
   );

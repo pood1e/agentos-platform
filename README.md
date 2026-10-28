@@ -5,7 +5,7 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 
 - **控制台**：Agent 团队、聊天与执行历史、原生工具确认、MCP Apps。
 - **输入**：文本与可选的语音输入、朗读和实时通话。
-- **接入**：身份与执行授权、模型和 MCP 配置、团队知识与 Skill 目录。
+- **接入**：原生身份投影、模型和 MCP 配置、团队知识与 Skill 目录。
 
 ## 部署
 
@@ -14,15 +14,12 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 
 ## 开发
 
-工具版本由 [mise.toml](mise.toml) 与锁文件固定。数据库使用 PostgreSQL 18/pgvector。
+工具版本由 [mise.toml](mise.toml) 与锁文件固定。
 
 ```sh
 mise install --locked
-docker compose up --wait
-export CHANGE_TEST_DATABASE_URL='postgresql://postgres:agentos-dev@localhost:55432/agentos?sslmode=disable'
 mise exec -- npm ci
 mise exec -- npm run verify
-docker compose down
 ```
 
 `npm run verify` 执行生成、构建、静态检查与单元测试。
@@ -36,7 +33,7 @@ set +a
 mise exec -- npm run dev
 ```
 
-开发代理使用 `AGENTOS_API_TOKEN` 转发 API 请求。本地服务调试依赖 PostgreSQL、Kubernetes、OIDC 与运行时，进程入口见[代码导航](docs/code-navigation.md)，环境配置见 [api Deployment](charts/agentos/templates/api-deployment.yaml)及同目录模板。
+开发代理使用 `AGENTOS_API_TOKEN` 转发 API 请求。本地服务调试依赖 Kubernetes、OIDC 与原生运行时，进程入口见[代码导航](docs/code-navigation.md)，环境配置见 [api Deployment](charts/agentos/templates/api-deployment.yaml)及同目录模板。
 
 ## 文档
 

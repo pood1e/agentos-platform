@@ -1,1 +1,1 @@
-{{ include "agentos.platformDeployment" (dict "root" . "component" "dataplane" "env" (include "agentos.dataplaneEnv" .) "mounts" (include "agentos.dataplaneMounts" .) "volumes" (include "agentos.dataplaneVolumes" .) "ports" (list (dict "name" "guardrails" "containerPort" 9090) (dict "name" "runtime" "containerPort" 9091)) "annotations" (dict "checksum/tools" (include (print $.Template.BasePath "/execution-tools.yaml") . | sha256sum))) }}
+{{ include "agentos.platformDeployment" (dict "root" . "component" "dataplane" "env" (include "agentos.dataplaneEnv" .)) }}

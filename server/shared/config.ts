@@ -1,8 +1,6 @@
 export interface KagentConfig {
   url: string;
   namespace: string;
-  userId: string;
-  token?: string;
 }
 
 export function requiredEnv(name: string, env = process.env): string {
@@ -15,8 +13,6 @@ export function kagentConfig(env = process.env): KagentConfig {
   return {
     url: requiredEnv("KAGENT_URL", env),
     namespace: env.KAGENT_NAMESPACE ?? "agentos",
-    userId: env.KAGENT_USER_ID ?? "agentos",
-    token: env.KAGENT_TOKEN || undefined,
   };
 }
 

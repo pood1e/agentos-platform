@@ -96,12 +96,12 @@ it("discovers independent App services together before either metadata response 
 
 it("retains a completed delegated App even when the child has no text answer", async () => {
   const env = await mcpAppsEnvironment();
-  const child = env.fake.createSession(
+  const child = await env.fake.createChildSession(
+    env.session.id,
     { namespace: "agentos", name: "inspection" },
     "child-app",
-    "child",
   );
-  await env.registry.bind(child, env.owner, env.session);
+
   const childTask = clone(TaskSchema, env.task);
   childTask.id = "child-app-task";
   childTask.contextId = child.id;

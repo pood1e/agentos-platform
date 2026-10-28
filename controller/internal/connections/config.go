@@ -9,7 +9,7 @@ import (
 	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
 	"github.com/kagent-dev/kagent/go/integrations/agentgateway"
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
-	"github.com/pood1e/agentos-platform/controller/internal/compile"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	gw "sigs.k8s.io/gateway-api/apis/v1"
@@ -21,6 +21,10 @@ func Config(gateway platform.PlatformGateway) agentgateway.Config {
 		Gateway:  gw.ParentReference{Name: gw.ObjectName(gateway.Name), SectionName: ptr.To(gw.SectionName("http"))},
 		ModelURL: gateway.URL,
 		MCPURL:   gateway.MCPURL,
+		MCPPolicy: &agw.Traffic{Transformation: &agw.TransformationOrConditional{Conditional: []agw.TransformationConditional{{
+			Condition: "request.path != '/mcp/team-sessions'",
+			Policy:    agw.Transformation{Request: &agw.Transform{Remove: []agw.HeaderName{"authorization"}}},
+		}}}},
 		ModelTemplate: func(parent *agw.AgentgatewayModel) (*kagent.ModelConfig, error) {
 			model := &kagent.ModelConfig{}
 			if source := parent.Annotations["agentos.dev/model-config"]; source != "" {
@@ -28,13 +32,18 @@ func Config(gateway platform.PlatformGateway) agentgateway.Config {
 					return nil, err
 				}
 			}
-			model.Spec.APIKeySecret, model.Spec.APIKeySecretKey = gateway.ModelSecret, "placeholder"
-			model.Spec.TokenPassthrough = false
+			model.Spec.APIKeySecret, model.Spec.APIKeySecretKey = "", ""
+			model.Spec.TokenPassthrough = nil
+			model.Spec.ActorJWT = &kagent.ActorJWT{Audiences: []string{gateway.URL}}
 			purpose := parent.Annotations["agentos.dev/model-purpose"]
 			if purpose == "" {
 				purpose = "language"
 			}
 			model.Annotations = map[string]string{"agentos.dev/model-purpose": purpose}
+			if purpose == "embedding" {
+				model.Spec.ActorJWT = nil
+				model.Spec.TokenPassthrough = ptr.To(true)
+			}
 			if purpose != "embedding" && model.Spec.Provider != kagent.ModelProviderAnthropic {
 				if model.Spec.OpenAI == nil {
 					model.Spec.OpenAI = &kagent.OpenAIConfig{}
@@ -50,11 +59,12 @@ func Config(gateway platform.PlatformGateway) agentgateway.Config {
 			if description == "" {
 				description = parent.Name
 			}
-			return &kagent.RemoteMCPServer{
-				ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{"agentos.dev/discovery-auth": "kubernetes"}},
-				Spec:       kagent.RemoteMCPServerSpec{Description: description, Timeout: &metav1.Duration{Duration: 10 * time.Minute}},
-			}, nil
+			remote := &kagent.RemoteMCPServer{
+
+				Spec: kagent.RemoteMCPServerSpec{Description: description, Timeout: &metav1.Duration{Duration: 10 * time.Minute}, ActorJWT: &kagent.ActorJWT{Audiences: []string{gateway.MCPURL}}},
+			}
+			remote.Spec.DiscoveryAuth = &kagent.MCPDiscoveryAuth{ServiceAccount: &kagent.MCPDiscoveryServiceAccount{ServiceAccountRef: corev1.LocalObjectReference{Name: gateway.DiscoveryServiceAccount}, Audience: "agentos-mcp-discovery"}}
+			return remote, nil
 		},
-		MCPPolicy: compile.RuntimeTraffic(&gateway, gateway.MCPURL, ""),
 	}
 }

@@ -1,85 +1,62 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import type { FastifyInstance } from "fastify";
-import { decodeJwt } from "jose";
-import { actorTokenHeader } from "../authorization/actor.js";
-import { scopedCollaboration } from "../authorization/context.js";
-import { discoveryMethods } from "../authorization/mcp.js";
-import type { ExecutionRuntime } from "../authorization/runtime.js";
-import { executionPrincipal } from "../authorization/workload-principal.js";
-import type { WorkloadIdentity } from "../authorization/workloads.js";
-import { executionTools } from "../execution/tools.js";
+import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
+import { can } from "../../shared/permissions.js";
+import { userIdentity } from "../authorization/identity.js";
+import type { serviceAccountTokens } from "../authorization/workloads.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { knowledgeService } from "../knowledge/service.js";
-import type { TaskQueries } from "../read-model/queries.js";
-import type { KagentConfig } from "../shared/config.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { sessionTools } from "../team-sessions/tools.js";
 
+const discovery = new Set([
+  "initialize",
+  "notifications/initialized",
+  "ping",
+  "server/discover",
+  "tools/list",
+]);
+
 export async function registerPlatformMcp(
   app: FastifyInstance,
-  config: KagentConfig,
+  namespace: string,
   clients: KagentClients,
-  projection: TaskQueries,
-  execution: ExecutionRuntime,
-  workloads: WorkloadIdentity,
   access: BindingView,
-  knowledge: ReturnType<typeof knowledgeService>,
+  review: ReturnType<typeof serviceAccountTokens>,
+  controllerSubject: string,
 ) {
-  const tools = sessionTools(clients, config.namespace, access, knowledge);
-  await registerTeamSessions(app, tools, async (headers, method, tool) => {
-    const authorization = typeof headers.authorization === "string" ? headers.authorization : "";
-    const claims =
-      headers[actorTokenHeader] === undefined && /^Bearer [^\s,]+$/.test(authorization)
-        ? decodeJwt(authorization.slice(7))
-        : undefined;
-    const actorProof =
-      headers[actorTokenHeader] ?? (claims?.iss === execution.issuer ? authorization : undefined);
-    if (actorProof === undefined) {
-      if (workloads.config.executionSources.some((source) => source.issuer === claims?.iss)) {
-        const source = await workloads.execution(headers);
+  const identity = userIdentity(clients, "");
+  await registerTeamSessions(
+    app,
+    sessionTools(clients, namespace, access),
+    async (headers, method) => {
+      const authorization = headers.authorization;
+      if (typeof authorization !== "string")
+        throw new ConnectError("Authentication required", Code.Unauthenticated);
+      // Native egress supplies a verified initiator credential; the business API
+      // forwards that credential, while gateway Actor proofs stay at the gateway.
+      const native = new Headers({ authorization });
+      try {
+        const principal = await identity(native);
+        if (!can(principal, Capability.AGENTS_MANAGE))
+          throw new ConnectError("Permission denied", Code.PermissionDenied);
         return {
-          clientId: source.subject,
-          scopes: ["run_execution", "get_execution", "cancel_execution"],
-          handler: executionTools(
-            clients,
-            projection,
-            config.namespace,
-            execution.registry,
-            executionPrincipal(source),
-            source.agents,
-          ),
+          clientId: principal.subject,
+          scopes: ["list_role_tools", "prepare_role"],
+          headers: native,
+        };
+      } catch (error) {
+        if (!discovery.has(method) || ConnectError.from(error).code !== Code.Unauthenticated)
+          throw error;
+        const token = authorization.match(/^Bearer ([^\s,]+)$/)?.[1];
+        if (!token) throw error;
+        await review(token, "agentos-mcp-discovery", [controllerSubject]);
+        return {
+          clientId: controllerSubject,
+          scopes: ["list_role_tools", "prepare_role"],
+          headers: new Headers(),
         };
       }
-      await workloads.controller(headers, method);
-      return {
-        clientId: workloads.config.controllerSubject,
-        scopes: [
-          "list_agents",
-          "create_session",
-          "dispatch_session",
-          "list_role_tools",
-          "prepare_role",
-          "search_knowledge",
-        ],
-      };
-    }
-    const parent = await execution.actor(
-      { ...headers, [actorTokenHeader]: actorProof },
-      workloads.config.mcpAudience,
-    );
-    await execution.registry.resolve(parent);
-    const { role } = await execution.agentRole(parent);
-    const scopes = role.tools
-      .filter((binding) => binding.server === "team-sessions")
-      .flatMap((binding) => binding.tools);
-    if (!discoveryMethods.has(method)) {
-      if (!scopes.includes(tool)) throw new Error("Tool is outside the Agent's binding");
-      await execution.authorizeTools(parent, [tool]);
-    }
-    return {
-      clientId: parent.id,
-      scopes,
-      handler: scopedCollaboration(tools, parent, execution.registry),
-    };
-  });
+    },
+  );
 }

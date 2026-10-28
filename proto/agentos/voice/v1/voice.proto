@@ -11,7 +11,7 @@ service VoiceService {
   rpc GetVoiceSession(GetVoiceSessionRequest) returns (GetVoiceSessionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Sends a call turn; the first turn returns a ticket bound to its conversation.
+  // Sends a call turn to the ticket's bound native conversation.
   rpc SendVoiceTurn(SendVoiceTurnRequest) returns (SendVoiceTurnResponse);
   // Waits up to 20 seconds for the turn to settle.
   rpc GetVoiceAnswer(GetVoiceAnswerRequest) returns (GetVoiceAnswerResponse) {
@@ -37,8 +37,10 @@ message VoiceSession {
   }];
   string language_code = 4 [(buf.validate.field).string.pattern = "^([a-z]{2,3})?$"];
   string text = 5 [(buf.validate.field).string.max_len = 8000];
-  // Empty until a call's first turn creates its native session.
+  // Native conversation created before dispatching a call.
   string context_id = 6 [(buf.validate.field).string.max_len = 128];
+  // Bounded Session invocation credential, delivered only inside the worker ticket.
+  string native_session_credential = 7 [(buf.validate.field).string.max_len = 16384];
 }
 
 message GetVoiceSessionRequest {

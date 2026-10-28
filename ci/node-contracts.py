@@ -1,4 +1,4 @@
-"""Package public protobuf sources, generated clients, and shared policy utilities."""
+"""Package public protobuf sources, generated bindings, schemas, and role metadata."""
 
 import json
 import shutil
@@ -21,6 +21,7 @@ for directory in ("proto", "third_party"):
         destination = target / source.relative_to(root)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
+shutil.copytree(root / "gen/schema", target / "gen/schema")
 for name in ("LICENSE", "buf.lock"):
     shutil.copyfile(root / name, target / name)
 shutil.copyfile(root / "gen/authorization.json", target / "authorization.json")
@@ -35,48 +36,9 @@ package = {
         "./authorization.json": "./authorization.json",
         "./*": {"types": "./*.d.ts", "default": "./*.js"},
     },
-    "peerDependencies": {
-        name: "^" + manifest["dependencies"][name]
-        for name in (
-            "@kubernetes/client-node",
-            "@assistant-ui/react",
-            "@modelcontextprotocol/client",
-            "@modelcontextprotocol/core",
-            "@modelcontextprotocol/ext-apps",
-            "livekit-client",
-            "mdast-util-to-string",
-            "remark-gfm",
-            "remark-parse",
-            "strip-markdown",
-            "unified",
-        )
-    }
-    | {"react": "^18.0.0 || ^19.0.0"},
-    "peerDependenciesMeta": {
-        name: {"optional": True}
-        for name in (
-            "react",
-            "@kubernetes/client-node",
-            "@assistant-ui/react",
-            "@modelcontextprotocol/client",
-            "@modelcontextprotocol/core",
-            "@modelcontextprotocol/ext-apps",
-            "livekit-client",
-            "mdast-util-to-string",
-            "remark-gfm",
-            "remark-parse",
-            "strip-markdown",
-            "unified",
-        )
-    },
     "dependencies": {
         name: manifest["dependencies"][name]
-        for name in (
-            "@bufbuild/protobuf",
-            "@connectrpc/connect",
-            "yaml",
-            "canonicalize",
-        )
+        for name in ("@bufbuild/protobuf", "@connectrpc/connect")
     },
 }
 (target / "package.json").write_text(json.dumps(package, indent=2) + "\n")
