@@ -15,7 +15,7 @@ flowchart LR
         Controller[平台控制器]
         API & Dataplane --> PG[(平台状态 · PostgreSQL)]
     end
-    Web -.->|OIDC| Identity[内置或站点身份源]
+    Web -.->|OIDC| Identity[站点身份源]
     API & Dataplane -->|原生 API| Runtime[kagent / Agent Substrate]
     API -->|资源声明| K8s[Kubernetes API]
     Controller -->|编译与资源收敛| K8s
@@ -34,7 +34,6 @@ flowchart LR
 | api | 控制台与管理 RPC、离线委派、环境 API 中转、方案包资源与语音会话 |
 | dataplane | 网关鉴权、ExtMCP、TaskStore / Memory 接入、协作 MCP 与 Actor 公钥转发 |
 | web | React 控制台、oauth2-proxy 登录会话与 MCP App 沙箱页 |
-| identity | 密码模式的 oidc-provider 身份源 |
 | 平台控制器 | 编译 AccessPlan、维护 Preset，加载 kagent 可选模块收敛模型与 MCP 连接 |
 | agentgateway | 使用官方 Chart，承载模型与 MCP 路由、身份映射和 ExtMCP |
 | Agent 运行时 | kagent 与 Agent Substrate，提供执行、原生状态、HITL 和协作 API |

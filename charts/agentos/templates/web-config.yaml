@@ -1,5 +1,4 @@
 {{- $name := include "agentos.name" . -}}
-{{- $identity := include "agentos.identity" . | fromJson -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,12 +27,12 @@ data:
     providers:
       - id: agentos
         provider: oidc
-        clientID: {{ $identity.clientId | quote }}
+        clientID: {{ .Values.identity.clientId | quote }}
         clientSecretFile: /etc/oauth2-proxy/client-secret
         code_challenge_method: S256
         scope: openid
         oidcConfig:
-          issuerURL: {{ $identity.issuer | quote }}
+          issuerURL: {{ .Values.identity.issuer | quote }}
           emailClaim: sub
           userIDClaim: sub
           insecureSkipNonce: false

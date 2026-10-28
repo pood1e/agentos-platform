@@ -65,7 +65,7 @@
               - podSelector:
                   matchLabels: {app.kubernetes.io/name: agentos}
                   matchExpressions:
-                    - {key: app.kubernetes.io/component, operator: In, values: [api, dataplane, identity]}
+                    - {key: app.kubernetes.io/component, operator: In, values: [api, dataplane]}
               - namespaceSelector:
                   matchLabels: {kubernetes.io/metadata.name: ate-system}
                 podSelector:

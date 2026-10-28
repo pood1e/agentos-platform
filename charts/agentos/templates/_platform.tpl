@@ -20,7 +20,7 @@ app.kubernetes.io/component: {{ .component }}
 
 {{- define "agentos.platformEnv" -}}
 {{- $root := .root -}}
-{{- $identity := include "agentos.identity" $root | fromJson -}}
+{{- $identity := $root.Values.identity -}}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
 - {name: AGENTOS_WORKLOAD_AUTH_CONFIG, value: /etc/agentos/workloads.json}
@@ -34,11 +34,7 @@ app.kubernetes.io/component: {{ .component }}
 - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" $identity.writerRole | quote }}}
 - name: AGENTOS_OIDC_CLIENT_SECRET
   valueFrom:
-    secretKeyRef: {name: {{ $identity.secret }}, key: client-secret}
-{{- if eq $root.Values.identity.mode "password" }}
-# Environment identity providers trust only the platform's service identities in password mode.
-- {name: AGENTOS_USER_TOKEN_EXCHANGE, value: 'false'}
-{{- end }}
+    secretKeyRef: {name: {{ $identity.secretRef }}, key: client-secret}
 {{- if $root.Values.global.agentos.environments }}
 - {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
 - {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}
@@ -51,7 +47,6 @@ app.kubernetes.io/component: {{ .component }}
 
 {{- define "agentos.knowledgeEnv" -}}
 - {name: AGENTOS_GATEWAY_URL, value: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace | quote }}}
-- {name: AGENTOS_EMBEDDING_MODEL, value: {{ .Values.embedding.model | quote }}}
 - {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
 - {name: AGENTOS_MODEL_TOKEN_FILE, value: /var/run/agentos-model/token}
 {{- end -}}

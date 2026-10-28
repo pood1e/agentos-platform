@@ -29,6 +29,11 @@ tests:
     route.parentRefs: []
   asserts:
   - failedTemplate: {}
+- it: requires the site identity provider
+  set:
+    identity.issuer: ''
+  asserts:
+  - failedTemplate: {}
 - it: rejects return origins outside HTTPS
   set:
     identity.returnOrigins: [http://controller.example.test]

@@ -28,15 +28,8 @@ export function environmentCredentials(config: KubeConfig, namespace: string): C
   };
 }
 
-/**
- * Callers resolve execution revocation and route ownership before requesting a token.
- * Without user token exchange, environments only trust the platform's service identities.
- */
-export function environmentTokens(
-  config: GovernanceConfig,
-  credentials: Credentials,
-  exchange = true,
-) {
+/** Callers resolve execution revocation and route ownership before requesting a token. */
+export function environmentTokens(config: GovernanceConfig, credentials: Credentials) {
   const connections = new Map(config.environments.map((item) => [item.environment?.name, item]));
   const clients = new LRUCache<string, Promise<oidc.Configuration>>({ max: 128, ttl: 60_000 });
   const tokens = new LRUCache<string, { token: string; expires: number }>({ max: 512 });
@@ -45,8 +38,7 @@ export function environmentTokens(
   return async (environment: string, identity: string, initiator?: ExecutionIdentity) => {
     const connection = connections.get(environment);
     if (!connection || !identity) throw new Error("Environment identity is unavailable");
-    const subject =
-      exchange && initiator?.credential.case === "accessToken" ? initiator.credential.value : "";
+    const subject = initiator?.credential.case === "accessToken" ? initiator.credential.value : "";
     const key = JSON.stringify([
       environment,
       identity,

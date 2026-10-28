@@ -16,7 +16,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `server/apps` | api、dataplane、identity 入口与可选遥测初始化 |
+| `server/apps` | api、dataplane 入口与可选遥测初始化 |
 | `server/console` | 控制台 RPC、原生 HITL 回复、方案包与角色管理 |
 | `server/authorization` | 用户与工作负载认证、离线委派、执行绑定、凭据和逐调用授权 |
 | `server/execution` | 可选外部执行 MCP、来源身份与分页结果 |
@@ -27,7 +27,6 @@
 | `server/team-sessions` | 协作会话 MCP 与角色起草 |
 | `server/mcp-apps` | 模板读取、视图投影与当前查看者的工具回调 |
 | `server/platform` | 网关与 MCP 接线、gRPC 生命周期、访问上下文和环境 API 中转 |
-| `server/identity` | 内置密码身份源 |
 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
 | `server/shared`、`shared` | 服务端基础设施与前后端共享代码 |
 

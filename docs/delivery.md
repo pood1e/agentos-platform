@@ -48,6 +48,7 @@ ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/va
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` / `cloudflare_token_file` | DNS 与 ACME 凭据 |
 | `model_key_file` | 首次创建 `model-credentials` 的模型 API Key |
+| `identity_client_secret_file` | 站点 OIDC 机密客户端密钥，写入 `identity.secretRef` |
 | `skill_repository_credential_file` | 可选 JSON，含只读 Git 仓库 `Authorization` 请求头 |
 | `registry_config_file` | Docker JSON，用于制品下载、验签与镜像拉取 |
 
@@ -67,12 +68,10 @@ route:
 参考部署启用 K3s Traefik 的 Gateway API，创建 `agentos-public` 与域名证书。
 web 通过 oauth2-proxy 管理登录会话，向 API 注入访问令牌；CLI 等客户端直接以 Bearer 访问 API。
 
-默认 `identity.mode: password` 部署内置身份源，共享主体使用 `identity.secretRef` 的 `password`。
-参考部署首次创建站点密码、`<release>-identity-keys`、`<release>-sessions`，升级复用 Secret。外部 OIDC 配置：
+身份源由站点提供，平台只接入 OIDC：
 
 ```yaml
 identity:
-  mode: oidc
   issuer: https://identity.example.com/realms/operations
   clientId: agentos-console
   audience: agentos-platform
@@ -81,13 +80,39 @@ identity:
   returnOrigins: [https://controller.example.com]
 ```
 
-机密客户端登记 `https://<console>/oauth2/callback` 与 `https://<api>/delegation/callback`，Secret 提供 `client-secret`。
+机密客户端登记 `https://<console>/oauth2/callback` 与 `https://<api>/delegation/callback`，支持授权码、PKCE 与 `offline_access`。
+访问令牌的 `aud` 包含 `audience`，`roles` 声明携带 `writerRole` 与应用角色；`identity.secretRef` 的 `client-secret` 保存客户端密钥。
+参考部署由 `identity_client_secret_file` 创建该 Secret，并首次生成 `<release>-sessions`，升级复用。
 `returnOrigins` 登记 console 之外的委派返回源。console 自动发起离线授权，其他客户端使用 `GetAccessProfile.delegation_url`。
 应用角色映射由发布包 `authorization.json` 描述，权限和凭据生命周期见[执行授权](execution-authorization.md)。
 
 站点创建 `execution.keySecret`（默认 `agentos-execution`），`key` 为 Base64 编码的 32 字节密钥。
 执行数据库、加密密钥、身份和会话 Secret 一并备份。
 api 与 dataplane 使用同一镜像及独立 ServiceAccount / NetworkPolicy；dataplane 至少两副本并配置 PDB。
+
+## 模型连接
+
+`gateway.models` 声明预置模型连接，`modelConfig.spec` 提供默认对话模型参数。
+团队知识与 `memory` Harness 使用站点提供的 `knowledge-embedding` 嵌入连接，模型需支持 768 维输出。
+覆盖列表时保留 `default-model-config`：
+
+```yaml
+gateway:
+  models:
+    - name: default-model-config
+      spec:
+        provider: OpenAI
+        match: {model: gpt-6.1-sol}
+        baseURL: https://api.openai.com/v1
+        policies: {auth: {secretRef: {name: model-credentials, key: api-key}}}
+    - name: knowledge-embedding
+      spec:
+        provider: Ollama
+        match: {model: embeddinggemma:300m}
+        baseURL: http://embedding.example.internal:11434/v1
+```
+
+未配置嵌入连接时团队知识与记忆不可用。更换嵌入模型后，已有知识需清空后重新写入。
 
 ## 方案 Harness
 
@@ -121,7 +146,7 @@ telemetry:
 
 本地或镜像直启使用 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT`，协议为 `grpc` 或 `http/protobuf`。
 `OTEL_SDK_DISABLED=true` / `OTEL_METRICS_EXPORTER=none` 关闭采集；默认导出超时 1 秒，可用 `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 调整毫秒值。
-指标覆盖 HTTP / RPC 时延和进程资源，服务名为 `agentos-api`、`agentos-dataplane`、`agentos-identity`。
+指标覆盖 HTTP / RPC 时延和进程资源，服务名为 `agentos-api` 与 `agentos-dataplane`。
 
 kagent 使用原生 `TelemetryConfig`，站点变量 `kagent_telemetry` 应用于控制面和运行时默认值：
 

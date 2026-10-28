@@ -61,4 +61,9 @@ agentos:
     hosts: {console: agentos.example.test, api: api.agentos.example.test, sandbox: ''}
   web:
     image: registry.example.com/agentos/web@sha256:1111111111111111111111111111111111111111111111111111111111111111
+  identity:
+    issuer: https://identity.example.test/realms/operations
+    clientId: agentos-console
+    audience: agentos-platform
+    writerRole: operator
   execution: {}

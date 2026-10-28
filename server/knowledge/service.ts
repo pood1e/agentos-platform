@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { Code, ConnectError } from "@connectrpc/connect";
 import OpenAI, { type ClientOptions } from "openai";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import type {
   MemoryServiceListRequest,
   SessionMemoryInput,
 } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { type KagentClients, pool } from "../kagent/clients.js";
-import { millis } from "../read-model/decode/messages.js";
+import { millis, object, text } from "../read-model/decode/messages.js";
 import { type PageRequest, pageOf } from "../read-model/page.js";
 import type { KagentConfig } from "../shared/config.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
@@ -14,7 +15,8 @@ import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 export interface KnowledgeConfig {
   url: string;
   token: NonNullable<ClientOptions["apiKey"]>;
-  model: string;
+  /** Site-provided embedding connection, converged into a native ModelConfig. */
+  model: Pick<ResourceReference, "namespace" | "name">;
   scope: Pick<MemoryServiceListRequest, "agentName"> &
     Pick<SessionMemoryInput, "ttlDays"> &
     Pick<KagentConfig, "userId">;
@@ -39,8 +41,14 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
   async function vector(input: string) {
     if (!input.trim()) throw invalid("management.invalid");
     try {
+      const { modelConfig } = await clients.models.getModelConfig(
+        { ref: config.model },
+        { timeoutMs: 5_000 },
+      );
+      const model = text(object(modelConfig?.resource?.value?.spec).model);
+      if (!model) throw new Error("Embedding model is not configured");
       const response = await embedding.embeddings.create({
-        model: config.model,
+        model,
         input,
         encoding_format: "float",
         dimensions: 768,

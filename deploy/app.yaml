@@ -6,7 +6,7 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     site_identity: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('identity', {}) }}"
-    site_password_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"
+    site_identity_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"
     site_application_name: "{{ app_release_name[:44] | regex_replace('-$', '') }}"
   module_defaults:
     kubernetes.core.k8s:
@@ -28,13 +28,28 @@
       when: skill_repository_credential_file | length > 0
       no_log: true
 
+    - name: Configure the identity client secret
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata: {name: "{{ site_identity_secret }}", namespace: "{{ agentos_namespace }}"}
+          type: Opaque
+          stringData:
+            client-secret: "{{ lookup('file', identity_client_secret_file) | trim }}"
+      when: identity_client_secret_file | length > 0
+      no_log: true
+
     - name: Discover application credentials
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
         name: "{{ item }}"
         namespace: "{{ agentos_namespace }}"
-      loop: [model-credentials, "{{ app_values.get('agentos', app_values).get('execution', {}).get('keySecret', 'agentos-execution') }}"]
+      loop:
+        - model-credentials
+        - "{{ site_identity_secret }}"
+        - "{{ app_values.get('agentos', app_values).get('execution', {}).get('keySecret', 'agentos-execution') }}"
       register: application_credentials
       no_log: true
 
@@ -44,7 +59,7 @@
       loop: "{{ application_credentials.results }}"
       no_log: true
 
-    - name: Provision site authentication credentials
+    - name: Provision browser session credentials
       ansible.builtin.include_tasks: tasks/site-credentials.yaml
 
     - name: Write application Helm values

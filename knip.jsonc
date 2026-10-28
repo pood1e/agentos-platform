@@ -6,7 +6,6 @@
     "server/apps/*.ts",
     "contracts/*.{ts,mjs}",
     "tests/proofs/*.ts",
-    "charts/agentos/files/*.mjs",
     "shared/digest.ts"
   ],
   "ignoreDependencies": ["@bufbuild/protoc-gen-es"],

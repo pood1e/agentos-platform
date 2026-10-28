@@ -6,7 +6,6 @@ route:
 web:
   image: registry.example.com/agentos/web@sha256:1111111111111111111111111111111111111111111111111111111111111111
 identity:
-  mode: oidc
   issuer: https://identity.example.test/realms/operations
   clientId: agentos-console
   audience: agentos-platform

@@ -11,10 +11,6 @@ spec:
   hostnames: [{{ $hosts.console | quote }}]
   rules:
     - backendRefs: [{name: {{ $name }}-web, port: 4180}]
-    {{- if eq .Values.identity.mode "password" }}
-    - matches: [{path: {type: PathPrefix, value: /identity}}]
-      backendRefs: [{name: {{ $name }}-identity, port: 8080}]
-    {{- end }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
