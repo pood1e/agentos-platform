@@ -319,6 +319,8 @@ message ADKMemoryConfig {
     lte: 106751
   }];
   ADKEmbeddingConfig embedding = 2;
+  // Team collection in the Agent's namespace; empty selects personal memory.
+  string team_namespace = 3;
 }
 message ADKNetworkConfig {
   repeated string allowed_domains = 1;

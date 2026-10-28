@@ -1,3 +1,4 @@
+import { TaskRelation } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type AgentInfo, type SessionInfo, systemRoles } from "./agents.js";
 import type { CallEntry } from "./calls.js";
 import type { TaskEntry } from "./entry.js";
@@ -6,7 +7,7 @@ export interface Relations {
   /** Child task per `${taskId}:${callId}` delegation call. */
   targets: Map<string, string>;
   parents: Map<string, string>;
-  /** Explicit task references and delegation calls, excluding chronological session grouping. */
+  /** Native causal relationships, independent of model-produced tool results. */
   causalParents: Map<string, string>;
   continuations: Map<string, string[]>;
   resumed: Set<string>;
@@ -88,44 +89,28 @@ export class TaskGraph {
     const parents = new Map<string, string>();
     const continuations = new Map<string, string[]>();
     const resumed = new Set<string>();
-    const operational = new Set<string>();
-    const append = (map: Map<string, string[]>, key: string, id: string) =>
-      map.set(key, [...(map.get(key) ?? []), id]);
     for (const entry of this.entries.values()) {
-      const operation = !systemRoles.has(this.roleOf(entry.agentId));
+      const execution = entry.execution;
+      if (execution?.parent && this.entries.has(execution.parent.taskId)) {
+        parents.set(entry.id, execution.parent.taskId);
+        if (execution.relation === TaskRelation.CONTINUATION) {
+          const id = execution.parent.taskId;
+          continuations.set(id, [...(continuations.get(id) ?? []), entry.id]);
+        }
+      }
+      if (execution?.resumedTask) resumed.add(execution.resumedTask.taskId);
       for (const call of entry.calls) {
         const child = this.resolve(call);
-        if (!child) continue;
-        targets.set(callKey(entry.id, call.id), child);
-        if (!parents.has(child)) parents.set(child, entry.id);
-        if (operation) operational.add(child);
+        if (child && this.entry(child)?.execution?.parent?.taskId === entry.id)
+          targets.set(callKey(entry.id, call.id), child);
       }
-      if (entry.parentTaskId) {
-        append(continuations, entry.parentTaskId, entry.id);
-        parents.set(entry.id, entry.parentTaskId);
-      }
-      if (entry.resumedTaskId) resumed.add(entry.resumedTaskId);
     }
     const causalParents = new Map(parents);
-    for (const entries of this.contexts.values()) {
-      const rounds = entries
-        .filter((entry) => this.agent(entry.agentId)?.sessionTasks)
-        .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0) || a.id.localeCompare(b.id));
-      for (let position = 1; position < rounds.length; position++) {
-        const entry = rounds[position];
-        const previous = rounds[position - 1];
-        if (!entry || !previous || entry.parentTaskId) continue;
-        append(continuations, previous.id, entry.id);
-        parents.set(entry.id, previous.id);
-        operational.add(entry.id);
-      }
-    }
-    const roots = [...this.entries.values()].filter(
-      (entry) =>
-        !systemRoles.has(this.roleOf(entry.agentId)) &&
-        !operational.has(entry.id) &&
-        !entry.parentTaskId,
-    );
+    const roots = [...this.entries.values()].filter((entry) => {
+      if (systemRoles.has(this.roleOf(entry.agentId))) return false;
+      const parent = this.entry(parents.get(entry.id) ?? "");
+      return !parent || systemRoles.has(this.roleOf(parent.agentId));
+    });
     return { targets, parents, causalParents, continuations, resumed, roots };
   }
 }

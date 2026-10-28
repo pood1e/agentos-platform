@@ -201,13 +201,29 @@ describe("native gateway connections", () => {
       create: true,
     });
     const backend = saved?.resource?.value ?? {};
-    expect(object(object(object(backend.spec).policies).mcp).guardrails).toMatchObject({
-      processors: [{ remote: { failureMode: "FailClosed" } }],
-    });
+    const policies = object(object(backend.spec).policies);
+    expect(object(policies.mcp).authorization).toBeUndefined();
+    expect(object(object(policies.transformation).request).remove).toEqual([
+      "x-substrate-actor-token",
+      "cookie",
+      "x-forwarded-access-token",
+    ]);
     expect(object(object(backend.spec).mcp).prefixMode).toBe("Never");
     expect(object(object(backend.spec).mcp).targets).toMatchObject([
       { static: { policies: { http: { requestTimeout: "10m" } } } },
     ]);
+    if (!saved?.resource) throw new Error("Connection resource missing");
+    const supplied = structuredClone(backend);
+    object(supplied.spec).policies = {
+      ...policies,
+      mcp: { authorization: { action: "Allow" } },
+    };
+    const { connection: updated } = await client.saveConnection({
+      connection: { ...saved, resource: { ...saved.resource, value: supplied } },
+    });
+    expect(
+      object(object(object(updated?.resource?.value?.spec).policies).mcp).authorization,
+    ).toBeUndefined();
     await expect(env.store.get("remoteMCPs", "new-mcp")).rejects.toMatchObject({
       code: Code.NotFound,
     });
@@ -217,7 +233,7 @@ describe("native gateway connections", () => {
     await client.deleteConnection({
       kind: ConnectionKind.MCP,
       name: "new-mcp",
-      resourceVersion: text(object(backend.metadata).resourceVersion),
+      resourceVersion: text(object(updated?.resource?.value?.metadata).resourceVersion),
     });
     await expect(env.store.get("remoteMCPs", "new-mcp")).rejects.toMatchObject({
       code: Code.NotFound,
@@ -292,7 +308,7 @@ describe("native knowledge memory", () => {
     const first = await client.addKnowledge({ content: "Selected knowledge" });
     const kept = await client.addKnowledge({ content: "Retained knowledge" });
     const foreign = await env.clients.memory.addSession({
-      managementAgent: "private",
+      scope: { target: { case: "agentName", value: "agentos/private" } },
       memory: { content: "Other scope" },
     });
     await expect(client.deleteKnowledge({ id: foreign.id })).rejects.toMatchObject({
@@ -320,21 +336,20 @@ describe("native knowledge memory", () => {
     expect(clear).not.toHaveBeenCalled();
     expect((await client.listKnowledge({})).totalSize).toBe(1);
   });
-  it("embeds through the authenticated gateway and manages only the shared team knowledge", async () => {
+  it("sends plain content to the native team scope and isolates personal memory", async () => {
     const { id } = await client.addKnowledge({
       content: "Drain a node only after approval.",
     });
     const record = env.fake.memory.records.get(id);
     expect(record).toMatchObject({
-      agentName: "agentos/knowledge",
-      userId: "agentos",
+      scope: "team:agentos",
       input: { ttlDays: 3650 },
     });
-    expect(record?.input.vector).toHaveLength(768);
+    expect(record?.input.vector).toEqual([]);
     expect((await client.searchKnowledge({ query: "node drain" })).memories[0]?.id).toBe(id);
     expect((await client.listKnowledge({})).memories[0]?.accessCount).toBe(1n);
     await env.clients.memory.addSession({
-      managementAgent: "private",
+      scope: { target: { case: "agentName", value: "agentos/private" } },
       memory: { content: "Private memory" },
     });
     expect((await client.listKnowledge({})).totalSize).toBe(1);

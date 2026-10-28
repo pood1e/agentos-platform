@@ -9,17 +9,17 @@ import { signingKey } from "./fixtures/voice.js";
 it("validates the room, signature, workspace, mode and lifetime of every voice ticket", async () => {
   const api = voiceTickets(signingKey, "agentos");
   const issued = await api.create({
+    id: randomUUID(),
     subject: "alice",
     mode: VoiceMode.CALL,
     languageCode: "zh",
     text: "",
-    contextId: "",
+    contextId: randomUUID(),
+    nativeSessionCredential: "kagent-session.fixture",
   });
   const ticket = await api.verify(issued.id, issued.token);
   expect(ticket.session).toMatchObject({ id: issued.id, subject: "alice", mode: VoiceMode.CALL });
-  const bound = await api.bind(ticket, "native-conversation");
-  expect((await api.verify(issued.id, bound)).session.contextId).toBe("native-conversation");
-  expect(decodeJwt(bound).exp).toBe(decodeJwt(issued.token).exp);
+  expect(ticket.session.nativeSessionCredential).toBe("kagent-session.fixture");
   const denied = { code: Code.PermissionDenied };
   await expect(api.verify(randomUUID(), issued.token)).rejects.toMatchObject(denied);
   const parts = issued.token.split(".");
@@ -42,7 +42,7 @@ it("validates the room, signature, workspace, mode and lifetime of every voice t
   vi.useFakeTimers();
   try {
     vi.setSystemTime((ticket.expiresAt + 1) * 1000);
-    await expect(api.verify(issued.id, bound)).rejects.toMatchObject(denied);
+    await expect(api.verify(issued.id, issued.token)).rejects.toMatchObject(denied);
   } finally {
     vi.useRealTimers();
   }
@@ -53,6 +53,7 @@ it.each([VoiceMode.DICTATION, VoiceMode.READ_ALOUD])(
   async (mode) => {
     const api = voiceTickets(signingKey, "agentos");
     const issued = await api.create({
+      id: randomUUID(),
       subject: "alice",
       mode,
       languageCode: "",

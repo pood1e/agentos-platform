@@ -1,24 +1,20 @@
 import { type Interaction, InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
-import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { TaskQueries } from "../read-model/queries.js";
-
 export type AuthorizeTools = (session: Session, tools: string[]) => Promise<void>;
 
-/** Readable history is independent from current execution and approval authority. */
+/** Display permissions follow native authority; native A2A rechecks mutations. */
 export function interactionPermissions(
   projection: Pick<TaskQueries, "entry">,
   clients: KagentClients,
-  executions: Executions,
   authorizeTools?: AuthorizeTools,
 ) {
   const canOperate = async (contextId: string, subject: string) => {
     try {
-      const { session } = await clients.sessions.getSession({ sessionId: contextId });
-      if (!session) return false;
-      return (await executions.resolve(session)).binding.subject === subject;
+      const result = await clients.execution.getSessionAuthority({ sessionId: contextId });
+      return !result.revoked && result.authority?.initiatorId === subject;
     } catch {
       return false;
     }
@@ -35,8 +31,8 @@ export function interactionPermissions(
       try {
         const entry = await projection.entry(interaction.taskId);
         if (!entry || !(await canOperate(entry.contextId, subject))) continue;
-        const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
         if (authorizeTools) {
+          const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
           if (!session) continue;
           await authorizeTools(
             session,
@@ -44,9 +40,7 @@ export function interactionPermissions(
           );
         }
         interaction.approve = true;
-      } catch {
-        // A failed permission check preserves readable history.
-      }
+      } catch {}
     }
   };
   return { canOperate, approvalsFor };

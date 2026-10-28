@@ -47,19 +47,8 @@ deny contains sprintf("%s has an unsupported traffic policy target", [policy.met
 deny contains sprintf("%s exposes a non-internal MCP address", [remote.metadata.name]) if {
 	some remote in objects
 	remote.kind == "RemoteMCPServer"
+	remote.metadata.name != "kagent-collaboration"
 	not endswith(hostname(remote.spec.url), ".svc.cluster.local")
-}
-
-deny contains sprintf("%s bypasses the shared MCP gateway", [remote.metadata.name]) if {
-	some remote in objects
-	remote.kind == "RemoteMCPServer"
-	not contains(remote.spec.url, "agentos-mcp-gateway.")
-}
-
-deny contains sprintf("%s does not use bound Kubernetes discovery", [remote.metadata.name]) if {
-	some remote in objects
-	remote.kind == "RemoteMCPServer"
-	object.get(object.get(remote.metadata, "annotations", {}), "agentos.dev/discovery-auth", "") != "kubernetes"
 }
 
 deny contains sprintf("%s exposes static discovery headers", [remote.metadata.name]) if {
@@ -93,27 +82,6 @@ deny contains sprintf("%s lacks its ten-minute MCP transport budget", [backend.m
 	backend.kind == "AgentgatewayBackend"
 	some target in backend.spec.mcp.targets
 	object.get(object.get(target.static.policies, "http", {}), "requestTimeout", "") != "10m"
-}
-
-deny contains "native MCP session owner differs from the controller user" if {
-	some policy in objects
-	policy.metadata.name == "kagent-collaboration-tool-access"
-	some header in policy.spec.traffic.transformation.request.set
-	header.name == "x-user-id"
-	json.unmarshal(header.value) != api_environment.KAGENT_USER_ID.value
-}
-
-deny contains "missing native collaboration owner policy" if not resource_exists("AgentgatewayPolicy", "kagent-collaboration-tool-access")
-
-deny contains "workload model token is not read from the projected volume" if {
-	some environment in [api_environment, dataplane_environment]
-	environment.AGENTOS_MODEL_TOKEN_FILE.value != "/var/run/agentos-model/token"
-}
-
-deny contains "runtime origins must remain inside the cluster" if {
-	urls := array.concat([api_environment.AGENTOS_GATEWAY_URL.value, api_environment.AGENTOS_MCP_GATEWAY_URL.value], json.unmarshal(dataplane_environment.AGENTOS_ACTOR_AUDIENCES.value))
-	some url in urls
-	not endswith(hostname(url), ".svc.cluster.local")
 }
 
 deny contains "the API route does not target the platform HTTP service" if {
@@ -165,8 +133,8 @@ deny contains "speech credentials are projected into a platform process" if {
 
 deny contains sprintf("required %s environment %s is absent", [component, name]) if {
 	some component, names in {
-		"api": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_MODEL_TOKEN_FILE", "AGENTOS_SPEECH_SECRET"},
-		"dataplane": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_GATEWAY_URL", "AGENTOS_ACTOR_AUDIENCES", "AGENTOS_WORKLOAD_AUTH_CONFIG", "AGENTOS_MODEL_TOKEN_FILE"},
+		"api": {"AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_SPEECH_SECRET"},
+		"dataplane": {"KAGENT_URL", "AGENTOS_CONTROLLER_SUBJECT"},
 	}
 	some name in names
 	not environment_of(platform(component))[name]
@@ -187,18 +155,27 @@ disruption_budget(deployment) if {
 	budget.spec.maxUnavailable == 1
 }
 
-
-deny contains "native session owner headers must be unique" if {
-	some policy in objects
-	policy.metadata.name == "kagent-collaboration-tool-access"
-	headers := object.get(object.get(object.get(policy.spec.traffic, "transformation", {}), "request", {}), "set", [])
-	count([header | some header in headers; header.name == "x-user-id"]) != 1
+deny contains "native collaboration endpoint differs from the native control plane" if {
+	some remote in objects
+	remote.kind == "RemoteMCPServer"
+	remote.metadata.name == "kagent-collaboration"
+	remote.spec.url != concat("", [api_environment.KAGENT_URL.value, "/mcp"])
 }
 
-deny contains "an unrelated policy injects native session ownership" if {
-	some policy in objects
-	policy.kind == "AgentgatewayPolicy"
-	policy.metadata.name != "kagent-collaboration-tool-access"
-	some header in policy.spec.traffic.transformation.request.set
-	header.name == "x-user-id"
+deny contains sprintf("%s lacks native discovery credentials", [remote.metadata.name]) if {
+	some remote in objects
+	remote.kind == "RemoteMCPServer"
+	remote.metadata.name in {"team-sessions", "kagent-collaboration"}
+	not remote.spec.discoveryAuth.serviceAccount.audience
+}
+
+deny contains "platform process owns execution persistence or authority" if {
+	some workload in workloads
+	some entry in workload.spec.template.spec.containers[0].env
+	startswith(entry.name, "AGENTOS_EXECUTION_")
+}
+
+deny contains "business dataplane exposes a runtime proxy port" if {
+	some port in dataplane.spec.template.spec.containers[0].ports
+	port.containerPort != 8080
 }

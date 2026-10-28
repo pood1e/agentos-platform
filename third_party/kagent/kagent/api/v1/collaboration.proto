@@ -39,6 +39,13 @@ message InvokeSessionInput {
     (buf.validate.field).string.min_len = 1
   ];
   string message_id = 3 [json_name = "message_id"];
+  // Returns the admitted task while execution continues independently.
+  bool background = 4;
+  option (buf.validate.message).cel = {
+    id: "invocation.background_retry"
+    message: "background invocation requires message_id"
+    expression: "!this.background || this.message_id != ''"
+  };
 }
 
 message InvokeSessionOutput {

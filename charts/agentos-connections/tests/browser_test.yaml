@@ -86,6 +86,12 @@ tests:
       issuer: https://identity.example.test
       resource: https://environment.test/mcp
       tokenEndpointURL: https://identity.example.test/token
+      jwksURL: https://identity.example.test/keys
+      discoveryAuth:
+        oauth2:
+          tokenEndpoint: https://identity.example.test/token
+          clientId: agentos-catalog
+          clientSecretRef: {name: lab-catalog, key: client-secret}
       gateway: {address: 192.0.2.1, host: environment.test, nodePort: 31000}
       apis:
       - service: example.Service

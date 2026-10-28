@@ -31,6 +31,8 @@ message GetCurrentUserRequest {}
 
 message GetCurrentUserResponse {
   google.protobuf.Struct claims = 1;
+  // Opaque, provider-qualified identity used for Session ownership and delegation.
+  string principal_id = 2;
 }
 
 message ListNamespacesRequest {}

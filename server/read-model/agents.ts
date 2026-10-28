@@ -64,7 +64,9 @@ export interface SessionInfo {
   updatedAt?: number;
 }
 
-export const sessionInfo = (session: Session): SessionInfo => ({
+export const sessionInfo = (session: Session) => ({
+  root: session.authority?.rootSessionId || session.id,
+  subject: session.authority?.initiatorId || session.creator,
   id: session.id,
   agentId: agentKey(session.agent),
   name: session.name,

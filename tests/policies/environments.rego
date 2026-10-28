@@ -39,7 +39,25 @@ deny contains sprintf("%s must authenticate every upstream transport", [backend.
 	some backend in resources
 	backend.kind == "AgentgatewayBackend"
 	object.get(backend.metadata.labels, "agentos.dev/environment", "") != ""
-	object.get(backend.spec.policies, "extAuth", {}).failureMode != "FailClosed"
+	backend.metadata.labels["agentos.dev/engineer"]
+	not native_runtime_authentication(backend.metadata.name)
+}
+
+native_runtime_authentication(server) if {
+	some policy in resources
+	policy.kind == "AgentgatewayPolicy"
+	policy.metadata.name == sprintf("%s-runtime-auth", [server])
+	policy.spec.traffic.jwtAuthentication.mode == "Strict"
+	policy.spec.traffic.extAuth.failureMode == "FailClosed"
+	policy.spec.traffic.extAuth.backendRef.kind == "AgentgatewayBackend"
+}
+
+deny contains sprintf("%s lacks native runtime token exchange", [backend.metadata.name]) if {
+	some backend in resources
+	backend.kind == "AgentgatewayBackend"
+	backend.metadata.labels["agentos.dev/engineer"]
+	backend.metadata.labels["agentos.dev/environment"]
+	not backend.spec.mcp.targets[0].static.policies.auth.oauthTokenExchange
 }
 
 deny contains sprintf("%s trusts an unexpected environment TLS identity", [backend.metadata.name]) if {
@@ -47,7 +65,7 @@ deny contains sprintf("%s trusts an unexpected environment TLS identity", [backe
 	backend.kind == "AgentgatewayBackend"
 	some environment in data.environments
 	backend.metadata.labels["agentos.dev/environment"] == environment.name
-	backend.spec.policies.tls.verifySubjectAltNames != [environment.gateway.host]
+	backend.spec.mcp.targets[0].static.policies.tls.verifySubjectAltNames != [environment.gateway.host]
 }
 
 deny contains sprintf("%s exposes tools beyond its identity view", [backend.metadata.name]) if {
@@ -97,13 +115,10 @@ deny contains sprintf("%s contains an unresolved credential placeholder", [backe
 deny contains sprintf("%s advertises an origin outside its service audience", [remote.metadata.name]) if {
 	some remote in resources
 	remote.kind == "RemoteMCPServer"
-	some backend in resources
-	backend.kind == "AgentgatewayBackend"
-	backend.metadata.name == remote.metadata.name
-	source := backend.spec.mcp.targets[0].name
+	remote.spec.actorJwt
 	some policy in resources
 	policy.kind == "AgentgatewayPolicy"
-	policy.metadata.name == sprintf("%s-runtime-auth", [source])
+	policy.metadata.name == sprintf("%s-runtime-auth", [remote.metadata.name])
 	origin := regex.find_n("^https?://[^/]+", remote.spec.url, 1)[0]
 	not origin in policy.spec.traffic.jwtAuthentication.providers[0].audiences
 }

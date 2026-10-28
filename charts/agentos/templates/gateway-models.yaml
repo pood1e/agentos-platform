@@ -26,6 +26,8 @@ spec:
         {{- $_ := set $request "remove" (append ($request.remove | default list) "x-substrate-actor-token" | uniq) }}
         {{- $_ := set $headers "request" $request }}
         {{- $_ := set $policies "headers" $headers }}
+        {{- $require := printf "!('x-substrate-actor-token' in request.headers) || extauthz.models.exists(m, m.name == '%s')" .name }}
+        {{- $_ := set $policies "authorization" (dict "action" "Require" "policy" (dict "matchExpressions" (list $require))) }}
         {{- $_ := set $spec "policies" $policies }}
         {{- toYaml $spec | nindent 8 }}
     {{- end }}

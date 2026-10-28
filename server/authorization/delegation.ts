@@ -1,8 +1,7 @@
 import secureSession from "@fastify/secure-session";
 import type { FastifyInstance } from "fastify";
 import * as oidc from "openid-client";
-import type { Executions } from "./executions.js";
-import type { OfflineCredentials } from "./offline.js";
+import type { KagentClients } from "../kagent/clients.js";
 
 interface DelegationRequest {
   verifier: string;
@@ -28,8 +27,7 @@ export async function registerDelegation(
     returnOrigins: string[];
     client: oidc.Configuration;
     key: Buffer;
-    grants: OfflineCredentials;
-    executions: Executions;
+    clients: KagentClients;
   },
 ) {
   await app.register(secureSession, {
@@ -83,7 +81,14 @@ export async function registerDelegation(
           expectedNonce: pending.nonce,
         },
       );
-      await config.executions.remember(await config.grants.accept(tokens), true);
+      if (!tokens.refresh_token) throw new Error("Renewable delegation credential required");
+      await config.clients.execution.registerDelegationCredential(
+        { refreshToken: tokens.refresh_token },
+        {
+          headers: { authorization: `Bearer ${tokens.access_token}` },
+          timeoutMs: 30_000,
+        },
+      );
     } catch {
       return reply.code(401).send({ message: "Delegation failed" });
     }

@@ -28,9 +28,3 @@ export function can(
 export function isAdministrator(profile: { capabilities: readonly Capability[] } | undefined) {
   return allCapabilities.some((capability) => can(profile, capability));
 }
-
-export function intersectCapabilities(...ceilings: (readonly Capability[])[]) {
-  return (ceilings[0] ?? []).filter((capability) =>
-    ceilings.every((ceiling) => ceiling.includes(capability)),
-  );
-}

@@ -1,0 +1,16 @@
+{{- $endpoint := urlParse .Values.kagent.endpoint -}}
+{{- $address := regexFind "^\\[[^]]+\\]|^[^:]+" $endpoint.host | trimAll "[]" -}}
+{{- $port := regexFind ":[0-9]+$" $endpoint.host | trimPrefix ":" -}}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ include "agentos.name" . }}-native-authority
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+spec:
+  static:
+    host: {{ $address | quote }}
+    port: {{ if $port }}{{ $port | int }}{{ else }}{{ if eq $endpoint.scheme "https" }}443{{ else }}80{{ end }}{{ end }}
+  {{- if eq $endpoint.scheme "https" }}
+  policies:
+    tls: {sni: {{ $address | quote }}}
+  {{- end }}

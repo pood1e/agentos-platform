@@ -28,7 +28,7 @@ spec:
             matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: voice}
         {{- end }}
       ports: [{port: 8080, protocol: TCP}]
-    {{- if or .Values.execution.sources .Values.global.agentos.environments }}
+    {{- if .Values.global.agentos.environments }}
     - from: {{ toYaml .Values.route.from | nindent 8 }}
       ports: [{port: 8080, protocol: TCP}]
     {{- end }}

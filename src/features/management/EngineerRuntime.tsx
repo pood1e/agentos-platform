@@ -10,21 +10,18 @@ import type { AgentTemplate } from "../../../gen/kagent/api/v1/agent_templates_p
 import type { Agent } from "../../../gen/kagent/api/v1/agents_pb.js";
 import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
-import type { ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
-import { harnessToolsIssue } from "../../../shared/harness-model.js";
 import { useCapability } from "../../lib/access.js";
 import { RoleModel } from "../engineers/RoleModel.js";
 import { runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
 import { HarnessPicker } from "./HarnessPicker.js";
 import { Failure } from "./ResourcePage.js";
-import { compatibleModels, runtimeModel } from "./runtime-models.js";
+import { languageModels, runtimeModel } from "./runtime-models.js";
 
 export function EngineerRuntime({
   agent,
   harnesses,
   models,
-  servers,
   role,
   onApplied,
   active,
@@ -32,7 +29,6 @@ export function EngineerRuntime({
   agent: Agent;
   harnesses: Harness[];
   models: ModelConfig[];
-  servers: ToolServer[];
   role: RoleDefinition;
   onApplied: (template?: AgentTemplate) => void;
   active: boolean;
@@ -42,7 +38,13 @@ export function EngineerRuntime({
   const currentName = (agent: Agent) =>
     String(object(object(agent.resource?.value?.spec).harnessRef).name ?? "");
   const [selected, setSelected] = useState(() => currentName(agent));
-  const [selectedModel, setSelectedModel] = useState(role.modelConfig?.name ?? "");
+  const [selectedModel, setSelectedModel] = useState(
+    String(
+      object(object(agent.resource?.value?.spec).modelConfigRef).name ??
+        role.modelConfig?.name ??
+        "",
+    ),
+  );
   const precondition = (agent: Agent) => ({
     generation: BigInt(String(object(agent.resource?.value?.metadata).generation ?? 0)),
     expectedUid: String(object(agent.resource?.value?.metadata).uid ?? ""),
@@ -57,17 +59,18 @@ export function EngineerRuntime({
   const current = runtime.data?.agent ?? agent;
   const chosen = harnesses.find((item) => item.ref?.name === selected);
   const model = models.find((item) => item.ref?.name === selectedModel);
-  const compatible = !!model && compatibleModels(chosen, [model]).length === 1;
+  const compatible = !!model && languageModels([model]).length === 1;
   const template =
     runtime.data?.agentTemplate?.resource?.value?.spec ??
     object(object(current.resource?.value?.spec).template).inline;
   const changed =
     selected !== currentName(current) ||
-    selectedModel !== String(object(object(template).modelConfig).name ?? "");
-  const toolIssue =
-    chosen && template && compatible
-      ? harnessToolsIssue(chosen.runtime, object(template), current.ref?.namespace ?? "", servers)
-      : undefined;
+    selectedModel !==
+      String(
+        object(object(current.resource?.value?.spec).modelConfigRef).name ??
+          object(object(template).modelConfig).name ??
+          "",
+      );
   const conditions = object(current.resource?.value?.status).conditions;
   const issue = Array.isArray(conditions)
     ? conditions.find((item) => object(item).status === "False" && object(item).message)
@@ -96,13 +99,7 @@ export function EngineerRuntime({
         value={selected}
         onChange={(name) => {
           setSelected(name);
-          setSelectedModel(
-            runtimeModel(
-              harnesses.find((item) => item.ref?.name === name),
-              models,
-              selectedModel,
-            ),
-          );
+          setSelectedModel(runtimeModel(models, selectedModel));
           apply.reset();
         }}
         disabled={apply.isPending || !editable}
@@ -110,7 +107,6 @@ export function EngineerRuntime({
       <RoleModel
         role={{ ...role, modelConfig: model?.ref }}
         models={models}
-        harness={chosen}
         onChange={(next) => {
           setSelectedModel(next.modelConfig?.name ?? "");
           apply.reset();
@@ -130,7 +126,6 @@ export function EngineerRuntime({
         </dl>
       )}
       <p className="text-xs leading-5 text-muted-foreground">{t("harness.newSessions")}</p>
-      {toolIssue && <p className="text-xs leading-5 text-destructive">{t(toolIssue)}</p>}
       {issue !== undefined && (
         <p className="text-xs leading-5 text-destructive">{String(object(issue).message)}</p>
       )}
@@ -138,14 +133,7 @@ export function EngineerRuntime({
       {editable && (
         <Button
           onClick={() => void save()}
-          disabled={
-            apply.isPending ||
-            runtime.isPending ||
-            !chosen ||
-            !compatible ||
-            !!toolIssue ||
-            !changed
-          }
+          disabled={apply.isPending || runtime.isPending || !chosen || !compatible || !changed}
           className="w-full"
         >
           {apply.isPending ? <LoaderCircle className="animate-spin" /> : <Save />}

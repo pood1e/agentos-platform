@@ -45,7 +45,7 @@ describe("engineer Harness configuration concurrency", () => {
   });
 
   for (const change of ["status", "spec"] as const) {
-    it(`${change === "status" ? "retries a status update" : "rejects a configuration edit"} racing with the atomic write`, async () => {
+    it(`preserves a native ${change} conflict racing with the atomic write`, async () => {
       const edit = await request();
       const write = env.store.save.bind(env.store);
       let raced = false;
@@ -66,17 +66,10 @@ describe("engineer Harness configuration concurrency", () => {
         }
         return write(kind, value, create);
       });
-      if (change === "status") {
-        await client.setEngineerRuntime(edit);
-        expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
-          name: "codex",
-        });
-      } else {
-        await expect(client.setEngineerRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
-        expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
-          name: "memory",
-        });
-      }
+      await expect(client.setEngineerRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
+      expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
+        name: change === "status" ? "standard" : "memory",
+      });
     });
   }
 

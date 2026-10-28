@@ -21,6 +21,13 @@ writeFileSync("gen/schema/agentos.accessplan.json", `${JSON.stringify(schema)}\n
 
 const root = read("charts/agentos/values.schema.json");
 const properties = root.properties.global.properties.agentos.properties;
+root.properties.identity.properties.caCertificateRef = {
+  ...structuredClone(
+    spec.properties.environments.items.properties.discoveryAuth.properties.oauth2.properties
+      .caCertificateRef,
+  ),
+  additionalProperties: false,
+};
 for (const name of ["environments", "toolsets", "identities"])
   properties[name] = spec.properties[name];
 const controller = {
@@ -88,7 +95,14 @@ const { $schema, ...api } = apiBundle.$defs["agentos.governance.v1.EnvironmentAp
 delete api.patternProperties;
 const connectionEnvironment = structuredClone(environment);
 connectionEnvironment.additionalProperties = false;
-connectionEnvironment.required.push("issuer", "resource", "gateway", "tokenEndpointURL");
+connectionEnvironment.required.push(
+  "issuer",
+  "resource",
+  "gateway",
+  "tokenEndpointURL",
+  "jwksURL",
+  "discoveryAuth",
+);
 connectionEnvironment.properties.gateway.properties.ca = text;
 Object.assign(connectionEnvironment.properties, {
   apis: { type: "array", items: api },

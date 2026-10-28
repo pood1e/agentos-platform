@@ -7,7 +7,7 @@ import { ingest } from "../server/read-model/entry.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
 import { fixtureIds, fixtureState, fixtureTasks } from "./fixtures/kagent.js";
-import { bindTasks, environment } from "./harness.js";
+import { environment } from "./harness.js";
 
 describe("streamed task content", () => {
   it("retains visible assistant progress during tool calls and after the final reply without changing its message ID", async () => {
@@ -137,7 +137,6 @@ describe("streamed task content", () => {
       sessions: [...env.fake.sessions.values(), ...seeded.sessions],
       tasks: [...env.fake.tasks.values(), ...seeded.tasks],
     });
-    await bindTasks(env.store, env.fake, seeded.tasks);
     try {
       env.fake.fetched.length = 0;
       const entry = await env.projection.entry("synthetic-task-0");

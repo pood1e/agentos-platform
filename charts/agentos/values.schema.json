@@ -15,6 +15,106 @@
               "items": {
                 "description": "Environment declares one external environment's authorization boundary.",
                 "properties": {
+                  "discoveryAuth": {
+                    "description": "DiscoveryAuth authenticates the native controller catalog refresh.",
+                    "properties": {
+                      "oauth2": {
+                        "description": "MCPDiscoveryOAuth2 uses the OAuth 2.0 client credentials grant.",
+                        "properties": {
+                          "caCertificateRef": {
+                            "description": "CACertificateRef adds a PEM certificate bundle to system trust for the token endpoint.",
+                            "properties": {
+                              "key": {
+                                "description": "The key to select from the ConfigMap's Data field.\nKeys in the BinaryData field are not currently propagated to container env vars.",
+                                "type": "string"
+                              },
+                              "name": {
+                                "default": "",
+                                "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              },
+                              "optional": {
+                                "description": "Specify whether the ConfigMap or its key must be defined",
+                                "type": "boolean"
+                              }
+                            },
+                            "required": ["key"],
+                            "type": "object",
+                            "x-kubernetes-map-type": "atomic"
+                          },
+                          "clientId": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "clientSecretRef": {
+                            "description": "ClientSecretRef selects a same-namespace Secret.",
+                            "properties": {
+                              "key": {
+                                "description": "The key of the secret to select from.  Must be a valid secret key.",
+                                "type": "string"
+                              },
+                              "name": {
+                                "default": "",
+                                "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              },
+                              "optional": {
+                                "description": "Specify whether the Secret or its key must be defined",
+                                "type": "boolean"
+                              }
+                            },
+                            "required": ["key"],
+                            "type": "object",
+                            "x-kubernetes-map-type": "atomic"
+                          },
+                          "scopes": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "maxItems": 32,
+                            "type": "array"
+                          },
+                          "tokenEndpoint": {
+                            "pattern": "^https://[^/?#@]+[^#]*$",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["clientId", "clientSecretRef", "tokenEndpoint"],
+                        "type": "object"
+                      },
+                      "serviceAccount": {
+                        "description": "MCPDiscoveryServiceAccount requests a short-lived Kubernetes token.",
+                        "properties": {
+                          "audience": {
+                            "maxLength": 512,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "serviceAccountRef": {
+                            "description": "ServiceAccountRef selects a same-namespace ServiceAccount.",
+                            "properties": {
+                              "name": {
+                                "default": "",
+                                "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object",
+                            "x-kubernetes-map-type": "atomic"
+                          }
+                        },
+                        "required": ["audience", "serviceAccountRef"],
+                        "type": "object"
+                      }
+                    },
+                    "type": "object",
+                    "x-kubernetes-validations": [
+                      {
+                        "message": "exactly one of the fields in [oauth2 serviceAccount] must be set",
+                        "rule": "(has(self.oauth2)?1:0)+(has(self.serviceAccount)?1:0) == 1"
+                      }
+                    ]
+                  },
                   "gateway": {
                     "description": "EnvironmentGateway is the TLS gateway exposed by a connected environment.",
                     "properties": {
@@ -303,12 +403,11 @@
           "minLength": 1,
           "pattern": "^https?://"
         },
-        "userId": {
-          "type": "string",
-          "minLength": 1
+        "controllerSubject": {
+          "type": "string"
         }
       },
-      "required": ["endpoint", "userId"]
+      "required": ["endpoint"]
     },
     "api": {
       "type": "object",
@@ -520,74 +619,28 @@
             "type": "string",
             "pattern": "^https://[a-z0-9][a-z0-9.-]+(:[0-9]+)?$"
           }
-        }
-      }
-    },
-    "execution": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "databaseSecret",
-        "databaseCASecret",
-        "substrateURL",
-        "actorIssuer",
-        "actorJWKS"
-      ],
-      "properties": {
-        "databaseSecret": {
-          "type": "string",
-          "minLength": 1
         },
-        "databaseCASecret": {
-          "type": "string",
-          "minLength": 1
-        },
-        "substrateURL": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^https://"
-        },
-        "actorIssuer": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^https://"
-        },
-        "actorJWKS": {
-          "description": "Native AgentgatewayBackend spec for the Actor issuer HTTPS endpoint; CA references are in the release namespace.",
-          "type": "object",
-          "required": ["static", "policies"],
+        "caCertificateRef": {
+          "description": "CACertificateRef adds a PEM certificate bundle to system trust for the token endpoint.",
           "properties": {
-            "policies": {
-              "type": "object",
-              "required": ["tls"],
-              "properties": {
-                "tls": {
-                  "type": "object",
-                  "required": ["caCertificateRefs"],
-                  "not": {
-                    "required": ["insecureSkipVerify"]
-                  },
-                  "properties": {
-                    "caCertificateRefs": {
-                      "type": "array",
-                      "minItems": 1
-                    }
-                  }
-                }
-              }
+            "key": {
+              "description": "The key to select from the ConfigMap's Data field.\nKeys in the BinaryData field are not currently propagated to container env vars.",
+              "type": "string"
+            },
+            "name": {
+              "default": "",
+              "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "type": "string"
+            },
+            "optional": {
+              "description": "Specify whether the ConfigMap or its key must be defined",
+              "type": "boolean"
             }
-          }
-        },
-        "keySecret": {
-          "type": "string",
-          "minLength": 1
-        },
-        "sources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/agentos.authorization.v1.ExecutionSource.jsonschema.json"
           },
-          "maxItems": 32
+          "required": ["key"],
+          "type": "object",
+          "x-kubernetes-map-type": "atomic",
+          "additionalProperties": false
         }
       }
     },
@@ -770,6 +823,127 @@
     },
     "agentos-controller": {
       "type": "object"
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actorIssuer", "actorJWKS", "kubernetesIssuer", "kubernetesJWKS"],
+      "properties": {
+        "actorIssuer": {
+          "type": "string",
+          "format": "uri"
+        },
+        "actorJWKS": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["static", "policies"],
+          "properties": {
+            "static": {
+              "type": "object",
+              "required": ["host", "port"],
+              "properties": {
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              }
+            },
+            "policies": {
+              "type": "object",
+              "required": ["tls"],
+              "properties": {
+                "tls": {
+                  "type": "object",
+                  "required": ["sni", "caCertificateRefs"],
+                  "properties": {
+                    "sni": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "caCertificateRefs": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "verifySubjectAltNames": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "insecureSkipVerify": false
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "kubernetesIssuer": {
+          "type": "string",
+          "format": "uri"
+        },
+        "kubernetesJWKS": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["static", "policies"],
+          "properties": {
+            "static": {
+              "type": "object",
+              "required": ["host", "port"],
+              "properties": {
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              }
+            },
+            "policies": {
+              "type": "object",
+              "required": ["tls"],
+              "properties": {
+                "tls": {
+                  "type": "object",
+                  "required": ["sni", "caCertificateRefs"],
+                  "properties": {
+                    "sni": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "caCertificateRefs": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "verifySubjectAltNames": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "insecureSkipVerify": false
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [
@@ -790,7 +964,8 @@
     "pack",
     "voice",
     "web",
-    "identity"
+    "identity",
+    "runtime"
   ],
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$defs": {
@@ -922,6 +1097,12 @@
                   },
                   "type": "object",
                   "x-kubernetes-map-type": "atomic"
+                },
+                "teamNamespace": {
+                  "description": "TeamNamespace selects the namespace-scoped shared collection.\nRuntime authorization confines access to the Agent namespace.",
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                  "type": "string"
                 },
                 "ttlDays": {
                   "description": "TTLDays controls how many days a stored memory entry remains valid.",
@@ -1116,100 +1297,6 @@
           "required": ["endpoint", "voices"]
         }
       ]
-    },
-    "kagent.api.v1.ResourceReference.jsonschema.json": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "default": "",
-          "maxLength": 253,
-          "minLength": 1,
-          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
-          "type": "string"
-        },
-        "namespace": {
-          "default": "",
-          "maxLength": 63,
-          "minLength": 1,
-          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
-          "type": "string"
-        }
-      },
-      "title": "Resource Reference",
-      "type": "object"
-    },
-    "agentos.authorization.v1.ExecutionSource.jsonschema.json": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "description": "A registered client-credentials identity for external execution.",
-      "patternProperties": {
-        "^(client_id)$": {
-          "default": "",
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "properties": {
-        "agents": {
-          "items": {
-            "$ref": "#/$defs/kagent.api.v1.ResourceReference.jsonschema.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "audience": {
-          "default": "",
-          "minLength": 1,
-          "type": "string"
-        },
-        "capabilities": {
-          "items": {
-            "anyOf": [
-              {
-                "enum": [
-                  "CAPABILITY_UNSPECIFIED",
-                  "CAPABILITY_AGENTS_MANAGE",
-                  "CAPABILITY_SKILLS_MANAGE",
-                  "CAPABILITY_MCP_MANAGE",
-                  "CAPABILITY_KNOWLEDGE_MANAGE",
-                  "CAPABILITY_MODELS_MANAGE",
-                  "CAPABILITY_HARNESSES_MANAGE"
-                ],
-                "type": "string"
-              },
-              {
-                "maximum": 2147483647,
-                "minimum": -2147483648,
-                "type": "integer"
-              }
-            ],
-            "title": "Capability"
-          },
-          "type": "array"
-        },
-        "clientId": {
-          "default": "",
-          "minLength": 1,
-          "type": "string"
-        },
-        "issuer": {
-          "default": "",
-          "pattern": "^https://.*",
-          "type": "string"
-        },
-        "subject": {
-          "default": "",
-          "minLength": 1,
-          "type": "string"
-        },
-        "write": {
-          "default": false,
-          "type": "boolean"
-        }
-      },
-      "title": "Execution Source",
-      "type": "object"
     }
   }
 }

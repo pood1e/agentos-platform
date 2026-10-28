@@ -20,7 +20,6 @@ it("serves typed RPC errors and separates liveness from subscribed readiness", a
       namespace: "agentos",
       access: testBindings(env.fake),
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-      replaceTemplate: async (value) => env.fake.replaceTemplate(value),
     }),
   });
   let ready = true;

@@ -1,7 +1,6 @@
 package connections
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 )
 
 func TestModelSettings(t *testing.T) {
-	config := Config(platform.PlatformGateway{Name: "gateway", URL: "http://models.test:8080", ModelSecret: "gateway-credential"})
+	config := Config(platform.PlatformGateway{Name: "gateway", URL: "http://models.test:8080"})
 	source := &agw.AgentgatewayModel{
 		ObjectMeta: metav1.ObjectMeta{Name: "model", Namespace: "team", Annotations: map[string]string{
 			"agentos.dev/model-config": `{"provider":"OpenAI","openAI":{"temperature":"0.4"}}`,
@@ -31,7 +30,7 @@ func TestModelSettings(t *testing.T) {
 		model.Spec.OpenAI.Temperature != "0.4" || model.Spec.OpenAI.APIFormat == nil || *model.Spec.OpenAI.APIFormat != kagent.OpenAIAPIFormatResponses {
 		t.Fatalf("model settings lost: %+v", model.Spec)
 	}
-	if model.Spec.APIKeySecret != "gateway-credential" || model.Spec.APIKeySecretKey != "placeholder" || model.Spec.TokenPassthrough {
+	if model.Spec.APIKeySecret != "" || model.Spec.APIKeySecretKey != "" || model.Spec.TokenPassthrough != nil || model.Spec.ActorJWT == nil || model.Spec.ActorJWT.Audiences[0] != "http://models.test:8080" {
 		t.Fatalf("gateway credential settings lost: %+v", model.Spec)
 	}
 	source.Annotations["agentos.dev/model-purpose"] = "embedding"
@@ -39,7 +38,7 @@ func TestModelSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model.Annotations["agentos.dev/model-purpose"] != "embedding" || model.Spec.OpenAI.APIFormat != nil {
+	if model.Annotations["agentos.dev/model-purpose"] != "embedding" || model.Spec.OpenAI.APIFormat != nil || model.Spec.ActorJWT != nil || !ptr.Deref(model.Spec.TokenPassthrough, false) {
 		t.Fatalf("embedding model gained a language API format: %+v", model)
 	}
 	delete(source.Annotations, "agentos.dev/model-config")
@@ -59,7 +58,7 @@ func TestModelSettings(t *testing.T) {
 
 func TestMCPSettings(t *testing.T) {
 	config := Config(platform.PlatformGateway{
-		Name: "gateway", MCPURL: "http://mcp.test:8080", Dataplane: "dataplane",
+		Name: "gateway", MCPURL: "http://mcp.test:8080", DiscoveryServiceAccount: "gateway-discovery",
 		ActorIssuer: "https://actors.test", ActorJWKSBackend: "actor-jwks",
 	})
 	source := &agw.AgentgatewayBackend{
@@ -71,26 +70,35 @@ func TestMCPSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(objects) != 3 {
-		t.Fatalf("expected connection, route and policy, got %d", len(objects))
+		t.Fatalf("expected connection, route and credential policy, got %d", len(objects))
 	}
 	for _, object := range objects {
 		switch object := object.(type) {
+		case *agw.AgentgatewayPolicy:
+			transform := object.Spec.Traffic.Transformation.Conditional[0]
+			if transform.Condition != "request.path != '/mcp/team-sessions'" || len(transform.Policy.Request.Remove) != 1 || transform.Policy.Request.Remove[0] != "authorization" {
+				t.Fatalf("MCP initiator credential isolation lost: %+v", transform)
+			}
 		case *kagent.RemoteMCPServer:
 			if object.Spec.URL != "http://mcp.test:8080/mcp/tools" || object.Spec.Description != "Operations tools" ||
-				object.Spec.Timeout.Duration != 10*time.Minute || object.Annotations["agentos.dev/discovery-auth"] != "kubernetes" {
+				object.Spec.Timeout.Duration != 10*time.Minute || object.Spec.ActorJWT == nil || object.Spec.ActorJWT.Audiences[0] != "http://mcp.test:8080" || object.Spec.DiscoveryAuth == nil || object.Spec.DiscoveryAuth.ServiceAccount.ServiceAccountRef.Name != "gateway-discovery" {
 				t.Fatalf("MCP settings lost: %+v", object)
 			}
-		case *agw.AgentgatewayPolicy:
-			auth := object.Spec.Traffic.JWTAuthentication
-			remote := auth.Providers[0].JWKS.Remote
-			wantRef := gw.BackendObjectReference{Group: ptr.To(gw.Group("agentgateway.dev")), Kind: ptr.To(gw.Kind("AgentgatewayBackend")), Name: "actor-jwks"}
-			if !reflect.DeepEqual(remote.BackendRef, &wantRef) {
-				t.Fatalf("JWKS backend = %+v, want %+v", remote.BackendRef, wantRef)
-			}
-			if auth.Providers[0].Issuer != "https://actors.test" || auth.Providers[0].Audiences[0] != "http://mcp.test:8080" ||
-				*auth.Providers[0].JWKS.Remote.JwksPath != "/openid/v1/jwks" || auth.Location.Expression == nil ||
-				object.Spec.Traffic.Authorization == nil {
-				t.Fatalf("platform authorization lost: %+v", object)
+		}
+	}
+}
+
+func TestTeamDiscoveryCredential(t *testing.T) {
+	config := Config(platform.PlatformGateway{Name: "gateway", MCPURL: "http://mcp.test:8080", DiscoveryServiceAccount: "gateway-discovery"})
+	objects, err := config.MCP(&agw.AgentgatewayBackend{ObjectMeta: metav1.ObjectMeta{Name: "team-sessions", Namespace: "team"}, Spec: agw.AgentgatewayBackendSpec{MCP: &agw.MCPBackend{}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, object := range objects {
+		if remote, ok := object.(*kagent.RemoteMCPServer); ok {
+			auth := remote.Spec.DiscoveryAuth.ServiceAccount
+			if auth.ServiceAccountRef.Name != "gateway-discovery" || auth.Audience != "agentos-mcp-discovery" {
+				t.Fatalf("discovery identity = %+v", auth)
 			}
 		}
 	}

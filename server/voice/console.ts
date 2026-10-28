@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Code, type ServiceImpl } from "@connectrpc/connect";
 import {
   AccessToken,
@@ -8,7 +9,6 @@ import {
 import type { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { VoiceMode } from "../../gen/agentos/console/v1/speech_pb.js";
 import { speechText } from "../../shared/speech-text.js";
-import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
 import { fail, invalid, precondition, unavailable } from "../shared/errors.js";
@@ -42,7 +42,7 @@ export function voiceConsole(
   tickets: VoiceTickets,
   rooms: VoiceRooms,
   clients: KagentClients,
-  executions: Executions,
+  agent: { namespace: string; name: string },
 ): VoiceConsole {
   // Room tokens grant one room; read-aloud participants only listen.
   const roomToken = (id: string, mode: VoiceMode) => {
@@ -88,21 +88,46 @@ export function voiceConsole(
         );
       } else if (languageCode && !transcription?.languageCodes.includes(languageCode))
         throw invalid("speech.requestRejected");
-      const contextId = mode === VoiceMode.CALL ? request.contextId : "";
-      if (mode === VoiceMode.CALL && !(await executions.delegated(identity.subject)))
-        throw precondition("delegation.required");
-      if (contextId) {
-        const { session } = await clients.sessions.getSession({ sessionId: contextId });
-        if (!session) throw fail(Code.PermissionDenied, "chat.executionDenied");
-        await executions.own(session, identity);
+      const id = randomUUID();
+      let contextId = mode === VoiceMode.CALL ? request.contextId : "";
+      let nativeSessionCredential = "";
+      let deadline: number | undefined;
+      if (mode === VoiceMode.CALL) {
+        if (!(await clients.execution.getDelegationCredentialStatus({})).renewable)
+          throw precondition("delegation.required");
+        const { session } = contextId
+          ? await clients.sessions.getSession({ sessionId: contextId })
+          : await clients.sessions.createSession(
+              { agent, requestId: id, name: "Voice conversation" },
+              { timeoutMs: 30_000 },
+            );
+        if (
+          !session ||
+          session.agent?.namespace !== agent.namespace ||
+          session.agent.name !== agent.name
+        )
+          throw fail(Code.PermissionDenied, "chat.executionDenied");
+        contextId = session.id;
+        const credential = await clients.execution.issueSessionCredential({
+          sessionId: contextId,
+          ttl: { seconds: 1800n },
+        });
+        nativeSessionCredential = credential.credential;
+        deadline = Number(credential.expiresAt?.seconds);
+        if (!nativeSessionCredential || !deadline) throw unavailable();
       }
-      const { id, token } = await tickets.create({
-        subject: identity.subject,
-        mode,
-        languageCode,
-        text,
-        contextId,
-      });
+      const { token } = await tickets.create(
+        {
+          id,
+          subject: identity.subject,
+          mode,
+          languageCode,
+          text,
+          contextId,
+          nativeSessionCredential,
+        },
+        deadline,
+      );
       try {
         await rooms.createRoom({
           name: id,

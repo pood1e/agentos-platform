@@ -6,7 +6,7 @@ test_readonly_identity_cannot_publish_a_write_view if {
 	backend := {"kind": "AgentgatewayBackend", "metadata": {"name": "lab-kubernetes-inspection-changes", "labels": {"agentos.dev/environment": "lab", "agentos.dev/engineer": "inspection", "agentos.dev/tool-access": "write"}}, "spec": {"mcp": {"targets": [{"name": "lab-kubernetes"}]}, "policies": {"mcp": {"authorization": {"policy": {"matchExpressions": ["mcp.tool.name in [\"resources_apply\"]"]}}}}}}
 	environment := {"name": "lab", "identities": [{"name": "inspection", "services": {"kubernetes": "read"}}], "toolsets": {"kubernetes": {"readOnly": ["pods_list"], "write": ["resources_apply"]}}}
 	plan := {"contents": {"kind": "AccessPlan", "metadata": {"name": "test"}, "status": {"targets": [{"server": backend.metadata.name, "engineer": "inspection", "tools": []}]}}}
- messages := deny with input as [{"contents": backend}, plan] with data.environments as [environment]
+	messages := deny with input as [{"contents": backend}, plan] with data.environments as [environment]
 	"lab-kubernetes-inspection-changes exposes tools beyond its identity view" in messages
 }
 
@@ -17,9 +17,9 @@ test_credential_placeholders_must_be_resolved if {
 }
 
 mcp_origin_resources(origin) := [
-	{"contents": {"kind": "RemoteMCPServer", "metadata": {"name": "lab-kubernetes-inspection"}, "spec": {"url": sprintf("%s/mcp/lab-kubernetes/inspection/readonly", [origin])}}},
-	{"contents": {"kind": "AgentgatewayBackend", "metadata": {"name": "lab-kubernetes-inspection", "labels": {"agentos.dev/environment": "lab"}}, "spec": {"mcp": {"targets": [{"name": "lab-kubernetes"}]}, "policies": {"extAuth": {"failureMode": "FailClosed"}}}}},
-	{"contents": {"kind": "AgentgatewayPolicy", "metadata": {"name": "lab-kubernetes-runtime-auth"}, "spec": {"traffic": {"jwtAuthentication": {"providers": [{"audiences": ["http://lab-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080"]}]}}}}},
+	{"contents": {"kind": "RemoteMCPServer", "metadata": {"name": "lab-kubernetes-inspection"}, "spec": {"url": sprintf("%s/mcp/lab-kubernetes/inspection/readonly", [origin]), "actorJwt": {"audiences": ["http://lab-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080"]}}}},
+	{"contents": {"kind": "AgentgatewayBackend", "metadata": {"name": "lab-kubernetes-inspection", "labels": {"agentos.dev/environment": "lab", "agentos.dev/engineer": "inspection"}}, "spec": {"mcp": {"targets": [{"name": "lab-kubernetes", "static": {"policies": {"auth": {"oauthTokenExchange": {"audiences": ["https://tools.test/mcp"]}}}}}]}}}},
+	{"contents": {"kind": "AgentgatewayPolicy", "metadata": {"name": "lab-kubernetes-inspection-runtime-auth"}, "spec": {"traffic": {"extAuth": {"failureMode": "FailClosed", "backendRef": {"kind": "AgentgatewayBackend"}}, "jwtAuthentication": {"mode": "Strict", "providers": [{"audiences": ["http://lab-kubernetes-mcp-gateway.agentos.svc.cluster.local:8080"]}]}}}}},
 	{"contents": {"kind": "HTTPRoute", "metadata": {"name": "mcp-lab-kubernetes-inspection"}}},
 	{"contents": {"kind": "Service", "metadata": {"name": "lab-kubernetes-mcp-gateway"}}},
 ]

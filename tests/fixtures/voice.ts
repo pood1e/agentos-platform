@@ -12,7 +12,7 @@ import { consoleClient, environment } from "../harness.js";
 
 export const signingKey = "api-only-voice-key-0123456789abcdef0123456789";
 export const signedWorker = { headers: { authorization: "Bearer worker-token" } };
-export const voiceSettings = async () => ({
+const voiceSettings = async () => ({
   resourceVersion: "1",
   configuration: create(SpeechConfigurationSchema, {
     transcription: {
@@ -43,7 +43,10 @@ export async function voiceEnvironment() {
     createRoom: vi.fn(async (options: CreateOptions) => new Room({ name: options.name })),
   };
   const browser = consoleClient(env, {
-    voice: voiceConsole(voiceSettings, tickets, rooms, env.clients, env.executions),
+    voice: voiceConsole(voiceSettings, tickets, rooms, env.clients, {
+      namespace: "agentos",
+      name: "assistant",
+    }),
   });
   const workerClient = () => {
     const service = voiceService({
@@ -52,8 +55,6 @@ export async function voiceEnvironment() {
       tickets: voiceTickets(signingKey, "agentos"),
       projection: env.projection,
       clients: env.clients,
-      executions: env.executions,
-      initiator: async (id) => (await env.store.identity(id))?.value,
       agent: { namespace: "agentos", name: "assistant" },
     });
     return createClient(

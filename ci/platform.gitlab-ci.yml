@@ -12,7 +12,7 @@ include:
   - local: ci/python.gitlab-ci.yml
 
 verify:
-  extends: [.agentos-node-go, .agentos-postgres]
+  extends: .agentos-node-go
   stage: verify
   script: [npm run verify]
   artifacts:

@@ -61,6 +61,10 @@ spec:
             - --api-route=^/agentos\.
             - --request-logging=false
             - --silence-ping-logging=true
+            {{- with .Values.identity.caCertificateRef }}
+            - --provider-ca-file=/etc/agentos/identity/ca.crt
+            - --use-system-trust-store=true
+            {{- end }}
           env:
             - name: OAUTH2_PROXY_COOKIE_SECRET
               valueFrom: {secretKeyRef: {name: {{ $name }}-sessions, key: web}}
@@ -77,6 +81,7 @@ spec:
             {{- include "agentos.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - {name: proxy-config, mountPath: /etc/oauth2-proxy, readOnly: true}
+            {{- include "agentos.identityMounts" . | nindent 12 }}
         - name: web
           image: {{ required "web.image is required" .Values.web.image | quote }}
           env:
@@ -98,6 +103,7 @@ spec:
             - {name: pack, mountPath: /usr/share/nginx/pack, readOnly: true}
             {{- end }}
       volumes:
+        {{- include "agentos.identityVolumes" . | nindent 8 }}
         - name: proxy-config
           projected:
             sources:

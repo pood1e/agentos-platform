@@ -6,8 +6,10 @@ import {
   CustomObjectsApi,
   type KubeConfig,
 } from "@kubernetes/client-node";
+import type { KagentClients } from "../kagent/clients.js";
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
+import { kagentResources } from "./kagent-resources.js";
 import { userResource } from "./native.js";
 
 const resourceKinds = {
@@ -50,7 +52,9 @@ export function resourceStore(
   config: KubeConfig,
   namespace: string,
   catalogName: string,
+  clients: KagentClients,
 ): ResourceStore {
+  const native = kagentResources(clients, namespace);
   const custom = config.makeApiClient(CustomObjectsApi);
   const core = config.makeApiClient(CoreV1Api);
   const params = (kind: ResourceKind) => {
@@ -59,6 +63,7 @@ export function resourceStore(
   };
   return {
     async list(kind) {
+      if (native(kind)) return native(kind).list();
       try {
         const list: { items: JsonObject[] } = await custom.listNamespacedCustomObject(params(kind));
         return list.items;
@@ -67,6 +72,10 @@ export function resourceStore(
       }
     },
     async get(kind, name) {
+      if (native(kind))
+        return (
+          (await native(kind).read(name)) ?? resourceError(new Error("Missing native resource"))
+        );
       try {
         return await custom.getNamespacedCustomObject({ ...params(kind), name });
       } catch (error) {
@@ -74,6 +83,11 @@ export function resourceStore(
       }
     },
     async save(kind, resource, create) {
+      if (native(kind))
+        return (
+          (await native(kind).save(resource, create)) ??
+          resourceError(new Error("Missing native resource"))
+        );
       const metadata = object(resource.metadata);
       const name = String(metadata.name ?? "");
       const claimed = userResource(resource);
@@ -117,6 +131,7 @@ export function resourceStore(
       }
     },
     async remove(kind, name, version) {
+      if (native(kind)) return native(kind).remove(name, version);
       try {
         await custom.deleteNamespacedCustomObject({
           ...params(kind),

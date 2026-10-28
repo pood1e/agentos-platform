@@ -79,6 +79,8 @@ message UpdateAgentTemplateResponse {
 }
 
 message DeleteAgentTemplateRequest {
+  // Optional Kubernetes optimistic concurrency precondition.
+  string resource_version = 2 [(buf.validate.field).string.max_len = 128];
   ResourceReference ref = 1;
 }
 

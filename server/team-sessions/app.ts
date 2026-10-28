@@ -2,6 +2,7 @@ import type { IncomingHttpHeaders } from "node:http";
 import { CallToolRequestParamsSchema, JSONRPCMessageSchema } from "@modelcontextprotocol/core";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import type { FastifyInstance } from "fastify";
+import { nativeHeaders } from "../kagent/context.js";
 import type { sessionTools } from "./tools.js";
 
 export async function registerTeamSessions(
@@ -14,7 +15,7 @@ export async function registerTeamSessions(
   ) => Promise<{
     clientId: string;
     scopes: string[];
-    handler?: ReturnType<typeof sessionTools>;
+    headers: Headers;
   }>,
 ) {
   const nodeHandler = toNodeHandler(handler);
@@ -35,13 +36,11 @@ export async function registerTeamSessions(
         Object.assign(request.raw, {
           auth: { token: "", clientId: scope.clientId, scopes: scope.scopes },
         });
-        if (scope.handler) {
-          reply.hijack();
-          return toNodeHandler(scope.handler)(request.raw, reply.raw, request.body);
-        }
+        reply.hijack();
+        return nativeHeaders.run(scope.headers, () =>
+          nodeHandler(request.raw, reply.raw, request.body),
+        );
       }
-      reply.hijack();
-      await nodeHandler(request.raw, reply.raw, request.body);
     },
   });
 }

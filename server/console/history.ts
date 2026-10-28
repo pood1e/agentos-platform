@@ -1,5 +1,5 @@
+import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { Viewer } from "../read-model/listings.js";
@@ -7,14 +7,9 @@ import type { TaskQueries } from "../read-model/queries.js";
 import { notFound } from "../shared/errors.js";
 
 /** Whose executions a request reads; administrators also read shared service work. */
-export function viewer(identity: ExecutionIdentity, systemOnly = false): Viewer {
+export function viewer(identity: UserIdentity, systemOnly = false): Viewer {
   return { subject: identity.subject, administrator: isAdministrator(identity), systemOnly };
 }
-
-const readable = (subject: string, reader: Viewer) =>
-  reader.systemOnly
-    ? subject.startsWith("service:")
-    : subject === reader.subject || (reader.administrator && subject.startsWith("service:"));
 
 /**
  * The execution tree of a task or conversation the identity may read.
@@ -28,13 +23,14 @@ export async function visibleGraph(
   const owner = id.taskId
     ? await projection.entry(id.taskId)
     : await projection.session(id.contextId ?? "");
-  if (!owner?.root || !owner.subject || !readable(owner.subject, reader)) return undefined;
+  if (!owner?.root || !owner.subject || (reader.systemOnly && owner.subject === reader.subject))
+    return undefined;
   return projection.graph([owner.root]);
 }
 
 type AgentRef = Pick<ResourceReference, "namespace" | "name"> | undefined;
 
-const chatAgent = (namespace: string, entry: string, ref: AgentRef, identity: ExecutionIdentity) =>
+const chatAgent = (namespace: string, entry: string, ref: AgentRef, identity: UserIdentity) =>
   ref?.namespace === namespace &&
   (ref.name === entry || (ref.name === "role-builder" && can(identity, Capability.AGENTS_MANAGE)));
 
@@ -42,7 +38,7 @@ export function chatTarget(
   namespace: string,
   entry: string,
   ref: AgentRef,
-  identity: ExecutionIdentity,
+  identity: UserIdentity,
 ) {
   if (!chatAgent(namespace, entry, ref, identity)) throw notFound("chat.invalidConversation");
 }
@@ -52,7 +48,7 @@ export function systemConversation(
   namespace: string,
   entry: string,
   ref: AgentRef,
-  identity: ExecutionIdentity,
+  identity: UserIdentity,
   contextId: string,
 ) {
   if (chatAgent(namespace, entry, ref, identity)) return false;

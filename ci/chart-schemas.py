@@ -9,8 +9,8 @@ import yaml
 
 cache = Path(".cache/chart-check")
 cache.mkdir(parents=True, exist_ok=True)
-KAGENT = "1.0.0-alpha17"
-AGENTGATEWAY = "v1.6.0"
+KAGENT = "a12c1a39b208fb16f2502703688799838bc05edf"
+AGENTGATEWAY = "v1.7.0"
 GATEWAY_API = "v1.6.1"
 CERT_MANAGER = "v1.21.2"
 
@@ -42,13 +42,31 @@ def chart(name, reference, version):
     return path.read_text()
 
 
+native = cache / f"kagent-crds-{KAGENT}.yaml"
+if not native.exists():
+    native.write_text(
+        "\n---\n".join(
+            download(
+                f"kagent-{kind}",
+                KAGENT,
+                f"https://raw.githubusercontent.com/pood1e/kagent/{KAGENT}/helm/kagent-crds/templates/api.kagent.dev_{kind}.yaml",
+            )
+            for kind in (
+                "agents",
+                "agenttemplates",
+                "egresspolicies",
+                "harnesses",
+                "modelconfigs",
+                "modelproviderconfigs",
+                "remotemcpservers",
+                "sandboxtemplates",
+            )
+        )
+    )
+
 sources = [
     *[path.read_text() for path in Path("controller/config/crd/bases").glob("*.yaml")],
-    chart(
-        "kagent-crds",
-        "oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds",
-        KAGENT,
-    ),
+    native.read_text(),
     chart(
         "agentgateway-crds",
         "oci://cr.agentgateway.dev/charts/agentgateway-crds",

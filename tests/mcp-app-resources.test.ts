@@ -38,6 +38,7 @@ it("coalesces concurrent resource reads while preserving each authorized App ref
   const result = await env.apps.getResource(request, env.owner, new AbortController().signal);
   expect(result.result.value.contents).toHaveLength(1);
   expect(read).toHaveBeenCalledOnce();
+  env.caller({ ...env.owner, subject: "bob" });
   await expect(
     env.apps.getResource(request, { ...env.owner, subject: "bob" }, new AbortController().signal),
   ).rejects.toMatchObject({ code: Code.NotFound });

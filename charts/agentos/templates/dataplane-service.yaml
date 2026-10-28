@@ -10,5 +10,3 @@ spec:
     {{- include "agentos.platformSelector" $component | nindent 4 }}
   ports:
     - {name: http, port: 8080, targetPort: http}
-    - {name: guardrails, port: 9090, targetPort: guardrails, appProtocol: kubernetes.io/h2c}
-    - {name: runtime, port: 9091, targetPort: runtime}

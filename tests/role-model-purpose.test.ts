@@ -9,13 +9,10 @@ import { fakeKagent, testBindings } from "./harness.js";
 
 it("rejects arbitrary embedding model names on both role creation and update", async () => {
   const { fake, clients } = fakeKagent();
-  const commands = roleCommands(
-    clients,
-    "agentos",
-    testBindings(fake),
-    { modelConfig: "default-model-config", harness: "standard" },
-    async (template) => fake.replaceTemplate(template),
-  );
+  const commands = roleCommands(clients, "agentos", testBindings(fake), {
+    modelConfig: "default-model-config",
+    harness: "standard",
+  });
   const source = fake.resources.get("modelconfigs", "knowledge-embedding");
   fake.resources.save(
     "modelconfigs",

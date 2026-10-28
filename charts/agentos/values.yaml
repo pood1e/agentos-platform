@@ -7,74 +7,84 @@ global:
     skills: []
 image:
   repository: registry.example.com/agentos
-  digest: ''
+  digest: ""
 imagePullSecrets: []
 pack:
-  image: ''
+  image: ""
 kagent:
   endpoint: http://kagent-controller:8083
-  userId: agentos
-execution:
-  sources: []
-  keySecret: agentos-execution
-  databaseSecret: kagent-postgres
-  databaseCASecret: kagent-postgres-ca
-  substrateURL: https://api.ate-system.svc
-  actorIssuer: https://idp.ate-system.svc
-  actorJWKS:
-    static: {host: idp.ate-system.svc, port: 443}
-    policies:
-      tls:
-        sni: idp.ate-system.svc
-        caCertificateRefs: [{name: substrate-service-dns-ca, kind: ConfigMap}]
+  controllerSubject: ""
 api:
   replicas: 2
   resources:
-    requests: {cpu: 100m, memory: 256Mi}
-    limits: {cpu: '1', memory: 768Mi}
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
 dataplane:
   replicas: 2
   resources:
-    requests: {cpu: 100m, memory: 256Mi}
-    limits: {cpu: '1', memory: 512Mi}
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
 telemetry:
-  metrics: {endpoint: '', protocol: grpc}
+  metrics:
+    endpoint: ""
+    protocol: grpc
 speech:
   transcription: {}
   synthesis: {}
-  secretRef: ''
+  secretRef: ""
 voice:
   enabled: false
-  image: ''
+  image: ""
   livekitURL: ws://agentos-livekit:80
-  publicURL: ''
+  publicURL: ""
   secretRef: agentos-voice
   sessionSecretRef: agentos-voice-sessions
   capacity: 4
   resources:
-    requests: {cpu: 250m, memory: 512Mi}
-    limits: {cpu: '2', memory: 2Gi}
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
 identity:
-  issuer: ''
-  clientId: ''
-  audience: ''
-  writerRole: ''
+  issuer: ""
+  clientId: ""
+  audience: ""
+  writerRole: ""
   secretRef: agentos-identity
   returnOrigins: []
 route:
   parentRefs: []
-  hosts: {console: '', api: '', sandbox: ''}
+  hosts:
+    console: ""
+    api: ""
+    sandbox: ""
   from:
-  - namespaceSelector:
-      matchLabels: {kubernetes.io/metadata.name: kube-system}
-    podSelector:
-      matchLabels: {app.kubernetes.io/name: traefik}
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
 web:
-  image: ''
+  image: ""
   proxyImage: quay.io/oauth2-proxy/oauth2-proxy:v7.15.5@sha256:8498b0d0ef0a7b29686414000a08aee467f02d0299c9ed1e006a8f33fc017916
   resources:
-    requests: {cpu: 20m, memory: 32Mi}
-    limits: {cpu: 500m, memory: 128Mi}
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 500m
+      memory: 128Mi
 modelConfig:
   spec:
     provider: OpenAI
@@ -91,60 +101,75 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:39274013ea58e80e85eb340f498e3230ee16b84aea1829c8501312ede6c72353
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:52596799f4e712cc4d148595d1a87ff54e866532f5ac630e934f3ed31433afc5
     env:
-    - {name: GOMEMLIMIT, value: 768MiB}
+      - name: GOMEMLIMIT
+        value: 768MiB
     substrate:
-      workerPoolRef: {name: kagent-default}
-      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+      workerPoolRef:
+        name: kagent-default
+      snapshotPolicy:
+        location: s3://ate-snapshots/kagent/
   memory:
     kagent:
       memory:
-        modelConfigRef: {name: knowledge-embedding}
+        modelConfigRef:
+          name: knowledge-embedding
         ttlDays: 3650
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:39274013ea58e80e85eb340f498e3230ee16b84aea1829c8501312ede6c72353
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:52596799f4e712cc4d148595d1a87ff54e866532f5ac630e934f3ed31433afc5
     env:
-    - {name: GOMEMLIMIT, value: 768MiB}
+      - name: GOMEMLIMIT
+        value: 768MiB
     substrate:
-      workerPoolRef: {name: kagent-default}
-      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+      workerPoolRef:
+        name: kagent-default
+      snapshotPolicy:
+        location: s3://ate-snapshots/kagent/
   codex:
     codex: {}
     workload:
-      image: ghcr.io/pood1e/kagent/codex-harness@sha256:038eeac9b4135206a91ee26f46c5c8a7908462dd1d2b6cb5d0c6cee73bf6663d
-    env: [{name: GOMEMLIMIT, value: 768MiB}]
+      image: ghcr.io/pood1e/kagent/codex-harness@sha256:4b0c91823bfb10d4915a52c050fbb8cbd1957881597032392f7788535dfe8c7d
+    env:
+      - name: GOMEMLIMIT
+        value: 768MiB
     substrate:
-      workerPoolRef: {name: kagent-default}
-      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+      workerPoolRef:
+        name: kagent-default
+      snapshotPolicy:
+        location: s3://ate-snapshots/kagent/
   claude:
     claude: {}
     workload:
-      image: ghcr.io/pood1e/kagent/claude-harness@sha256:a420efe3bbc144db269f1f2559aa36f84c1ff4a36bfafaf9a329fd64b6eb206c
-    env: [{name: GOMEMLIMIT, value: 768MiB}]
+      image: ghcr.io/pood1e/kagent/claude-harness@sha256:bd55b023fa1fd877efe40efcd6a35df3c2b0fa960241897b119fe50bc85c7897
+    env:
+      - name: GOMEMLIMIT
+        value: 768MiB
     substrate:
-      workerPoolRef: {name: kagent-default}
-      snapshotPolicy: {location: 's3://ate-snapshots/kagent/'}
+      workerPoolRef:
+        name: kagent-default
+      snapshotPolicy:
+        location: s3://ate-snapshots/kagent/
 knowledgeMemory:
   ttlDays: 3650
 systemAgents:
   assistant:
-    systemPrompt: ''
+    systemPrompt: ""
   roleBuilder:
-    systemPrompt: ''
+    systemPrompt: ""
 gateway:
   parameters:
     image:
       registry: cr.agentgateway.dev
       repository: agentgateway
-      tag: v1.6.0
-      digest: sha256:9d3e6044ddcdc0878b1787f77bd401252b95e22684203fb5e874c4c42d2ed90c
+      tag: v1.7.0
+      digest: sha256:60216aafb03d37f94e952ff3d51d2f630a65b10ecaebdc0a864882f92610c45b
     resources:
       requests:
         cpu: 100m
         memory: 128Mi
       limits:
-        cpu: '1'
+        cpu: "1"
         memory: 512Mi
     service:
       spec:
@@ -162,61 +187,72 @@ gateway:
               seccompProfile:
                 type: RuntimeDefault
             containers:
-            - name: agentgateway
-              securityContext:
-                allowPrivilegeEscalation: false
-                readOnlyRootFilesystem: true
-                capabilities:
-                  drop:
-                  - ALL
+              - name: agentgateway
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop:
+                      - ALL
     logging:
       format: json
       level: info
   models:
-  - name: default-model-config
-    spec:
-      provider: OpenAI
-      match:
-        model: gpt-6.1-sol
-      baseURL: https://api.openai.com/v1
-      policies:
-        auth:
-          secretRef:
-            name: model-credentials
-            key: api-key
+    - name: default-model-config
+      spec:
+        provider: OpenAI
+        match:
+          model: gpt-6.1-sol
+        baseURL: https://api.openai.com/v1
+        policies:
+          auth:
+            secretRef:
+              name: model-credentials
+              key: api-key
   mcps:
-  - name: team-sessions
-    spec:
-      mcp:
-        prefixMode: Never
-        targets:
-        - name: team-sessions
-          static:
-            host: '{{ include "agentos.dataplaneService" . }}'
-            port: 8080
-            path: /mcp
-            policies:
-              http: {requestTimeout: 10m}
-            protocol: StreamableHTTP
-      policies:
-        auth: {passthrough: {}}
-  - name: kagent-collaboration
-    spec:
-      mcp:
-        prefixMode: Never
-        targets:
-        - name: kagent-collaboration
-          static:
-            host: kagent-controller
-            port: 8083
-            path: /mcp
-            policies:
-              http: {requestTimeout: 10m}
-            protocol: StreamableHTTP
-
+    - name: team-sessions
+      spec:
+        mcp:
+          prefixMode: Never
+          targets:
+            - name: team-sessions
+              static:
+                host: '{{ include "agentos.dataplaneService" . }}'
+                port: 8080
+                path: /mcp
+                policies:
+                  http:
+                    requestTimeout: 10m
+                protocol: StreamableHTTP
+        policies:
+          auth:
+            passthrough: {}
 controller:
   image: registry.example.com/agentos/platform-controller:0.39.0
   imagePullSecrets: []
   resources:
-    requests: {cpu: 100m, memory: 128Mi}
-    limits: {cpu: '1', memory: 256Mi}
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi
+runtime:
+  actorIssuer: https://idp.ate-system.svc
+  actorJWKS:
+    static:
+      host: idp.ate-system.svc
+      port: 443
+    policies:
+      tls:
+        sni: idp.ate-system.svc
+        caCertificateRefs:
+          - name: substrate-service-dns-ca
+            kind: ConfigMap
+  kubernetesIssuer: https://kubernetes.default.svc.cluster.local
+  kubernetesJWKS:
+    static: {host: kubernetes.default.svc, port: 443}
+    policies:
+      tls:
+        sni: kubernetes.default.svc
+        caCertificateRefs: [{name: kube-root-ca.crt, kind: ConfigMap}]

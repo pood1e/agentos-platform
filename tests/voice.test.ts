@@ -1,12 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { VoiceMode } from "../gen/agentos/console/v1/speech_pb.js";
-import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
-import { voiceConsole } from "../server/voice/console.js";
-import { allCapabilities } from "../shared/permissions.js";
-import { signedWorker, voiceEnvironment, voiceSettings } from "./fixtures/voice.js";
+import { signedWorker, voiceEnvironment } from "./fixtures/voice.js";
 import { consoleClient } from "./harness.js";
 
 let env: Awaited<ReturnType<typeof voiceEnvironment>>;
@@ -94,9 +90,9 @@ it("reports voice as unavailable when the deployment has none or the media serve
 });
 
 it("reuses the native request_id across initial ticket replay and API restart", async () => {
+  const createSession = vi.spyOn(env.clients.sessions, "createSession");
   const call = await env.room({ mode: VoiceMode.CALL });
   const previousSessions = env.fake.sessions.size;
-  const createSession = vi.spyOn(env.clients.sessions, "createSession");
   const turn = {
     sessionId: call.id,
     sessionToken: call.sessionToken,
@@ -111,7 +107,7 @@ it("reuses the native request_id across initial ticket replay and API restart", 
   const replay = await env.workerClient().sendVoiceTurn(turn, signedWorker);
   expect(replay).toEqual(sent);
   expect(createSession).toHaveBeenCalledWith(
-    { agent, requestId: call.id, name: "巡检 agentos-lab" },
+    expect.objectContaining({ agent, requestId: call.id }),
     { timeoutMs: 30_000 },
   );
   expect(await answer(call.id, sent.sessionToken, sent.taskId)).toMatchObject({
@@ -129,8 +125,8 @@ it("reuses the native request_id across initial ticket replay and API restart", 
       { ...turn, messageId: randomUUID(), text: "重放首轮令牌" },
       signedWorker,
     ),
-  ).rejects.toMatchObject({ code: Code.PermissionDenied });
-  expect(env.fake.sessions.size).toBe(previousSessions + 1);
+  ).resolves.toMatchObject({ contextId: sent.contextId });
+  expect(env.fake.sessions.size).toBe(previousSessions);
   const { conversations } = await env.browser.listConversations({ agent, pageSize: 12 });
   expect(conversations.map((item) => item.contextId)).toContain(sent.contextId);
   createSession.mockRestore();
@@ -198,29 +194,11 @@ it("requires delegation and rejects continuing a call after its execution is rev
     { sessionId: call.id, sessionToken: call.sessionToken, messageId: call.id, text: "巡检" },
     signedWorker,
   );
-  const guest = create(ExecutionIdentitySchema, {
-    subject: "user:guest",
-    write: true,
-    capabilities: allCapabilities,
-    credential: { case: "accessToken", value: "guest-token" },
-  });
-  const visitor = consoleClient(
-    env,
-    { voice: voiceConsole(voiceSettings, env.tickets, env.rooms, env.clients, env.executions) },
-    () => guest,
-  );
-  await expect(visitor.startVoiceSession({ mode: VoiceMode.CALL })).rejects.toMatchObject({
+  env.fake.renewable = false;
+  await expect(env.browser.startVoiceSession({ mode: VoiceMode.CALL })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
     rawMessage: "delegation.required",
   });
-  await env.store.saveIdentity({ ...guest, credential: { case: "service", value: true } });
-  await expect(
-    visitor.startVoiceSession({ mode: VoiceMode.CALL, contextId: sent.contextId }),
-  ).rejects.toMatchObject({ code: Code.PermissionDenied });
-  const { session } = await env.clients.sessions.getSession({ sessionId: sent.contextId });
-  const owner = (await env.store.identity("user:operator"))?.value;
-  if (!session || !owner) throw new Error("Fixture identity missing");
-  await env.executions.revoke(session, owner);
   await expect(
     env.workerClient().sendVoiceTurn(
       {

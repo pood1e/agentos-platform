@@ -34,7 +34,10 @@ message TaskStoreServiceCreateTaskRequest {
   string session_id = 1 [(buf.validate.field).string.uuid = true];
   lf.a2a.v1.Task task = 2 [(buf.validate.field).required = true];
   // Gateway attempt fence, consumed by the first active save before native work.
-  optional string dispatch_id = 3 [(buf.validate.field).string.uuid = true];
+  optional string dispatch_id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   option (buf.validate.message).cel = {
     id: "task_store.create_identity"
     message: "task and context IDs are required"

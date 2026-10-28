@@ -2,77 +2,50 @@
 
 ## 用户与资源管理
 
-认证用户可聊天、浏览配置和检索团队知识。应用角色授予配置管理能力，目标系统写角色决定执行的写权限上限；目标系统继续执行自身授权。
+浏览器登录、Cookie 与访问令牌刷新由 oauth2-proxy 和站点 IdP 维护。平台逐次将原始 Bearer 凭据传给 kagent；`SystemService.GetCurrentUser` 提供规范主体和有效 scope。
+应用角色映射为 proto `Capability`，契约包的 `authorization.json` 由同一协议生成。
+
+私有 IdP 的信任根通过 `identity.caCertificateRef` 引用当前命名空间的 ConfigMap key；浏览器登录与 API 后台委托使用同一 CA。站点安装器将其同步接入 kagent 原生 OIDC 与 OAuth 续期配置。
 
 | 应用角色 | 管理范围 |
 | --- | --- |
-| `agentos-agents-manage` | Agent、Skill / 工具绑定、运行配置与角色起草 |
+| `agentos-agents-manage` | Agent、工具 / Skill 绑定、运行配置与角色起草 |
 | `agentos-skills-manage` | 共享 Skill 目录 |
 | `agentos-mcp-manage` | MCP 连接与凭据 |
-| `agentos-knowledge-manage` | 团队知识新增、删除、清空与 Agent 写入 |
+| `agentos-knowledge-manage` | 团队知识写入与清理 |
 | `agentos-models-manage` | 模型连接与凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
 
-角色可以组合；IdP 可用 `agentos-admin` 组合角色并在令牌中展开实际权限。
-管理 RPC 与浏览器共用 proto `Capability`，契约包的 `authorization.json` 由同一协议生成，供站点映射身份。
+kagent 的 OIDC `ResourceScopeRule` 按资源类型与操作授予原生权限。资源更新使用原生编译准入与 `resourceVersion` CAS。站点写角色限制环境写工具；目标系统继续执行自身授权。
 
-## 执行权限
+## 执行与凭据
 
-会话创建时固定发起人、Agent、根 / 父会话、写权限及平台能力上限。每次工具调用取当前用户凭证、会话及父链权限、Agent 已选工具和环境身份范围的交集。
-工具须出现在当前 generation 的就绪 AccessPlan 中；权限提升后的执行使用新会话。
+kagent 创建 Session 时固定发起人、Agent、父 / 根关系和权限上限。委派继承祖先上限，运行时每次解析当前委托凭据和 scope；授权提升用于新会话，撤权沿原生父链生效。
+原生 `TaskExecution` 记录可信父任务、根任务、同步 / 后台关系及 HITL 续接引用。messageId 幂等、忙碌、删除围栏与取消传播均由原生执行服务维护。
 
-执行绑定与用户凭据存于 PostgreSQL 的 `agentos_authorization` schema，委派链以递归查询读取。
-access / refresh token 使用 AWS Encryption SDK 信封加密，密钥由独立 Kubernetes Secret 持久保存；原生会话与消息只使用身份引用。
+后台委托通过 `/delegation/start` 的 Authorization Code、PKCE、state、nonce 和 `offline_access` 建立。回调将 refresh token 交给原生 `ExecutionService.RegisterDelegationCredential`。
+凭据与刷新预约存于 kagent，采用原生 32 字节密钥加密和带租约的 CAS 轮换。永久刷新拒绝撤销授权树，临时故障阻止后续凭据出口；数据库事务仅覆盖本地状态更新。
 
-原生 HITL 批准前复验当前执行授权，实际工具调用再次校验。控制台提交的决定必须完整对应当前原生暂停中的工具；用户拒绝与补充信息直接回复原生交互。
-停止经 A2A 取消会话内执行与委派，确认后可继续同一会话；删除会话撤销其绑定和后代授权。
-业务审批规则、审批人资格、工单与业务执行守卫由方案包或环境服务实现。
+原生 HITL 回复、继续执行和工具调用分别复验当前权限。控制台提交原生确认 / 提问响应，业务审批规则与审批人资格由方案包维护。
 
-## 运行时与工作负载
+## 运行时与网关
 
-| 调用方 | 凭据 | 校验范围 |
-| --- | --- | --- |
-| 原生 TaskStore / Memory | `Authorization` 中 `kagent-runtime` audience 的 Actor JWT | 保留原始凭据，通过 kagent `SessionService.GetSession` 验证当前 Actor 与 Session，再约束持久化范围 |
-| Agent 模型 / MCP 调用 | 宿主注入的 Actor JWT，audience 对应目标 origin | 签名、issuer、audience、当前 Actor / Session、执行授权与工具绑定 |
-| kagent 工具发现 | 绑定 ServiceAccount JWT，audience `agentos-mcp-discovery` | TokenReview 与精确控制器主体，只开放发现等元数据方法 |
-| 平台知识嵌入请求 | 绑定 ServiceAccount JWT，audience 为模型入口 | 配置的嵌入模型与 `/v1/embeddings` |
-| 外部执行服务 | 登记的 OIDC client credentials JWT | issuer、audience、azp、sub 与授权 Agent 范围 |
+| 调用方 | 凭据与范围 |
+| --- | --- |
+| Actor TaskStore / Memory / 原生协作 MCP | Substrate Actor JWT，受众 `kagent-runtime`；原生服务核对 Actor、Session 与执行范围 |
+| Actor 模型 / 业务 MCP | `x-substrate-actor-token` 中目标 HTTP(S) origin 的 Actor JWT；网关验证 JWKS 后向 kagent 查询当前权限与 Session 固定 revision 的目标 |
+| 工具目录发现 | `RemoteMCPServer.spec.discoveryAuth` 的 OAuth2 client credentials 或短期 ServiceAccount TokenRequest；权限限定元数据 |
+| 团队知识嵌入 | kagent 服务端调用指定嵌入 ModelConfig；网关核对原生控制器主体、模型与 `/v1/embeddings` |
+| 外部自动化 | 受限机器 OIDC 身份直接调用原生 A2A；由原生 ResourceScopeRule 约束资源类型与操作 |
+| 语音 worker | API 私有签名的 LiveKit metadata 携带原生短期 Session 凭据；每次操作复验原生授权 |
 
-TaskStore 请求限定到当前会话，原生持久化继续校验 dispatch 与版本围栏；撤权后仍可记录清理和终态。
-私人 Memory 写入限定当前用户、Agent 与启用记忆的 Harness；共享知识写入另需知识管理角色。
-管理 RPC 与 A2A 向控制面开放，运行时出站策略和 NetworkPolicy 限制直连。
+agentgateway 通过 `runtime.actorJWKS` 直接读取 Substrate HTTPS JWKS，校验 CA 与 SAN；`runtime.actorIssuer` 与原生签发方一致。
+kagent 的 `gatewayAudiences` 登记实际模型和 MCP HTTP(S) origins，包含环境服务独立入口；原生运行时受众与网关受众分别校验。
 
-模型与 MCP 接入验证 Actor 签名。agentgateway 通过原生 HTTPS Backend 直接读取 Substrate `/openid/v1/jwks`；`execution.actorJWKS` 使用原生 `AgentgatewayBackend.spec`，TLS 校验 CA 与 SAN。站点在 release 命名空间发布 Service DNS CA ConfigMap，根轮换时更新；默认引用 `substrate-service-dns-ca`。dataplane 自身验证沿用投射的原生信任根。
-网关沿用原生 5 分钟刷新间隔；轮换保留覆盖未到期令牌与缓存窗口的旧公钥。
-Harness 的 `x-substrate-actor-token` 占位头由宿主替换，ModelConfig 占位值只用于 SDK 初始化。
-
-TokenReview 显式指定 audience，核对审核结果与精确 ServiceAccount 主体，每次请求重新审核。
-平台 API 逐次读取投射卷中的短期令牌；环境发现经 HTTP 外部鉴权，平台 MCP 与模型入口由各自处理器审核。
-
-## 环境授权
-
-每个环境身份对应机密客户端 `agentos-<identity>`。逐调用授权通过后，openid-client 换取环境资源令牌：用户执行采用 RFC 8693 并保留 `sub`，服务执行与目录发现采用 client credentials。
-环境网关验证 issuer、audience、有效期，并要求 `/mcp/<identity>/<service>` 的 `azp` 对应执行客户端。
-平台到环境网关使用 HTTPS，校验 CA 与 SAN。
-
-连接器使用 agentgateway BackendAuth：OAuth 目标交换为目标受众令牌，API 令牌目标使用每身份有限期凭据。
-网关移除 Actor JWT，API 令牌路由另移除环境 Authorization；连接器只接收目标凭据，每次 MCP 请求独立认证。
-API 令牌目标的原生审计记录服务账号，平台执行元数据保留实际发起人。配置见[环境接入](environments.md)。
-
-## 登录与离线授权
-
-API 接受 Bearer 访问令牌。web 通过 oauth2-proxy 完成授权码与 PKCE 登录，Cookie 使用 Secure、HttpOnly、`SameSite=Lax`，转发请求时注入访问令牌。
-后台执行使用独立离线授权：`GetAccessProfile` 返回 `delegated` / `delegation_url`；尚未授权的 `SendMessage` 返回 `FAILED_PRECONDITION`（`delegation.required`）。
-
-`/delegation/start` 通过授权码、PKCE、state 与 nonce 请求 `offline_access`。`return_to` 限定为登记前端源，授权事务保存在 10 分钟签名 Cookie 中，refresh token 在服务端加密保存。
-浏览器退出或访问令牌到期后，任务可凭离线授权继续；授权失效、账号禁用或 IdP 拒绝续期时停止后续调用。
-
-同一用户的刷新在进程内合并，并经 PostgreSQL 行锁跨副本串行执行。新令牌反映当前角色，执行仍受会话初始权限上限约束；IdP 变更的传播窗口由现有 access token 有效期决定。
+模型授权限定当前 Session revision 中的 ModelConfig；MCP 授权同时满足静态工具分级与 revision 的已选工具。原生 `/authorize/runtime` 回调逐次查询，返回 `no-store`。
+环境凭据出口将当前发起人的 IdP access token 作为 RFC 8693 `subject_token`，agentgateway 再交换目标资源令牌；Actor JWT 保持来源证明，目标服务只收到目标凭据。
 
 ## 数据归属
 
-聊天通过 `entryAgent` 进入统一助手，角色起草采用独立管理流程。
-OIDC 用户的会话、任务、消息、工具参数与实时订阅按发起人隔离，服务端在搜索、计数、分页及执行树投影前过滤归属。
-历史读取独立于任务取消和凭据续期；平台管理员可读取共享服务任务，个人私聊仍按发起人隔离。
-
-浏览器缓存按工作空间与用户分区。私人记忆范围由服务端执行身份确定，会话发现限定同一执行树；显式团队知识在工作空间内共享。
+Session、任务、消息、历史与订阅的归属由 kagent 授权过滤。平台 read model 仅投影已经授权的原生结果；浏览器缓存按工作空间与主体分区。
+私人记忆由原生执行身份限定，团队知识使用明确的 `teamNamespace`。会话列表可按原生根 Session 限定；语音凭据仅访问绑定 Session 与对应 Agent。

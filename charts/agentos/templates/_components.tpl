@@ -42,15 +42,6 @@
   resources: [agents, agenttemplates, harnesses, modelconfigs]
   verbs: [watch]
 - apiGroups: [api.kagent.dev]
-  resources: [agenttemplates]
-  verbs: [create, update]
-- apiGroups: [api.kagent.dev]
-  resources: [agents]
-  verbs: [update]
-- apiGroups: [api.kagent.dev]
-  resources: [harnesses]
-  verbs: [create, update, delete]
-- apiGroups: [api.kagent.dev]
   resources: [remotemcpservers]
   verbs: [patch]
 - apiGroups: [agentgateway.dev]
@@ -71,42 +62,11 @@
 {{- end -}}
 
 {{- define "agentos.dataplaneEnv" -}}
-{{ include "agentos.runtimeEnv" . }}
-{{ include "agentos.knowledgeEnv" . }}
-{{- end -}}
-
-{{- define "agentos.dataplaneMounts" -}}
-- {name: runtime-identity, mountPath: /etc/agentos-runtime, readOnly: true}
-- {name: model-identity, mountPath: /var/run/agentos-model, readOnly: true}
-{{- end -}}
-
-{{- define "agentos.dataplaneVolumes" -}}
-- name: runtime-identity
-  projected:
-    sources:
-      - serviceAccountToken:
-          audience: {{ (urlParse .Values.execution.substrateURL).host | quote }}
-          expirationSeconds: 600
-          path: token
-      - clusterTrustBundle:
-          signerName: servicedns.podcert.ate.dev/identity
-          labelSelector:
-            matchLabels: {podcert.ate.dev/canarying: live}
-          path: ca.crt
-{{ include "agentos.modelIdentityVolume" . }}
+- {name: AGENTOS_CONTROLLER_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ include "agentos.name" . }}-discovery"}
 {{- end -}}
 
 {{- define "agentos.dataplaneRules" -}}
-- apiGroups: [api.kagent.dev]
-  resources: [agents, agenttemplates, harnesses, modelconfigs]
-  verbs: [get, list, watch]
-- apiGroups: [agentgateway.dev]
-  resources: [agentgatewaybackends]
-  verbs: [get, list, watch]
 - apiGroups: [agentos.dev]
   resources: [accessplans]
   verbs: [get, list, watch]
-- apiGroups: ['']
-  resources: [secrets]
-  verbs: [get]
 {{- end -}}

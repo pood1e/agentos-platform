@@ -10,4 +10,3 @@ identity:
   clientId: agentos-console
   audience: agentos-platform
   writerRole: operator
-execution: {}

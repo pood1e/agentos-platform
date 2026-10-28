@@ -2,8 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { TaskState } from "../../gen/a2a_pb.js";
 import type { ListTasksRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
-import type { ExecutionBinding } from "../../gen/agentos/execution/v1/identity_pb.js";
-import type { ExecutionStore } from "../authorization/store.js";
+import type { SessionInfo } from "./agents.js";
 import type { TaskGraph } from "./graph.js";
 import { type PageRequest, pageOf } from "./page.js";
 import { terminal } from "./state.js";
@@ -20,17 +19,10 @@ export interface Viewer {
 }
 
 export function listings(
-  load: (bindings: ExecutionBinding[]) => Promise<TaskGraph>,
-  inventory: ExecutionStore["inventory"],
+  load: (sessions: SessionInfo[]) => Promise<TaskGraph>,
+  inventory: (viewer: Viewer) => Promise<SessionInfo[]>,
 ) {
-  const visible = async (viewer: Viewer) =>
-    load(
-      await inventory({
-        subject: viewer.subject,
-        services: viewer.administrator,
-        systemOnly: viewer.systemOnly,
-      }),
-    );
+  const visible = async (viewer: Viewer) => load(await inventory(viewer));
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
       const graph = await visible(viewer);

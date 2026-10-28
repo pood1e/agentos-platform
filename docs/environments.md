@@ -5,9 +5,9 @@
 ```mermaid
 flowchart LR
   Agent[Agent] -->|Actor JWT| PG[平台网关]
-  Discovery[原生工具发现] -->|绑定 ServiceAccount JWT| PG
-  PG -->|ExtMCP 逐调用授权| Auth[平台授权服务]
-  Auth -->|RFC 8693 / client credentials| IdP[环境身份提供方]
+  Discovery[原生工具发现] -->|独立 OAuth2 目录凭据| PG
+  PG -->|原生逐调用授权与凭据解析| Auth[kagent]
+  PG -->|RFC 8693| IdP[环境身份提供方]
   PG -->|HTTPS · 环境资源令牌| EG[环境网关]
   EG -->|目标令牌交换 / 每身份 API 凭据| MCP[连接器 MCP]
 ```
@@ -18,12 +18,13 @@ flowchart LR
 参考部署的环境剧本、站点变量与身份变更流程见 [agentos-deploy 环境接入](https://github.com/pood1e/agentos-deploy/blob/main/docs/environments.md)。
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 用于服务工具发现与浏览器环境 API。
-客户端 `agentos-<identity>` 的标识与密钥分别保存在平台 `<environment>-<identity>` 和环境网关同名身份 Secret 中，键为 `client-id`、`client-secret`。
+客户端 `agentos-<identity>` 的标识与密钥分别保存在平台 `<environment>-<identity>` 和环境网关同名身份 Secret 中，凭据由原生 SecretKeySelector 引用，客户端标识由配置声明。
 环境与连接 Chart 声明 AccessPlan，控制器统一编译工具范围和原生派生资源。Preset 从编译结果补齐默认工具绑定；原生控制器负责发现与刷新，逐调用授权见[执行授权](execution-authorization.md)。
 
-环境令牌的 audience 为 `gateway_resource`。平台网关使用原生 HTTP 外部鉴权为每次上游请求设置令牌，包括初始化通知、SSE 建连与会话清理；ExtMCP 单独校验工具授权。用户执行请求采用 RFC 8693 并保留原用户 `sub`；服务执行和控制器发现采用 client credentials。外部鉴权由网关经 dataplane 的私有 h2c 端口 9090 调用。路径 `/mcp/<identity>/<service>` 校验 `azp == agentos-<identity>`。环境网关按 RFC 9728 发布受保护资源元数据。
+环境令牌的 audience 为 `gateway_resource`。平台网关调用 kagent `/authorize/runtime`，核验当前发起人、祖先权限、静态工具分级和 Session 固定 revision 的目标。kagent 仅向该受信网关导出当前 IdP access token，agentgateway 使用原生 OAuthTokenExchange 交换环境资源令牌并保留用户 `sub`。
+路径 `/mcp/<identity>/<service>` 校验 `azp == agentos-<identity>`；环境网关发布 RFC 9728 受保护资源元数据。
 
-原生控制器通过 `agentos.dev/discovery-auth: kubernetes` 的 RemoteMCPServer 使用可刷新绑定 ServiceAccount 凭据。发现请求保留 MCP 路径，统一发送到配置的平台网关，凭据仅在该网关使用，重定向终止。Agent 继续使用按服务隔离的地址与 Actor JWT。平台分别验证签发者、受众和控制器主体，工具调用额外校验执行绑定、权限上限和已选工具。
+目录 `RemoteMCPServer.spec.discoveryAuth.oauth2` 配置独立 client credentials：`tokenEndpoint`、`clientId`、`clientSecretRef` 和可选 `caCertificateRef`。原生控制器实时读取 Secret 与 CA，发现认证限定初始化和 `tools/list`。执行使用独立 Actor JWT；目录凭据仅用于元数据请求。身份提供方的 JWKS 与令牌交换复用该 CA 引用，环境网关使用独立的 `<environment>-gateway-ca`。
 
 每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。RemoteMCPServer 地址、Service origin 与 Actor JWT audience 保持一致。
 

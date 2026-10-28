@@ -1,5 +1,10 @@
-import { randomUUID } from "node:crypto";
-import { create, fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
+import {
+  create,
+  fromJson,
+  type JsonValue,
+  type MessageInitShape,
+  toJson,
+} from "@bufbuild/protobuf";
 import { createValidator } from "@bufbuild/protovalidate";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { jwtVerify, SignJWT } from "jose";
@@ -25,12 +30,19 @@ export function voiceTickets(secret: string, workspace: string) {
       .setExpirationTime(expiresAt)
       .sign(key);
   return {
-    async create(input: Omit<VoiceSession, "$typeName" | "id">) {
-      const session = create(VoiceSessionSchema, { ...input, id: randomUUID() });
+    async create(
+      input: MessageInitShape<typeof VoiceSessionSchema> & { id: string },
+      deadline?: number,
+    ) {
+      const session = create(VoiceSessionSchema, input);
       const issuedAt = Math.floor(Date.now() / 1000);
       return {
         id: session.id,
-        token: await sign(session, issuedAt, issuedAt + lifetime(input.mode)),
+        token: await sign(
+          session,
+          issuedAt,
+          Math.min(issuedAt + lifetime(session.mode), deadline ?? Number.POSITIVE_INFINITY),
+        ),
       };
     },
     async verify(id: string, token: string) {
@@ -56,16 +68,6 @@ export function voiceTickets(secret: string, workspace: string) {
       } catch {
         throw denied();
       }
-    },
-    bind(
-      ticket: { session: VoiceSession; issuedAt: number; expiresAt: number },
-      contextId: string,
-    ) {
-      return sign(
-        create(VoiceSessionSchema, { ...ticket.session, contextId }),
-        ticket.issuedAt,
-        ticket.expiresAt,
-      );
     },
   };
 }

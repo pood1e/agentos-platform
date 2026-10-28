@@ -219,7 +219,9 @@
     "skillCount_other": "{{count}} skills",
     "conflict": "Someone else changed this agent. Reopen it before editing.",
     "toolsTab": "Tools",
-    "builtinTools": "Built-in tools"
+    "builtinTools": "Built-in tools",
+    "awaitingToolObservation": "Awaiting runtime observation",
+    "mcpToolCount": "{{count}} MCP tools"
   },
   "activity": {
     "submitted": "Submitted",
@@ -259,7 +261,6 @@
     "inUse": "This Harness is assigned to agents. Reassign them before deleting it.",
     "incompatibleModel": "The model API does not match: Codex uses OpenAI Responses; Claude Code uses Anthropic Messages.",
     "selectModel": "Select a compatible model connection",
-    "noCompatibleModel": "No compatible connection. Configure this runtime's API in model management.",
     "sharedModel": "Other agents sharing this role use an incompatible runtime. Align their runtime configuration first.",
     "partialSave": "The model was updated, but the runtime could not be saved or restored due to a concurrent edit. Refresh and check both settings.",
     "responsesRequired": "Codex requires a model connection using the Responses API.",
@@ -294,7 +295,8 @@
       "memory": "Knowledge memory runtime",
       "codex": "Codex",
       "claude": "Claude Code"
-    }
+    },
+    "noLanguageModel": "Configure a language model connection first"
   },
   "speech": {
     "requestRejected": "The speech service could not process this request.",

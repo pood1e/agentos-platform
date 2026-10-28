@@ -3,32 +3,28 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { A2AService } from "../../gen/a2a_pb.js";
 import { AgentTemplateService } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentService } from "../../gen/kagent/api/v1/agents_pb.js";
+import { ExecutionService } from "../../gen/kagent/api/v1/execution_pb.js";
 import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelService } from "../../gen/kagent/api/v1/models_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
+import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import type { KagentConfig } from "../shared/config.js";
 import { rpcMetrics } from "../shared/telemetry.js";
+import { nativeCredentials } from "./context.js";
 
 export function kagentTransport(config: KagentConfig): Transport {
   return createGrpcTransport({
     baseUrl: config.url,
-    interceptors: [
-      rpcMetrics("client"),
-      (next) => (request) => {
-        if (!request.header.has("Authorization")) {
-          if (!request.header.has("X-User-Id")) request.header.set("X-User-Id", config.userId);
-          if (config.token) request.header.set("Authorization", `Bearer ${config.token}`);
-        }
-        return next(request);
-      },
-    ],
+    interceptors: [rpcMetrics("client"), nativeCredentials],
   });
 }
 
 export function kagentClients(transport: Transport) {
   return {
+    execution: createClient(ExecutionService, transport),
+    system: createClient(SystemService, transport),
     memory: createClient(MemoryService, transport),
     models: createClient(ModelService, transport),
     agents: createClient(AgentService, transport),

@@ -28,8 +28,20 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 			return result, fmt.Errorf("server %s: %w", server, err)
 		}
 		result.Targets = append(result.Targets, platform.CompiledTarget{Server: server, Service: server, Tools: tools})
+		if plan.Spec.Mode == "platform" {
+			policy, err := serverPolicy(plan, server, tools)
+			if err != nil {
+				return Result{}, err
+			}
+			result.Resources = append(result.Resources, policy)
+		}
 	}
 	for _, environment := range plan.Spec.Environments {
+		if plan.Spec.Mode == "platform" && environment.Gateway != nil {
+			if err := validatePlatformEnvironment(plan.Spec.Platform, environment); err != nil {
+				return Result{}, fmt.Errorf("environment %s: %w", environment.Name, err)
+			}
+		}
 		if plan.Spec.Mode == "environment" {
 			identities := environment.Identities
 			if identities == nil {
@@ -58,9 +70,6 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 			result.Targets = append(result.Targets, catalog)
 			if plan.Spec.Mode == "platform" {
 				if environment.Gateway != nil {
-					if plan.Spec.Platform == nil {
-						return result, fmt.Errorf("platform gateway is required")
-					}
 					result.Resources = append(result.Resources, platformView(plan, environment, catalog, names(set.ReadOnly), "/mcp/"+service)...)
 					result.Resources = append(result.Resources, catalogPolicy(plan, catalog, names(set.ReadOnly)))
 				}

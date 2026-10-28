@@ -1,6 +1,6 @@
 import { create, type JsonObject } from "@bufbuild/protobuf";
-import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
 import { HarnessSchema } from "../gen/kagent/api/v1/harnesses_pb.js";
 import { object, text } from "../server/read-model/decode/messages.js";
@@ -95,60 +95,41 @@ describe("native Harness configuration", () => {
     });
   });
 
-  it("protects Codex model options and preserves Claude MCP tool subsets", async () => {
-    const model = await env.store.get("modelConfigs", "default-model-config");
-    const spec = object(model.spec);
-    await env.store.save(
-      "modelConfigs",
-      {
-        ...model,
-        spec: { ...spec, openAI: { ...object(spec.openAI), maxCompletionTokens: 8192 } },
-      },
-      false,
+  it("uses native compiler admission and preserves the selected tool subset", async () => {
+    const validate = vi.spyOn(env.clients.agents, "validateAgent");
+    validate.mockRejectedValueOnce(
+      new ConnectError("native compiler rejected model options", Code.InvalidArgument),
     );
-    await expect(assign("inspection", "codex")).rejects.toThrow("harness.modelOptions");
-    const latest = await env.store.get("modelConfigs", "default-model-config");
-    await env.store.save(
-      "modelConfigs",
-      {
-        ...latest,
-        spec: {
-          provider: "Anthropic",
-          model: "claude-test",
-          apiKeySecret: "agentos-gateway",
-          apiKeySecretKey: "api-key",
-          anthropic: { baseUrl: env.dependencies.gateway.url, cacheTTL: "5m" },
-        },
-      },
-      false,
-    );
-    const selectedTools = structuredClone(
-      object(env.fake.template("inspection").resource?.value?.spec).tools,
-    );
-    await assign("inspection", "claude");
-    expect(object(env.fake.template("inspection").resource?.value?.spec).tools).toEqual(
-      selectedTools,
-    );
-    expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
-      name: "claude",
+    await expect(assign("inspection", "codex")).rejects.toMatchObject({
+      code: Code.InvalidArgument,
     });
-    const template = env.fake.template("inspection");
-    if (!template.resource?.value) throw new Error("template missing");
-    const all =
-      env.fake.toolServers.find((item) => item.ref.endsWith("/kagent-tool-server"))
-        ?.discoveredTools ?? [];
-    object(template.resource.value.spec).tools = [
+    expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
+      name: "standard",
+    });
+    await assign("inspection", "claude");
+    expect(validate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        resource: expect.objectContaining({
+          value: expect.objectContaining({
+            spec: expect.objectContaining({
+              harnessRef: { name: "claude" },
+              modelConfigRef: { name: "default-model-config" },
+              template: { ref: { name: "inspection" } },
+            }),
+          }),
+        }),
+      }),
+      expect.anything(),
+    );
+    expect(object(env.fake.template("inspection").resource?.value?.spec).tools).toEqual([
       {
         mcp: {
-          server: { name: "kagent-tool-server", kind: "RemoteMCPServer" },
-          tools: all.map((item) => item.name),
+          server: { kind: "RemoteMCPServer", name: "kagent-tool-server" },
+          tools: ["k8s_get_resources"],
+          requireApproval: false,
         },
       },
-    ];
-    await assign("inspection", "claude");
-    expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
-      name: "claude",
-    });
+    ]);
   });
 
   it("manages arbitrary BYO Harnesses and refuses deletion while assigned", async () => {

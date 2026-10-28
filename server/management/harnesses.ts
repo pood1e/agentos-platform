@@ -10,7 +10,7 @@ import { conflict, invalid } from "../shared/errors.js";
 import { credentialReferences, meta, resource } from "./native.js";
 import type { ResourceStore } from "./resources.js";
 
-export function asHarness(value: JsonObject) {
+function asHarness(value: JsonObject) {
   const spec = object(value.spec);
   const conditions = object(value.status).conditions;
   return create(HarnessSchema, {

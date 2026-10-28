@@ -1,24 +1,23 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { EngineerToolsSchema } from "../../gen/agentos/console/v1/engineer_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import { ModelPurpose } from "../../gen/agentos/management/v1/management_pb.js";
 import { ErrorInfoSchema } from "../../gen/google/rpc/error_details_pb.js";
-import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import {
   type ResourceReference,
   ResourceReferenceSchema,
 } from "../../gen/kagent/api/v1/common_pb.js";
 import { modelPurpose } from "../../shared/model-purpose.js";
 import type { BindingView } from "../governance/bindings.js";
-import { engineerTools } from "../kagent/builtin-tools.js";
+import { validateAgent } from "../kagent/admission.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { validateHarness } from "../kagent/harness.js";
 import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
+import { userResource } from "../management/native.js";
 import { systemRoles } from "../read-model/agents.js";
 import { object } from "../read-model/decode/messages.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
 import { apiVersion, displayNameKey, roleDefinition, templateSpec } from "./role-template.js";
-import type { TemplateWriter } from "./template-writer.js";
 
 export interface RoleDefaults {
   modelConfig: string;
@@ -33,7 +32,7 @@ function saveFailed(error: unknown): ConnectError {
     if (error.findDetails(ErrorInfoSchema).some((detail) => detail.domain === "agentos.console"))
       return error;
     if (error.code === Code.AlreadyExists) return conflict("configuration.roleExists");
-    if (error.code === Code.InvalidArgument) return invalid("configuration.invalidRole");
+    if ([Code.InvalidArgument, Code.Aborted].includes(error.code)) return error;
   }
   return fail(Code.Unavailable, "configuration.saveFailed", error);
 }
@@ -43,7 +42,6 @@ export function roleCommands(
   namespace: string,
   access: BindingView,
   defaults: RoleDefaults,
-  replaceTemplate: TemplateWriter,
   metadata: ToolMetadata = toolMetadata(clients),
 ) {
   async function catalog() {
@@ -80,30 +78,21 @@ export function roleCommands(
       throw invalid("management.invalidModel");
     const tools = (await access()).bindings(role.name, role.tools, current.servers, true);
     if (!tools) throw invalid("configuration.invalidTools");
-    const [{ agents }, { harnesses }] = await Promise.all([
-      clients.agents.listAgents({ namespace }, read),
-      clients.harnesses.listHarnesses({ namespace }, read),
-    ]);
-    const assignments = selectedHarness
-      ? [selectedHarness]
-      : agents
-          .filter(
-            (agent) =>
-              object(object(object(agent.resource?.value?.spec).template).ref).name === role.name,
-          )
-          .map((agent) => object(object(agent.resource?.value?.spec).harnessRef));
-    for (const assignment of assignments) {
-      if (assignment.namespace && assignment.namespace !== namespace)
+    if (selectedHarness) {
+      if (selectedHarness.namespace && selectedHarness.namespace !== namespace)
         throw invalid("harness.invalidReference");
-      const harness = harnesses.find((item) => item.ref?.name === assignment.name);
-      if (!harness) throw invalid("harness.invalidReference");
-      validateHarness(
-        harness,
-        current.modelConfigs.find(
-          (item) => item.ref?.name === (role.modelConfig?.name || defaults.modelConfig),
-        ),
-        templateSpec({ ...role, tools }, {}),
-        current.servers,
+      await validateAgent(
+        clients,
+        { namespace, name: role.name },
+        {
+          harnessRef: { name: selectedHarness.name },
+          template: {
+            inline: templateSpec(
+              { ...role, tools },
+              { modelConfig: { name: defaults.modelConfig } },
+            ),
+          },
+        },
       );
     }
     return { ...role, tools };
@@ -141,7 +130,9 @@ export function roleCommands(
       roles,
       toolServers: servers,
       modelConfigs,
-      engineerTools: engineerTools(agents, templates, harnesses),
+      engineerTools: agents.map((agent) =>
+        create(EngineerToolsSchema, { engineer: agent.ref, builtinCatalog: agent.builtinTools }),
+      ),
       agents: agents.filter((agent) => !systemRoles.has(agent.ref?.name ?? "")),
       harnesses,
       defaultHarness: { namespace, name: defaults.harness },
@@ -235,19 +226,20 @@ export function roleCommands(
       const annotations = { ...object(metadata.annotations) };
       if (role.displayName.trim()) annotations[displayNameKey] = role.displayName.trim();
       else delete annotations[displayNameKey];
-      const agentTemplate = await replaceTemplate(
-        create(AgentTemplateSchema, {
+      const { agentTemplate } = await clients.templates.updateAgentTemplate(
+        {
           ref,
           resource: {
             apiVersion,
             kind: "AgentTemplate",
-            value: {
+            value: userResource({
               ...value,
               metadata: { ...metadata, annotations, resourceVersion: role.resourceVersion },
               spec: templateSpec(role, object(value.spec)),
-            },
+            }),
           },
-        }),
+        },
+        write,
       );
       if (!agentTemplate) throw fail(Code.Unavailable, "configuration.saveFailed");
       return { role: roleDefinition(agentTemplate) };

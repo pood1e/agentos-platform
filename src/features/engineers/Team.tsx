@@ -95,9 +95,9 @@ export function Team({
           [0, 1, 2].map((key) => <Skeleton key={key} className="h-56" />)}
         {visible.map((agent) => {
           const definition = definitions.find((item) => item.name === agent.role);
-          const builtinTools =
-            tools.find((item) => `${item.engineer?.namespace}/${item.engineer?.name}` === agent.id)
-              ?.builtinTools ?? [];
+          const builtinCatalog = tools.find(
+            (item) => `${item.engineer?.namespace}/${item.engineer?.name}` === agent.id,
+          )?.builtinCatalog;
           return (
             <Card
               key={agent.id}
@@ -167,10 +167,10 @@ export function Team({
                 )}
                 <div className="flex items-center justify-between gap-3 border-t pt-3">
                   <span className="text-xs text-muted-foreground">
-                    {t("configuration.toolCount", {
-                      count: definition
-                        ? toolCount(definition) + builtinTools.length
-                        : builtinTools.length,
+                    {t(builtinCatalog ? "configuration.toolCount" : "configuration.mcpToolCount", {
+                      count:
+                        (definition ? toolCount(definition) : 0) +
+                        (builtinCatalog?.tools.length ?? 0),
                     })}
                   </span>
                   <Button

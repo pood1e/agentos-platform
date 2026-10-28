@@ -1,7 +1,8 @@
-import { fromJson } from "@bufbuild/protobuf";
+import { create, fromJson } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { TaskExecutionSchema, TaskRelation } from "../gen/kagent/api/v1/execution_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
 import { fixtureState } from "./fixtures/kagent.js";
@@ -77,7 +78,18 @@ it("associates the selected Agent's task with a delegation before it returns", (
   const calling = ingest(parent(), "agentos/assistant");
   index.upsert(calling);
   expect(calling.calls[0]?.state).toBe(ActivityState.WORKING);
-  index.upsert(ingest(child(), "agentos/coordinator"));
+  index.upsert(
+    ingest(
+      child(),
+      "agentos/coordinator",
+      create(TaskExecutionSchema, {
+        task: { taskId: "coordinator-task", sessionId: "coordinator-context" },
+        parent: { taskId: "chat-task", sessionId: "chat-context" },
+        root: { taskId: "chat-task", sessionId: "chat-context" },
+        relation: TaskRelation.DELEGATION,
+      }),
+    ),
+  );
   expect(index.graph().target(calling, calling.calls[0])).toBe("coordinator-task");
 });
 

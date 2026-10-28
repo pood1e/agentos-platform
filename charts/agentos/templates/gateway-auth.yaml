@@ -1,29 +1,46 @@
-{{- $trust := include "agentos.workloadAuth" . | fromJson -}}
+{{- $name := include "agentos.name" . -}}
+{{- $models := printf "http://%s-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace -}}
+{{- $mcps := printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace -}}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
-  name: {{ include "agentos.name" . }}-gateway-auth
-  labels:
-    {{- include "agentos.labels" . | nindent 4 }}
+  name: {{ $name }}-gateway-auth
+  labels: {{ include "agentos.labels" . | nindent 4 }}
 spec:
   targetRefs:
-    - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ include "agentos.name" . }}-gateway}
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: {{ $name }}-gateway}
   frontend:
     http: {maxBufferSize: 16Mi}
+  backend:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions:
+            - >-
+              jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
+              (!has(mcp.resource) || mcp.resource.name.startsWith('ui://'))
   traffic:
     jwtAuthentication:
       mode: Permissive
       preserveToken: true
       location:
         expression: >-
-          request.path == '/mcp/executions' ? '' :
-          ('x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') : '')
+          'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') :
+          ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '')
       providers:
-        - issuer: {{ .Values.execution.actorIssuer | quote }}
+        - issuer: {{ .Values.runtime.actorIssuer | quote }}
           audiences: {{ include "agentos.actorAudiences" . }}
           jwks:
             remote:
               backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ include "agentos.actorJWKSBackend" . }}}
+              jwksPath: /openid/v1/jwks
+          validation: {requiredClaims: [sub, exp, aud]}
+        - issuer: {{ .Values.runtime.kubernetesIssuer | quote }}
+          audiences: [{{ $models | quote }}, agentos-mcp-discovery]
+          jwks:
+            remote:
+              backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-kubernetes-jwks}
               jwksPath: /openid/v1/jwks
           validation: {requiredClaims: [sub, exp, aud]}
     authorization:
@@ -37,28 +54,51 @@ spec:
             {{- if .Values.voice.enabled }}
             request.path.startsWith('/speech/') ||
             {{- end }}
-            {{- if .Values.execution.sources }}
-            request.path == '/mcp/executions' ||
-            {{- end }}
-            (has(jwt.iss) && jwt.iss == '{{ .Values.execution.actorIssuer }}' && (
-              (request.path.startsWith('/v1/') && (jwt.aud == '{{ $trust.modelAudience }}' || '{{ $trust.modelAudience }}' in jwt.aud)) ||
-              request.path.startsWith('/mcp/')
+            (has(jwt.iss) && jwt.iss == '{{ .Values.runtime.actorIssuer }}' && 'x-substrate-actor-token' in request.headers && (
+              (request.path.startsWith('/v1/') && (jwt.aud == '{{ $models }}' || '{{ $models }}' in jwt.aud)) ||
+              (request.path.startsWith('/mcp/') && (jwt.aud == '{{ $mcps }}' || '{{ $mcps }}' in jwt.aud))
             )) ||
-            (!('x-substrate-actor-token' in request.headers) && 'authorization' in request.headers &&
-             (request.path.startsWith('/mcp/') || request.path.startsWith('/v1/')))
+            (has(jwt.iss) && jwt.iss == '{{ .Values.runtime.kubernetesIssuer }}' && !('x-substrate-actor-token' in request.headers) && (
+              (request.path.startsWith('/mcp/') && jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
+               (jwt.aud == 'agentos-mcp-discovery' || 'agentos-mcp-discovery' in jwt.aud) && request.method == 'POST' &&
+               (json(request.body).method in ['initialize','notifications/initialized','ping','tools/list'] ||
+                (json(request.body).method == 'resources/read' && json(request.body).params.uri.startsWith('ui://'))))
+              {{- range .Values.gateway.models }}
+              {{- if eq .name "knowledge-embedding" }}
+              || (request.path == '/v1/embeddings' && request.method == 'POST' && jwt.sub == '{{ include "agentos.controllerSubject" $ }}' &&
+                  (jwt.aud == '{{ $models }}' || '{{ $models }}' in jwt.aud) && json(request.body).model == {{ .spec.match.model | toJson }})
+              {{- end }}
+              {{- end }}
+            ))
     extAuth:
       conditional:
-        {{- if .Values.execution.sources }}
-        - condition: "request.path == '/mcp/executions'"
+        - condition: "request.path.startsWith('/v1/') && 'x-substrate-actor-token' in request.headers"
           policy:
-            {{- include "agentos.executionAuthorization" . | nindent 12 }}
-        {{- end }}
-        - condition: "request.path.startsWith('/v1/')"
-          policy:
-            backendRef: {name: {{ include "agentos.dataplaneService" . }}, port: 9090}
+            backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
             failureMode: FailClosed
             http:
-              path: "'/authorize/model'"
-              body: "{'path': request.path, 'method': request.method, 'model': request.method == 'POST' ? json(request.body).model : ''}"
-              allowedRequestHeaders: [x-substrate-actor-token, authorization]
+              path: "'/authorize/runtime'"
+              allowedRequestHeaders: [x-substrate-actor-token]
+              addRequestHeaders:
+                authorization: "request.headers['x-substrate-actor-token']"
+              responseMetadata:
+                models: json(response.body)
+        - condition: "request.path == '/mcp/team-sessions' && 'x-substrate-actor-token' in request.headers"
+          policy:
+            backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
+            failureMode: FailClosed
+            http:
+              path: {{ printf "/authorize/runtime?server=%s%%2Fteam-sessions&scope=agentos-agents-manage&credential=subject_token" .Release.Namespace | toJson | quote }}
+              allowedRequestHeaders: [x-substrate-actor-token]
+              addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
               allowedResponseHeaders: [authorization]
+              responseMetadata: {selection: json(response.body), scopes: "json(response.headers['x-kagent-scopes'])"}
+        - condition: "request.path.startsWith('/mcp/') && request.path != '/mcp/team-sessions' && 'x-substrate-actor-token' in request.headers"
+          policy:
+            backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
+            failureMode: FailClosed
+            http:
+              path: {{ printf "'/authorize/runtime?server=%s%%2F' + request.path.split('/')[2]" .Release.Namespace | quote }}
+              allowedRequestHeaders: [x-substrate-actor-token]
+              addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
+              responseMetadata: {selection: json(response.body), scopes: "json(response.headers['x-kagent-scopes'])"}

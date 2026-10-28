@@ -35,8 +35,8 @@ func TestReconciliation(t *testing.T) {
 	}
 	root := filepath.Join("..", "..", "..")
 	environment := &envtest.Environment{CRDDirectoryPaths: []string{
-		filepath.Join(root, "controller/config/crd/bases"), filepath.Join(root, ".cache/chart-check/agentgateway-crds-v1.6.0.yaml"),
-		filepath.Join(root, ".cache/chart-check/kagent-crds-1.0.0-alpha17.yaml"), filepath.Join(root, ".cache/chart-check/gateway-crds-v1.6.1.yaml"),
+		filepath.Join(root, "controller/config/crd/bases"), filepath.Join(root, ".cache/chart-check/agentgateway-crds-v1.7.0.yaml"),
+		filepath.Join(root, ".cache/chart-check/kagent-crds-a12c1a39b208fb16f2502703688799838bc05edf.yaml"), filepath.Join(root, ".cache/chart-check/gateway-crds-v1.6.1.yaml"),
 	}, ErrorIfCRDPathMissing: true}
 	config, err := environment.Start()
 	if err != nil {
@@ -143,7 +143,7 @@ func TestReconciliation(t *testing.T) {
 		must(t, err)
 		gateway := connections.Config(platform.PlatformGateway{
 			Name: "gateway", URL: "http://models.test:8080", MCPURL: "http://mcp.test:8080",
-			ActorIssuer: "https://actors.test", ActorJWKSBackend: "actor-jwks-backend", ModelSecret: "gateway-credential",
+			ActorIssuer: "https://actors.test", ActorJWKSBackend: "actor-jwks-backend",
 		})
 		must(t, agentgateway.SetupWithManager(manager, gateway))
 		managerContext, cancel := context.WithCancel(t.Context())

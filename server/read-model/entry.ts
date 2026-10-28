@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { toBinary } from "@bufbuild/protobuf";
 import { Role, type Task, TaskSchema, TaskState } from "../../gen/a2a_pb.js";
 import type { Interaction } from "../../gen/agentos/console/v1/task_pb.js";
+import { type TaskExecution, TaskRelation } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type CallEntry, callEntries } from "./calls.js";
 import { isHitlResponse } from "./decode/hitl.js";
 import { createdMillis, messageText, statusMillis, timeline } from "./decode/messages.js";
@@ -29,6 +30,7 @@ export interface TaskEntry {
   progress: string;
   calls: CallEntry[];
   interactions: Interaction[];
+  execution?: TaskExecution;
   parentTaskId: string;
   resumedTaskId: string;
   decision?: Decision;
@@ -38,7 +40,7 @@ function taskVersion(task: Task): string {
   return createHash("sha256").update(toBinary(TaskSchema, task)).digest("base64url");
 }
 
-export function ingest(task: Task, agentId: string): TaskEntry {
+export function ingest(task: Task, agentId: string, execution?: TaskExecution): TaskEntry {
   const calls = callEntries(task, approvals(task));
   const users = task.history.filter((message) => message.role === Role.USER);
   const timelines = [...task.history, ...task.artifacts]
@@ -66,12 +68,10 @@ export function ingest(task: Task, agentId: string): TaskEntry {
     ...taskOutput(task),
     calls,
     interactions: interactions(task, agentId, calls),
+    execution,
     parentTaskId:
-      users.find((message) => message.messageId.startsWith("kagent-continuation-"))
-        ?.referenceTaskIds[0] ?? "",
-    resumedTaskId:
-      users.find((message) => message.messageId.startsWith("kagent-continuation-"))
-        ?.referenceTaskIds[1] ?? "",
+      execution?.relation === TaskRelation.CONTINUATION ? (execution.parent?.taskId ?? "") : "",
+    resumedTaskId: execution?.resumedTask?.taskId ?? "",
     decision: latestDecision(task),
   };
 }

@@ -20,20 +20,6 @@ const chartSchema = JSON.parse(readFileSync("charts/agentos/values.schema.json",
 if (JSON.stringify(chartSchema.$defs.harnessSpec) !== JSON.stringify(harnessSchema))
   throw new Error("Chart harnessSpec must match the pinned native Harness schema");
 
-const executionSource = JSON.parse(
-  readFileSync(
-    "gen/schema/agentos.authorization.v1.ExecutionSource.jsonschema.bundle.json",
-    "utf8",
-  ),
-);
-Object.assign(chartSchema.$defs, executionSource.$defs);
-chartSchema.properties.execution.properties.sources = {
-  type: "array",
-  items: { $ref: executionSource.$ref },
-  maxItems: 32,
-};
-writeFileSync("charts/agentos/values.schema.json", `${JSON.stringify(chartSchema, null, 2)}\n`);
-
 await import("./generate-kubernetes.mjs");
 
 execFileSync(

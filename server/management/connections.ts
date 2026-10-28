@@ -9,13 +9,14 @@ import {
 } from "../../gen/agentos/management/v1/management_pb.js";
 import { ModelConfigSchema } from "../../gen/kagent/api/v1/models_pb.js";
 import { modelPurpose } from "../../shared/model-purpose.js";
-import { actorTokenHeader } from "../authorization/actor.js";
+
+const actorTokenHeader = "x-substrate-actor-token";
+
 import type { KagentClients } from "../kagent/clients.js";
 import { object, text } from "../read-model/decode/messages.js";
 import { pageOf } from "../read-model/page.js";
 import { conflict, invalid, precondition } from "../shared/errors.js";
 import { compiledTargets, serviceBindings } from "./connection-views.js";
-import { mcpGuardrails } from "./mcp-authorization.js";
 import { credentialReferences, type GatewayConfig, meta, optional, resource } from "./native.js";
 
 export type { GatewayConfig } from "./native.js";
@@ -220,9 +221,35 @@ export function connectionCommands(
       spec.mcp = mcp;
     }
     const policies = { ...object(spec.policies) };
-    if (kind === ConnectionKind.MCP)
-      policies.mcp = { ...object(policies.mcp), guardrails: mcpGuardrails(gateway, name) };
-    else {
+    if (kind === ConnectionKind.MCP) {
+      const mcp = { ...object(policies.mcp) };
+      delete mcp.authorization;
+      policies.mcp = mcp;
+      const transformation = object(policies.transformation);
+      const request = object(transformation.request);
+      policies.transformation = {
+        ...transformation,
+        request: {
+          ...request,
+          remove: [
+            ...new Set([
+              ...(Array.isArray(request.remove) ? request.remove : []),
+              actorTokenHeader,
+              "cookie",
+              "x-forwarded-access-token",
+            ]),
+          ],
+        },
+      };
+    } else {
+      policies.authorization = {
+        action: "Require",
+        policy: {
+          matchExpressions: [
+            `!('x-substrate-actor-token' in request.headers) || extauthz.models.exists(m, m.name == ${JSON.stringify(name)})`,
+          ],
+        },
+      };
       const headers = object(policies.headers),
         requestHeaders = object(headers.request);
       policies.headers = {
