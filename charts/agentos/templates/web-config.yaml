@@ -15,6 +15,12 @@ data:
           uri: http://{{ include "agentos.apiService" $ }}:8080
           timeout: 5m
         {{- end }}
+        {{- if .Values.global.agentos.environments }}
+        - id: environments
+          path: /environments/
+          uri: http://{{ $name }}-gateway:8080
+          timeout: 30s
+        {{- end }}
         - id: web
           path: /
           uri: http://127.0.0.1:8080

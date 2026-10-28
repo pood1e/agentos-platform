@@ -17,7 +17,7 @@ flowchart LR
 `agentos-environment` Chart 在目标集群部署环境网关、证书声明、身份路由和网络策略；`agentos-connections` Chart 在平台工作空间登记环境 CA、准入配置、服务目录与身份视图。
 参考部署的环境剧本、站点变量与身份变更流程见 [agentos-deploy 环境接入](https://github.com/pood1e/agentos-deploy/blob/main/docs/environments.md)。
 
-配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 只用于服务工具发现。
+配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 用于服务工具发现与浏览器环境 API。
 客户端 `agentos-<identity>` 的标识与密钥分别保存在平台 `<environment>-<identity>` 和环境网关同名身份 Secret 中，键为 `client-id`、`client-secret`。
 环境与连接 Chart 声明 AccessPlan，控制器统一编译工具范围和原生派生资源。Preset 从编译结果补齐默认工具绑定；原生控制器负责发现与刷新，逐调用授权见[执行授权](execution-authorization.md)。
 
@@ -26,6 +26,24 @@ flowchart LR
 原生控制器通过 `agentos.dev/discovery-auth: kubernetes` 的 RemoteMCPServer 使用可刷新绑定 ServiceAccount 凭据。发现请求保留 MCP 路径，统一发送到配置的平台网关，凭据仅在该网关使用，重定向终止。Agent 继续使用按服务隔离的地址与 Actor JWT。平台分别验证签发者、受众和控制器主体，工具调用额外校验执行绑定、权限上限和已选工具。
 
 每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。RemoteMCPServer 地址、Service origin 与 Actor JWT audience 保持一致。
+
+## 浏览器与 MCP Apps
+
+浏览器的 `/environments/<environment>/rpc/<service>/<method>` 由 oauth2-proxy 转至 agentgateway；API 域名的相同路径直接路由到网关。连接 Chart 将 `EnvironmentApi` 的方法清单编译为精确 POST 路由与原生 JWT 授权，写方法要求 `platform.writerRole`。网关使用当前用户的访问令牌执行 RFC 8693 交换，再通过环境 CA 与指定 TLS 身份调用原生 Connect JSON API。
+
+`platform.authentication` 使用原生 JWTProvider，配置平台 issuer、明确的 audiences 与 JWKS。`environments[].tokenEndpointURL` 来自环境 OIDC Discovery 的 `token_endpoint`；网关通过 `<environment>-<identity>` Secret 的 `client-secret` 认证。站点部署从平台与环境各自的 OIDC Discovery 发布这些公开端点。
+
+```yaml
+platform:
+  authentication:
+    issuer: https://identity.example.com/realms/platform
+    audiences: [agentos]
+    jwks:
+      remote: {url: https://identity.example.com/realms/platform/protocol/openid-connect/certs}
+  writerRole: agentos-writer
+```
+
+MCP App 回调保留原始调用与查看者的归属校验，随后携带查看者凭据调用 `/environments/<environment>/mcp/<identity>/<service>`。网关提供该身份的只读 MCP 工具视图；管理身份额外包含管理只读工具。凭据交换、TLS、工具过滤和连接生命周期使用 agentgateway 与官方 MCP SDK。
 
 ## 连接器契约
 

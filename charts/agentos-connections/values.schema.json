@@ -1,5 +1,157 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "jwtProvider": {
+      "properties": {
+        "audiences": {
+          "description": "Allowed audiences that are allowed\naccess. This corresponds to the `aud` claim\n([RFC 7519 §4.1.3](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3)).\nIf unset, any audience is allowed.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array"
+        },
+        "issuer": {
+          "description": "IdP that issued the JWT. This corresponds to the\n`iss` claim ([RFC 7519 §4.1.1](https://tools.ietf.org/html/rfc7519#section-4.1.1)).",
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "jwks": {
+          "description": "JSON Web Key Set used to validate the signature of the\nJWT.",
+          "properties": {
+            "inline": {
+              "description": "Inline JSON Web Key Set used to validate the\nsignature of the JWT.",
+              "maxLength": 65536,
+              "minLength": 2,
+              "type": "string"
+            },
+            "remote": {
+              "description": "How to reach the JSON Web Key Set from a remote\naddress.",
+              "properties": {
+                "backendRef": {
+                  "description": "`backendRef` selects a backend for this policy.\nMutually exclusive with `url`.",
+                  "properties": {
+                    "group": {
+                      "default": "",
+                      "description": "Group of the referent, for example `gateway.networking.k8s.io`. Empty selects the core API group",
+                      "maxLength": 253,
+                      "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+                      "type": "string"
+                    },
+                    "kind": {
+                      "default": "Service",
+                      "description": "Kubernetes resource kind of the referent, for example `Service`. Defaults to `Service`",
+                      "maxLength": 63,
+                      "minLength": 1,
+                      "pattern": "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Name is the name of the referent.",
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "namespace": {
+                      "description": "Namespace of the referent. Defaults to the local namespace. A cross-namespace reference requires a ReferenceGrant in the referent namespace",
+                      "maxLength": 63,
+                      "minLength": 1,
+                      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                      "type": "string"
+                    },
+                    "port": {
+                      "description": "Destination port number. Required when the referent is a Kubernetes `Service`",
+                      "format": "int32",
+                      "maximum": 65535,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["name"],
+                  "type": "object",
+                  "x-kubernetes-validations": [
+                    {
+                      "message": "Must have port for Service reference",
+                      "rule": "(size(self.group) == 0 && self.kind == 'Service') ? has(self.port) : true"
+                    }
+                  ]
+                },
+                "cacheDuration": {
+                  "description": "How long a fetched `jwks` document is used before it is re-fetched from the IdP.\nDefaults to `5m`.",
+                  "maxLength": 32,
+                  "pattern": "^([0-9]{1,5}(h|m|s|ms)){1,4}$",
+                  "type": "string",
+                  "x-kubernetes-validations": [
+                    {
+                      "message": "cacheDuration must be at least 5m.",
+                      "rule": "duration(self) >= duration('5m')"
+                    }
+                  ]
+                },
+                "jwksPath": {
+                  "description": "Path to the IdP `jwks` endpoint, relative to the root, commonly\n`\".well-known/jwks.json\"`.",
+                  "maxLength": 1024,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "url": {
+                  "description": "`url` directly specifies the HTTP(S) endpoint for this policy.\nWhen the scheme is `https`, backend TLS is enabled automatically.\nMutually exclusive with `backendRef`.\nURLs are opaque; referencing a Kubernetes service hostname like `hello.ns.svc.cluster.local`\nwill not apply Service policies or load balancing.",
+                  "maxLength": 1024,
+                  "minLength": 1,
+                  "pattern": "^https?://[^/?#@]+(/[^?#]*)?$",
+                  "type": "string"
+                }
+              },
+              "type": "object",
+              "x-kubernetes-validations": [
+                {
+                  "message": "jwksPath is required when backendRef is set",
+                  "rule": "has(self.backendRef) ? has(self.jwksPath) : true"
+                },
+                {
+                  "message": "jwksPath may not be set when url is set",
+                  "rule": "has(self.url) ? !has(self.jwksPath) : true"
+                },
+                {
+                  "message": "exactly one of the fields in [backendRef url] must be set",
+                  "rule": "(has(self.backendRef)?1:0)+(has(self.url)?1:0) == 1"
+                }
+              ]
+            }
+          },
+          "type": "object",
+          "x-kubernetes-validations": [
+            {
+              "message": "exactly one of the fields in [remote inline] must be set",
+              "rule": "(has(self.remote)?1:0)+(has(self.inline)?1:0) == 1"
+            }
+          ]
+        },
+        "validation": {
+          "description": "Additional JWT claim presence requirements. Defaults to requiring `exp`.\nIssuer validation always requires `iss`; a non-empty audiences list also\nrequires `aud`, regardless of these options. An empty `requiredClaims`\nlist removes only the additional presence requirements. Expiration is\nstill checked whenever `exp` is present.",
+          "properties": {
+            "requiredClaims": {
+              "description": "Additional claims that must be present in the token payload.\nRecognized values: `exp`, `nbf`, `aud`, `sub`.\nDefaults to `[\"exp\"]` when omitted. An empty list adds no requirements\nbeyond `iss`, which is always required, and `aud`, which is required\nwhen a non-empty audiences list is configured. Expiration is still\nchecked whenever `exp` is present.",
+              "items": {
+                "description": "JWTClaim is a JWT claim whose presence can be required during validation.",
+                "enum": ["aud", "exp", "nbf", "sub"],
+                "type": "string"
+              },
+              "maxItems": 4,
+              "type": "array",
+              "x-kubernetes-list-type": "atomic"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": ["issuer", "jwks", "audiences"],
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -18,6 +170,20 @@
         "actorIssuer": {
           "type": "string",
           "pattern": "^https://[^/]+"
+        },
+        "authentication": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/jwtProvider"
+            },
+            {
+              "type": "object",
+              "maxProperties": 0
+            }
+          ]
+        },
+        "writerRole": {
+          "type": "string"
         }
       },
       "required": ["release", "controllerServiceAccount", "actorIssuer"]
@@ -168,34 +334,22 @@
             "items": {
               "additionalProperties": false,
               "description": "Unary Connect JSON APIs served by the environment's OAuth resource.",
-              "patternProperties": {
-                "^(read_methods)$": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "^(write_methods)$": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              },
               "properties": {
                 "readMethods": {
                   "items": {
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                     "type": "string"
                   },
                   "type": "array"
                 },
                 "service": {
                   "default": "",
-                  "minLength": 1,
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
                   "type": "string"
                 },
                 "writeMethods": {
                   "items": {
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
                     "type": "string"
                   },
                   "type": "array"
@@ -204,13 +358,42 @@
               "title": "Environment Api",
               "type": "object"
             }
+          },
+          "tokenEndpointURL": {
+            "type": "string",
+            "pattern": "^https://[^/]+"
           }
         },
-        "required": ["governance", "name"],
+        "required": ["governance", "name", "issuer", "resource", "gateway", "tokenEndpointURL"],
         "type": "object",
         "additionalProperties": false
       }
     }
   },
-  "required": ["platform", "environments"]
+  "required": ["platform", "environments"],
+  "anyOf": [
+    {
+      "properties": {
+        "environments": {
+          "maxItems": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "platform": {
+          "required": ["authentication", "writerRole"],
+          "properties": {
+            "authentication": {
+              "$ref": "#/definitions/jwtProvider"
+            },
+            "writerRole": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,0 +1,65 @@
+{{- range $environment := .Values.environments }}
+{{- range $identity := $environment.identities }}
+{{- if and (ne $identity.name "catalog") (or (not (hasKey $identity "environments")) (has $environment.name $identity.environments)) }}
+{{- range $service, $access := $identity.services }}
+{{- $tools := get $environment.toolsets $service }}
+{{- if not $tools }}{{ fail (printf "identity %s references unknown service %s" $identity.name $service) }}{{ end }}
+{{- $allowed := $tools.readOnly | default list }}
+{{- if eq $access "manage" }}{{ $allowed = concat $allowed ($tools.managementReadOnly | default list) }}{{ end }}
+{{- $name := printf "%s-app-%s" $environment.name (printf "%s/%s" $identity.name $service | sha256sum | trunc 16) }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/browser-environment: {{ $environment.name }}
+spec:
+  mcp:
+    prefixMode: Never
+    sessionRouting: Stateless
+    targets:
+      - name: {{ $service }}
+        static:
+          host: {{ $environment.gateway.address | quote }}
+          port: {{ $environment.gateway.nodePort }}
+          path: {{ printf "/mcp/%s/%s" $identity.name $service | quote }}
+          protocol: StreamableHTTP
+          policies:
+            {{- include "agentos-connections.browserBackend" (dict "environment" $environment "identity" $identity.name) | nindent 12 }}
+  policies:
+    mcp:
+      authorization:
+        action: Require
+        policy:
+          matchExpressions: [{{ printf "mcp.tool.name in %s || (has(mcp.resource) && mcp.resource.name.startsWith('ui://'))" ($allowed | uniq | sortAlpha | toJson) | quote }}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/browser-environment: {{ $environment.name }}
+spec:
+  parentRefs: [{name: {{ $.Values.platform.release }}-gateway, sectionName: http}]
+  rules:
+    - matches: [{path: {type: Exact, value: {{ printf "/environments/%s/mcp/%s/%s" $environment.name $identity.name $service | quote }}}}]
+      backendRefs: [{group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}}]
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/browser-environment: {{ $environment.name }}
+spec:
+  targetRefs: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: {{ $name }}}]
+  traffic:
+    {{- include "agentos-connections.browserTraffic" (dict "root" $ "expression" (include "agentos-connections.viewer" .)) | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

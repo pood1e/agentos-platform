@@ -9,7 +9,6 @@ import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
 import { mcpApps } from "../mcp-apps/service.js";
 import { workspaceContext } from "../platform/access.js";
-import { registerEnvironmentApis } from "../platform/environment-api.js";
 import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
 import { voiceFeature } from "../voice/feature.js";
@@ -28,8 +27,11 @@ const { workspace } = config;
 const app = platformApp();
 const clients = platformClients(config);
 const configuration = await configurationClients(config.kube, workspace, clients, app.log);
-const { access, operations, environmentToken, metadata, oauth, identity, execution } =
-  await executionServices(config, configuration.clients, app.log);
+const { access, metadata, oauth, identity, execution } = await executionServices(
+  config,
+  configuration.clients,
+  app.log,
+);
 const projection = queryServices(config, clients, execution.store);
 
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
@@ -43,7 +45,6 @@ await registerDelegation(app, {
   grants: execution.background,
   executions: execution.registry,
 });
-registerEnvironmentApis(app, operations, environmentToken, identity);
 const speechSettings = speechSettingsStore(
   config.kube.makeApiClient(CoreV1Api),
   workspace,
@@ -79,10 +80,9 @@ await registerConsole(app, {
       projection,
       namespace: workspace,
       access,
-      operations,
       metadata,
       sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
-      token: environmentToken,
+      gatewayURL: gateway.url,
       log: app.log,
     }),
     projection,

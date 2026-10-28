@@ -15,7 +15,7 @@ spec:
         - podSelector:
             matchLabels: {app.kubernetes.io/name: agentos}
             matchExpressions:
-              - {key: app.kubernetes.io/component, operator: In, values: [api, dataplane]}
+              - {key: app.kubernetes.io/component, operator: In, values: {{ if .Values.global.agentos.environments }}[api, dataplane, web]{{ else }}[api, dataplane]{{ end }}}
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: ate-system}
           podSelector:
@@ -28,7 +28,7 @@ spec:
             matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: voice}
         {{- end }}
       ports: [{port: 8080, protocol: TCP}]
-    {{- if .Values.execution.sources }}
+    {{- if or .Values.execution.sources .Values.global.agentos.environments }}
     - from: {{ toYaml .Values.route.from | nindent 8 }}
       ports: [{port: 8080, protocol: TCP}]
     {{- end }}

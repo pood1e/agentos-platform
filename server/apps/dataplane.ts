@@ -1,11 +1,13 @@
 import { AuthenticationV1Api } from "@kubernetes/client-node";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
+import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { modelAuthorization } from "../authorization/models.js";
 import { registerRuntime } from "../authorization/native.js";
 import { platformToolAuthorization } from "../authorization/platform-tools.js";
 import { executionRuntime } from "../authorization/runtime.js";
 import { gatewayAuthorization } from "../authorization/transport.js";
 import { workloadConfiguration, workloadIdentity } from "../authorization/workloads.js";
+import { governanceConfig } from "../governance/config.js";
 import { configurationClients } from "../kagent/configuration.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
@@ -29,12 +31,16 @@ const { workspace } = config;
 const app = platformApp();
 const clients = platformClients(config);
 const configuration = await configurationClients(config.kube, workspace, clients, app.log);
-const { access, environmentToken, metadata, execution } = await executionServices(
+const { access, metadata, execution } = await executionServices(
   config,
   configuration.clients,
   app.log,
 );
 const projection = queryServices(config, clients, execution.store);
+const environmentToken = environmentTokens(
+  governanceConfig(),
+  environmentCredentials(config.kube, config.workspace),
+);
 const runtime = executionRuntime(
   execution,
   configuration.clients,

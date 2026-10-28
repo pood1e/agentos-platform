@@ -1,0 +1,28 @@
+{{- range $environment := .Values.environments }}
+{{- if $environment.apis }}
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ $environment.name }}-browser-api
+  labels:
+    {{- include "agentos-connections.labels" $ | nindent 4 }}
+    agentos.dev/browser-environment: {{ $environment.name }}
+spec:
+  static: {host: {{ $environment.gateway.address | quote }}, port: {{ $environment.gateway.nodePort }}}
+  policies:
+    {{- include "agentos-connections.browserBackend" (dict "environment" $environment "identity" "catalog") | nindent 4 }}
+{{- $services := dict }}
+{{- range $api := $environment.apis }}
+{{- if hasKey $services $api.service }}{{ fail "environment API services must be unique" }}{{ end }}
+{{- $_ := set $services $api.service true }}
+{{- range $api.readMethods }}
+{{- if has . $api.writeMethods }}{{ fail "environment API read/write methods must be disjoint" }}{{ end }}
+{{- include "agentos-connections.apiMethod" (dict "root" $ "environment" $environment "service" $api.service "method" . "write" false) }}
+{{- end }}
+{{- range $api.writeMethods }}
+{{- include "agentos-connections.apiMethod" (dict "root" $ "environment" $environment "service" $api.service "method" . "write" true) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

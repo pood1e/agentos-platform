@@ -35,9 +35,8 @@ app.kubernetes.io/component: {{ .component }}
 - name: AGENTOS_OIDC_CLIENT_SECRET
   valueFrom:
     secretKeyRef: {name: {{ $identity.secretRef }}, key: client-secret}
-{{- if $root.Values.global.agentos.environments }}
+{{- if and (eq .component "dataplane") $root.Values.global.agentos.environments }}
 - {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
-- {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}
 {{- end }}
 {{ include "agentos.telemetryEnv" . }}
 {{- end -}}
@@ -61,7 +60,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- define "agentos.platformDeployment" -}}
 {{- $root := .root -}}
 {{- $values := index $root.Values .component -}}
-{{- $environments := $root.Values.global.agentos.environments -}}
+{{- $environments := and (eq .component "dataplane") $root.Values.global.agentos.environments -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -141,7 +140,6 @@ spec:
             - {name: tools, mountPath: /etc/agentos, readOnly: true}
             - {name: execution-database, mountPath: /etc/agentos-database, readOnly: true}
             {{- if $environments }}
-            - {name: environment-ca, mountPath: /etc/agentos-environments, readOnly: true}
             - {name: governance, mountPath: /etc/agentos-governance, readOnly: true}
             {{- end }}
             {{- with .mounts }}
@@ -155,14 +153,6 @@ spec:
             secretName: {{ $root.Values.execution.databaseCASecret }}
             items: [{key: ca.crt, path: ca.crt}]
         {{- if $environments }}
-        - name: environment-ca
-          projected:
-            sources:
-              {{- range $environments }}
-              - configMap:
-                  name: {{ .name }}-gateway-ca
-                  items: [{key: ca.crt, path: {{ printf "%s/ca.crt" .name | quote }}}]
-              {{- end }}
         - name: governance
           secret: {secretName: agentos-governance}
         {{- end }}

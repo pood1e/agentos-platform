@@ -3,50 +3,35 @@ import {
   Client,
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
-import type { EnvironmentConnection } from "../../gen/agentos/governance/v1/governance_pb.js";
-import { environmentUrl, withEnvironmentHttp } from "../shared/environment-http.js";
 
-async function withEnvironmentMcpClient<T>(
-  connection: EnvironmentConnection,
-  url: URL,
-  token: string,
-  signal: AbortSignal,
-  operation: (client: Client, signal: AbortSignal) => Promise<T>,
-) {
-  return withEnvironmentHttp(connection, url, async (fetch) => {
-    const client = new Client({ name: "AgentOS MCP Apps", version: "1.0.0" });
-    const timeout = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
-    try {
-      await client.connect(
-        new StreamableHTTPClientTransport(url, {
-          requestInit: { headers: { Authorization: `Bearer ${token}` }, redirect: "error" },
-          fetch: (input, init) =>
-            fetch(input, {
-              ...init,
-              signal: AbortSignal.any([timeout, ...(init?.signal ? [init.signal] : [])]),
-            }),
-        }),
-      );
-      return await operation(client, timeout);
-    } finally {
-      await client.close().catch(() => {});
-    }
-  });
-}
-
+/** Calls the read-only native gateway view with the current viewer's credential. */
 export async function callEnvironmentAppTool(
-  connection: EnvironmentConnection,
+  gatewayURL: string,
+  environment: string,
   identity: string,
   service: string,
   token: string,
   params: CallToolRequest["params"],
   signal: AbortSignal,
 ) {
-  const gateway = connection.gateway;
-  if (!gateway || !/^[a-z0-9-]+$/.test(identity) || !/^[a-z0-9-]+$/.test(service))
+  if (![environment, identity, service].every((name) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)))
     throw new Error("MCP App gateway is unavailable");
-  const url = environmentUrl(connection, `/mcp/${identity}/${service}`);
-  return withEnvironmentMcpClient(connection, url, token, signal, (client, timeout) =>
-    client.callTool(params, { signal: timeout }),
-  );
+  const url = new URL(`/environments/${environment}/mcp/${identity}/${service}`, gatewayURL);
+  const client = new Client({ name: "AgentOS MCP Apps", version: "1.0.0" });
+  const timeout = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(url, {
+        requestInit: { headers: { Authorization: `Bearer ${token}` }, redirect: "error" },
+        fetch: (input, init) =>
+          fetch(input, {
+            ...init,
+            signal: AbortSignal.any([timeout, ...(init?.signal ? [init.signal] : [])]),
+          }),
+      }),
+    );
+    return await client.callTool(params, { signal: timeout });
+  } finally {
+    await client.close().catch(() => {});
+  }
 }

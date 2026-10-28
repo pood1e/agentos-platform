@@ -74,3 +74,7 @@ tests:
         contains:
           path: subjects
           content: {kind: ServiceAccount, name: agentos-api, namespace: agentos}
+      - template: gateway-auth.yaml
+        matchRegex:
+          path: spec.traffic.authorization.policy.matchExpressions[0]
+          pattern: "request.path.startsWith\\('/speech/'\\)"

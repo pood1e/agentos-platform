@@ -3,7 +3,6 @@ import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { onTestFinished, vi } from "vitest";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
-import { GovernanceConfigSchema } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { executions } from "../../server/authorization/executions.js";
 import { consoleService } from "../../server/console/service.js";
 import { toolMetadata } from "../../server/kagent/tool-metadata.js";
@@ -25,17 +24,6 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
   await registry.bind(scenario.session, owner);
   const metadata = toolMetadata(env.clients);
   const access = testBindings(env.fake);
-  const operations = create(GovernanceConfigSchema, {
-    environments: [
-      {
-        environment: { name: "lab" },
-        issuer: "https://identity.test",
-        resource: "https://environment.test",
-        gateway: { address: "127.0.0.1", port: 8443, tlsServerName: "environment.test" },
-      },
-    ],
-  });
-  const token = vi.fn(async () => "delegated-alice-token");
   const invoke = vi.fn(async () => ({
     content: [{ type: "text" as const, text: "12 devices" }],
     structuredContent: { devices: 12 },
@@ -44,10 +32,9 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     ...env,
     namespace: "agentos",
     access,
-    operations,
     metadata,
     sandboxOrigin,
-    token,
+    gatewayURL: "http://gateway.test:8080",
     invoke,
   });
   const service = consoleService({
@@ -76,7 +63,6 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     metadata,
     registry,
     apps,
-    token,
     invoke,
     owner,
     request,
