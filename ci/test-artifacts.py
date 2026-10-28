@@ -165,12 +165,15 @@ class OCITest(unittest.TestCase):
     def test_charts_and_collection_share_one_source_and_repackage_identically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name in ("charts", "deploy", "environments", "roles", "ci"):
+            for name in ("charts", "deploy", "environments", "ci"):
                 shutil.copytree(
                     ROOT / name, root / name, ignore=shutil.ignore_patterns("charts", "__pycache__")
                 )
-            shutil.copytree(ROOT / "controller/config/crd/bases", root / "controller/config/crd/bases")
-            for name in ("package.json", ".release-please-manifest.json", "LICENSE"):
+            shutil.copytree(
+                ROOT / "controller/config/crd/bases", root / "controller/config/crd/bases"
+            )
+            (root / ".github").mkdir()
+            for name in ("package.json", ".github/.release-please-manifest.json", "LICENSE"):
                 shutil.copyfile(ROOT / name, root / name)
             (root / "gen").mkdir()
             (root / "gen/authorization.json").write_text("{}\n")
@@ -193,7 +196,7 @@ class OCITest(unittest.TestCase):
             revision = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=root, text=True
             ).strip()
-            (root / "release-please-config.json").write_text(
+            (root / ".github/release-please-config.json").write_text(
                 json.dumps({"bootstrap-sha": revision})
             )
             (root / ".cache").mkdir()
@@ -281,7 +284,9 @@ class OCITest(unittest.TestCase):
                 }
                 self.assertEqual(len(artifacts), 5)
                 for chart in ("agentos", "agentos-environment"):
-                    metadata = yaml.safe_load((root / ".cache/release-charts" / chart / "Chart.yaml").read_text())
+                    metadata = yaml.safe_load(
+                        (root / ".cache/release-charts" / chart / "Chart.yaml").read_text()
+                    )
                     archive = root / "dist" / f"{chart}-{metadata['version']}.tgz"
                     with tarfile.open(archive) as package:
                         for crd in (root / "controller/config/crd/bases").glob("*.yaml"):
@@ -298,7 +303,9 @@ class OCITest(unittest.TestCase):
                     ],
                     revision,
                 )
-            values = yaml.safe_load((root / ".cache/release-charts/agentos/values.yaml").read_text())
+            values = yaml.safe_load(
+                (root / ".cache/release-charts/agentos/values.yaml").read_text()
+            )
             self.assertEqual(values["web"]["image"], registry + "/web@" + digest)
             for path in (root / ".cache/collection/playbooks").glob("*/vars.yaml"):
                 self.assertEqual(yaml.safe_load(path.read_text())["delivery_revision"], revision)

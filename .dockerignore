@@ -1,5 +1,6 @@
 **
-!Dockerfile
+!server/
+!server/Dockerfile
 !.dockerignore
 !package.json
 !package-lock.json

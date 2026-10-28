@@ -32,7 +32,7 @@
   },
   "overrides": [
     {
-      "includes": [".release-please-manifest.json"],
+      "includes": [".github/.release-please-manifest.json"],
       "formatter": {
         "enabled": false
       }

@@ -13,10 +13,9 @@ workflow:
         compare_to: refs/heads/main
         paths: &build-paths
           - .gitlab-ci.yml
-          - .github/workflows/**/*
+          - .github/**/*
           - .dockerignore
           - .env.example
-          - Dockerfile
           - compose.yaml
           - mise.*
           - package*.json
@@ -32,9 +31,7 @@ workflow:
           - deploy/**/*
           - environments/**/*
           - proto/**/*
-          - roles/**/*
           - runtime/**/*
-          - scripts/**/*
           - server/**/*
           - shared/**/*
           - src/**/*

@@ -17,7 +17,12 @@ epoch = subprocess.check_output(
 ).strip()
 subprocess.run([sys.executable, str(root / "ci/node-contracts.py")], cwd=root, check=True)
 subprocess.run(
-    [str(root / "node_modules/.bin/buf"), "generate", "--template", "buf.python.gen.yaml"],
+    [
+        str(root / "node_modules/.bin/buf"),
+        "generate",
+        "--template",
+        "contracts/buf.python.gen.yaml",
+    ],
     cwd=root,
     check=True,
 )

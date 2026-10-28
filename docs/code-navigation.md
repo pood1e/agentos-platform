@@ -32,6 +32,7 @@
 | `server/team-sessions` | 协作 MCP：发现 Agent、创建与续接会话、知识检索、角色起草 |
 | `server/governance` | AccessPlan Informer、已编译工具授权、原生暂停与外部审批协调 |
 | `shared/` | 前后端共用模型 |
+| `server/Dockerfile`、`server/tsconfig.json` | 平台服务镜像与编译配置 |
 | `src/app`、`src/components` | 前端路由、布局与 shadcn/ui 组件 |
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
 | `src/features/chat` | assistant-ui 会话、流式文本、会话历史与删除、紧凑工具图标、工作 Agent 与子 Agent 结果 |
@@ -47,14 +48,14 @@
 | `tests/fixtures/pack` | 示例方案包，供测试使用 |
 | `tests/fixtures/solution-chart` | 依赖平台 Chart 的示例方案 Chart，供 Chart 校验使用 |
 | `runtime` | kagent、Agent Substrate 的固定版本补丁与 Harness 工具箱镜像 |
-| `contracts` | Python wheel 与 Node SDK 的打包配置，SDK 同时发布官方依赖的 proto 源码 |
+| `contracts` | 协议生成模板、模型生成脚本、Python wheel 与 Node SDK 的打包配置；SDK 同时发布官方依赖的 proto 源码 |
 | `mise.toml`、`mise.lock` | 开发与 CI 共用的工具版本、平台来源与完整性锁定 |
 | `charts/agentos-controller` | 控制器部署与 Preset 的共享 Helm library |
 | `controller/config/crd/bases` | 平台与环境 Chart 共用的 CRD |
-| `scripts/generate-kubernetes.mjs` | 从 CRD 生成 Helm schema、TS 类型与编译器测试夹具 |
-| `.github/workflows` | 合并前检查、自动发布 PR 与正式 tag |
+| `contracts/generate-kubernetes.mjs` | 从 CRD 生成 Helm schema、TS 类型与编译器测试夹具 |
+| `.github` | 合并前检查、release-please 配置、自动发布 PR 与正式 tag |
 | `ci` | GitLab CI 作业、镜像构建、Chart 校验与发布脚本 |
-| `deploy` | Ansible collection 源码、OCI 验签、运行时 Helm 值与 Kustomize overlays |
+| `deploy` | Ansible playbook 与角色、collection 源码、OCI 验签、运行时 Helm 值与 Kustomize overlays |
 | `environments` | 环境套件：环境网关、连接器后端、身份映射与平台接入 |
 | `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台接入的独立 Helm release、原生 Chart 测试 |
 | `third_party` | 上游协议、CRD 与组件来源 |

@@ -5,7 +5,7 @@
     "tests/fixtures/mcp-app-view.ts",
     "server/jobs/replay.ts",
     "server/apps/*.ts",
-    "scripts/*.{ts,mjs}",
+    "contracts/*.{ts,mjs}",
     "tests/proofs/*.ts",
     "charts/agentos/files/*.mjs",
     "shared/digest.ts"

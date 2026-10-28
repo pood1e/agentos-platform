@@ -14,8 +14,10 @@ version, built = versions(), images()
 root = Path(".cache/collection")
 shutil.rmtree(root, ignore_errors=True)
 for name in ("deploy", "environments"):
-    shutil.copytree(name, root / "playbooks" / name, ignore=shutil.ignore_patterns("__pycache__"))
-shutil.copytree("roles", root / "roles")
+    shutil.copytree(
+        name, root / "playbooks" / name, ignore=shutil.ignore_patterns("__pycache__", "roles")
+    )
+shutil.copytree("deploy/roles", root / "roles")
 shutil.copyfile("LICENSE", root / "LICENSE")
 shutil.copyfile("deploy/collection-README.md", root / "README.md")
 (root / "meta").mkdir()

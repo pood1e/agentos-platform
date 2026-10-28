@@ -23,7 +23,8 @@ class VersionsTest(unittest.TestCase):
         self.environment.start()
         self.addCleanup(self.environment.stop)
         Path("package.json").write_text(json.dumps({"version": "0.26.5"}))
-        Path(".release-please-manifest.json").write_text(json.dumps({".": "0.26.5"}))
+        Path(".github").mkdir()
+        Path(".github/.release-please-manifest.json").write_text(json.dumps({".": "0.26.5"}))
         self.run_git("init", "-q")
         self.run_git("add", ".")
         self.run_git(
@@ -36,7 +37,9 @@ class VersionsTest(unittest.TestCase):
             "baseline",
         )
         self.baseline = self.run_git("rev-parse", "HEAD")
-        Path("release-please-config.json").write_text(json.dumps({"bootstrap-sha": self.baseline}))
+        Path(".github/release-please-config.json").write_text(
+            json.dumps({"bootstrap-sha": self.baseline})
+        )
         self.run_git("add", ".")
         self.run_git(
             "-c",
@@ -89,7 +92,6 @@ class VersionsTest(unittest.TestCase):
         with patch("versions.git", side_effect=[self.revision, f"{'0' * 40}\trefs/tags/v0.26.5"]):
             with self.assertRaisesRegex(ValueError, "tag revisions"):
                 versions()
-
 
 
 if __name__ == "__main__":
