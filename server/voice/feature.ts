@@ -19,7 +19,7 @@ const workerAudience = "agentos-voice";
  */
 export async function voiceFeature(
   app: FastifyInstance,
-  options: Omit<VoiceWorkerDependencies, "sessions"> & {
+  options: Omit<VoiceWorkerDependencies, "sessions" | "gatewayURL"> & {
     database: { uri: string; ca?: string };
     kube: KubeConfig;
   },
@@ -39,7 +39,15 @@ export async function voiceFeature(
       voiceWorker(review, workerAudience, requiredEnv("AGENTOS_VOICE_SUBJECT")),
       createValidateInterceptor(),
     ],
-    routes: (router) => router.service(VoiceService, voiceService({ ...dependencies, sessions })),
+    routes: (router) =>
+      router.service(
+        VoiceService,
+        voiceService({
+          ...dependencies,
+          sessions,
+          gatewayURL: requiredEnv("AGENTOS_VOICE_GATEWAY_URL"),
+        }),
+      ),
   });
   app.addHook("preClose", async () => {
     await server.close();

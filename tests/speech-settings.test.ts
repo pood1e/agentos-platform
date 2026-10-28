@@ -47,9 +47,10 @@ it("atomically saves speech settings and write-only credentials and immediately 
   expect(await client.getSpeechConfiguration({})).toEqual(settings);
   const current = await env.dependencies.speech.load();
   expect(current).toMatchObject({
-    transcriptionCredential: "private-asr-key",
-    synthesisCredential: "private-tts-key",
+    transcriptionCredentialConfigured: true,
+    synthesisCredentialConfigured: true,
   });
+  expect(JSON.stringify(current)).not.toContain("private-");
   await client.saveSpeechConfiguration({
     configuration: create(SpeechConfigurationSchema),
     resourceVersion: settings?.resourceVersion,
@@ -74,7 +75,7 @@ it("rejects stale writes without changing provider settings or credentials", asy
     }),
   ).rejects.toMatchObject({ code: Code.Aborted });
   expect(await client.getSpeechConfiguration({})).toEqual(saved.settings);
-  expect((await env.dependencies.speech.load()).transcriptionCredential).toBe("original-key");
+  expect((await env.dependencies.speech.load()).transcriptionCredentialConfigured).toBe(true);
 });
 
 it("preserves referenced credentials on edit and explicitly clears only the selected provider", async () => {
@@ -116,8 +117,8 @@ it("preserves referenced credentials on edit and explicitly clears only the sele
     synthesisCredentialConfigured: true,
   });
   expect(await env.dependencies.speech.load()).toMatchObject({
-    transcriptionCredential: "",
-    synthesisCredential: "external-tts",
+    transcriptionCredentialConfigured: false,
+    synthesisCredentialConfigured: true,
   });
 });
 

@@ -1,0 +1,8 @@
+version: v2
+plugins:
+  - local: [go, run, google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12]
+    out: controller/internal/proto
+    types: [agentos.console.v1.SpeechConfiguration]
+    opt:
+      - paths=source_relative
+      - Magentos/console/v1/speech.proto=github.com/pood1e/agentos-platform/controller/internal/proto/agentos/console/v1

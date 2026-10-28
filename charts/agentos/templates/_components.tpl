@@ -14,6 +14,7 @@
 - {name: AGENTOS_RELEASE, value: {{ $name }}}
 - {name: AGENTOS_SPEECH_SECRET, value: {{ $name }}-speech}
 {{- if .Values.voice.enabled }}
+- {name: AGENTOS_VOICE_GATEWAY_URL, value: "http://{{ $name }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080"}
 - {name: AGENTOS_VOICE_AGENT, value: {{ $name }}-voice}
 - {name: AGENTOS_VOICE_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-voice"}
 - name: AGENTOS_LIVEKIT_URL

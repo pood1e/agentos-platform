@@ -7,9 +7,11 @@ from livekit.agents import APIConnectionError, tts
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
 from openai import AsyncOpenAI
 
+from agentos_voice.gateway import token_source
+
 
 class ConfiguredTTS(tts.TTS):
-    def __init__(self, settings: SpeechSynthesis, credential: str, language: str):
+    def __init__(self, settings: SpeechSynthesis, token_file: str, language: str):
         self.nemo = settings.protocol == SpeechSynthesis.PROTOCOL_NEMO
         super().__init__(
             capabilities=tts.TTSCapabilities(streaming=False),
@@ -18,7 +20,7 @@ class ConfiguredTTS(tts.TTS):
         )
         self.client = AsyncOpenAI(
             base_url=settings.endpoint.base_url,
-            api_key=credential or "not-required",
+            api_key=token_source(token_file),
             max_retries=0,
             timeout=60,
         )

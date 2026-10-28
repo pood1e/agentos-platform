@@ -23,6 +23,10 @@ spec:
               - {key: app, operator: In, values: [atenet-egress, atenet-router]}
         - podSelector:
             matchLabels: {ate.dev/worker-pool: kagent-default}
+        {{- if .Values.voice.enabled }}
+        - podSelector:
+            matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: voice}
+        {{- end }}
       ports: [{port: 8080, protocol: TCP}]
     {{- if .Values.execution.sources }}
     - from: {{ toYaml .Values.route.from | nindent 8 }}

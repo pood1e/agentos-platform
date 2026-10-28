@@ -86,7 +86,9 @@ jobs:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci --prefer-offline
-      - run: npm run verify
+      - run: |
+          npm run verify
+          git diff --exit-code -- controller/internal/proto
   deployment:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || (github.event_name != 'push' && needs.changes.outputs.code == 'true')

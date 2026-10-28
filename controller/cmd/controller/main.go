@@ -14,7 +14,10 @@ import (
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"github.com/pood1e/agentos-platform/controller/internal/connections"
 	"github.com/pood1e/agentos-platform/controller/internal/reconcile"
+	"github.com/pood1e/agentos-platform/controller/internal/speech"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -25,7 +28,7 @@ import (
 )
 
 func run() error {
-	var mode, namespace string
+	var mode, namespace, speechSecret, voiceSubject string
 	var gateway platform.PlatformGateway
 	flag.StringVar(&mode, "mode", "platform", "Controller mode: platform or environment")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to watch")
@@ -35,6 +38,8 @@ func run() error {
 	flag.StringVar(&gateway.ModelSecret, "model-secret", "agentos-model-client", "Model client placeholder Secret")
 	flag.StringVar(&gateway.Dataplane, "dataplane", "agentos-dataplane", "Authorization service name")
 	flag.StringVar(&gateway.ActorJWKSBackend, "actor-jwks-backend", "agentos-actor-jwks", "Actor JWKS AgentgatewayBackend name")
+	flag.StringVar(&speechSecret, "speech-secret", "", "Speech settings Secret name")
+	flag.StringVar(&voiceSubject, "voice-subject", "", "Voice worker service account subject")
 	flag.StringVar(&gateway.ActorIssuer, "actor-issuer", "", "Actor token issuer")
 	options := zap.Options{}
 	options.BindFlags(flag.CommandLine)
@@ -57,6 +62,23 @@ func run() error {
 		return err
 	}
 	if mode == "platform" {
+		if speechSecret != "" {
+			api, err := kubernetes.NewForConfig(manager.GetConfig())
+			if err != nil {
+				return err
+			}
+			routing := &reconcile.Speech{
+				Client: manager.GetClient(), Scheme: scheme,
+				Settings: types.NamespacedName{Namespace: namespace, Name: speechSecret},
+				Gateway:  speech.Gateway{Namespace: namespace, Name: gateway.Name, Subject: voiceSubject},
+				Trust: func(ctx context.Context) (string, string, error) {
+					return speech.ServiceAccountTrust(ctx, api.Discovery().RESTClient())
+				},
+			}
+			if err := routing.SetupWithManager(manager); err != nil {
+				return err
+			}
+		}
 		if err := (&reconcile.Preset{Client: manager.GetClient(), Scheme: scheme}).SetupWithManager(manager); err != nil {
 			return err
 		}
