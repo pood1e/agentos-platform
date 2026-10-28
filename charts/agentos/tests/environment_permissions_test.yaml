@@ -1,8 +1,6 @@
 suite: environment permission sets
 values:
 - ../../../tests/fixtures/chart-values.yaml
-templates:
-- access-plan.yaml
 release:
   name: agentos
   namespace: agentos
@@ -26,6 +24,7 @@ set:
       inventory: manage
 tests:
 - it: passes native tier and identity inputs to the controller
+  template: access-plan.yaml
   asserts:
   - isKind:
       of: AccessPlan
@@ -37,9 +36,27 @@ tests:
       value:
       - create_asset
 - it: preserves an explicit empty approval set
+  template: access-plan.yaml
   set:
     global.agentos.toolsets.inventory.approval: []
   asserts:
   - equal:
       path: spec.toolsets.inventory.approval
       value: []
+- it: forwards browser environment RPC through the native gateway
+  template: web-config.yaml
+  asserts:
+  - matchRegex:
+      path: data["oauth2-proxy.yaml"]
+      pattern: 'id: environments\s+path: /environments/\s+uri: http://agentos-gateway:8080'
+- it: publishes native environment routes on the API host
+  template: routes.yaml
+  documentSelector:
+    path: metadata.name
+    value: agentos-api
+  asserts:
+  - contains:
+      path: spec.rules
+      content:
+        matches: [{path: {type: PathPrefix, value: /environments}}]
+        backendRefs: [{name: agentos-gateway, port: 8080}]

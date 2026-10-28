@@ -1,6 +1,16 @@
 {
   "platform": {
-    "actorIssuer": "https://idp.ate-system.svc"
+    "actorIssuer": "https://idp.ate-system.svc",
+    "authentication": {
+      "issuer": "https://identity.example.test/realms/platform",
+      "audiences": ["agentos"],
+      "jwks": {
+        "remote": {
+          "url": "https://identity.example.test/realms/platform/protocol/openid-connect/certs"
+        }
+      }
+    },
+    "writerRole": "agentos-writer"
   },
   "environments": [
     {
@@ -72,7 +82,8 @@
           "readMethods": ["ListResources"],
           "writeMethods": ["UpdateResource"]
         }
-      ]
+      ],
+      "tokenEndpointURL": "https://identity.example.test/realms/env-approval/protocol/openid-connect/token"
     },
     {
       "name": "env-direct",
@@ -129,7 +140,8 @@
       "titles": {
         "kubernetes": "Kubernetes",
         "tickets": "Tickets"
-      }
+      },
+      "tokenEndpointURL": "https://identity.example.test/realms/env-direct/protocol/openid-connect/token"
     }
   ]
 }

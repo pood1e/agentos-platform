@@ -74,6 +74,12 @@ for resource in yaml.safe_load_all("\n---\n".join(sources)):
     if not resource or resource.get("kind") != "CustomResourceDefinition":
         continue
     spec = resource["spec"]
+    if resource["metadata"]["name"] == "agentgatewaypolicies.agentgateway.dev":
+        provider = spec["versions"][0]["schema"]["openAPIV3Schema"]["properties"]["spec"][
+            "properties"
+        ]["traffic"]["properties"]["jwtAuthentication"]["properties"]["providers"]["items"]
+        if provider != json.loads(Path("third_party/agentgateway/jwt-provider.json").read_text()):
+            raise ValueError("JWT provider schema differs from the pinned agentgateway CRD")
     for version in spec["versions"]:
         schema = version["schema"]["openAPIV3Schema"]
         schema["additionalProperties"] = False

@@ -26,7 +26,7 @@
 | `server/read-model` | 原生任务查询、执行树、归属过滤、分页与订阅 |
 | `server/team-sessions` | 协作会话 MCP 与角色起草 |
 | `server/mcp-apps` | 模板读取、视图投影与当前查看者的工具回调 |
-| `server/platform` | 网关与 MCP 接线、gRPC 生命周期、访问上下文和环境 API 中转 |
+| `server/platform` | 网关与 MCP 接线、gRPC 生命周期与访问上下文 |
 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
 | `controller/internal/speech`、`controller/internal/reconcile/speech.go` | 原生语音路由、工作负载认证与供应商凭据引用 |
 | `server/shared`、`shared` | 服务端基础设施与前后端共享代码 |
@@ -44,7 +44,7 @@
 | `controller/internal/compile`、`controller/internal/reconcile` | 资源编译、SSA、所有权与状态收敛 |
 | `controller/internal/connections` | kagent 可选 agentgateway 模块的平台配置 |
 | `charts/agentos`、`charts/agentos-controller` | 平台应用与共享控制器 library Chart |
-| `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台连接 release |
+| `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台连接 release、原生浏览器 API / MCP 授权 |
 | `.github`、`ci` | 合并检查、构建、验签、版本与发布 |
 | `mise.toml`、`mise.lock` | 开发与 CI 工具版本及来源锁定 |
 | `tests` | 单元与集成回归；`fake-kagent` 为录制驱动替身，`proofs` 为真实组件验证 |

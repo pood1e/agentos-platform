@@ -85,16 +85,44 @@ save("agentos-environment", {
 });
 const apiBundle = read("gen/schema/agentos.governance.v1.EnvironmentApi.jsonschema.bundle.json");
 const { $schema, ...api } = apiBundle.$defs["agentos.governance.v1.EnvironmentApi.jsonschema.json"];
+delete api.patternProperties;
 const connectionEnvironment = structuredClone(environment);
 connectionEnvironment.additionalProperties = false;
+connectionEnvironment.required.push("issuer", "resource", "gateway", "tokenEndpointURL");
 connectionEnvironment.properties.gateway.properties.ca = text;
 Object.assign(connectionEnvironment.properties, {
   apis: { type: "array", items: api },
+  tokenEndpointURL: https,
 });
+const jwt = read("third_party/agentgateway/jwt-provider.json");
+jwt.required = [...new Set([...jwt.required, "audiences"])];
+jwt.additionalProperties = false;
+const jwtRef = { $ref: "#/definitions/jwtProvider" };
 save("agentos-connections", {
   $schema: "http://json-schema.org/draft-07/schema#",
+  definitions: { jwtProvider: jwt },
   ...object({
-    platform: object({ release: text, controllerServiceAccount: text, actorIssuer: https }),
+    platform: object(
+      {
+        release: text,
+        controllerServiceAccount: text,
+        actorIssuer: https,
+        authentication: { oneOf: [jwtRef, { type: "object", maxProperties: 0 }] },
+        writerRole: { type: "string" },
+      },
+      ["release", "controllerServiceAccount", "actorIssuer"],
+    ),
     environments: { type: "array", items: connectionEnvironment },
   }),
+  anyOf: [
+    { properties: { environments: { maxItems: 0 } } },
+    {
+      properties: {
+        platform: {
+          required: ["authentication", "writerRole"],
+          properties: { authentication: jwtRef, writerRole: text },
+        },
+      },
+    },
+  ],
 });

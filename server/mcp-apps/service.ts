@@ -11,9 +11,7 @@ import type {
 import type { Conversation } from "../../gen/agentos/console/v1/conversation_pb.js";
 import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_pb.js";
 import type { ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
-import type { GovernanceConfig } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { agentRoles } from "../authorization/agent-role.js";
-import type { EnvironmentTokens } from "../authorization/environment-tokens.js";
 import { viewer, visibleGraph } from "../console/history.js";
 import type { BindingView, ToolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
@@ -31,10 +29,9 @@ interface Dependencies {
   projection: TaskQueries;
   namespace: string;
   access: BindingView;
-  operations: GovernanceConfig;
   metadata: ToolMetadata;
   sandboxOrigin: string;
-  token?: EnvironmentTokens;
+  gatewayURL: string;
   log?: Pick<FastifyBaseLogger, "info">;
   invoke?: typeof callEnvironmentAppTool;
 }
@@ -58,10 +55,9 @@ export function mcpApps({
   projection,
   namespace,
   access,
-  operations,
   metadata,
   sandboxOrigin,
-  token,
+  gatewayURL,
   log,
   invoke = callEnvironmentAppTool,
 }: Dependencies) {
@@ -180,10 +176,8 @@ export function mcpApps({
       const { engineer } = await agentRole(session);
       const policy = await access();
       if (!policy.permitsCall(engineer, [origin.target.service], tool.name, false)) throw denied();
-      const connection = operations.environments.find(
-        (connection) => connection.environment?.name === origin.target.environment,
-      );
-      if (!connection?.gateway || !token) throw unavailable();
+      if (identity.credential.case !== "accessToken" || !identity.credential.value)
+        throw new ConnectError("MCP App viewer credential required", Code.Unauthenticated);
       const audit = {
         initiator: identity.subject,
         taskId: request.app?.taskId,
@@ -193,13 +187,13 @@ export function mcpApps({
         tool: origin.unprefix(tool.name),
       };
       try {
-        const bearer = await token(origin.target.environment, engineer, identity);
         const result = CallToolResultSchema.parse(
           await invoke(
-            connection,
+            gatewayURL,
+            origin.target.environment,
             engineer,
             origin.target.project,
-            bearer,
+            identity.credential.value,
             { name: origin.unprefix(tool.name), arguments: request.arguments?.value },
             signal,
           ),

@@ -1,0 +1,110 @@
+suite: native environment browser authorization
+values:
+- values.json
+release:
+  name: agentos-connections
+  namespace: agentos
+tests:
+- it: authenticates native API routes with the platform issuer and exact audience
+  template: browser-api.yaml
+  documentSelector:
+    path: spec.targetRefs[0].name
+    value: env-approval-api-639ac1dd693615e2
+  asserts:
+  - equal:
+      path: spec.traffic.jwtAuthentication.mode
+      value: Strict
+  - equal:
+      path: spec.traffic.jwtAuthentication.providers[0].audiences
+      value: [agentos]
+  - equal:
+      path: spec.traffic.headerModifiers.request.remove
+      value: [cookie, proxy-authorization, x-forwarded-access-token, x-auth-request-access-token, x-substrate-actor-token]
+  - equal:
+      path: spec.traffic.headerModifiers.response.remove
+      value: [set-cookie]
+- it: routes only the configured POST method and rewrites its native RPC path
+  template: browser-api.yaml
+  documentSelector:
+    path: spec.rules[0].matches[0].path.value
+    value: /environments/env-approval/rpc/example.resources.v1.Resources/ListResources
+  asserts:
+  - equal:
+      path: spec.rules[0].matches[0].method
+      value: POST
+  - equal:
+      path: spec.rules[0].filters[0].urlRewrite.path
+      value: {type: ReplaceFullPath, replaceFullPath: /example.resources.v1.Resources/ListResources}
+- it: requires the configured role for API writes
+  template: browser-api.yaml
+  documentSelector:
+    path: spec.targetRefs[0].name
+    value: env-approval-api-5d67f00a6696d12c
+  asserts:
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: 'has\(jwt.roles\).*"agentos-writer" in jwt.roles'
+- it: exchanges viewer credentials using a native Secret reference and verified environment TLS
+  template: browser-api.yaml
+  documentSelector:
+    path: metadata.name
+    value: env-approval-browser-api
+  asserts:
+  - equal:
+      path: spec.policies.auth.oauthTokenExchange
+      value:
+        url: https://identity.example.test/realms/env-approval/protocol/openid-connect/token
+        audiences: [https://env-approval-mcp.example.test:31000/mcp]
+        requestedTokenType: AccessToken
+        clientAuth:
+          clientId: agentos-catalog
+          secretRef: {name: env-approval-catalog, key: client-secret}
+  - equal:
+      path: spec.policies.tls.verifySubjectAltNames
+      value: [env-approval-mcp.example.test]
+- it: gives MCP Apps a read-only native view scoped to the original engineer
+  template: browser-mcp.yaml
+  documentSelector:
+    path: spec.mcp.targets[?(@.static.host == "192.0.2.21")].static.path
+    value: /mcp/remediation/kubernetes
+  asserts:
+  - equal:
+      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
+      value: agentos-remediation
+  - equal:
+      path: spec.mcp.targets[0].static.policies.tls.verifySubjectAltNames
+      value: [env-approval-mcp.example.test]
+  - equal:
+      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
+      value: mcp.tool.name in ["events_list","nodes_list","pods_list"] || (has(mcp.resource) && mcp.resource.name.startsWith('ui://'))
+- it: rejects overlapping read and write API methods
+  set:
+    environments:
+    - &environment
+      name: lab
+      governance: direct
+      issuer: https://identity.example.test
+      resource: https://environment.test/mcp
+      tokenEndpointURL: https://identity.example.test/token
+      gateway: {address: 192.0.2.1, host: environment.test, nodePort: 31000}
+      apis:
+      - service: example.Service
+        readMethods: [ListResources]
+        writeMethods: [ListResources]
+  asserts:
+  - failedTemplate:
+      errorPattern: disjoint
+- it: rejects invalid native API identifiers
+  set:
+    environments:
+    - <<: *environment
+      apis: [{service: ../other/service, readMethods: [ListResources]}]
+  asserts:
+  - failedTemplate:
+      errorPattern: service|pattern
+- it: rejects an unscoped authentication audience
+  set:
+    platform.authentication.audiences: []
+  asserts:
+  - failedTemplate:
+      errorPattern: audiences|oneOf|anyOf

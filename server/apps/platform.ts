@@ -2,12 +2,10 @@ import { readFileSync } from "node:fs";
 import { KubeConfig } from "@kubernetes/client-node";
 import Fastify, { type FastifyBaseLogger, type FastifyInstance, LogController } from "fastify";
 import { discovery } from "openid-client";
-import { environmentCredentials, environmentTokens } from "../authorization/environment-tokens.js";
 import { executionAccess } from "../authorization/execution.js";
 import { oidcIdentity } from "../authorization/oidc.js";
 import type { ExecutionStore } from "../authorization/store.js";
 import { toolBindings } from "../governance/bindings.js";
-import { governanceConfig } from "../governance/config.js";
 import { type KagentClients, kagentClients, kagentTransport } from "../kagent/clients.js";
 import { toolMetadata } from "../kagent/tool-metadata.js";
 import { taskQueries } from "../read-model/queries.js";
@@ -62,18 +60,13 @@ async function userIdentity() {
   return { oauth, identity };
 }
 
-/** Compiled tool authorization, environment identity and execution grants of the workspace. */
+/** Compiled tool authorization and execution grants of the workspace. */
 export async function executionServices(
   config: PlatformConfig,
   clients: KagentClients,
   log: FastifyBaseLogger,
 ) {
   const access = await toolBindings(config.kube, config.workspace, log);
-  const operations = governanceConfig();
-  const environmentToken = environmentTokens(
-    operations,
-    environmentCredentials(config.kube, config.workspace),
-  );
   const metadata = toolMetadata(clients);
   const { oauth, identity } = await userIdentity();
   const execution = await executionAccess({
@@ -86,7 +79,7 @@ export async function executionServices(
     oauth,
     metadata,
   });
-  return { access, operations, environmentToken, metadata, oauth, identity, execution };
+  return { access, metadata, oauth, identity, execution };
 }
 
 /** Native task queries share the authorization store, without another database client. */

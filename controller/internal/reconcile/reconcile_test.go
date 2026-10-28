@@ -124,6 +124,7 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal("user ownership not recorded")
 		}
 	})
+	t.Run("browser routes use native JWT, exchange and TLS contracts", func(t *testing.T) { testBrowserRoutes(t, c, ns.Name) })
 	t.Run("speech publishes service account verification keys from the API", func(t *testing.T) {
 		api, err := kubernetes.NewForConfig(config)
 		must(t, err)

@@ -18,7 +18,7 @@ message Environment {
   }];
 }
 
-// Environment OAuth resource, gateway and service APIs.
+// Environment OAuth resource used by runtime authorization.
 message EnvironmentConnection {
   Environment environment = 1 [(buf.validate.field).required = true];
   string issuer = 4 [(buf.validate.field).string = {
@@ -29,24 +29,21 @@ message EnvironmentConnection {
     uri: true
     prefix: "https://"
   }];
-  GatewayEndpoint gateway = 6;
-  repeated EnvironmentApi apis = 7;
+  reserved 6, 7;
+  reserved "gateway", "apis";
 }
 
 // Unary Connect JSON APIs served by the environment's OAuth resource.
 message EnvironmentApi {
-  string service = 1 [(buf.validate.field).string.min_len = 1];
-  repeated string read_methods = 2;
-  repeated string write_methods = 3;
-}
-
-message GatewayEndpoint {
-  string address = 1 [(buf.validate.field).string.min_len = 1];
-  uint32 port = 2 [(buf.validate.field).uint32 = {
-    gte: 1
-    lte: 65535
+  string service = 1 [(buf.validate.field).string.pattern = "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"];
+  repeated string read_methods = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {string: {pattern: "^[A-Za-z_][A-Za-z0-9_]*$"}}
   }];
-  string tls_server_name = 3 [(buf.validate.field).string.min_len = 1];
+  repeated string write_methods = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {string: {pattern: "^[A-Za-z_][A-Za-z0-9_]*$"}}
+  }];
 }
 
 message GovernanceConfig {

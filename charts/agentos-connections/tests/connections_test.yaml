@@ -5,12 +5,6 @@ release:
   name: agentos-connections
   namespace: agentos
 tests:
-- it: publishes the environment RPC allowlist in the governance catalog
-  template: governance.yaml
-  asserts:
-  - matchRegex:
-      path: stringData["connections.json"]
-      pattern: '"apis":.*"ListResources".*"UpdateResource"'
 - it: rejects removed inline workload keys
   set:
     platform.actorJWKS:

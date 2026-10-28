@@ -54,12 +54,12 @@ deny contains sprintf("%s exposes tools beyond its identity view", [backend.meta
 	some backend in resources
 	backend.kind == "AgentgatewayBackend"
 	engineer := backend.metadata.labels["agentos.dev/engineer"]
- some plan in resources
- plan.kind == "AccessPlan"
- some target in plan.status.targets
- target.server == backend.metadata.name
- target.engineer == engineer
- expected := [tool.name | some tool in target.tools]
+	some plan in resources
+	plan.kind == "AccessPlan"
+	some target in plan.status.targets
+	target.server == backend.metadata.name
+	target.engineer == engineer
+	expected := [tool.name | some tool in target.tools]
 	expression := backend.spec.policies.mcp.authorization.policy.matchExpressions[0]
 	actual := json.unmarshal(trim_prefix(expression, "mcp.tool.name in "))
 	sort(actual) != sort(expected)
@@ -116,4 +116,55 @@ deny contains sprintf("%s has no service for its scoped MCP origin", [remote.met
 	backend.metadata.name == remote.metadata.name
 	source := backend.spec.mcp.targets[0].name
 	not has_resource("Service", sprintf("%s-mcp-gateway", [source]))
+}
+
+deny contains sprintf("%s lacks strict viewer JWT authentication", [policy.metadata.name]) if {
+	some policy in resources
+	policy.kind == "AgentgatewayPolicy"
+	policy.metadata.labels["agentos.dev/browser-environment"]
+	authentication := object.get(policy.spec.traffic, "jwtAuthentication", {})
+	not viewer_authentication(authentication)
+}
+
+viewer_authentication(authentication) if {
+	authentication.mode == "Strict"
+	authentication.preserveToken == true
+	authentication.location.header == {"name": "Authorization", "prefix": "Bearer "}
+	authentication.providers[0].issuer == data.platform.authentication.issuer
+	authentication.providers[0].audiences == data.platform.authentication.audiences
+}
+
+deny contains sprintf("%s lacks native viewer token exchange", [backend.metadata.name]) if {
+	some backend in resources
+	backend.kind == "AgentgatewayBackend"
+	backend.metadata.labels["agentos.dev/browser-environment"]
+	not browser_transport(backend).auth.oauthTokenExchange
+}
+
+browser_transport(backend) := backend.spec.policies if backend.spec.static
+
+browser_transport(backend) := backend.spec.mcp.targets[0].static.policies if backend.spec.mcp
+
+deny contains sprintf("%s trusts an unexpected browser environment TLS identity", [backend.metadata.name]) if {
+	some backend in resources
+	backend.kind == "AgentgatewayBackend"
+	some environment in data.environments
+	backend.metadata.labels["agentos.dev/browser-environment"] == environment.name
+	browser_transport(backend).tls.verifySubjectAltNames != [environment.gateway.host]
+}
+
+deny contains sprintf("%s exposes MCP App tools beyond its read-only identity view", [backend.metadata.name]) if {
+	some backend in resources
+	backend.kind == "AgentgatewayBackend"
+	some environment in data.environments
+	backend.metadata.labels["agentos.dev/browser-environment"] == environment.name
+	path := split(backend.spec.mcp.targets[0].static.path, "/")
+	some identity in environment.identities
+	identity.name == path[2]
+	tools := environment.toolsets[path[3]]
+	extra := [tool | identity.services[path[3]] == "manage"; some tool in object.get(tools, "managementReadOnly", [])]
+	expected := sort(array.concat(object.get(tools, "readOnly", []), extra))
+	expression := backend.spec.policies.mcp.authorization.policy.matchExpressions[0]
+	actual := json.unmarshal(trim_prefix(split(expression, " || ")[0], "mcp.tool.name in "))
+	sort(actual) != expected
 }

@@ -23,6 +23,10 @@ spec:
   hostnames: [{{ $hosts.api | quote }}]
   rules:
     - backendRefs: [{name: {{ include "agentos.apiService" . }}, port: 8080}]
+    {{- if .Values.global.agentos.environments }}
+    - matches: [{path: {type: PathPrefix, value: /environments}}]
+      backendRefs: [{name: {{ $name }}-gateway, port: 8080}]
+    {{- end }}
     {{- if .Values.execution.sources }}
     - matches: [{path: {type: Exact, value: /mcp/executions}}]
       backendRefs: [{name: {{ $name }}-gateway, port: 8080}]

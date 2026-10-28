@@ -115,28 +115,36 @@ it("calls only same-service app-visible read tools as the current viewer and ori
       })
     ).result?.value?.structuredContent,
   ).toEqual({ devices: 12 });
-  expect(env.token).toHaveBeenCalledExactlyOnceWith("lab", "assistant", env.owner);
   expect(env.invoke).toHaveBeenCalledWith(
-    expect.anything(),
+    "http://gateway.test:8080",
+    "lab",
     "assistant",
     "views",
-    "delegated-alice-token",
+    "latest-alice-token",
     { name: "graph_data", arguments: { focus: "router-1", identity: "admin" } },
     expect.any(AbortSignal),
   );
 });
 
 it.each(["destroy", "model_only", "other-service_graph_data", "unclassified", "missing"])(
-  "rejects forbidden App tool %s before credential exchange",
+  "rejects forbidden App tool %s before gateway access",
   async (name) => {
     const env = await setup();
     await expect(env.client.callAppTool({ ...env.request, name })).rejects.toMatchObject({
       code: Code.PermissionDenied,
     });
-    expect(env.token).not.toHaveBeenCalled();
     expect(env.invoke).not.toHaveBeenCalled();
   },
 );
+
+it("requires the current viewer's credential before calling the gateway", async () => {
+  const env = await setup();
+  env.caller({ ...env.owner, credential: { case: "accessToken", value: "" } });
+  await expect(
+    env.client.callAppTool({ ...env.request, name: "graph_data" }),
+  ).rejects.toMatchObject({ code: Code.Unauthenticated });
+  expect(env.invoke).not.toHaveBeenCalled();
+});
 
 it("isolates both resource reads and tool calls from another user", async () => {
   const env = await setup();
@@ -147,7 +155,6 @@ it("isolates both resource reads and tool calls from another user", async () => 
   await expect(
     env.client.callAppTool({ ...env.request, name: "graph_data" }),
   ).rejects.toMatchObject({ code: Code.NotFound });
-  expect(env.token).not.toHaveBeenCalled();
 });
 
 it("hides app-only tools from role binding and identifies them for Actor authorization", async () => {
@@ -191,7 +198,6 @@ it("disables view resources and callbacks when no sandbox is configured", async 
   await expect(
     env.client.callAppTool({ ...env.request, name: "graph_data" }),
   ).rejects.toMatchObject({ code: Code.Unavailable });
-  expect(env.token).not.toHaveBeenCalled();
 });
 
 it("fails closed for invalid visibility and missing Actor metadata", async () => {
