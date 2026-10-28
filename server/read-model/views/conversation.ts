@@ -18,7 +18,6 @@ import { pool } from "../../kagent/clients.js";
 import { agentKey } from "../agents.js";
 import { toolCalls } from "../calls.js";
 import { object } from "../decode/messages.js";
-import { toolBaseName } from "../decode/tools.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { approvals } from "../interactions.js";
@@ -94,7 +93,7 @@ async function roleDraft(
   entry: TaskEntry,
 ): Promise<RoleDefinition | undefined> {
   const call = entry.calls.findLast(
-    (item) => toolBaseName(item.name) === "prepare_role" && item.state === ActivityState.SUCCEEDED,
+    (item) => item.name === "prepare_role" && item.state === ActivityState.SUCCEEDED,
   );
   const task = call && (await fullTask(entry));
   if (!task) return undefined;

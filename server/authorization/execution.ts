@@ -1,11 +1,11 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { Configuration } from "openid-client";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
+import { toolBaseName } from "../../shared/tool-name.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import { agentKey } from "../read-model/agents.js";
-import { toolBaseName } from "../read-model/decode/tools.js";
 import { agentRoles } from "./agent-role.js";
 import { executions } from "./executions.js";
 import { offlineCredentials } from "./offline.js";
