@@ -199,6 +199,7 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 | CI 变量 | 内容 |
 | --- | --- |
 | `AGENTOS_CI_RUNNER`、`AGENTOS_GO_RUNNER` | 普通与 Go runner，默认 `agentos-container` / `agentos-compiler` |
+| `AGENTOS_PLATFORM_REGISTRY` | 平台制品注册表路径，CI 工具镜像由此拉取 |
 | `AGENTOS_VOICE_RUNNER`、`AGENTOS_BUILDKIT_RUNNER` | 语音指令集与 rootless BuildKit runner |
 | `AGENTOS_BUILDKIT_IMAGE`、`AGENTOS_REGISTRY_MIRROR` | BuildKit 摘要与可选 Docker Hub 镜像源 |
 | `COSIGN_PRIVATE_KEY`、`COSIGN_PASSWORD` | 受保护的签名私钥文件与隐藏密码 |

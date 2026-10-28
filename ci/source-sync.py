@@ -1,11 +1,15 @@
 """Mirror public release sources from inside the build network using a project-scoped deploy key."""
 
+import os
 import re
 import subprocess
 import tempfile
 
 SOURCE = "https://github.com/pood1e/agentos-platform.git"
-TARGET = "git@gitlab.dev.supranett.com:aiops/agentos-platform.git"
+TARGET = (
+    f"ssh://git@{os.environ['CI_SERVER_SHELL_SSH_HOST']}:{os.environ['CI_SERVER_SHELL_SSH_PORT']}"
+    f"/{os.environ['CI_PROJECT_PATH']}.git"
+)
 
 
 def git(*args, cwd=None):
