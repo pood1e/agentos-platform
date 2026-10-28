@@ -3,14 +3,15 @@ module github.com/pood1e/agentos-platform/controller
 go 1.27.3
 
 require (
-	github.com/agentgateway/agentgateway v1.6.0
-	github.com/kagent-dev/kagent/go v0.0.0-20261021161150-8392184232e9
+	github.com/agentgateway/agentgateway v1.7.0
+	github.com/kagent-dev/kagent/go v0.0.0-20261027205517-bc8002dbaa78
+	github.com/kagent-dev/kagent/go/integrations/agentgateway v0.0.0-20261028094430-7ecaf78bb4cf
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/controller-runtime v0.25.2
-	sigs.k8s.io/gateway-api v1.6.2
+	sigs.k8s.io/gateway-api v1.7.0-rc.3
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -45,7 +46,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/onsi/ginkgo/v2 v2.33.0 // indirect
-	github.com/onsi/gomega v1.44.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.25.0 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
@@ -53,6 +53,8 @@ require (
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	go.opentelemetry.io/otel v1.47.0 // indirect
+	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
@@ -78,6 +80,8 @@ require (
 
 replace go.ate.dev/substrate => github.com/kagent-dev/substrate v0.6.0-alpha3
 
-replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agentgateway/api v0.0.0-20261002153356-ea5608642b9d
+replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agentgateway/api v0.0.0-20261027162624-26f5aebe99a3
 
 replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261028081249-20923c716154
+
+replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261028094430-7ecaf78bb4cf

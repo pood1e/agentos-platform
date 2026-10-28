@@ -33,7 +33,7 @@ flowchart LR
 | dataplane | 网关鉴权、ExtMCP、TaskStore / Memory 接入、协作 MCP 与 Actor 公钥转发 |
 | web | React 控制台、oauth2-proxy 登录会话与 MCP App 沙箱页 |
 | identity | 密码模式的 oidc-provider 身份源 |
-| 平台控制器 | 编译 AccessPlan，以 SSA 维护连接派生资源与 Preset |
+| 平台控制器 | 编译 AccessPlan、维护 Preset，向 kagent 连接模块提供平台配置 |
 | agentgateway | 使用官方 Chart，承载模型与 MCP 路由、身份映射和 ExtMCP |
 | Agent 运行时 | kagent 与 Agent Substrate，提供执行、原生状态、HITL 和协作 API |
 | voice worker | 可选的 LiveKit Agents 组件，提供听写、朗读与通话 |
@@ -47,7 +47,8 @@ kagent 保存会话、消息、任务、工具调用、HITL 及委派续接状�
 控制台按绑定筛选可见会话，直接读取 kagent 分页 API，组装执行树、搜索结果与列表分页。
 打开的会话通过原生 A2A 任务流接收更新，并定期读取原生状态以发现新任务。
 
-管理 API 保存连接父对象及其凭据 Secret，控制器维护 ModelConfig、RemoteMCPServer、路由与认证策略。
+管理 API 保存连接父对象及其凭据 Secret，kagent 的可选 agentgateway 模块维护 ModelConfig、RemoteMCPServer 与路由。
+平台提供模型参数和认证策略，官方 agentgateway 控制器负责代理配置下发。
 Preset 更新未修改的预置，用户编辑后的资源归用户维护，详见 [Kubernetes 控制器](kubernetes-controller.md)。
 团队知识复用原生 MemoryService 和嵌入模型，生成模型与向量模型通过原生用途声明区分。
 

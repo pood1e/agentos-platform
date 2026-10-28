@@ -11,7 +11,7 @@ spec:
         name: {{ .name }}
         annotations:
           agentos.dev/system-connection: 'true'
-          agentos.dev/connection: 'true'
+          kagent.dev/connection: 'true'
           agentos.dev/description: {{ .description | default .name | quote }}
         labels:
           {{- include "agentos.labels" $ | nindent 10 }}

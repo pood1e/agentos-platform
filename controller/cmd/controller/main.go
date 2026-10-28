@@ -10,7 +10,9 @@ import (
 
 	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
 	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
+	"github.com/kagent-dev/kagent/go/integrations/agentgateway"
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
+	"github.com/pood1e/agentos-platform/controller/internal/connections"
 	"github.com/pood1e/agentos-platform/controller/internal/reconcile"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -58,10 +60,8 @@ func run() error {
 		if err := (&reconcile.Preset{Client: manager.GetClient(), Scheme: scheme}).SetupWithManager(manager); err != nil {
 			return err
 		}
-		for _, model := range []bool{true, false} {
-			if err := (&reconcile.Connection{Client: manager.GetClient(), Scheme: scheme, Gateway: gateway, Model: model}).SetupWithManager(manager); err != nil {
-				return err
-			}
+		if err := agentgateway.SetupWithManager(manager, connections.Config(gateway)); err != nil {
+			return err
 		}
 	}
 	if err := manager.AddHealthzCheck("health", healthz.Ping); err != nil {

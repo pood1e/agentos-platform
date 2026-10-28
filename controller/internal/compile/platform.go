@@ -53,14 +53,23 @@ func catalogPolicy(plan *platform.AccessPlan, target platform.CompiledTarget, to
 // RuntimePolicy binds Actor validation to a specific route and audience.
 func RuntimePolicy(namespace string, gateway *platform.PlatformGateway, server, service, audience string, catalog bool) *agw.AgentgatewayPolicy {
 	policy := routePolicy(namespace, server+"-runtime-auth", "mcp-"+server)
-	expression := agw.CELExpression("(has(jwt.iss) && jwt.iss == ") + literal(gateway.ActorIssuer) + ")"
+	catalogPath := ""
 	if catalog {
-		expression = "(request.path != " + literal("/mcp/"+service) + " && " + expression + ")"
+		catalogPath = "/mcp/" + service
+	}
+	policy.Spec.Traffic = RuntimeTraffic(gateway, audience, catalogPath)
+	return policy
+}
+
+// RuntimeTraffic supplies the platform's Actor and discovery authentication policy.
+func RuntimeTraffic(gateway *platform.PlatformGateway, audience, catalogPath string) *agw.Traffic {
+	expression := agw.CELExpression("(has(jwt.iss) && jwt.iss == ") + literal(gateway.ActorIssuer) + ")"
+	if catalogPath != "" {
+		expression = "(request.path != " + literal(catalogPath) + " && " + expression + ")"
 	}
 	expression += " || (!('x-substrate-actor-token' in request.headers) && 'authorization' in request.headers)"
-	policy.Spec.Traffic = &agw.Traffic{
+	return &agw.Traffic{
 		JWTAuthentication: &agw.JWTAuthentication{Mode: agw.JWTAuthenticationMode("Permissive"), PreserveToken: true, Location: &agw.AuthorizationExtractionLocation{Expression: ptr.To(agw.CELExpression("'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') : ''"))}, Providers: []agw.JWTProvider{{Issuer: gateway.ActorIssuer, Audiences: []string{audience}, JWKS: agw.JWKS{Remote: &agw.RemoteJWKS{PolicyBackendEndpoint: endpoint(gateway.ActorKeys, 9092), JwksPath: ptr.To("/keys/actor")}}, Validation: &agw.JWTValidationOptions{RequiredClaims: ptr.To([]agw.JWTClaim{"sub", "exp", "aud"})}}}},
 		Authorization:     authorization(expression),
 	}
-	return policy
 }
