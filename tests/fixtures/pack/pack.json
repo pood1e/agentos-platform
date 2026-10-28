@@ -107,12 +107,6 @@
           "tabs": {
             "team": "示例团队"
           }
-        },
-        "task": {
-          "tagNames": {
-            "analysis": "分析",
-            "maintenance": "维护"
-          }
         }
       },
       "tools": {
@@ -581,12 +575,6 @@
           "tabs": {
             "team": "Example team"
           }
-        },
-        "task": {
-          "tagNames": {
-            "analysis": "Analysis",
-            "maintenance": "Maintenance"
-          }
         }
       },
       "tools": {
@@ -997,6 +985,5 @@
         }
       }
     }
-  },
-  "taskTags": ["analysis", "maintenance"]
+  }
 }

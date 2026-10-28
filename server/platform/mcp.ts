@@ -10,7 +10,7 @@ import { executionTools } from "../execution/tools.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { knowledgeService } from "../knowledge/service.js";
-import type { TaskProjection } from "../read-model/projection.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import type { KagentConfig } from "../shared/config.js";
 import { registerTeamSessions } from "../team-sessions/app.js";
 import { sessionTools } from "../team-sessions/tools.js";
@@ -19,13 +19,13 @@ export async function registerPlatformMcp(
   app: FastifyInstance,
   config: KagentConfig,
   clients: KagentClients,
-  projection: TaskProjection,
+  projection: TaskQueries,
   execution: ExecutionRuntime,
   workloads: WorkloadIdentity,
   access: BindingView,
   knowledge: ReturnType<typeof knowledgeService>,
 ) {
-  const tools = sessionTools(clients, config.namespace, access, knowledge, projection);
+  const tools = sessionTools(clients, config.namespace, access, knowledge);
   await registerTeamSessions(app, tools, async (headers, method, tool) => {
     const authorization = typeof headers.authorization === "string" ? headers.authorization : "";
     const claims =

@@ -14,7 +14,7 @@ export interface PageKey {
   time: number;
 }
 
-export function decodeCursor(token: string, scope: string, query: string): PageCursor {
+function decodeCursor(token: string, scope: string, query: string): PageCursor {
   try {
     const cursor = fromBinary(PageCursorSchema, Buffer.from(token, "base64url"));
     if (cursor.scope === scope && cursor.query === query) return cursor;
@@ -22,7 +22,7 @@ export function decodeCursor(token: string, scope: string, query: string): PageC
   throw invalid("pagination.invalidPage");
 }
 
-export const encodeCursor = (scope: string, query: string, after: PageKey) =>
+const encodeCursor = (scope: string, query: string, after: PageKey) =>
   Buffer.from(
     toBinary(
       PageCursorSchema,

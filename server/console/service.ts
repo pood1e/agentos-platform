@@ -17,13 +17,11 @@ import { accessProfile, requestIdentity } from "../platform/access.js";
 import { agentKey } from "../read-model/agents.js";
 import { ingest } from "../read-model/entry.js";
 import { TaskGraph } from "../read-model/graph.js";
-import type { TaskProjection } from "../read-model/projection.js";
-import { refreshSession } from "../read-model/reconcile.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { TaskStreams } from "../read-model/streams.js";
 import { conversation, type FullTask } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
 import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
-import type { TaskTagStore } from "../tasks/tags.js";
 import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
 import { cancellationCommands } from "./cancellation.js";
 import { conversationTranscript } from "./conversation-transcript.js";
@@ -32,21 +30,19 @@ import { chatTarget, systemConversation, viewer, visibleGraph } from "./history.
 import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
-import { taskTagCommands } from "./task-tags.js";
 import type { TemplateWriter } from "./template-writer.js";
 import { watch } from "./watch.js";
 
 export interface ConsoleDependencies {
   apps?: McpApps;
   metadata?: ToolMetadata;
-  projection: TaskProjection;
+  projection: TaskQueries;
   clients: KagentClients;
   namespace: string;
   access: BindingView;
   roleDefaults: RoleDefaults;
   replaceTemplate: TemplateWriter;
   pack: Pack;
-  tags: TaskTagStore;
   voice?: VoiceConsole;
   executions: Executions;
   entryAgent?: string;
@@ -70,14 +66,12 @@ export function consoleService({
   roleDefaults,
   replaceTemplate,
   pack,
-  tags,
   voice = voiceDisabled,
   executions,
   entryAgent = "assistant",
   authorizeTools,
   delegationUrl = "",
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
-  const taskTags = taskTagCommands(clients, tags, executions);
   const cancel = cancellationCommands(projection, clients, executions);
   const messages = messageCommands(projection, clients, namespace, executions, authorizeTools);
   const conversations = conversationCommands(
@@ -122,13 +116,6 @@ export function consoleService({
         throw new ConnectError("Permission denied", Code.PermissionDenied);
       return projection.operations(viewer(identity, request.systemOnly), request);
     },
-    async updateTaskTags(request, context) {
-      const identity = context.values.get(requestIdentity);
-      const graph = await visibleGraph(projection, viewer(identity), { taskId: request.taskId });
-      const result = await taskTags.update(request, graph, identity);
-      await projection.touch(result.task.id);
-      return result;
-    },
     async cancelTask({ taskId }, context) {
       await cancel(taskId, context.values.get(requestIdentity), context.signal);
       return {};
@@ -146,7 +133,6 @@ export function consoleService({
         identity,
         systemConversation(namespace, entryAgent, request.agent, identity, request.contextId),
       );
-      let root: string | undefined;
       let touch = () => {};
       const streams = new TaskStreams(clients, context.signal, () => touch());
       const fullTask: FullTask = async (entry) =>
@@ -158,12 +144,9 @@ export function consoleService({
         async () => {
           let graph = new TaskGraph([], [], await projection.agents());
           if (request.contextId) {
-            if (!(await projection.session(request.contextId)))
-              await refreshSession(projection, clients, request.contextId, context.signal);
             const tree = await visibleGraph(projection, reader, { contextId: request.contextId });
             if (tree?.session(request.contextId)?.agentId !== agentKey(request.agent))
               throw notFound("chat.invalidConversation");
-            root = (await projection.session(request.contextId))?.root;
             streams.follow(tree.all());
             // Live streams are fresher than the projection while their tasks run.
             graph = new TaskGraph(
@@ -177,7 +160,6 @@ export function consoleService({
           }
           const view = await conversation(graph, request.agent, request.contextId, fullTask);
           await apps?.project(view, graph, fullTask);
-          await taskTags.conversation(view);
           view.operate =
             !request.contextId || (await canOperate(request.contextId, identity.subject));
           if (view.interactions.length)
@@ -187,7 +169,6 @@ export function consoleService({
           });
         },
         {
-          roots: () => (root ? new Set([root]) : undefined),
           wakes: (wake) => {
             touch = wake;
             return () => streams.close();

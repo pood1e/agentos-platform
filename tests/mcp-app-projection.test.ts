@@ -129,7 +129,6 @@ it("retains a completed delegated App even when the child has no text answer", a
     }),
   ];
   env.fake.update(root, TaskState.COMPLETED);
-  await env.reconcile.refresh();
   const graph = await env.projection.graphOf({ contextId: env.session.id });
   if (!graph) throw new Error("Missing conversation tree");
   const view = await conversation(
@@ -160,7 +159,6 @@ it("keeps Apps from an earlier native run when a child conversation continues", 
   latest.artifacts = [];
   latest.history = [];
   env.fake.update(latest, TaskState.COMPLETED);
-  await env.reconcile.refresh();
   const graph = await env.projection.graphOf({ contextId: env.session.id });
   if (!graph) throw new Error("Missing conversation tree");
   const view = create(ConversationSchema, {

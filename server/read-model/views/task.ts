@@ -6,7 +6,6 @@ import {
 } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { shortTitle } from "../../../shared/title.js";
-import { emptyTags } from "../../tasks/tags.js";
 import { agentRef, systemRoles } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
@@ -48,6 +47,5 @@ export function taskSummary(graph: TaskGraph, tree: TaskTree): TaskSummary {
     conversationContextId: initiator(graph, tree.root)?.contextId ?? "",
     agent: agentRef(tree.root.agentId),
     contextId: tree.root.contextId,
-    ...emptyTags(),
   });
 }

@@ -7,6 +7,7 @@ import {
   type ExecutionIdentity,
   ExecutionIdentitySchema,
 } from "../../gen/agentos/execution/v1/identity_pb.js";
+import { commandLocks } from "./commands.js";
 import { envelope } from "./envelope.js";
 
 interface Stored<T> {
@@ -19,6 +20,13 @@ export interface ExecutionStore {
   /** The binding followed by its ancestors, ending at the root when the chain is intact. */
   chain(id: string): Promise<ExecutionBinding[]>;
   bindings(ids: string[]): Promise<ExecutionBinding[]>;
+  inventory(filter?: {
+    roots?: string[];
+    subject?: string;
+    services?: boolean;
+    systemOnly?: boolean;
+  }): Promise<ExecutionBinding[]>;
+  exclusive<T>(key: string, run: () => Promise<T>): Promise<T>;
   identity(subject: string): Promise<Stored<ExecutionIdentity> | undefined>;
   saveBinding(value: ExecutionBinding, version?: string): Promise<void>;
   saveIdentity(value: ExecutionIdentity, version?: string): Promise<void>;
@@ -84,6 +92,13 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
     ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}),
     onnotice: () => {},
   });
+  const locks = postgres(uri, {
+    max: 8,
+    connect_timeout: 10,
+    idle_timeout: 20,
+    ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}),
+    onnotice: () => {},
+  });
   try {
     await sql.begin(async (transaction) => {
       await transaction`select pg_advisory_xact_lock(hashtext('agentos_authorization'))`;
@@ -101,9 +116,13 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
         capabilities integer[] not null, service boolean not null, tokens bytea,
         version bigint not null default 1, primary key (workspace, subject)
       )`;
+      await transaction`create index if not exists execution_binding_roots on
+        agentos_authorization.execution_bindings(workspace, root_session_id)`;
+      await transaction`create index if not exists execution_binding_subjects on
+        agentos_authorization.execution_bindings(workspace, subject)`;
     });
   } catch {
-    await sql.end();
+    await Promise.all([sql.end(), locks.end()]);
     throw new Error("Execution database is unavailable");
   }
 
@@ -139,6 +158,21 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
     agent_name, subject, write, capabilities, revoked, version::text`;
 
   return {
+    exclusive: commandLocks(locks, workspace),
+    async inventory(
+      filter: { roots?: string[]; subject?: string; services?: boolean; systemOnly?: boolean } = {},
+    ) {
+      const rows = await sql<BindingRow[]>`
+        select ${bindingColumns} from agentos_authorization.execution_bindings
+        where workspace=${workspace}
+          and (${filter.roots === undefined} or root_session_id = any(${filter.roots ?? []}::text[]))
+          and (${filter.subject === undefined} or subject=${filter.subject ?? ""}
+            or (${filter.services === true} and starts_with(subject, 'service:')))
+          and (${filter.systemOnly !== true} or starts_with(subject, 'service:'))
+        order by session_id
+      `.catch(unavailable);
+      return rows.map(bindingOf);
+    },
     async binding(id: string) {
       const [row] = await sql<BindingRow[]>`
         select ${bindingColumns} from agentos_authorization.execution_bindings
@@ -238,6 +272,8 @@ export async function executionStore(uri: string, key: Uint8Array, workspace: st
             where workspace=${workspace} and subject=${subject}`;
         return identity;
       }),
-    close: () => sql.end({ timeout: 5 }),
+    close: async () => {
+      await Promise.all([sql.end({ timeout: 5 }), locks.end({ timeout: 5 })]);
+    },
   } satisfies ExecutionStore & { close: () => Promise<void> };
 }

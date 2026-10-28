@@ -15,8 +15,7 @@ import { cancellationCommands } from "../console/cancellation.js";
 import { messageCommands } from "../console/messages.js";
 import { watch } from "../console/watch.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { TaskProjection } from "../read-model/projection.js";
-import { refreshContexts } from "../read-model/reconcile.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { terminal } from "../read-model/state.js";
 import { TaskStreams } from "../read-model/streams.js";
 import { speechLanguage } from "./language.js";
@@ -43,7 +42,7 @@ export function voiceWorker(
 export interface VoiceWorkerDependencies {
   settings: SpeechSource;
   sessions: VoiceSessions;
-  projection: TaskProjection;
+  projection: TaskQueries;
   clients: KagentClients;
   executions: Executions;
   /** The initiator's current identity, renewed through its offline grant. */
@@ -108,7 +107,6 @@ export function voiceService({
     async getVoiceAnswer({ sessionId, taskId }, context) {
       const value = await session(sessionId, VoiceMode.CALL);
       const entry = await turn(value, taskId);
-      const root = (await projection.session(value.contextId))?.root;
       const signal = AbortSignal.any([context.signal, AbortSignal.timeout(20_000)]);
       let touch = () => {};
       const streams = new TaskStreams(clients, signal, () => touch());
@@ -118,14 +116,7 @@ export function voiceService({
         GetVoiceAnswerResponseSchema,
         signal,
         async () => {
-          let current = (await projection.entry(taskId)) ?? entry;
-          // A settled turn reaches the projection before the next turn checks the conversation;
-          // a failed refresh leaves it to the reconciler.
-          if (!terminal(current.state) && terminal(streams.task(taskId)?.status?.state)) {
-            const { contextId: id, agentId } = current;
-            await refreshContexts(projection, clients, [{ id, agentId }], signal).catch(() => {});
-            current = (await projection.entry(taskId)) ?? current;
-          }
+          const current = (await projection.entry(taskId)) ?? entry;
           if (!terminal(current.state)) {
             streams.follow([current]);
             return create(GetVoiceAnswerResponseSchema);
@@ -137,7 +128,6 @@ export function voiceService({
           });
         },
         {
-          roots: () => (root ? new Set([root]) : undefined),
           wakes: (wake) => {
             touch = wake;
             return () => streams.close();

@@ -34,14 +34,13 @@ it("keeps cancelled tasks terminal when a late reply reaches the runtime fixture
 });
 
 it("runs a selected Agent without a coordinator, external approvals or a solution pack", async () => {
-  const { fake, clients, projection, reconcile, executions, close } = await environment([]);
+  const { fake, clients, projection, executions, close } = await environment([]);
   const preset = fixtureAgents().find((agent) => agent.ref?.name === "inspection");
   if (!preset) throw new Error("Agent fixture missing");
   const writer = clone((await import("../gen/kagent/api/v1/agents_pb.js")).AgentSchema, preset);
   if (writer.ref) writer.ref.name = "writer";
   fake.agents.splice(0, fake.agents.length, writer);
   fake.load({ sessions: [], tasks: [] });
-  await reconcile.refresh();
   const commands = messageCommands(projection, clients, "agentos", executions);
   try {
     const response = await commands.send(
@@ -106,7 +105,6 @@ async function pending() {
     tasks: [task],
   });
   await bindTasks(env.store, env.fake, [task]);
-  await env.reconcile.refresh();
   const interaction = (await env.projection.entry(task.id))?.interactions[0];
   if (!interaction) throw new Error("Native confirmation is missing");
   const commands = messageCommands(env.projection, env.clients, "agentos", env.executions);

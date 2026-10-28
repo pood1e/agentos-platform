@@ -87,7 +87,7 @@ identity:
 
 站点创建 `execution.keySecret`（默认 `agentos-execution`），`key` 为 Base64 编码的 32 字节密钥。
 执行数据库、加密密钥、身份和会话 Secret 一并备份。
-api、dataplane 与 worker 使用同一镜像及独立 ServiceAccount / NetworkPolicy；dataplane 至少两副本并配置 PDB，worker 对账通过 PostgreSQL 锁选主。
+api 与 dataplane 使用同一镜像及独立 ServiceAccount / NetworkPolicy；dataplane 至少两副本并配置 PDB。
 
 ## 方案 Harness
 
@@ -121,7 +121,7 @@ telemetry:
 
 本地或镜像直启使用 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT`，协议为 `grpc` 或 `http/protobuf`。
 `OTEL_SDK_DISABLED=true` / `OTEL_METRICS_EXPORTER=none` 关闭采集；默认导出超时 1 秒，可用 `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 调整毫秒值。
-指标覆盖 HTTP / RPC 时延和进程资源，服务名为 `agentos-api`、`agentos-dataplane`、`agentos-worker`、`agentos-identity`。
+指标覆盖 HTTP / RPC 时延和进程资源，服务名为 `agentos-api`、`agentos-dataplane`、`agentos-identity`。
 
 kagent 使用原生 `TelemetryConfig`，站点变量 `kagent_telemetry` 应用于控制面和运行时默认值：
 
@@ -135,16 +135,9 @@ kagent_telemetry:
 各信号按配置启用，内容与原始请求体采集默认关闭，分别由 `captureContent` / `captureRawApiBodies` 控制。
 Collector 与遥测存储由站点提供。语音独立可选，见[语音配置](speech.md)。
 
-## 后台协调与运行验证
+## 运行验证
 
-委派结果续接使用执行数据库 `agentos_jobs` 中按工作空间隔离的 pg-boss 队列。
-投影写入事务内入队，worker 重新核验执行授权；错误退避重试 12 次后进入 `<namespace>.failed`，保留 90 天。
-在 worker 容器检查死信并按原生引用重放：
-
-```sh
-node build/server/jobs/replay.js
-node build/server/jobs/replay.js --execute <dead-letter-job-id>
-```
+任务持久化、HITL 与委派续接由 kagent 管理。控制台通过原生 API 查询任务与会话。
 
 部署标签 `node`、`runtime`、`model`、`ingress`、`app` 支持分项执行，应用更新用 `--tags app`。
 自管 DNS / TLS 的站点提供 Gateway 与 `agentos-ingress` Secret，跳过 `ingress`。

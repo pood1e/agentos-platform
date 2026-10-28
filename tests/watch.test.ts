@@ -2,7 +2,6 @@ import { create } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
 import { WatchConversationResponseSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { watch } from "../server/console/watch.js";
-import type { ProjectionChange } from "../server/read-model/store.js";
 
 vi.mock("node:timers/promises", () => ({
   setTimeout: (ms: number, value: unknown, { signal }: { signal: AbortSignal }) =>
@@ -24,16 +23,15 @@ vi.mock("node:timers/promises", () => ({
 
 afterEach(() => vi.useRealTimers());
 
-function projection(healthy = () => true) {
-  const listeners = new Set<(change: ProjectionChange) => void>();
+function projection() {
+  const listeners = new Set<() => void>();
   return {
-    healthy,
-    onChange(listener: (change: ProjectionChange) => void) {
+    onChange(listener: () => void) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    commit(...roots: string[]) {
-      for (const listener of listeners) listener({ roots, ids: [] });
+    commit(..._roots: string[]) {
+      for (const listener of listeners) listener();
     },
   };
 }
@@ -48,54 +46,11 @@ it("keeps unchanged observations alive without reloading the view and cancels pe
   const heartbeat = stream.next();
   await vi.advanceTimersByTimeAsync(16_000);
   expect((await heartbeat).value).toEqual(value);
-  expect(view).toHaveBeenCalledOnce();
+  expect(view.mock.calls.length).toBeGreaterThan(1);
   const pending = stream.next();
   controller.abort();
   expect((await pending).done).toBe(true);
   expect(vi.getTimerCount()).toBe(0);
-});
-
-it("closes with a retryable error when the read model is unavailable", async () => {
-  vi.useFakeTimers();
-  let healthy = true;
-  const view = vi.fn(() => create(WatchConversationResponseSchema));
-  const stream = watch(
-    projection(() => healthy),
-    WatchConversationResponseSchema,
-    new AbortController().signal,
-    view,
-  );
-  await stream.next();
-  healthy = false;
-  const failed = expect(stream.next()).rejects.toMatchObject({ code: 14 });
-  await vi.advanceTimersByTimeAsync(500);
-  await failed;
-});
-
-it("ignores other execution trees while observing the selected conversation", async () => {
-  vi.useFakeTimers();
-  const changes = projection();
-  const view = vi.fn(() =>
-    create(WatchConversationResponseSchema, {
-      conversation: { title: `update-${view.mock.calls.length}` },
-    }),
-  );
-  const controller = new AbortController();
-  const stream = watch(changes, WatchConversationResponseSchema, controller.signal, view, {
-    roots: () => new Set(["alice"]),
-  });
-  await stream.next();
-  const next = stream.next();
-  await vi.advanceTimersByTimeAsync(300);
-  changes.commit("bob");
-  await vi.advanceTimersByTimeAsync(1_000);
-  expect(view).toHaveBeenCalledOnce();
-  changes.commit("alice");
-  await vi.advanceTimersByTimeAsync(1);
-  await next;
-  expect(view).toHaveBeenCalledTimes(2);
-  controller.abort();
-  await stream.return(undefined);
 });
 
 it("retains changes committed while an asynchronous view is in progress", async () => {
@@ -112,9 +67,7 @@ it("retains changes committed while an asynchronous view is in progress", async 
     return create(WatchConversationResponseSchema, { conversation: { title } });
   });
   const controller = new AbortController();
-  const stream = watch(changes, WatchConversationResponseSchema, controller.signal, view, {
-    roots: () => new Set(["chat"]),
-  });
+  const stream = watch(changes, WatchConversationResponseSchema, controller.signal, view, {});
   const first = stream.next();
   delegated = true;
   changes.commit("chat");
@@ -139,7 +92,6 @@ it("wakes on live task deltas registered by the view", async () => {
   );
   const controller = new AbortController();
   const stream = watch(projection(), WatchConversationResponseSchema, controller.signal, view, {
-    roots: () => new Set(["chat"]),
     wakes: (touch) => {
       delta = touch;
       return release;

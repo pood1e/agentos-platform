@@ -13,7 +13,7 @@
 | 外部执行 | 可选 `/mcp/executions`，外部服务管理业务触发、调度和工作流 |
 | 模型 | 原生 `AgentgatewayModel`，平台同步 `ModelConfig` 并提供管理界面 |
 | 语音 | 可选 `SpeechConfiguration`，站点提供 ASR / TTS 服务与凭据 |
-| 展示 | proto `Pack` 对应的 `pack.json` 和资源镜像，提供标题、角色、图标、标签建议与文案 |
+| 展示 | proto `Pack` 对应的 `pack.json` 和资源镜像，提供标题、角色、图标与文案 |
 
 ## Chart 入参
 
@@ -76,8 +76,7 @@ Skill 省略 `git.url` 时使用平台 Skill 网关；`skillRepository` 指定�
 | `title` | 顶栏与页面标题 |
 | `roles[]` | `role`、`avatar`，以及可选动画几何 `rig` |
 | `tools[]` | `match` 正则、`name`、`icon` 与暗色模式反色 `monochrome` |
-| `taskTags` | 任务标签建议；用户可自定义，每任务最多 32 个标签，每标签最多 40 字符 |
-| `locales` | i18next 资源，如 `translation.role.<role>`、`tools.catalog.<tool>`、`translation.task.tagNames` |
+| `locales` | i18next 资源，如 `translation.role.<role>`、`tools.catalog.<tool>` |
 
 资源使用包内相对路径。展示镜像把 `pack.json` 与资源放在 `/pack`，提供 `cp`，Chart 用 `pack.image` 固定摘要后由 init 容器复制。
 Harness 使用平台内置运行时图标，工具优先使用方案图标。

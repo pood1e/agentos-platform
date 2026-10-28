@@ -38,8 +38,6 @@ service ConsoleService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc CancelTask(CancelTaskRequest) returns (CancelTaskResponse);
-  // Owners edit personal task tags; shared service-owned tasks require tasks.manage.
-  rpc UpdateTaskTags(UpdateTaskTagsRequest) returns (UpdateTaskTagsResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -114,17 +112,6 @@ message ListTasksRequest {
     }
   }];
   string engineer = 5 [(buf.validate.field).string.max_len = 128];
-  // All specified tags must be present.
-  repeated string tags = 6 [(buf.validate.field).repeated = {
-    max_items: 32
-    unique: true
-    items: {
-      string: {
-        min_len: 1
-        max_len: 40
-      }
-    }
-  }];
   // Only service-owned executions; requires platform administration access.
   bool system_only = 7;
 }
@@ -133,31 +120,6 @@ message ListTasksResponse {
   repeated TaskSummary tasks = 1;
   string next_page_token = 2;
   int32 total_size = 3;
-  // Tags from the caller's visible task roots, before filters and pagination.
-  repeated string available_tags = 4;
-}
-
-message UpdateTaskTagsRequest {
-  string task_id = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-  }];
-  repeated string tags = 2 [(buf.validate.field).repeated = {
-    max_items: 32
-    unique: true
-    items: {
-      string: {
-        min_len: 1
-        max_len: 40
-        pattern: "^\\S(.*\\S)?$"
-      }
-    }
-  }];
-  string tags_version = 3 [(buf.validate.field).string.pattern = "^(0|[1-9][0-9]{0,18})$"];
-}
-
-message UpdateTaskTagsResponse {
-  TaskSummary task = 1;
 }
 
 message CancelTaskRequest {

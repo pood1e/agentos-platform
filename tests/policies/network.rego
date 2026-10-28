@@ -22,10 +22,6 @@ deny contains sprintf("%s lacks an ingress policy", [workload.metadata.name]) if
 	not ingress_policy(workload)
 }
 
-deny contains "the worker accepts inbound connections" if {
-	count(object.get(ingress_policy(worker).spec, "ingress", [])) > 0
-}
-
 deny contains "only the dataplane admits gateways and Agent runtimes" if {
 	some peer in ingress_peers(api)
 	runtime_peer(peer)

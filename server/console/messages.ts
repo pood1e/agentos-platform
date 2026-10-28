@@ -16,18 +16,18 @@ import { pendingInteractions } from "../../shared/conversation-interactions.js";
 import { shortTitle } from "../../shared/title.js";
 import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentKey, sessionInfo } from "../read-model/agents.js";
+import { agentKey } from "../read-model/agents.js";
 import { hitlExtension, hitlReply } from "../read-model/decode/hitl.js";
 import { timelineKey } from "../read-model/decode/messages.js";
 import { ingest } from "../read-model/entry.js";
-import type { TaskProjection } from "../read-model/projection.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { awaiting } from "../read-model/state.js";
 import { conversation } from "../read-model/views/conversation.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import { messageIdentity } from "../shared/idempotency.js";
 
 export function messageCommands(
-  projection: TaskProjection,
+  projection: TaskQueries,
   clients: KagentClients,
   namespace: string,
   executions: Executions,
@@ -76,7 +76,6 @@ export function messageCommands(
     );
     if (!session) throw unavailable();
     await executions.bind(session, identity);
-    await projection.apply([], [sessionInfo(session)]);
     return { agentId: agentKey(session.agent), contextId: session.id };
   }
 
@@ -84,7 +83,7 @@ export function messageCommands(
     const text = request.text.trim();
     if (!text) throw invalid("chat.invalidMessage");
     return exclusive(request.contextId || request.messageId, async () => {
-      const accepted = await projection.taskOfMessage(request.messageId);
+      const accepted = await projection.taskOfMessage(request.messageId, identity.subject);
       if (accepted) {
         const { session } = await clients.sessions.getSession({ sessionId: accepted.contextId });
         if (!session) throw fail(Code.PermissionDenied, "chat.executionDenied");
@@ -124,7 +123,6 @@ export function messageCommands(
         { timeoutMs: 10_000 },
       );
       const fresh = ingest(task, entry.agentId);
-      await projection.apply([{ task, agentId: entry.agentId }]);
       const pending = fresh.interactions.find(
         (item) => item.requestId === request.requestId && awaiting(item.state),
       );

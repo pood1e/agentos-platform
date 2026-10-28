@@ -147,7 +147,6 @@ describe("listings", () => {
   let env: Awaited<ReturnType<typeof environment>>;
   beforeAll(async () => {
     env = await environment();
-    await env.reconcile.refresh();
   });
   afterAll(() => env.close());
 
@@ -204,7 +203,6 @@ describe("listings", () => {
 
   it("orders operations by their latest activity anywhere in the operation", async () => {
     env.fake.update(env.fake.task(ids.inspection), TaskState.FAILED);
-    await env.reconcile.refresh();
     const child = await env.projection.entry(ids.inspection);
     const [first] = (await env.projection.operations(reader, { ...page, pageSize: 1 })).tasks;
     expect(first?.updatedAt && timestampMs(first.updatedAt)).toBe(child?.statusAt);

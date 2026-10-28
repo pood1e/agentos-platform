@@ -5,7 +5,6 @@ import { registerConsole } from "../console/app.js";
 import { loadPack } from "../console/pack.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
-import { enqueueCoordination } from "../jobs/coordination.js";
 import { configurationClients } from "../kagent/configuration.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { resourceStore } from "../management/resources.js";
@@ -15,8 +14,6 @@ import { workspaceContext } from "../platform/access.js";
 import { registerEnvironmentApis } from "../platform/environment-api.js";
 import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
-import { taskTagStore } from "../tasks/store.js";
-import { continuationJobs } from "../team-sessions/continuation.js";
 import { voiceFeature } from "../voice/feature.js";
 import { speechSettingsStore } from "../voice/settings.js";
 import {
@@ -25,7 +22,7 @@ import {
   platformApp,
   platformClients,
   platformConfig,
-  projectionServices,
+  queryServices,
 } from "./platform.js";
 
 const config = platformConfig();
@@ -35,10 +32,7 @@ const clients = platformClients(config);
 const configuration = await configurationClients(config.kube, workspace, clients, app.log);
 const { access, operations, environmentToken, metadata, oauth, identity, execution } =
   await executionServices(config, configuration.clients, app.log);
-const { projection, jobs } = await projectionServices(config, clients, execution.store, app.log);
-enqueueCoordination(projection, jobs, [continuationJobs]);
-await projection.listen();
-const tags = await taskTagStore(config.database.uri, workspace, config.database.ca);
+const projection = queryServices(config, clients, execution.store);
 
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
 const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
@@ -101,7 +95,6 @@ await registerConsole(app, {
     roleDefaults: roleDefaults(),
     replaceTemplate: templateWriter(config.kube),
     pack: loadPack(packRoot),
-    tags,
     voice: voice?.console,
     executions: execution.registry,
     entryAgent,
@@ -121,14 +114,11 @@ await registerConsole(app, {
   }),
   packRoot,
 });
-registerHealth(app, () => projection.healthy() && configuration.healthy() && access.healthy());
+registerHealth(app, () => configuration.healthy() && access.healthy());
 closeOnSignal(app, [
-  () => jobs.boss.stop({ graceful: true, timeout: 10_000 }),
-  projection.close,
   configuration.close,
   access.close,
   execution.close,
-  tags.close,
   ...(voice ? [voice.close] : []),
 ]);
 await voice?.listen(listenConfig().host);

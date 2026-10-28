@@ -47,10 +47,6 @@ deny contains sprintf("%s cannot watch configuration %s/%s", [workload.metadata.
 	not configuration_permission(workload, group, resource, "watch")
 }
 
-deny contains sprintf("%s cannot watch authorization plans", [worker.metadata.name]) if {
-	not configuration_permission(worker, "agentos.dev", "accessplans", "watch")
-}
-
 deny contains sprintf("%s can mutate derived resource %s/%s", [workload.metadata.name, group, resource]) if {
 	some workload in workloads
 	some group, resources in {"api.kagent.dev": ["modelconfigs", "remotemcpservers"], "gateway.networking.k8s.io": ["httproutes"], "agentgateway.dev": ["agentgatewaypolicies"]}
@@ -60,7 +56,7 @@ deny contains sprintf("%s can mutate derived resource %s/%s", [workload.metadata
 }
 
 deny contains sprintf("%s can write Kubernetes resources", [workload.metadata.name]) if {
-	some workload in [dataplane, worker]
+	some workload in [dataplane]
 	some rule in role_of(workload).rules
 	some verb in rule.verbs
 	not verb in {"get", "list", "watch"}

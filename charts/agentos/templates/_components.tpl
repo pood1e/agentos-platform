@@ -106,12 +106,3 @@
   resources: [secrets]
   verbs: [get]
 {{- end -}}
-
-{{- define "agentos.workerRules" -}}
-- apiGroups: [agentos.dev]
-  resources: [accessplans]
-  verbs: [get, list, watch]
-- apiGroups: ['']
-  resources: [secrets]
-  verbs: [get]
-{{- end -}}

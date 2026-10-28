@@ -14,7 +14,6 @@ import { environment, operator, testBindings } from "./harness.js";
 
 it("serves typed RPC errors and separates liveness from subscribed readiness", async () => {
   const env = await environment();
-  await env.reconcile.refresh();
   const app = Fastify();
   await registerConsole(app, {
     context: workspaceContext("agentos", "assistant", async () => operator),
@@ -28,7 +27,8 @@ it("serves typed RPC errors and separates liveness from subscribed readiness", a
     }),
     packRoot: fileURLToPath(new URL("fixtures/pack/", import.meta.url)),
   });
-  registerHealth(app, () => env.projection.healthy());
+  let ready = true;
+  registerHealth(app, () => ready);
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
   const client = createClient(
     ConsoleService,
@@ -59,7 +59,7 @@ it("serves typed RPC errors and separates liveness from subscribed readiness", a
     expect(hidden.rawMessage).toBe("request failed");
     expect(hidden.findDetails(ErrorInfoSchema)).toEqual([]);
     expect(failure).toHaveBeenCalledOnce();
-    vi.spyOn(env.projection, "healthy").mockReturnValue(false);
+    ready = false;
     expect((await app.inject("/readyz")).statusCode).toBe(503);
     expect((await app.inject("/healthz")).statusCode).toBe(200);
   } finally {

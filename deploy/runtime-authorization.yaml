@@ -46,7 +46,7 @@
               - podSelector:
                   matchLabels: {app.kubernetes.io/name: agentos}
                   matchExpressions:
-                    - {key: app.kubernetes.io/component, operator: In, values: [api, dataplane, worker]}
+                    - {key: app.kubernetes.io/component, operator: In, values: [api, dataplane]}
               - podSelector:
                   matchLabels: {agentos.dev/gateway: business}
               - podSelector:

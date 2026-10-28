@@ -24,7 +24,6 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
   let caller = owner;
   const registry = executions(env.store, async () => owner);
   await registry.bind(scenario.session, owner);
-  await env.reconcile.refresh();
   const metadata = toolMetadata(env.clients);
   const access = testBindings(env.fake);
   const operations = create(GovernanceConfigSchema, {

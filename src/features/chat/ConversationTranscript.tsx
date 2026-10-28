@@ -11,10 +11,9 @@ import { ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
-import { InteractionSchema, type TaskSummary } from "../../../gen/agentos/console/v1/task_pb.js";
+import { InteractionSchema } from "../../../gen/agentos/console/v1/task_pb.js";
 import { Approval } from "../shared/Approval.js";
 import { Avatar } from "../shared/Avatar.js";
-import { TaskTags } from "../tasks/TaskTags.js";
 import { AgentResult } from "./AgentResult.js";
 import { SpeechOutput } from "./speech/SpeechControls.js";
 import { ToolFallback } from "./ToolFallback.js";
@@ -38,98 +37,70 @@ const AssistantText = ({ id }: { id?: string }) => {
   );
 };
 
-function ConversationMessage({
-  message,
-  tasks,
-  editable,
-  tagsEditable,
-}: {
-  message: ThreadMessage;
-  tasks: TaskSummary[];
-  editable: boolean;
-  tagsEditable: boolean;
-}) {
+function ConversationMessage({ message, editable }: { message: ThreadMessage; editable: boolean }) {
   const { t } = useTranslation();
   const user = message.role === "user";
   return (
-    <>
-      <MessagePrimitive.Root
-        role="article"
-        aria-label={t(user ? "chat.you" : "chat.assistant")}
-        data-testid="chat-message"
-        data-message-id={message.id}
+    <MessagePrimitive.Root
+      role="article"
+      aria-label={t(user ? "chat.you" : "chat.assistant")}
+      data-testid="chat-message"
+      data-message-id={message.id}
+      className={
+        user ? "grid grid-cols-[minmax(32px,1fr)_auto] content-start gap-y-2" : "w-full min-w-0"
+      }
+    >
+      <div
+        data-testid="chat-message-content"
+        dir="auto"
         className={
-          user ? "grid grid-cols-[minmax(32px,1fr)_auto] content-start gap-y-2" : "w-full min-w-0"
+          user
+            ? "col-start-2 min-w-0 rounded-2xl bg-muted px-4 py-2 text-sm leading-6 wrap-anywhere"
+            : "min-w-0 leading-6"
         }
       >
-        <div
-          data-testid="chat-message-content"
-          dir="auto"
-          className={
-            user
-              ? "col-start-2 min-w-0 rounded-2xl bg-muted px-4 py-2 text-sm leading-6 wrap-anywhere"
-              : "min-w-0 leading-6"
-          }
-        >
-          {user ? (
-            <MessagePrimitive.Parts />
-          ) : (
-            <MessagePrimitive.GroupedParts groupBy={groupTools} indicator="never">
-              {({ part, children }) => {
-                switch (part.type) {
-                  case "group-mcp":
-                    return (
-                      <div
-                        data-testid="chat-tool-group"
-                        className="my-2 flex max-w-full flex-wrap items-center gap-1.5"
-                      >
-                        {children}
-                      </div>
-                    );
-                  case "text":
-                  case "reasoning":
-                    return <AssistantText id={part.id} />;
-                  case "tool-call":
-                    return <ToolFallback {...part} />;
-                  case "data":
-                    if (part.name === "agent-result") return <AgentResult {...part} />;
-                    return part.name === "interaction" &&
-                      isMessage(part.data, InteractionSchema) ? (
-                      <div className="my-3 rounded-xl border p-3">
-                        <Approval interaction={part.data} operate={editable} />
-                      </div>
-                    ) : null;
-                  default:
-                    return null;
-                }
-              }}
-            </MessagePrimitive.GroupedParts>
-          )}
-        </div>
-        {!user && <SpeechOutput />}
-      </MessagePrimitive.Root>
-      {tasks.length > 0 && (
-        <div className="flex flex-wrap justify-end gap-1">
-          {tasks.map((task) => (
-            <TaskTags key={task.id} task={task} editable={tagsEditable} available={[]} />
-          ))}
-        </div>
-      )}
-    </>
+        {user ? (
+          <MessagePrimitive.Parts />
+        ) : (
+          <MessagePrimitive.GroupedParts groupBy={groupTools} indicator="never">
+            {({ part, children }) => {
+              switch (part.type) {
+                case "group-mcp":
+                  return (
+                    <div
+                      data-testid="chat-tool-group"
+                      className="my-2 flex max-w-full flex-wrap items-center gap-1.5"
+                    >
+                      {children}
+                    </div>
+                  );
+                case "text":
+                case "reasoning":
+                  return <AssistantText id={part.id} />;
+                case "tool-call":
+                  return <ToolFallback {...part} />;
+                case "data":
+                  if (part.name === "agent-result") return <AgentResult {...part} />;
+                  return part.name === "interaction" && isMessage(part.data, InteractionSchema) ? (
+                    <div className="my-3 rounded-xl border p-3">
+                      <Approval interaction={part.data} operate={editable} />
+                    </div>
+                  ) : null;
+                default:
+                  return null;
+              }
+            }}
+          </MessagePrimitive.GroupedParts>
+        )}
+      </div>
+      {!user && <SpeechOutput />}
+    </MessagePrimitive.Root>
   );
 }
 
-/** Tag editing follows execution authority unless the caller grants shared task management. */
-export function ConversationTranscript({
-  chat,
-  tagsEditable,
-}: {
-  chat: Chat;
-  tagsEditable?: boolean;
-}) {
+export function ConversationTranscript({ chat }: { chat: Chat }) {
   const { t } = useTranslation();
   const operate = chat.conversation?.operate ?? false;
-  const tasks = new Map(chat.messages.map((message) => [message.id, message.tasks]));
   const empty = useAuiState((state) => state.thread.messages.length === 0);
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -150,14 +121,7 @@ export function ConversationTranscript({
             </div>
           )}
           <ThreadPrimitive.Messages>
-            {({ message }) => (
-              <ConversationMessage
-                message={message}
-                tasks={tasks.get(message.id) ?? []}
-                editable={operate}
-                tagsEditable={tagsEditable ?? operate}
-              />
-            )}
+            {({ message }) => <ConversationMessage message={message} editable={operate} />}
           </ThreadPrimitive.Messages>
         </div>
       </ThreadPrimitive.Viewport>

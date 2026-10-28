@@ -3,7 +3,6 @@
   "entry": [
     "shared/browser/**/*.ts",
     "tests/fixtures/mcp-app-view.ts",
-    "server/jobs/replay.ts",
     "server/apps/*.ts",
     "contracts/*.{ts,mjs}",
     "tests/proofs/*.ts",

@@ -16,19 +16,18 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `server/apps` | api、dataplane、worker、identity 入口与可选遥测初始化 |
+| `server/apps` | api、dataplane、identity 入口与可选遥测初始化 |
 | `server/console` | 控制台 RPC、原生 HITL 回复、方案包与角色管理 |
 | `server/authorization` | 用户与工作负载认证、离线委派、执行绑定、凭据和逐调用授权 |
 | `server/execution` | 可选外部执行 MCP、来源身份与分页结果 |
 | `server/governance` | 环境配置、AccessPlan Informer 与已编译工具决策 |
 | `server/kagent` | 原生客户端、配置索引、Harness 与工具元数据 |
 | `server/management`、`server/knowledge` | 原生资源管理与团队知识检索 |
-| `server/read-model` | PostgreSQL 读投影、执行树、归属过滤、分页、对账与订阅 |
-| `server/team-sessions` | 协作 MCP、角色起草与委派结果续接 |
-| `server/jobs` | 续接队列、消费与死信重放 |
+| `server/read-model` | 原生任务查询、执行树、归属过滤、分页与订阅 |
+| `server/team-sessions` | 协作会话 MCP 与角色起草 |
 | `server/mcp-apps` | 模板读取、视图投影与当前查看者的工具回调 |
 | `server/platform` | 网关与 MCP 接线、gRPC 生命周期、访问上下文和环境 API 中转 |
-| `server/tasks`、`server/identity` | 任务标签与内置密码身份源 |
+| `server/identity` | 内置密码身份源 |
 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
 | `server/shared`、`shared` | 服务端基础设施与前后端共享代码 |
 

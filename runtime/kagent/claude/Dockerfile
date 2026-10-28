@@ -7,4 +7,4 @@ USER 65532:65532
 ENV HOME=/data
 RUN python --version && curl --version && jq --version && ssh -V
 LABEL org.opencontainers.image.source="https://github.com/pood1e/agentos-platform" \
-      org.opencontainers.image.version="1.0.0-alpha17-agentos.1"
+      org.opencontainers.image.version="1.0.0-alpha17-agentos.4"

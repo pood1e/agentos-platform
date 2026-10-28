@@ -35,11 +35,6 @@ fixture_ingress(component, peers) := {"kind": "NetworkPolicy", "metadata": {"nam
 
 gateway_peer := {"podSelector": {"matchLabels": {"agentos.dev/gateway": "business"}}}
 
-test_worker_inbound_connections_are_rejected if {
-	messages := deny with input as [{"contents": fixture_workload("worker")}, {"contents": fixture_ingress("worker", [gateway_peer])}]
-	"the worker accepts inbound connections" in messages
-}
-
 test_gateways_reaching_the_api_are_rejected if {
 	messages := deny with input as [{"contents": fixture_workload("api")}, {"contents": fixture_ingress("api", [gateway_peer])}]
 	"only the dataplane admits gateways and Agent runtimes" in messages

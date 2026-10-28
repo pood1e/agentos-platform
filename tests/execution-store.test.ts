@@ -24,7 +24,7 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
       const identity = create(ExecutionIdentitySchema, {
         subject: "alice",
         write: true,
-        capabilities: [Capability.TASKS_MANAGE],
+        capabilities: [Capability.MODELS_MANAGE],
         credential: { case: "accessToken", value: jwt },
         refreshToken: "offline-private-refresh",
       });
@@ -33,7 +33,7 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
       expect(saved?.value).toEqual(identity);
       const [row] = await sql`select tokens, capabilities from agentos_authorization.credentials
         where workspace=${workspace} and subject='alice'`;
-      expect(row?.capabilities).toEqual([Capability.TASKS_MANAGE]);
+      expect(row?.capabilities).toEqual([Capability.MODELS_MANAGE]);
       expect(Buffer.from(row?.tokens).includes(Buffer.from(jwt))).toBe(false);
       expect(Buffer.from(row?.tokens).includes(Buffer.from(identity.refreshToken))).toBe(false);
       await store.close();
@@ -69,7 +69,7 @@ it.skipIf(!process.env.CHANGE_TEST_DATABASE_URL)(
           rootSessionId: "root",
           subject: "alice",
           agent,
-          capabilities: [Capability.TASKS_MANAGE],
+          capabilities: [Capability.MODELS_MANAGE],
         });
       for (const value of [binding("root"), binding("child", "root"), binding("leaf", "child")])
         await restarted.saveBinding(value);

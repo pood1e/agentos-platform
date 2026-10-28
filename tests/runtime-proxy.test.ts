@@ -234,7 +234,6 @@ it("reports lost upstream transport as Unavailable and keeps upstream status cod
         { url: `http://127.0.0.1:${address.port}`, namespace: "workspace", userId: "console" },
         clients,
         undefined,
-        undefined,
         { warn: (entry: unknown) => warnings.push(entry) },
       ),
     ),

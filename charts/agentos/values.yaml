@@ -35,11 +35,6 @@ dataplane:
   resources:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: '1', memory: 512Mi}
-worker:
-  replicas: 1
-  resources:
-    requests: {cpu: 50m, memory: 192Mi}
-    limits: {cpu: 500m, memory: 512Mi}
 telemetry:
   metrics: {endpoint: '', protocol: grpc}
 speech:

@@ -46,9 +46,8 @@ import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { toolMetadata } from "../kagent/tool-metadata.js";
 import type { knowledgeService } from "../knowledge/service.js";
-import { agentInfo, agentKey, sessionInfo, systemRoles } from "../read-model/agents.js";
+import { agentInfo, agentKey, systemRoles } from "../read-model/agents.js";
 import { hitlExtension } from "../read-model/decode/hitl.js";
-import type { TaskProjection } from "../read-model/projection.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { inputSchema, result, validator } from "./schema.js";
 
@@ -58,7 +57,6 @@ export function sessionTools(
   namespace: string,
   access: BindingView,
   knowledge: Pick<ReturnType<typeof knowledgeService>, "search">,
-  projection?: Pick<TaskProjection, "apply">,
 ) {
   const metadata = toolMetadata(clients);
   const inWorkspace = async () => {
@@ -146,7 +144,6 @@ export function sessionTools(
           if (scope) {
             if (!response.session) throw new Error("Native session is missing");
             await scope.created(response.session);
-            await projection?.apply([], [sessionInfo(response.session)]);
           }
           return result(CreateSessionResponseSchema, response);
         },
@@ -191,10 +188,6 @@ export function sessionTools(
             },
             { timeoutMs: 30_000, headers: { "A2A-Extensions": hitlExtension } },
           );
-          if (response.payload.case === "task")
-            await projection?.apply([
-              { task: response.payload.value, agentId: agentKey(session.agent) },
-            ]);
           return result(SendMessageResponseSchema, response);
         },
       ),

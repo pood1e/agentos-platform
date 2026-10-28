@@ -47,7 +47,6 @@ it("redacts credentials repeated across tool arguments, task output and the exec
 it("paginates causal child tasks and fails closed for an invalid cursor or missing history", async () => {
   const f = await environment();
   onTestFinished(() => f.close());
-  await f.reconcile.refresh();
   const graph = await f.projection.graphOf({ taskId: ids.approvalRoot });
   if (!graph) throw new Error("Missing execution graph");
   const request = create(GetExecutionRequestSchema, { page: { limit: 1 } });

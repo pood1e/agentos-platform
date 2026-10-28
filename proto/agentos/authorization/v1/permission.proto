@@ -13,6 +13,4 @@ enum Capability {
   CAPABILITY_HARNESSES_MANAGE = 6;
   reserved 7;
   reserved "CAPABILITY_EVALUATIONS_MANAGE";
-  // Manage metadata of shared executions.
-  CAPABILITY_TASKS_MANAGE = 8;
 }

@@ -7,7 +7,7 @@ database:
     ownerConnectionStringSecretRef: {name: kagent-postgres, key: connectionString}
 config:
   harnessImages:
-    release: "{{ kagent_version }}-agentos.2"
+    release: "{{ kagent_version }}-agentos.4"
     kagent: "{{ harness_defaults.standard.workload.image | replace('registry.example.com/agentos', agentos_image_registry) }}"
     claude: "{{ harness_defaults.claude.workload.image | replace('registry.example.com/agentos', agentos_image_registry) }}"
     codex: "{{ harness_defaults.codex.workload.image | replace('registry.example.com/agentos', agentos_image_registry) }}"

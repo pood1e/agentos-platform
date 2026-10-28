@@ -1,5 +1,4 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskSchema, TaskState, TaskStatusSchema } from "../gen/a2a_pb.js";
@@ -36,7 +35,6 @@ async function pending(kind: "question" | "approval") {
     status: { state: TaskState.INPUT_REQUIRED, message },
   });
   const env = await environment([task]);
-  await env.reconcile.refresh();
   const interaction = (await env.projection.entry(task.id))?.interactions[0];
   if (!interaction) throw new Error("Missing native interaction");
   const request = create(RespondInteractionRequestSchema, {
@@ -91,7 +89,6 @@ it("forwards custom single-choice and mixed multi-choice answers through native 
       type: "ask_user_response",
       value: { id: "question", answers: values.map((answer) => ({ answer })) },
     });
-    await env.reconcile.refresh();
     expect(
       (await env.projection.entry(env.task.id))?.interactions[0].answers.map(
         (answer) => answer.values,
@@ -112,9 +109,12 @@ it.each(["question", "approval"] as const)(
     try {
       const stale = clone(TaskSchema, env.task);
       await env.respond(env.request);
-      // A lagging projection still shows the pause; the decision is checked natively.
-      if (stale.status) stale.status.timestamp = timestampFromMs(Date.now() + 60_000);
-      await env.projection.apply([{ task: stale, agentId: "agentos/assistant" }]);
+      // The pending view may predate another client's decision.
+      vi.spyOn(env.projection, "entry").mockResolvedValueOnce({
+        ...ingest(stale, "agentos/assistant"),
+        root: stale.contextId,
+        subject: operator.subject,
+      });
       await expect(env.respond(env.request)).rejects.toMatchObject({
         code: Code.FailedPrecondition,
         rawMessage: "interaction.stale",

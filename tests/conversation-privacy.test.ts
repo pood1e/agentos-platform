@@ -73,7 +73,6 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
   for (const [position, owner] of identities.entries())
     await registry.bind(operations[position], owner, sessions[position]);
   await registry.revoke(sessions[0], alice);
-  await env.reconcile.refresh();
   let caller = alice;
   const client = createClient(
     ConsoleService,
@@ -162,7 +161,6 @@ it("interrupts a foreground run while preserving the owner's conversation and to
   });
   env.fake.load({ sessions: [session], tasks: [task] });
   await registry.bind(session, owner);
-  await env.reconcile.refresh();
   const client = createClient(
     ConsoleService,
     createRouterTransport(
@@ -208,7 +206,7 @@ it("lets administrators read shared service sessions of workspace agents without
   const user = identity("user:alice");
   const administrator = create(ExecutionIdentitySchema, {
     subject: "user:administrator",
-    capabilities: [Capability.TASKS_MANAGE],
+    capabilities: [Capability.MODELS_MANAGE],
     credential: { case: "service", value: true },
   });
   const agent = { namespace: "agentos", name: "inspection" };
@@ -233,7 +231,6 @@ it("lets administrators read shared service sessions of workspace agents without
   });
   await registry.bind(shared, identity("service:scheduler"));
   await registry.bind(personal, user);
-  await env.reconcile.refresh();
   let caller = administrator;
   const client = createClient(
     ConsoleService,

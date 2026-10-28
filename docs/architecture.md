@@ -12,12 +12,11 @@ flowchart LR
     subgraph Platform[AgentOS]
         Web[web · 控制台与登录会话] -->|Connect RPC| API[api · 聊天与资源管理]
         Gateway[agentgateway · 模型与 MCP 接入] -->|逐调用鉴权| Dataplane[dataplane · 授权与协议接入]
-        Worker[worker · 后台协调]
         Controller[资源控制器]
-        API & Dataplane & Worker --> PG[(平台状态 · PostgreSQL)]
+        API & Dataplane --> PG[(平台状态 · PostgreSQL)]
     end
     Web -.->|OIDC| Identity[内置或站点身份源]
-    API & Dataplane & Worker -->|原生 API| Runtime[kagent / Agent Substrate]
+    API & Dataplane -->|原生 API| Runtime[kagent / Agent Substrate]
     API & Controller -->|资源管理| K8s[Kubernetes API]
     Dataplane -->|AccessPlan| K8s
     Runtime -->|模型与 MCP| Gateway
@@ -32,7 +31,6 @@ flowchart LR
 | --- | --- |
 | api | 控制台与管理 RPC、离线委派、环境 API 中转、方案包资源与语音会话 |
 | dataplane | 网关鉴权、ExtMCP、TaskStore / Memory 接入、协作 MCP 与 Actor 公钥转发 |
-| worker | 读投影对账与委派结果续接 |
 | web | React 控制台、oauth2-proxy 登录会话与 MCP App 沙箱页 |
 | identity | 密码模式的 oidc-provider 身份源 |
 | 平台控制器 | 编译 AccessPlan，以 SSA 维护连接派生资源与 Preset |
@@ -40,14 +38,14 @@ flowchart LR
 | Agent 运行时 | kagent 与 Agent Substrate，提供执行、原生状态、HITL 和协作 API |
 | voice worker | 可选的 LiveKit Agents 组件，提供听写、朗读与通话 |
 
-api、dataplane 与 worker 使用同一镜像，分别配置 Service、NetworkPolicy 和 ServiceAccount。
+api 与 dataplane 使用同一镜像，分别配置 Service、NetworkPolicy 和 ServiceAccount。
 运行时来源与构建见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
 
 ## 状态与资源
 
-kagent 保存原始会话、消息、工具调用与 HITL。平台 PostgreSQL 保存执行绑定、加密离线凭据、任务标签、读投影及续接队列。
-TaskStore 接入在原生写入成功后更新投影，api 与协作 MCP 记录自身写入，worker 对账补齐运行时变化。
-列表在 SQL 中完成归属过滤、搜索与分页；执行树摘要在事务内更新，提交后通知各 api 副本刷新订阅。
+kagent 保存会话、消息、任务、工具调用、HITL 及委派续接状态。平台 PostgreSQL 保存执行绑定与加密离线凭据。
+控制台按绑定筛选可见会话，直接读取 kagent 分页 API，组装执行树、搜索结果与列表分页。
+打开的会话通过原生 A2A 任务流接收更新，并定期读取原生状态以发现新任务。
 
 管理 API 保存连接父对象及其凭据 Secret，控制器维护 ModelConfig、RemoteMCPServer、路由与认证策略。
 Preset 更新未修改的预置，用户编辑后的资源归用户维护，详见 [Kubernetes 控制器](kubernetes-controller.md)。

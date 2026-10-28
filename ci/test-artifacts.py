@@ -23,14 +23,14 @@ ROOT = Path(__file__).resolve().parent.parent
 class SourceTest(unittest.TestCase):
     def test_missing_current_source_image_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Missing current-source"):
-            replace_images({"image": "registry.example.com/agentos/worker:old"}, {})
+            replace_images({"image": "registry.example.com/agentos/api:old"}, {})
 
     def test_recursive_native_images_use_build_digests(self):
-        image = "registry.test/platform/worker@sha256:" + "a" * 64
+        image = "registry.test/platform/api@sha256:" + "a" * 64
         self.assertEqual(
             replace_images(
-                {"spec": {"containers": [{"image": "registry.example.com/agentos/worker:old"}]}},
-                {"/worker": image},
+                {"spec": {"containers": [{"image": "registry.example.com/agentos/api:old"}]}},
+                {"/api": image},
             ),
             {"spec": {"containers": [{"image": image}]}},
         )

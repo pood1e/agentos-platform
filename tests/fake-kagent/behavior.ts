@@ -15,12 +15,7 @@ import {
 } from "../../gen/a2a_pb.js";
 import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { InvokeSessionOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
-import {
-  messageText,
-  parentTaskKey,
-  partTypeKey,
-  timelineKey,
-} from "../../server/read-model/decode/messages.js";
+import { messageText, partTypeKey, timelineKey } from "../../server/read-model/decode/messages.js";
 import { fixtureIds, fixtureTasks } from "../fixtures/kagent.js";
 import type { FakeKagent } from "./kagent.js";
 import { awaitingApproval } from "./scenario.js";
@@ -141,7 +136,11 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
       ),
     );
   }
-  if (role === "assistant" && /configmap/i.test(text) && !message.metadata?.[parentTaskKey]) {
+  if (
+    role === "assistant" &&
+    /configmap/i.test(text) &&
+    !message.messageId.startsWith("kagent-continuation-")
+  ) {
     const operation = await pausedOperation(fake, text, task.contextId);
     const user = operation.history.find((item) => item.role === Role.USER);
     const output = create(InvokeSessionOutputSchema, {
@@ -162,7 +161,7 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
       ),
     );
   }
-  if (role === "coordinator" && message.metadata?.[parentTaskKey])
+  if (role === "coordinator" && message.messageId.startsWith("kagent-continuation-"))
     return finish(
       fake,
       task,

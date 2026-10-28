@@ -51,7 +51,6 @@ it("projects calls without narration while running, then reloads their native re
     }
     const env = await environment([task]);
     try {
-      await env.reconcile.refresh();
       const graph = await env.projection.graphOf({ contextId: ids.chatContext });
       if (!graph) throw new Error("Missing conversation tree");
       const chat = await conversation(graph, undefined, ids.chatContext, env.projection.fullTask);
