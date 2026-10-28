@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.42.0](https://github.com/pood1e/agentos-platform/compare/v0.41.0...v0.42.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **platform:** 移除平台 worker 与任务标签 ([#182](https://github.com/pood1e/agentos-platform/issues/182))
+* **governance:** 移除平台业务审批编排 ([#181](https://github.com/pood1e/agentos-platform/issues/181))
+* **kagent:** build native runtime and contracts from fork ([#179](https://github.com/pood1e/agentos-platform/issues/179))
+* **core:** externalize scheduling and case automation ([#178](https://github.com/pood1e/agentos-platform/issues/178))
+
+### Code Refactoring
+
+* **core:** externalize scheduling and case automation ([#178](https://github.com/pood1e/agentos-platform/issues/178)) ([238a55a](https://github.com/pood1e/agentos-platform/commit/238a55acc4fac4ea5ab8292cd48c611375b4ead9))
+* **governance:** 移除平台业务审批编排 ([#181](https://github.com/pood1e/agentos-platform/issues/181)) ([9be1b77](https://github.com/pood1e/agentos-platform/commit/9be1b773b84eda8c941c4d50fbd0c62268c8c886))
+* **kagent:** build native runtime and contracts from fork ([#179](https://github.com/pood1e/agentos-platform/issues/179)) ([924dc5b](https://github.com/pood1e/agentos-platform/commit/924dc5bc90fad86e6a859d02c4f471620b4a7283))
+* **platform:** 移除平台 worker 与任务标签 ([#182](https://github.com/pood1e/agentos-platform/issues/182)) ([0657f0e](https://github.com/pood1e/agentos-platform/commit/0657f0e2f355faffe79f3f3824fd3ae2a88ab7f4))
+
 ## [0.41.0](https://github.com/pood1e/agentos-platform/compare/v0.40.0...v0.41.0) (2026-10-28)
 
 
