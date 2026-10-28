@@ -1,7 +1,7 @@
 # AgentOS Platform
 
 基于 [kagent](https://kagent.dev) 的 Agent 交互与接入层，提供 Web 控制台和输入能力增强。
-Agent 执行、会话、任务持久化与工具确认使用 kagent；方案包提供业务角色、工具、环境连接器与界面展示。
+Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供业务角色、工具、环境连接器与业务流程。
 
 - **控制台**：Agent 团队、聊天与执行历史、原生工具确认、MCP Apps。
 - **输入**：文本与可选的语音输入、朗读和实时通话。
@@ -9,7 +9,7 @@ Agent 执行、会话、任务持久化与工具确认使用 kagent；方案包�
 
 ## 部署
 
-参考部署使用 Ansible collection 安装 K3s、原生运行时与平台 Chart，Agent 运行节点需支持 KVM。
+参考部署通过 Ansible collection 安装 K3s、运行时与平台 Chart，运行节点需支持 KVM。语音、遥测和外部执行入口按需启用。
 制品验签、站点变量与安装步骤见[构建与部署](docs/delivery.md)，目标系统接入见[环境接入](docs/environments.md)，kagent 源码与构建方式见[运行时构建](runtime/kagent/README.md)。
 
 ## 开发
@@ -36,7 +36,7 @@ set +a
 mise exec -- npm run dev
 ```
 
-开发代理将 `AGENTOS_API_TOKEN` 注入 API 请求。本地 API 调试使用 `mise exec -- npm run server`，dataplane 与 worker 以 `tsx server/apps/<入口>.ts` 运行，均依赖 PostgreSQL、Kubernetes、OIDC 与原生运行时；配置见 [api Deployment](charts/agentos/templates/api-deployment.yaml) 与同目录的 dataplane、worker 模板。
+开发代理使用 `AGENTOS_API_TOKEN` 转发 API 请求。本地服务调试依赖 PostgreSQL、Kubernetes、OIDC 与运行时，进程入口见[代码导航](docs/code-navigation.md)，环境配置见 [api Deployment](charts/agentos/templates/api-deployment.yaml)及同目录模板。
 
 ## 文档
 

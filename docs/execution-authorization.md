@@ -1,91 +1,81 @@
 # 执行身份与授权
 
-## 平台边界
+## 用户与资源管理
 
-认证用户均可发起聊天和只读查询。平台资源管理权限由受信令牌的应用角色分别授予；目标系统写角色仅决定运维执行的写权限上限。会话创建时固定发起人、Agent、根会话、父会话、写权限与平台能力上限；权限提升后的任务使用新会话。
+认证用户可聊天、浏览配置和检索团队知识。应用角色授予配置管理能力，目标系统写角色决定执行的写权限上限；目标系统继续执行自身授权。
 
 | 应用角色 | 管理范围 |
 | --- | --- |
-| `agentos-agents-manage` | 智能体配置、技能与工具绑定、运行配置、角色起草助手 |
+| `agentos-agents-manage` | Agent、Skill / 工具绑定、运行配置与角色起草 |
 | `agentos-skills-manage` | 共享 Skill 目录 |
-| `agentos-mcp-manage` | MCP 连接及其凭据 |
-| `agentos-knowledge-manage` | 团队知识的新增、删除、清空与 Agent 写入 |
-| `agentos-models-manage` | 模型连接及其凭据 |
+| `agentos-mcp-manage` | MCP 连接与凭据 |
+| `agentos-knowledge-manage` | 团队知识新增、删除、清空与 Agent 写入 |
+| `agentos-models-manage` | 模型连接与凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
-| `agentos-tasks-manage` | 共享任务标签 |
+| `agentos-tasks-manage` | 共享服务任务标签 |
 
-角色可以组合。身份提供方可将 `agentos-admin` 定义为包含全部资源角色的原生组合角色，并在令牌中展开实际权限。认证用户可浏览智能体、Skill、MCP、模型接入、Harness 和团队知识的列表与详情，并检索团队知识。平台依据 proto 定义的 `Capability` 校验管理 RPC；浏览器使用相同能力控制新增、修改、删除和运行配置。发布包的 `authorization.json` 由同一协议生成，供环境配置身份映射。
+角色可以组合；IdP 可用 `agentos-admin` 组合角色并在令牌中展开实际权限。
+管理 RPC 与浏览器共用 proto `Capability`，发布包的 `authorization.json` 由同一协议生成，供站点映射身份。
+个人任务标签由发起人维护，共享服务任务标签需要任务管理角色；标签按工作空间存储并使用乐观锁更新。
 
-应用角色授予配置管理能力；目标系统仍执行自身授权。平台管理角色保留用户私聊归属边界。
+## 执行权限
 
-个人任务的标签由发起人维护，包括已结束或已撤销执行权的任务；共享服务任务的标签需要任务管理角色。标签作为操作根任务的元数据保存在同一 PostgreSQL 的 `agentos_console.task_tags` 表中，以工作空间隔离并采用乐观锁更新。标签只用于分类和筛选，执行状态、审批结果与目标系统写权限独立校验。
+会话创建时固定发起人、Agent、根 / 父会话、写权限及平台能力上限。每次工具调用取当前用户凭证、会话及父链权限、Agent 已选工具和环境身份范围的交集。
+工具须出现在当前 generation 的就绪 AccessPlan 中；权限提升后的执行使用新会话。
 
-执行绑定与最新验证的用户凭证保存于 PostgreSQL 的 `agentos_authorization` schema。绑定按列存储，委派链以一次递归查询读取；access token 与 refresh token 由 AWS Encryption SDK 信封加密，加密上下文包含工作空间、记录类型和主体，加密密钥位于独立、持久保留的 Kubernetes Secret。
-原生会话、A2A 消息与工具参数使用身份引用，用户访问令牌由执行存储持有。
+执行绑定与用户凭据存于 PostgreSQL 的 `agentos_authorization` schema，委派链以递归查询读取。
+access / refresh token 使用 AWS Encryption SDK 信封加密，密钥由独立 Kubernetes Secret 持久保存；原生会话与消息只使用身份引用。
 
-平台在每次工具调用时计算用户当前凭证、会话及父链权限、Agent 当前已选工具与环境身份上限的交集。工具须出现在已就绪的编译结果中。委派与自动续接校验相同的根会话及发起人。停止通过原生 A2A 取消会话内的执行及全部委派，确认完成后可在同一会话发送新消息；删除会话撤销其执行绑定及后代授权。
+原生 HITL 批准前复验当前执行授权，实际工具调用再次校验。控制台提交的决定必须完整对应当前原生暂停中的工具；用户拒绝与补充信息直接回复原生交互。
+停止经 A2A 取消会话内执行与委派，确认后可继续同一会话；删除会话撤销其绑定和后代授权。
+业务审批规则、审批人资格、工单与业务执行守卫由方案包或环境服务实现。
 
-原生 HITL 与外部审批均先校验执行权限。外部工单创建前、审批完成后恢复前、工具实际调用时分别复验。批准确认操作，执行继续受原权限上限约束。
+## 运行时与工作负载
 
-自动校验未通过使用 `FAILED`，人工拒绝使用 `REJECTED`。平台将审批服务的类型化结果随原生 HITL 响应持久化，保留原因和决策人；原生布尔响应仅决定工具能否继续。审批服务未创建人工审批记录时，界面仍可读取该校验结果。
-
-## 运行时边界
-
-Substrate 宿主机为每个出站目标注入短期 Actor JWT。平台验证签名、issuer、audience、当前 Actor UID 与原生 Session，身份和会话取自签名声明与原生状态。
-
-运行时 API 仅注册上游 TaskStoreService、MemoryService。TaskStore 请求固定到签名 Actor 对应的会话，原生持久化接口继续校验 dispatch 和版本围栏；撤销后仍可记录清理及终态。私人 Memory 写操作限定当前用户、当前 Agent 和启用记忆的 Harness；团队共享记忆另须独立的 `agentos-knowledge-manage` 角色。
-管理 RPC 与 A2A 入口仅向控制面开放。运行时出站策略与 NetworkPolicy 同时限制直连原生控制器。
-
-Actor 公钥发现由官方 `ate-idp-server` 提供，服务证书及信任根使用 Substrate 的原生 PodCertificate 与 ClusterTrustBundle。
-dataplane 通过 JOSE 远程 JWKS 解析器取得公钥，在仅供网关控制器访问的 HTTP/1.1 端口 9092 提供 `/keys/actor`，每次拉取刷新源公钥。
-平台网关的原生远程 JWKS 引用该 Service；Chart 与部署值保存受信 issuer，公钥由远程 JWKS 动态取得。
-agentgateway v1.6.0 对 Service 后端的远程 JWKS 按 BackendTLSPolicy 校验，CA 取自同命名空间 ConfigMap 的 `ca.crt`；`ate-idp-server` 的信任根以可轮换的 ClusterTrustBundle 发布，因此由 dataplane 投射该信任根并中转公钥。
-网关控制器沿用原生默认 5 分钟公钥刷新间隔，轮换须保留覆盖未到期令牌及缓存窗口的旧公钥。密钥服务故障与无效令牌分别报告不可用和身份拒绝；已有缓存的有效期遵循各 SDK 与网关策略。
-托管 Harness 的原生客户端与 MCP 编译配置发送 `x-substrate-actor-token` 占位头，宿主替换为签名凭证。自定义 Harness 使用相同的请求头和原生持久化协议。
-
-## 平台工作负载
-
-| 调用方 | 认证 | 准入范围 |
+| 调用方 | 凭据 | 校验范围 |
 | --- | --- | --- |
-| Agent | Substrate Actor JWT，按模型与 MCP 入口区分 audience | 当前 Actor、Session、执行授权、模型配置或模板工具绑定 |
-| kagent 控制器 | 绑定 ServiceAccount JWT，audience `agentos-mcp-discovery` | initialize、ping、工具发现等元数据方法 |
-| 平台 API | 绑定 ServiceAccount JWT，audience 为模型入口 | 配置的团队知识嵌入模型与 `/v1/embeddings` |
-| 外部执行服务 | 已登记的 client credentials JWT | 授权 Agent 的任务运行、查询与取消 |
+| 原生 TaskStore / Memory | `Authorization` 中 `kagent-runtime` audience 的 Actor JWT | 保留原始凭据，通过 kagent `SessionService.GetSession` 验证当前 Actor 与 Session，再约束持久化范围 |
+| Agent 模型 / MCP 调用 | 宿主注入的 Actor JWT，audience 对应目标 origin | 签名、issuer、audience、当前 Actor / Session、执行授权与工具绑定 |
+| kagent 工具发现 | 绑定 ServiceAccount JWT，audience `agentos-mcp-discovery` | TokenReview 与精确控制器主体，只开放发现等元数据方法 |
+| 平台知识嵌入请求 | 绑定 ServiceAccount JWT，audience 为模型入口 | 配置的嵌入模型与 `/v1/embeddings` |
+| 外部执行服务 | 登记的 OIDC client credentials JWT | issuer、audience、azp、sub 与授权 Agent 范围 |
 
-Kubernetes 工作负载通过官方客户端调用 TokenReview，显式传入目标 audience，并校验认证结果、返回 audience 与精确 ServiceAccount 主体。每次请求重新审核，绑定对象撤销与签名密钥轮换由 API Server 处理；平台仅拥有创建 TokenReview 的权限，请求须通过 API 审核后放行。
-网关 JWT 策略只解析 Actor 专用头。无 Actor 的环境发现先经 HTTP 外部授权完成 TokenReview，再换取环境发现令牌；平台 MCP 与模型入口分别在其授权处理器中审核工作负载，调用权限取自完整的身份审核结果。
+TaskStore 请求限定到当前会话，原生持久化继续校验 dispatch 与版本围栏；撤权后仍可记录清理和终态。
+私人 Memory 写入限定当前用户、Agent 与启用记忆的 Harness；共享知识写入另需知识管理角色。
+管理 RPC 与 A2A 向控制面开放，运行时出站策略和 NetworkPolicy 限制直连。
 
-平台模型与协作 MCP 分别使用独立入口 audience。每个平台 MCP 服务只注册一次，ExtMCP 按具体服务及工具校验当前 Agent 的绑定，工具按服务与名称共同绑定。
-外部执行客户端精确匹配 issuer、audience、azp、服务账号 sub 与 Agent 范围；每次执行重新核验当前登记配置。
+模型与 MCP 接入通过 JOSE 验证 Actor。原生 `ate-idp-server` 发布签名公钥，dataplane 使用投射的原生信任根读取 JWKS，并在 HTTP/1.1 端口 9092 的 `/keys/actor` 转发给网关控制器。
+网关沿用原生 5 分钟刷新间隔；轮换保留覆盖未到期令牌与缓存窗口的旧公钥。
+Harness 的 `x-substrate-actor-token` 占位头由宿主替换，ModelConfig 占位值只用于 SDK 初始化。
 
-原生 Harness SDK 使用 ModelConfig 的非空占位值完成客户端初始化，实际授权取自宿主注入的 Actor JWT。平台 API 从 Kubernetes 投射卷逐次读取轮换后的短期令牌。
+TokenReview 显式指定 audience，核对审核结果与精确 ServiceAccount 主体，每次请求重新审核。
+平台 API 逐次读取投射卷中的短期令牌；环境发现经 HTTP 外部鉴权，平台 MCP 与模型入口由各自处理器审核。
 
-## 环境与方案包边界
+## 环境授权
 
-每个环境身份对应机密客户端 `agentos-<identity>`。平台在逐调用授权通过后，以 openid-client 获取环境资源受众的短期令牌：用户执行采用 RFC 8693，服务执行与目录发现采用 client credentials。环境网关验证 issuer、audience 与有效期，路径 `/mcp/<identity>/<service>` 的 `azp` 必须对应执行客户端。
+每个环境身份对应机密客户端 `agentos-<identity>`。逐调用授权通过后，openid-client 换取环境资源令牌：用户执行采用 RFC 8693 并保留 `sub`，服务执行与目录发现采用 client credentials。
+环境网关验证 issuer、audience、有效期，并要求 `/mcp/<identity>/<service>` 的 `azp` 对应执行客户端。
+平台到环境网关使用 HTTPS，校验 CA 与 SAN。
 
-平台网关到环境网关使用 HTTPS，cert-manager 签发证书，Backend 校验 CA 和 SAN。原生控制器使用可刷新的 Kubernetes 绑定 ServiceAccount 令牌发现工具；Agent 的握手、发现和调用使用 Actor JWT。两者均由平台网关认证，工具调用继续经过执行绑定与已选工具检查。
+连接器使用 agentgateway BackendAuth：OAuth 目标交换为目标受众令牌，API 令牌目标使用每身份有限期凭据。
+网关移除 Actor JWT，API 令牌路由另移除环境 Authorization；连接器只接收目标凭据，每次 MCP 请求独立认证。
+API 令牌目标的原生审计记录服务账号，平台执行元数据保留实际发起人。配置见[环境接入](environments.md)。
 
-连接器的 `auth` 使用 agentgateway 原生 BackendAuth。Kubernetes、Keycloak 与 Grafana 采用目标受众令牌交换，保留发起人 `sub` 与执行身份 `azp`；仅支持 API 令牌的目标使用每身份有限期凭据。环境网关移除 Actor JWT，API 令牌路由同时移除环境 Authorization，连接器只收到目标凭据。MCP 后端采用无状态路由，每次调用独立认证。
+## 登录与离线授权
 
-审批规则、业务工具分级、目标角色和凭据轮换由方案包与运维环境管理。业务角色映射由方案包与环境配置。API 令牌目标的原生审计记录目标服务账号，平台执行元数据保留实际发起人。
+API 接受 Bearer 访问令牌。web 通过 oauth2-proxy 完成授权码与 PKCE 登录，Cookie 使用 Secure、HttpOnly、`SameSite=Lax`，转发请求时注入访问令牌。
+后台执行使用独立离线授权：`GetAccessProfile` 返回 `delegated` / `delegation_url`；尚未授权的 `SendMessage` 返回 `FAILED_PRECONDITION`（`delegation.required`）。
 
-## 凭证与生命周期
+`/delegation/start` 通过授权码、PKCE、state 与 nonce 请求 `offline_access`。`return_to` 限定为登记前端源，授权事务保存在 10 分钟签名 Cookie 中，refresh token 在服务端加密保存。
+浏览器退出或访问令牌到期后，任务可凭离线授权继续；授权失效、账号禁用或 IdP 拒绝续期时停止后续调用。
 
-平台 API 只接受 Bearer 访问令牌。浏览器登录由 web 的 oauth2-proxy 以授权码与 PKCE 完成，会话 Cookie 为 Secure、HttpOnly、`SameSite=Lax`，请求转发时注入 `Authorization`。后台执行另需用户授予离线授权：`GetAccessProfile` 返回 `delegated` 与 `delegation_url`，未授权时 `SendMessage` 返回 `FAILED_PRECONDITION`（`delegation.required`）；`/delegation/start` 以授权码、PKCE、state 与 nonce 请求 `offline_access`，`return_to` 限定为登记的前端源，授权事务只保存在 10 分钟的签名 Cookie 中。离线 refresh token 按用户主体加密保存于服务端执行存储。
+同一用户的刷新在进程内合并，并经 PostgreSQL 行锁跨副本串行执行。新令牌反映当前角色，执行仍受会话初始权限上限约束；IdP 变更的传播窗口由现有 access token 有效期决定。
+`identity.mode: password` 使用单一共享主体，登录者共享聊天记录，环境侧使用逐次授权的服务身份。
 
-后台任务按需续期短期 access token，再以原用户令牌执行 OBO。浏览器退出、关闭页面和 access token 到期后，后台任务通过独立离线授权继续执行。离线授权失效、账号禁用或身份提供方拒绝续期时停止后续调用；停止任务等待原生执行取消，用户任务始终保持原发起人。外部服务任务使用独立的显式服务身份。
+## 数据归属
 
-有效访问令牌的签名和权限直接核验。同一用户的令牌刷新在进程内合并，并通过 PostgreSQL 行锁在 api、dataplane 与 worker 的各副本间串行执行。新令牌反映当前角色，执行时始终与会话创建时的权限上限相交；既有任务维持创建时的权限上限。短期令牌尚有效时，身份提供方变更的传播上限由 access token 有效期决定。
+聊天通过 `entryAgent` 进入统一助手，角色起草采用独立管理流程。
+OIDC 用户的会话、任务、消息、工具参数与实时订阅按发起人隔离，服务端在搜索、计数、分页及执行树投影前过滤归属。
+历史读取独立于任务取消和凭据续期；平台管理员可读取共享服务任务，个人私聊仍按发起人隔离。
 
-`identity.mode: password` 由内置身份源为单一共享主体签发令牌，授权路径与外部身份提供方一致；登录者共享聊天记录，环境侧以逐次授权的服务身份桥接。
-
-## 会话与数据归属
-
-普通聊天只通过 `entryAgent` 配置的统一助手进入，由助手委派专业 Agent。配置编辑中的角色起草使用独立的受控管理流程。
-
-OIDC 用户的聊天、任务、消息、工具参数与实时订阅按执行绑定的发起人隔离。服务端在搜索、计数、分页与操作树投影前过滤归属；查询范围限定为本人及明确共享的任务。本人历史读取独立于执行取消和凭证续期，已绑定发起人的会话进入用户视图。
-
-`ListApprovalRequests` 提供按状态分页的审批请求队列及待审批总数。普通用户读取本人及已有共享任务的请求；平台管理员可审核工作空间内的审批材料，访问范围限定请求、外部审批状态及其 MCP App，私人聊天和任务详情仍按发起人隔离。列表从任务投影读取，打开详情时才查询外部审批服务。审批 App 写操作使用当前审核人的 OBO 身份，复验原任务状态及目标系统授权；批准沿用原执行身份和权限上限。业务单据、审批规则与审批人资格由方案包及环境实现。
-
-浏览器历史定位与查询缓存按工作空间和用户主体分区。运行时私人记忆的用户范围由服务端从执行身份确定；会话发现限定在同一执行树。显式团队知识与服务身份发起的执行记录在工作空间内向平台管理员共享。
+浏览器缓存按工作空间与用户分区。私人记忆范围由服务端执行身份确定，会话发现限定同一执行树；显式团队知识在工作空间内共享。

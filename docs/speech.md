@@ -22,12 +22,13 @@ flowchart LR
 
 ## 交互
 
-- 听写：worker 转写麦克风音频，中间结果经 LiveKit 转写流写入输入框。持续静音 1.4 秒、12 秒无语音、总时长 60 秒或用户停止录音时结束，最终文本经数据通道返回，由用户发送。连接期间麦克风先行缓冲，worker 接入后补发。
-- 朗读：浏览器提交答复 Markdown，api 提取可朗读正文并按正文语言选择音色；worker 在浏览器连接期间开始合成，播放结束后关闭房间。
-- 通话：用户说完一轮后，worker 把转写作为聊天消息发往对话，等待最终答复并朗读。持续 200 毫秒的人声打断朗读并取消该轮任务及其委派，取消确认后再发送下一轮。worker 的聆听、处理与回答状态经 `lk.agent.state` 显示；首轮返回对话后，浏览器打开该对话。
-- 通话期间关闭普通听写与朗读；切换会话或身份、挂断时释放麦克风与房间。每次通话最长 30 分钟，worker 默认并发 4 路；15 秒内未接入 worker 的房间按连接失败处理。
+| 模式 | 行为 |
+| --- | --- |
+| 听写 | 转写流写入输入框，停止后返回最终文本，由用户发送；连接期间缓冲麦克风音频 |
+| 朗读 | 从答复 Markdown 提取正文，按语言选择音色，播放结束关闭房间 |
+| 通话 | 转写进入绑定对话，答复合成播放；人声打断时取消当前任务及委派，确认取消后发送下一轮 |
 
-采集保留回声消除，关闭浏览器降噪与自动增益，减少对音素和音量包络的改写。
+通话期间切换会话、切换身份或挂断均释放麦克风与房间。通话最长 30 分钟，并发上限由 `voice.capacity` 配置。
 
 ## 模型服务
 
@@ -35,7 +36,6 @@ flowchart LR
 
 - 转写默认接入 Deepgram Live 兼容接口；`protocol: PROTOCOL_WHISPERLIVEKIT` 接入 WhisperLiveKit 原生 `/asr`，保留模型的分词和空格。
 - 合成使用 OpenAI 兼容的 `POST /v1/audio/speech` PCM 流；`protocol: PROTOCOL_NEMO` 接入 NeMo-Speech.cpp，以 22050 Hz 单声道 PCM 返回，并传入音色对应的语言。
-- 合成语言优先匹配非拉丁正文，再匹配完整文本；中文、阿拉伯语内嵌的英文术语沿用正文音色，未匹配时使用首个音色。
 - `languageCodes` 声明转写语言，聊天页提供语言选择，初始匹配界面语言并记住用户选择；自动识别时省略语言参数。
 
 ```yaml
@@ -44,20 +44,19 @@ speech:
     endpoint:
       baseUrl: https://speech.example.test/v1
     model: multilingual-asr
-    languageCodes: [zh, en, ar]
+    languageCodes: [zh, en]
   synthesis:
     endpoint:
       baseUrl: https://speech.example.test/v1
     voices:
       - {languageCode: zh, model: tts-zh, voice: default}
       - {languageCode: en, model: tts-en, voice: default}
-      - {languageCode: ar, model: tts-ar, voice: default}
   secretRef: speech-credentials
 ```
 
 方案 Chart 的初始配置位于 `app_values.agentos.speech`，仅启用一项时另一项保留 `{}`。
 Preset 首次创建 `<release>-speech` Secret，用户在模型管理页保存后取得对象所有权，后续预置升级保留配置与凭据。
-配置与凭据在同一 Secret 中按 `resourceVersion` 原子更新，`configuration.json` 使用 `SpeechConfiguration` 的 proto JSON。
+`configuration.json` 使用 `SpeechConfiguration` 的 proto JSON，配置与凭据在同一 Secret 中原子更新。
 合成配置至少包含一个音色，每种语言一个模型和音色，语言代码使用 ISO 639。
 `secretRef` 引用已有 Secret，启用转写需要 `transcription-api-key`，启用合成需要 `synthesis-api-key`；管理接口只返回密钥是否配置，留空保留原密钥，显式清除停止使用引用密钥。
 
