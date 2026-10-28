@@ -41,6 +41,29 @@ voice-verify:
   tags: [$AGENTOS_VOICE_RUNNER]
   stage: package
   needs: [build-voice]
+  rules:
+    - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
+      changes:
+        compare_to: refs/heads/main
+        paths: &voice-paths
+          - voice/**/*
+          - proto/**/*
+          - contracts/**/*
+          - third_party/**/*.proto
+          - package*.json
+          - pyproject.toml
+          - mise.*
+          - ci/contracts.py
+          - ci/node-contracts.py
+          - ci/requirements.txt
+          - ci/voice-test-requirements.txt
+          - ci/python.gitlab-ci.yml
+          - ci/toolchain.gitlab-ci.yml
+          - ci/images/**/*
+          - .gitlab-ci.yml
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: *voice-paths
   image:
     name: $CI_REGISTRY_IMAGE/voice:$CI_COMMIT_SHA
     entrypoint: [""]

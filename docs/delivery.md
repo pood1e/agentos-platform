@@ -14,11 +14,11 @@ GitLab CI 入口为 [`.gitlab-ci.yml`](../.gitlab-ci.yml)，运行时作业见 [
 | `platform-controller-verify` | 平台控制器 race、真实 API Server 集成测试、vet 与编译 |
 | `build-*` | rootless BuildKit 构建平台 API、web、平台控制器、kagent、Substrate、Harness、语音与自动化镜像，写入源码提交标签 |
 | `build-contracts` | 提前构建 Node SDK 与 Python protobuf wheel，并验证发布打包 |
-| `voice-verify` | 在本次构建的语音镜像中校验语音源码与单元测试 |
+| `voice-verify` | 语音、协议或相关依赖变更时，在本次构建的语音镜像中校验源码与单元测试；tag、手动及完整定时流水线执行全量校验 |
 | `package-check` | 校验所有平台镜像的源码提交，打包四个 Chart 与参考部署 collection；功能分支同样执行 |
 | `release` | 发布原生 npm / PyPI 契约；推送 OCI Chart 与 collection，以 cosign 签名镜像、Chart 和 collection 的不可变摘要；main 发布开发版，受保护的版本 tag 发布正式版 |
 
-GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执行应用、部署、Python、平台控制器与运行时检查，`Required checks` 汇总必需结果；纯文档变更跳过无关检查。运行时变更合入 main 后更新默认分支的 Go 缓存，后续 PR 通过原生缓存复用。
+GitHub 的 [Verify 工作流](../.github/workflows/verify.yaml) 在合并前执行应用、部署、Python、平台控制器与运行时检查，`Required checks` 汇总必需结果；纯文档变更跳过无关检查。平台控制器与部署检查并行，语音校验按代码、协议和依赖变更触发；手动运行执行完整校验。平台控制器和运行时变更合入 main 后更新默认分支的 Go 缓存，后续 PR 通过原生缓存复用。GitLab 的应用构建、协议打包和部署检查同样缓存 Go 模块及编译结果。
 release-please 使用仓库令牌管理发布 PR。创建后，同一作业通过 GitHub 原生审批 API 启动同仓库、release-please 分支的检查；普通 PR 与发布 PR 均在合并提交执行相同门禁。
 
 GitHub 的 release-please 根据 Conventional Commits 更新发布 PR、变更记录、npm 与 Chart 版本。版本文件由发布 PR 集中维护。

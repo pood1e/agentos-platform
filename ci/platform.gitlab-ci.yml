@@ -13,7 +13,7 @@ include:
   - local: ci/python.gitlab-ci.yml
 
 verify:
-  extends: [.agentos-node, .agentos-postgres]
+  extends: [.agentos-node-go, .agentos-postgres]
   stage: verify
   script: [npm run verify]
   artifacts:
@@ -21,7 +21,7 @@ verify:
     expire_in: 1 day
 
 deployment-check:
-  extends: .agentos-ci
+  extends: [.agentos-ci, .agentos-go-cache]
   stage: verify
   variables:
     ANSIBLE_CONFIG: deploy/ansible.cfg
@@ -34,17 +34,15 @@ deployment-check:
     - ansible-playbook environments/connect.yaml --syntax-check
     - ci/check-charts.sh
     - python ci/test-artifacts.py
-  artifacts:
-    paths: [.cache/chart-check/*crds*.yaml]
-    expire_in: 1 day
 
 platform-controller-verify:
   extends: .agentos-go
   stage: verify
-  needs: [deployment-check]
+  needs: []
   script:
     - ci/generate-controller.sh
-    - go -C controller test -race ./...
+    - python ci/chart-schemas.py
+    - go -C controller test -race -count=1 ./...
     - go -C controller vet ./...
     - mkdir -p .cache/platform-controller-image
     - CGO_ENABLED=0 go -C controller build -trimpath -ldflags='-s -w' -o ../.cache/platform-controller-image/agentos-controller ./cmd/controller
@@ -82,7 +80,7 @@ build-web:
     expire_in: 1 day
 
 build-contracts:
-  extends: .agentos-node
+  extends: .agentos-node-go
   stage: package
   needs: []
   script:
@@ -108,6 +106,7 @@ package-check:
       artifacts: false
     - job: voice-verify
       artifacts: false
+      optional: true
     - job: build-controller
     - job: build-claude-harness
     - job: build-standard-harness
