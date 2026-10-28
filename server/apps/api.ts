@@ -19,12 +19,10 @@ import { workspaceContext } from "../platform/access.js";
 import { registerEnvironmentApis } from "../platform/environment-api.js";
 import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
-import { voiceCalls } from "../speech/calls.js";
-import { speechService } from "../speech/service.js";
-import { speechSettingsStore } from "../speech/store.js";
-import { registerTranscription } from "../speech/transcription.js";
 import { taskTagStore } from "../tasks/store.js";
 import { continuationJobs } from "../team-sessions/continuation.js";
+import { voiceFeature } from "../voice/feature.js";
+import { speechSettingsStore } from "../voice/settings.js";
 import {
   closeOnSignal,
   executionServices,
@@ -65,12 +63,15 @@ const speechSettings = speechSettingsStore(
   workspace,
   process.env.AGENTOS_SPEECH_SECRET ?? `${release}-speech`,
 );
-const speech = speechService(
-  speechSettings.load,
-  voiceCalls(speechSettings.load, process.env.AGENTOS_VOICE_URL, process.env.AGENTOS_VOICE_TOKEN),
-);
-await registerTranscription(app, speechSettings.load, async (headers) => {
-  await identity(headers);
+const voice = await voiceFeature(app, {
+  database: config.database,
+  kube: config.kube,
+  settings: speechSettings.load,
+  projection,
+  clients,
+  executions: execution.registry,
+  initiator: (subject) => execution.background.resolve(subject),
+  agent: { namespace: workspace, name: entryAgent },
 });
 const automation = automationPresets(workspace, packRoot);
 const knowledge = knowledgeConfig(config.kagent);
@@ -109,7 +110,7 @@ await registerConsole(app, {
     replaceTemplate: templateWriter(config.kube),
     pack: loadPack(packRoot),
     tags,
-    speech,
+    voice: voice?.console,
     executions: execution.registry,
     entryAgent,
     authorizeTools: execution.authorizeTools,
@@ -145,5 +146,7 @@ closeOnSignal(app, [
   execution.close,
   tags.close,
   presets.close,
+  ...(voice ? [voice.close] : []),
 ]);
+await voice?.listen(listenConfig().host);
 await app.listen(listenConfig());

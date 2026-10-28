@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { speechText } from "../../../../shared/browser/speech/text.js";
+import { speechText } from "../../../../shared/speech-text.js";
 import { useSpeechControls } from "./context.js";
 
 export function SpeechInput({ disabled }: { disabled: boolean }) {

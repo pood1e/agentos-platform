@@ -1,3 +1,4 @@
+{{- if .Values.voice.enabled }}
 {{- $name := printf "%s-speech" (include "agentos.name" .) }}
 {{- $configuration := dict }}
 {{- range $kind := list "transcription" "synthesis" }}
@@ -20,3 +21,4 @@ spec:
         {{- with .Values.speech.secretRef }}
         credentials-secret: {{ . | b64enc | quote }}
         {{- end }}
+{{- end }}

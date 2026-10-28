@@ -1,4 +1,4 @@
-"""WhisperLiveKit's native snapshot protocol at the LiveKit STT boundary."""
+"""Configured transcription; WhisperLiveKit's native snapshot protocol as a LiveKit STT."""
 
 import asyncio
 import json
@@ -7,8 +7,21 @@ import weakref
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import aiohttp
+from agentos.console.v1.speech_pb2 import SpeechTranscription
 from livekit.agents import APIConnectionError, stt
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
+from livekit.plugins import deepgram
+
+
+def transcriber(settings: SpeechTranscription, credential: str, language: str) -> stt.STT:
+    if settings.protocol == SpeechTranscription.PROTOCOL_WHISPERLIVEKIT:
+        return WhisperLiveKitSTT(settings.endpoint.base_url, credential, language)
+    return deepgram.STT(
+        api_key=credential,
+        base_url=settings.endpoint.base_url.removesuffix("/v1"),
+        model=settings.model,
+        language=language or "multi",
+    )
 
 
 class WhisperLiveKitSTT(stt.STT):

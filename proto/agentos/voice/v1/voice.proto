@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package agentos.voice.v1;
+
+import "agentos/console/v1/speech.proto";
+import "buf/validate/validate.proto";
+
+// Voice worker API. Callers present the worker's Kubernetes service account token;
+// requests act as the session initiator on the session's own conversation.
+service VoiceService {
+  rpc GetVoiceSession(GetVoiceSessionRequest) returns (GetVoiceSessionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Sends a call turn; the first turn of a new call binds the conversation it starts.
+  rpc SendVoiceTurn(SendVoiceTurnRequest) returns (SendVoiceTurnResponse);
+  // Waits up to 20 seconds for the turn to settle.
+  rpc GetVoiceAnswer(GetVoiceAnswerRequest) returns (GetVoiceAnswerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Cancels the turn's task and its delegated work.
+  rpc CancelVoiceTurn(CancelVoiceTurnRequest) returns (CancelVoiceTurnResponse);
+}
+
+// Plain text for synthesis and the voice language selected for it.
+message Speech {
+  string text = 1;
+  string language_code = 2;
+}
+
+message GetVoiceSessionRequest {
+  string session_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetVoiceSessionResponse {
+  agentos.console.v1.VoiceMode mode = 1;
+  // Transcription language; empty detects it.
+  string language_code = 2;
+  // Read-aloud content.
+  Speech speech = 3;
+  agentos.console.v1.SpeechConfiguration configuration = 4;
+  string transcription_credential = 5;
+  string synthesis_credential = 6;
+}
+
+message SendVoiceTurnRequest {
+  string session_id = 1 [(buf.validate.field).string.uuid = true];
+  // Retries with the same ID return the accepted turn.
+  string message_id = 2 [(buf.validate.field).string.uuid = true];
+  string text = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 8000
+  }];
+}
+
+message SendVoiceTurnResponse {
+  string context_id = 1;
+  string task_id = 2;
+}
+
+message GetVoiceAnswerRequest {
+  string session_id = 1 [(buf.validate.field).string.uuid = true];
+  string task_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message GetVoiceAnswerResponse {
+  bool done = 1;
+  // The final answer of a completed turn.
+  Speech answer = 2;
+}
+
+message CancelVoiceTurnRequest {
+  string session_id = 1 [(buf.validate.field).string.uuid = true];
+  string task_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message CancelVoiceTurnResponse {}
+
+// Worker events on the room's agentos.voice data topic.
+message VoiceEvent {
+  oneof event {
+    // Final dictation transcript.
+    string transcript = 1;
+    // Conversation of the call's turns, reported with the first turn.
+    string context_id = 2;
+    // Localization key of a failed turn.
+    string error = 3;
+  }
+}

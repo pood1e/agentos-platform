@@ -13,4 +13,4 @@ COPY --from=dependencies /dependencies/ /usr/local/lib/python3.13/site-packages/
 COPY --chown=1000:1000 agentos_voice/ /app/agentos_voice/
 WORKDIR /app
 USER 1000:1000
-ENTRYPOINT ["python", "-m", "agentos_voice"]
+ENTRYPOINT ["python", "-m", "livekit.agents", "start", "agentos_voice/worker.py", "--log-level", "WARNING"]

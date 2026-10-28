@@ -30,10 +30,8 @@ service ConsoleService {
   rpc GetSpeechCapabilities(GetSpeechCapabilitiesRequest) returns (GetSpeechCapabilitiesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc TranscribeAudio(TranscribeAudioRequest) returns (TranscribeAudioResponse);
-  rpc SynthesizeSpeech(SynthesizeSpeechRequest) returns (stream SynthesizeSpeechResponse);
-  rpc StartVoiceCall(StartVoiceCallRequest) returns (StartVoiceCallResponse);
-  rpc EndVoiceCall(EndVoiceCallRequest) returns (EndVoiceCallResponse);
+  // Issues a LiveKit token for a dictation, read-aloud or call session.
+  rpc StartVoiceSession(StartVoiceSessionRequest) returns (StartVoiceSessionResponse);
   rpc ListEngineers(ListEngineersRequest) returns (ListEngineersResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

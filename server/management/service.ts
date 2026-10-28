@@ -15,7 +15,7 @@ import transcriptionSchema from "../../gen/schema/agentos.console.v1.SpeechTrans
 import harnessSchema from "../../gen/schema/kagent.harness.json" with { type: "json" };
 import type { KagentClients } from "../kagent/clients.js";
 import { type KnowledgeConfig, knowledgeService } from "../knowledge/service.js";
-import type { SpeechSettingsStore } from "../speech/store.js";
+import type { SpeechSettingsStore } from "../voice/settings.js";
 import { connectionCommands, type GatewayConfig } from "./connections.js";
 import { engineerRuntime } from "./engineer-runtime.js";
 import { harnessCommands } from "./harnesses.js";

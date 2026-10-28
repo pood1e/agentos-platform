@@ -1,26 +1,29 @@
-import { useQuery } from "@connectrpc/connect-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ConsoleService } from "../../../../gen/agentos/console/v1/console_service_pb.js";
-import {
-  type DictationPhase,
-  RemoteDictationAdapter,
-} from "../../../../shared/browser/speech/dictation.js";
-import { RemoteSpeechAdapter } from "../../../../shared/browser/speech/synthesis.js";
-import { speechClient } from "../../../lib/console.js";
+import type { DictationPhase } from "../../../../shared/browser/voice/dictation.js";
+import { consoleClient } from "../../../lib/console.js";
+import { useSpeechCapabilities } from "../../../lib/speech.js";
 import { useVoiceCallActive } from "../voice/context.js";
+
+// LiveKit loads only for deployments with voice.
+const loadVoice = () =>
+  Promise.all([
+    import("../../../../shared/browser/voice/dictation.js"),
+    import("../../../../shared/browser/voice/speech.js"),
+  ]);
 
 export function useSpeech() {
   const { t, i18n } = useTranslation();
   const [phase, setPhase] = useState<DictationPhase>("idle");
   const calling = useVoiceCallActive();
   const [selected, setSelected] = useState(() => localStorage.getItem("speech-language"));
-  const capabilities = useQuery(
-    ConsoleService.method.getSpeechCapabilities,
-    {},
-    { staleTime: 60_000 },
-  );
+  const [voice, setVoice] = useState<Awaited<ReturnType<typeof loadVoice>>>();
+  const capabilities = useSpeechCapabilities();
+  const enabled = capabilities.data?.enabled === true;
+  useEffect(() => {
+    if (enabled) void loadVoice().then(setVoice);
+  }, [enabled]);
   const onError = useCallback((key: string) => void toast.error(t(key)), [t]);
   const transcription = !calling && capabilities.data?.transcription === true;
   const synthesis = !calling && capabilities.data?.synthesis === true;
@@ -35,12 +38,14 @@ export function useSpeech() {
           ? preferred
           : "";
   const adapters = useMemo(() => {
+    if (!voice) return {};
+    const [{ VoiceDictationAdapter }, { VoiceSpeechAdapter }] = voice;
     const speech = synthesis
-      ? new RemoteSpeechAdapter(speechClient, onError, () => dictation?.dispose())
+      ? new VoiceSpeechAdapter(consoleClient, onError, () => dictation?.dispose())
       : undefined;
     const dictation =
-      transcription && RemoteDictationAdapter.isSupported()
-        ? new RemoteDictationAdapter(onError, undefined, {
+      transcription && VoiceDictationAdapter.isSupported()
+        ? new VoiceDictationAdapter(consoleClient, onError, {
             language,
             onPhase: (next) => {
               if (next === "starting") speech?.dispose();
@@ -49,7 +54,7 @@ export function useSpeech() {
           })
         : undefined;
     return { dictation, speech };
-  }, [transcription, synthesis, onError, language]);
+  }, [voice, transcription, synthesis, onError, language]);
   useEffect(
     () => () => {
       adapters.dictation?.dispose();

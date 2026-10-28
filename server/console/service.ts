@@ -26,8 +26,8 @@ import { TaskStreams } from "../read-model/streams.js";
 import { conversation, type FullTask } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
 import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
-import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
+import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
 import { approvalQueue } from "./approval-queue.js";
 import { approvalReferences } from "./approval-references.js";
 import { cancellationCommands } from "./cancellation.js";
@@ -54,7 +54,7 @@ export interface ConsoleDependencies {
   replaceTemplate: TemplateWriter;
   pack: Pack;
   tags: TaskTagStore;
-  speech?: ReturnType<typeof speechService>;
+  voice?: VoiceConsole;
   executions: Executions;
   entryAgent?: string;
   authorizeTools?: AuthorizeTools;
@@ -80,7 +80,7 @@ export function consoleService({
   replaceTemplate,
   pack,
   tags,
-  speech = speechService(),
+  voice = voiceDisabled,
   executions,
   entryAgent = "assistant",
   authorizeTools,
@@ -115,7 +115,7 @@ export function consoleService({
   const visible = async (identity: Parameters<typeof viewer>[0], taskId: string) =>
     (await visibleGraph(projection, viewer(identity), { taskId }))?.entry(taskId);
   return {
-    ...speech,
+    ...voice,
     getAppResource: (request, context) => {
       if (!apps) throw unavailable();
       return apps.getResource(request, context.values.get(requestIdentity), context.signal);

@@ -4,7 +4,6 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { SpeechConfigurationSchema } from "../gen/agentos/console/v1/speech_pb.js";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
 import { object } from "../server/read-model/decode/messages.js";
-import { speechService } from "../server/speech/service.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
@@ -51,20 +50,13 @@ it("atomically saves speech settings and write-only credentials and immediately 
     transcriptionCredential: "private-asr-key",
     synthesisCredential: "private-tts-key",
   });
-  const service = speechService(env.dependencies.speech.load);
-  expect(await service.getSpeechCapabilities()).toMatchObject({
-    transcription: true,
-    synthesis: true,
-    transcriptionLanguages: ["zh", "en", "ar"],
-  });
   await client.saveSpeechConfiguration({
     configuration: create(SpeechConfigurationSchema),
     resourceVersion: settings?.resourceVersion,
   });
-  expect(await service.getSpeechCapabilities()).toMatchObject({
-    transcription: false,
-    synthesis: false,
-  });
+  expect((await env.dependencies.speech.load()).configuration).toEqual(
+    create(SpeechConfigurationSchema),
+  );
 });
 
 it("rejects stale writes without changing provider settings or credentials", async () => {

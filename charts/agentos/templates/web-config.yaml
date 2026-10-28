@@ -10,7 +10,7 @@ data:
   oauth2-proxy.yaml: |
     upstreamConfig:
       upstreams:
-        {{- range $index, $path := list "/agentos.console.v1.ConsoleService/" "/agentos.management.v1.ManagementService/" "/agentos.automation.v1.AutomationService/" "/pack/" "/speech/" }}
+        {{- range $index, $path := list "/agentos.console.v1.ConsoleService/" "/agentos.management.v1.ManagementService/" "/agentos.automation.v1.AutomationService/" "/pack/" }}
         - id: api-{{ $index }}
           path: {{ $path }}
           uri: http://{{ include "agentos.apiService" $ }}:8080

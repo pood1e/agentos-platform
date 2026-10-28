@@ -4,6 +4,9 @@ values:
 release:
   name: agentos
   namespace: agentos
+set:
+  voice.enabled: true
+  voice.image: registry.example.com/voice@sha256:1111111111111111111111111111111111111111111111111111111111111111
 templates:
 - '*.yaml'
 tests:

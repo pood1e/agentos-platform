@@ -20,10 +20,7 @@ const selfServiceMethods = new Set([
   "RespondInteraction",
   "CancelTask",
   "UpdateTaskTags",
-  "TranscribeAudio",
-  "SynthesizeSpeech",
-  "StartVoiceCall",
-  "EndVoiceCall",
+  "StartVoiceSession",
 ]);
 
 /** Every request carries a bearer token; browser sessions belong to the console in front. */

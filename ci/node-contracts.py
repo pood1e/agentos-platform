@@ -39,8 +39,6 @@ package = {
             "@modelcontextprotocol/client",
             "@modelcontextprotocol/core",
             "@modelcontextprotocol/ext-apps",
-            "@deepgram/sdk",
-            "@ricky0123/vad-web",
             "livekit-client",
             "mdast-util-to-string",
             "remark-gfm",
@@ -59,8 +57,6 @@ package = {
             "@modelcontextprotocol/client",
             "@modelcontextprotocol/core",
             "@modelcontextprotocol/ext-apps",
-            "@deepgram/sdk",
-            "@ricky0123/vad-web",
             "livekit-client",
             "mdast-util-to-string",
             "remark-gfm",
@@ -76,7 +72,6 @@ package = {
             "@connectrpc/connect",
             "yaml",
             "canonicalize",
-            "franc-min",
         )
     },
 }

@@ -1,92 +1,69 @@
-import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
-import type { Client } from "@connectrpc/connect";
-import {
-  createLocalAudioTrack,
-  type LocalAudioTrack,
-  Room,
-  RoomEvent,
-  Track,
-} from "livekit-client";
+import { DisconnectReason, type Participant, type Room, RoomEvent } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import type { GetSpeechCapabilitiesResponse } from "../../../gen/agentos/console/v1/speech_pb.js";
-import { VoiceEventSchema, VoiceReplySchema } from "../../../gen/agentos/voice/v1/worker_pb.js";
+import { VoiceMode } from "../../../gen/agentos/console/v1/speech_pb.js";
 import { errorKey } from "../../errors.js";
-import { speechLanguage } from "../../speech-language.js";
-import { type VoiceChat, VoiceChatBridge } from "./chat-bridge.js";
+import {
+  joinVoice,
+  microphone,
+  transcripts,
+  type VoiceClient,
+  voiceEvents,
+  voiceRoom,
+} from "./room.js";
 
-const topic = "agentos.voice";
-type Session = {
-  id: string;
+type Phase = "idle" | "connecting" | "listening" | "thinking" | "speaking";
+type Call = {
+  room: Room;
   contextId: string;
   scope: string;
   controller: AbortController;
-  room: Room;
-  microphone?: LocalAudioTrack;
-  bridge: VoiceChatBridge;
+  joined?: boolean;
 };
-type Phase = "idle" | "connecting" | "listening" | "speaking";
 
-export function useVoiceCall(
-  chat: VoiceChat,
-  options: {
-    contextId: string;
-    scope: string;
-    language: string;
-    capabilities?: GetSpeechCapabilitiesResponse;
-    client: Pick<Client<typeof ConsoleService>, "startVoiceCall" | "endVoiceCall">;
-    report: (key: string) => void;
-  },
-) {
-  const { contextId, scope, language, capabilities, client: consoleClient, report } = options;
-  const current = useRef<Session | undefined>(undefined);
-  const latest = useRef(chat);
-  latest.current = chat;
+const phases: Record<string, Phase> = {
+  initializing: "connecting",
+  listening: "listening",
+  thinking: "thinking",
+  speaking: "speaking",
+};
+
+/**
+ * A call with the conversation's agent. The voice worker sends finished turns and speaks the
+ * answers; talking interrupts the answer and cancels its task. The call ends when the
+ * conversation or identity scope changes.
+ */
+export function useVoiceCall(options: {
+  client: VoiceClient;
+  contextId: string;
+  scope: string;
+  language: string;
+  capabilities?: GetSpeechCapabilitiesResponse;
+  report: (key: string) => void;
+  /** Opens the conversation that the call's first turn started. */
+  started: (contextId: string) => void;
+}) {
+  const { client, contextId, scope, language, capabilities, report, started } = options;
+  const current = useRef<Call | undefined>(undefined);
   const [room, setRoom] = useState<Room>();
   const [phase, setPhase] = useState<Phase>("idle");
   const [muted, setMuted] = useState(false);
   const [draft, setDraft] = useState("");
-  const [queue, setQueue] = useState({ count: 0, failed: false });
-  const [unsent, setUnsent] = useState("");
   const stop = useCallback(async () => {
-    const session = current.current;
-    if (!session) return;
+    const call = current.current;
+    if (!call) return;
     current.current = undefined;
-    setUnsent(session.bridge.close());
-    session.controller.abort();
-    session.microphone?.stop();
+    call.controller.abort();
     setRoom(undefined);
     setPhase("idle");
     setDraft("");
-    setQueue({ count: 0, failed: false });
-    await Promise.allSettled([
-      session.room.disconnect(),
-      consoleClient.endVoiceCall({ callId: session.id }, { timeoutMs: 15_000 }),
-    ]);
-  }, [consoleClient]);
+    await call.room.disconnect();
+  }, []);
 
   useEffect(() => {
-    const session = current.current;
-    if (!session) return;
-    if (session.scope !== scope) {
-      void stop();
-      return;
-    }
-    if (session.contextId !== contextId) {
-      const outgoing = chat.outgoing;
-      if (
-        !session.contextId &&
-        outgoing?.contextId === contextId &&
-        session.bridge.ownsMessage(outgoing.id)
-      )
-        session.contextId = contextId;
-      else {
-        void stop();
-        return;
-      }
-    }
-    session.bridge.update(chat);
-  }, [chat, contextId, scope, stop]);
+    const call = current.current;
+    if (call && (call.scope !== scope || call.contextId !== contextId)) void stop();
+  }, [contextId, scope, stop]);
   useEffect(
     () => () => {
       void stop();
@@ -95,142 +72,89 @@ export function useVoiceCall(
   );
 
   const start = async () => {
-    if (current.current || !capabilities?.voiceCalls) return;
-    const controller = new AbortController();
-    const active = () => current.current?.controller === controller && !controller.signal.aborted;
-    const voice = new Room();
-    const synthesisLanguages: string[] = [];
-    const failed = () => {
-      if (active()) {
-        report("speech.callFailed");
-        void stop();
-      }
+    if (current.current || !capabilities?.transcription || !capabilities.synthesis) return;
+    const call: Call = { room: voiceRoom(), contextId, scope, controller: new AbortController() };
+    const active = () => current.current === call;
+    const failed = (key = "speech.callFailed") => {
+      if (!active()) return;
+      report(key);
+      void stop();
     };
-    const bridge = new VoiceChatBridge(
-      (turnId, text) => {
-        const payload = toJsonString(
-          VoiceReplySchema,
-          create(VoiceReplySchema, {
-            turnId,
-            text,
-            languageCode: speechLanguage(text, synthesisLanguages),
-          }),
-        );
-        void voice.localParticipant
-          .publishData(new TextEncoder().encode(payload), {
-            topic,
-            reliable: true,
-            destinationIdentities: ["assistant"],
-          })
-          .catch(failed);
-      },
-      (count, failed) => setQueue({ count, failed }),
-      report,
+    const reset = transcripts(call.room, (text, final) => {
+      if (!active()) return;
+      setDraft(final ? "" : text);
+      if (final) reset();
+    });
+    voiceEvents(call.room, (event) => {
+      if (!active()) return;
+      if (event.case === "error") report(event.value);
+      if (event.case === "contextId") {
+        call.contextId = event.value;
+        started(event.value);
+      }
+    });
+    const agentState = (participant: Participant) => {
+      const state = participant.attributes["lk.agent.state"];
+      if (!active() || !participant.isAgent || !state) return;
+      call.joined = true;
+      setPhase(phases[state] ?? "listening");
+    };
+    call.room.on(RoomEvent.ParticipantConnected, agentState);
+    call.room.on(RoomEvent.ParticipantAttributesChanged, (_changed, participant) =>
+      agentState(participant),
     );
-    voice.on(RoomEvent.DataReceived, (payload, participant, _kind, receivedTopic) => {
-      if (!active() || receivedTopic !== topic || participant?.identity !== "assistant") return;
-      try {
-        const event = fromJsonString(VoiceEventSchema, new TextDecoder().decode(payload));
-        switch (event.event.case) {
-          case "inputStarted":
-            bridge.interrupt();
-            setPhase("listening");
-            setDraft("");
-            break;
-          case "transcript":
-            setDraft(event.event.value);
-            break;
-          case "userTurn":
-            setDraft("");
-            bridge.add(event.event.value);
-            bridge.update(latest.current);
-            break;
-        }
-      } catch {
-        failed();
-      }
+    call.room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      if (participant.isAgent) failed();
     });
-    voice.on(RoomEvent.ParticipantAttributesChanged, (attributes, participant) => {
-      if (!active() || participant.identity !== "assistant" || !attributes["lk.agent.state"])
-        return;
-      setPhase(attributes["lk.agent.state"] === "speaking" ? "speaking" : "listening");
+    // The worker deletes the room when the call reaches its time limit.
+    call.room.on(RoomEvent.Disconnected, (reason) => {
+      if (reason === DisconnectReason.ROOM_DELETED && call.joined) void stop();
+      else failed();
     });
-    voice.on(RoomEvent.Disconnected, () => {
-      failed();
-    });
-    voice.on(RoomEvent.ParticipantDisconnected, (participant) => {
-      if (participant.identity === "assistant") failed();
-    });
-    const session: Session = {
-      id: crypto.randomUUID(),
-      contextId,
-      scope,
-      controller,
-      room: voice,
-      bridge,
-    };
-    current.current = session;
-    setRoom(voice);
+    current.current = call;
+    setRoom(call.room);
     setPhase("connecting");
     setMuted(false);
-    setUnsent("");
-    bridge.update(chat);
     try {
-      void voice.startAudio().catch(() => {});
-      const microphone = await createLocalAudioTrack({
-        echoCancellation: true,
-        noiseSuppression: false,
-        autoGainControl: false,
-      });
-      session.microphone = microphone;
-      if (controller.signal.aborted) microphone.stop();
-      controller.signal.throwIfAborted();
-      const languages = capabilities?.transcriptionLanguages ?? [];
-      const preferred = language;
-      const { connection } = await consoleClient.startVoiceCall(
+      void call.room.startAudio().catch(() => {});
+      const languages = capabilities.transcriptionLanguages;
+      await joinVoice(
+        call.room,
+        client,
         {
-          callId: session.id,
-          languageCode: languages.includes(preferred) ? preferred : "",
+          mode: VoiceMode.CALL,
+          contextId,
+          languageCode: languages.includes(language) ? language : "",
         },
-        { signal: controller.signal, timeoutMs: 20_000 },
+        call.controller.signal,
+        call.room.localParticipant.setMicrophoneEnabled(true, microphone, {
+          preConnectBuffer: true,
+        }),
       );
-      controller.signal.throwIfAborted();
-      if (!connection) throw new Error("Missing voice connection");
-      synthesisLanguages.push(...connection.synthesisLanguages);
-      await voice.connect(connection.url, connection.token);
-      controller.signal.throwIfAborted();
-      await voice.localParticipant.publishTrack(microphone, { source: Track.Source.Microphone });
-      if (active()) setPhase("listening");
     } catch (error) {
-      if (active()) {
-        report(
-          error instanceof DOMException && error.name === "NotAllowedError"
-            ? "speech.microphoneDenied"
-            : errorKey(error, "speech.callFailed"),
-        );
-        await stop();
-      }
+      failed(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "speech.microphoneDenied"
+          : errorKey(error, "speech.callFailed"),
+      );
     }
   };
   return {
-    available: capabilities?.voiceCalls === true,
+    available: capabilities?.transcription === true && capabilities.synthesis === true,
     active: phase !== "idle",
     room,
     phase,
     muted,
     draft,
-    queue,
-    unsent,
     start,
     stop: () => void stop(),
-    retry: () => current.current?.bridge.retry(),
     toggleMute: () => {
-      const session = current.current;
-      if (!session) return;
-      void session.room.localParticipant
-        .setMicrophoneEnabled(muted)
+      const call = current.current;
+      if (!call) return;
+      void call.room.localParticipant
+        .setMicrophoneEnabled(muted, microphone)
         .then(() => {
-          if (current.current === session) setMuted(!muted);
+          if (current.current === call) setMuted(!muted);
         })
         .catch(() => report("speech.callFailed"));
     },

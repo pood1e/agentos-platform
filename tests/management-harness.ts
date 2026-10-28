@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
 import { resourceStore } from "../server/management/resources.js";
 import { managementService } from "../server/management/service.js";
-import { speechSettingsStore } from "../server/speech/store.js";
+import { speechSettingsStore } from "../server/voice/settings.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
 import { fakeKagent } from "./harness.js";
 

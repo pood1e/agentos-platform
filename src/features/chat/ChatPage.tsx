@@ -1,11 +1,12 @@
 import { ThreadPrimitive } from "@assistant-ui/react";
 import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
 import { useAccess } from "../../lib/access.js";
+import { useSpeechCapabilities } from "../../lib/speech.js";
 import { usePaging } from "../shared/paging.js";
 import { WorkingAgents } from "./AgentPresence.js";
 import { ChatComposer } from "./ChatComposer.js";
@@ -15,8 +16,12 @@ import { ConversationTranscript } from "./ConversationTranscript.js";
 import { forgetConversation, rememberConversation } from "./conversation-storage.js";
 import { useChat } from "./use-chat.js";
 import { VoiceCallContext } from "./voice/context.js";
-import { useVoiceCall } from "./voice/use-voice-call.js";
-import { VoiceCallControls } from "./voice/VoiceCallControls.js";
+
+const VoiceCallControls = lazy(() =>
+  import("./voice/VoiceCallControls.js").then((module) => ({
+    default: module.VoiceCallControls,
+  })),
+);
 
 export function ChatPage() {
   const { t } = useTranslation();
@@ -27,7 +32,8 @@ export function ChatPage() {
   const name = access.data?.entryAgent?.name ?? "assistant";
   const agent = { namespace: access.data?.workspace ?? "", name };
   const chat = useChat(agent, contextId, (id) => navigate(`/chat/${id}`));
-  const call = useVoiceCall(chat, contextId);
+  const voice = useSpeechCapabilities().data?.enabled === true;
+  const [calling, setCalling] = useState(false);
   const list = useQuery(
     ConsoleService.method.listConversations,
     agent.namespace
@@ -52,7 +58,6 @@ export function ChatPage() {
         onSelect={(id) => navigate(`/chat/${id}`)}
         disabled={chat.sending || !access.data}
         onNew={() => {
-          void call.stop();
           chat.reset();
           paging.controls().onSearch("");
           navigate("/chat");
@@ -60,7 +65,6 @@ export function ChatPage() {
         onDeleted={(id) => {
           if (access.data) forgetConversation(access.data, id);
           if (contextId === id) {
-            void call.stop();
             chat.reset();
             navigate("/chat", { replace: true });
           }
@@ -71,8 +75,17 @@ export function ChatPage() {
         <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
           <h1 className="min-w-0 truncate text-sm font-medium">{title || t("chat.assistant")}</h1>
         </div>
-        <VoiceCallControls call={call} disabled={!chat.ready || !chat.conversation?.operate} />
-        <VoiceCallContext value={call.active}>
+        {voice && (
+          <Suspense fallback={null}>
+            <VoiceCallControls
+              contextId={contextId}
+              disabled={!chat.ready || !chat.conversation?.operate}
+              onActive={setCalling}
+              onStarted={(id) => navigate(`/chat/${id}`)}
+            />
+          </Suspense>
+        )}
+        <VoiceCallContext value={calling}>
           <ConversationRuntime
             key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
             chat={chat}
