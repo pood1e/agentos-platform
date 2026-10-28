@@ -1,7 +1,6 @@
-import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { compile } from "json-schema-to-typescript";
-import { parse, stringify } from "yaml";
+import { parse } from "yaml";
 
 const read = (file) => JSON.parse(readFileSync(file, "utf8"));
 const crd = parse(readFileSync("controller/config/crd/bases/agentos.dev_accessplans.yaml", "utf8"));
@@ -99,32 +98,3 @@ save("agentos-connections", {
     environments: { type: "array", items: connectionEnvironment },
   }),
 });
-
-const fixtureTools = parse(readFileSync("tests/fixtures/pack/toolsets.yaml", "utf8"));
-const fixturePlan = {
-  apiVersion: "agentos.dev/v1alpha1",
-  kind: "AccessPlan",
-  metadata: { name: "fixture", namespace: "agentos", generation: 1 },
-  spec: {
-    mode: "platform",
-    environments: [{ name: "lab", governance: "approval" }],
-    toolsets: fixtureTools,
-    identities: ["assistant", "coordinator", "inspection", "diagnosis", "remediation"].map(
-      (name) => ({
-        name,
-        services: Object.fromEntries(
-          Object.keys(fixtureTools).map((service) => [
-            service,
-            name === "remediation" ? "operate" : "read",
-          ]),
-        ),
-      }),
-    ),
-    servers: parse(readFileSync("tests/fixtures/execution/platform-tools.yaml", "utf8")),
-  },
-};
-const fixtures = execFileSync("go", ["-C", "controller", "run", "./cmd/render", "-format=json"], {
-  input: stringify(fixturePlan),
-  encoding: "utf8",
-});
-writeFileSync("gen/test-access-plans.json", fixtures);

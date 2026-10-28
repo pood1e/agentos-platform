@@ -6,7 +6,6 @@ import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { environment, testBindings } from "./harness.js";
@@ -87,7 +86,6 @@ it("isolates conversation search, counts, task payloads, approvals and streams f
             executions: registry,
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (t) => env.fake.replaceTemplate(t),
-            pack: loadPack(),
           }),
         ),
       { router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] } },
@@ -174,7 +172,6 @@ it("interrupts a foreground run while preserving the owner's conversation and to
             executions: registry,
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
-            pack: loadPack(),
           }),
         ),
       { router: { interceptors: [workspaceContext("agentos", "assistant", async () => owner)] } },
@@ -245,7 +242,6 @@ it("lets administrators read shared service sessions of workspace agents without
             executions: registry,
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
-            pack: loadPack(),
           }),
         ),
       { router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] } },

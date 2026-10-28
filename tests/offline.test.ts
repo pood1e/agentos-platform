@@ -6,7 +6,6 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import * as oidc from "openid-client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
-import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { registerDelegation } from "../server/authorization/delegation.js";
 import { executions } from "../server/authorization/executions.js";
@@ -217,7 +216,6 @@ it("asks users without an offline grant to delegate before starting executions",
             executions: registry,
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
-            pack: create(PackSchema),
             delegationUrl: `${origin}/delegation/start`,
           }),
         ),

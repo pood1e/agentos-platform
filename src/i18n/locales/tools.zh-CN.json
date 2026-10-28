@@ -1,97 +1,5 @@
 {
   "catalog": {
-    "k8s_get_resources": {
-      "name": "查询资源列表",
-      "description": "按命名空间和资源类型查询实际对象。"
-    },
-    "k8s_describe_resource": {
-      "name": "查看资源详情",
-      "description": "读取资源状态、关联对象与事件。"
-    },
-    "k8s_get_events": {
-      "name": "查看集群事件",
-      "description": "查询指定命名空间的事件。"
-    },
-    "k8s_get_pod_logs": {
-      "name": "读取容器日志",
-      "description": "读取指定 Pod 的容器日志。"
-    },
-    "k8s_get_resource_yaml": {
-      "name": "读取资源配置",
-      "description": "读取资源当前的完整 YAML 配置。"
-    },
-    "k8s_get_available_api_resources": {
-      "name": "查看资源类型",
-      "description": "列出集群支持的 Kubernetes 资源类型。"
-    },
-    "k8s_get_cluster_configuration": {
-      "name": "查看集群配置",
-      "description": "查询集群的配置与连接信息。"
-    },
-    "k8s_wait": {
-      "name": "等待资源就绪",
-      "description": "等待资源满足指定条件或超时。"
-    },
-    "k8s_generate_resource": {
-      "name": "生成资源配置",
-      "description": "根据描述生成 Kubernetes YAML。"
-    },
-    "k8s_apply_manifest": {
-      "name": "应用资源变更",
-      "description": "提交 YAML，创建或更新集群资源。"
-    },
-    "k8s_create_resource": {
-      "name": "创建资源",
-      "description": "根据提供的 YAML 创建资源。"
-    },
-    "k8s_create_resource_from_url": {
-      "name": "从地址创建资源",
-      "description": "读取指定地址的 YAML 并创建资源。"
-    },
-    "k8s_delete_resource": {
-      "name": "删除资源",
-      "description": "删除指定命名空间中的目标资源。"
-    },
-    "k8s_patch_resource": {
-      "name": "修改资源字段",
-      "description": "通过补丁更新资源的指定字段。"
-    },
-    "k8s_patch_status": {
-      "name": "修改资源状态",
-      "description": "通过补丁更新资源的状态字段。"
-    },
-    "k8s_scale": {
-      "name": "调整工作负载副本",
-      "description": "调整 Deployment 的期望副本数。"
-    },
-    "k8s_rollout": {
-      "name": "管理工作负载发布",
-      "description": "查询、暂停、重启、恢复或回退工作负载发布。"
-    },
-    "k8s_execute_command": {
-      "name": "在容器中执行命令",
-      "description": "在指定 Pod 内执行命令。"
-    },
-    "k8s_check_service_connectivity": {
-      "name": "检查服务连通性",
-      "description": "创建临时探测 Pod，检查服务连接。"
-    },
-    "k8s_annotate_resource": {
-      "name": "设置资源注解",
-      "description": "添加或更新资源的注解。"
-    },
-    "k8s_label_resource": {
-      "name": "设置资源标签",
-      "description": "添加或更新资源的标签。"
-    },
-    "k8s_remove_annotation": {
-      "name": "移除资源注解",
-      "description": "移除资源的指定注解。"
-    },
-    "k8s_remove_label": {
-      "name": "移除资源标签",
-      "description": "移除资源的指定标签。"
-    },
     "list_agents": {
       "name": "发现可用工程师",
       "description": "查询工程师的职责、能力与就绪状态。"
@@ -247,7 +155,6 @@
   },
   "servers": {
     "kagent-api": "kagent 工作空间",
-    "kagent-tool-server": "Kubernetes 查询",
     "team-sessions": "团队协作",
     "kagent-collaboration": "会话与工作空间"
   }

@@ -78,7 +78,8 @@ Skill 省略 `git.url` 时使用平台 Skill 网关；`skillRepository` 指定�
 | `tools[]` | `match` 正则、`name`、`icon` 与暗色模式反色 `monochrome` |
 | `locales` | i18next 资源，如 `translation.role.<role>`、`tools.catalog.<tool>` |
 
-资源使用包内相对路径。展示镜像把 `pack.json` 与资源放在 `/pack`，提供 `cp`，Chart 用 `pack.image` 固定摘要后由 init 容器复制。
+资源使用包内相对路径。展示镜像把 `pack.json` 与资源放在 `/pack`，提供 `cp`，Chart 用 `pack.image` 固定摘要后由 web 的 init 容器复制，console 主机直接提供。
+`pack.json` 对应 proto `Pack`，方案 CI 可用契约包内的 `gen/schema/agentos.console.v1.Pack.jsonschema.bundle.json` 校验。
 Harness 使用平台内置运行时图标，工具优先使用方案图标。
 
 ## 外部执行

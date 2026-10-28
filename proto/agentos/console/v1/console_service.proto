@@ -5,7 +5,6 @@ package agentos.console.v1;
 import "agentos/console/v1/access.proto";
 import "agentos/console/v1/conversation.proto";
 import "agentos/console/v1/engineer.proto";
-import "agentos/console/v1/pack.proto";
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/speech.proto";
 import "agentos/console/v1/task.proto";
@@ -50,9 +49,6 @@ service ConsoleService {
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
   rpc RespondInteraction(RespondInteractionRequest) returns (RespondInteractionResponse);
   rpc GetConfiguration(GetConfigurationRequest) returns (GetConfigurationResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  rpc GetPack(GetPackRequest) returns (GetPackResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAppResource(GetAppResourceRequest) returns (GetAppResourceResponse) {
@@ -186,11 +182,6 @@ message AnswerDecision {
 }
 
 message RespondInteractionResponse {}
-
-message GetPackRequest {}
-message GetPackResponse {
-  Pack pack = 1;
-}
 
 message GetConfigurationRequest {}
 

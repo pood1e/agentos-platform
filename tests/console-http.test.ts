@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
 import Fastify from "fastify";
@@ -6,7 +5,6 @@ import { expect, it, vi } from "vitest";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 import { registerConsole } from "../server/console/app.js";
-import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { registerHealth } from "../server/shared/health.js";
@@ -23,9 +21,7 @@ it("serves typed RPC errors and separates liveness from subscribed readiness", a
       access: testBindings(env.fake),
       roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
-      pack: loadPack(),
     }),
-    packRoot: fileURLToPath(new URL("fixtures/pack/", import.meta.url)),
   });
   let ready = true;
   registerHealth(app, () => ready);
@@ -38,9 +34,6 @@ it("serves typed RPC errors and separates liveness from subscribed readiness", a
     expect((await app.inject("/healthz")).statusCode).toBe(200);
     expect((await app.inject("/readyz")).statusCode).toBe(200);
     expect((await app.inject("/api/snapshot")).statusCode).toBe(404);
-    expect((await app.inject("/pack/avatars/coordinator.svg")).statusCode).toBe(200);
-    expect((await app.inject("/pack/../package.json")).statusCode).toBe(404);
-    expect((await client.getPack({})).pack?.title).toBe("");
     const error = await client
       .sendMessage({
         agent: { namespace: "agentos", name: "assistant" },

@@ -1,6 +1,5 @@
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadPack } from "../server/console/pack.js";
 import { toolServerLabel, toolText } from "../src/features/shared/tool-label.js";
 import i18n from "../src/i18n/index.js";
 import en from "../src/i18n/locales/en.json";
@@ -9,7 +8,10 @@ import zhManagement from "../src/i18n/locales/management.zh-CN.json";
 import enTools from "../src/i18n/locales/tools.en.json";
 import zhTools from "../src/i18n/locales/tools.zh-CN.json";
 import zh from "../src/i18n/locales/zh-CN.json";
-import { applyPackLocales } from "../src/lib/pack.js";
+import { applyPackLocales, parsePack } from "../src/lib/pack.js";
+
+const examplePack = () =>
+  parsePack(JSON.parse(readFileSync(new URL("fixtures/pack/pack.json", import.meta.url), "utf8")));
 
 function flatten(value: object, prefix = ""): Map<string, string> {
   return new Map(
@@ -45,7 +47,7 @@ describe("localized user interface", () => {
     }
   });
   it("keeps the example pack's locales aligned across languages", () => {
-    const { locales } = loadPack(fileURLToPath(new URL("fixtures/pack/", import.meta.url)));
+    const { locales } = examplePack();
     const keys = (language: string) =>
       new Set(
         [...flatten(locales[language] ?? {}).keys()].map((key) => key.replace(/_(one|other)$/, "")),
@@ -53,12 +55,13 @@ describe("localized user interface", () => {
     expect(keys("en")).toEqual(keys("zh"));
   });
   it("uses localized names and descriptions without changing native tool identifiers", async () => {
-    expect(toolText("k8s_get_resources")).toMatchObject({ name: "查询资源列表" });
-    expect(toolText("mcp__cluster__k8s_get_resources").name).toBe("查询资源列表");
+    expect(toolText("invoke_session")).toMatchObject({ name: "委派并等待结果" });
+    expect(toolText("mcp__kagent-collaboration__invoke_session").name).toBe("委派并等待结果");
+    expect(toolText("functions.ask_user").name).toBe("询问用户");
     expect(toolText("env-real_kubernetes_resources_list").name).toBe(
       "env-real_kubernetes_resources_list",
     );
-    applyPackLocales(loadPack(fileURLToPath(new URL("fixtures/pack/", import.meta.url))));
+    applyPackLocales(examplePack());
     expect(toolText("env-real_kubernetes_resources_list").name).toBe("查询资源列表");
     expect(toolText("mcp__env-sim_jumpserver_ops_jobs_create").name).toBe("创建运维作业");
     expect(toolText("env-sim-zammad_get_ticket").name).toBe("查看工单");
@@ -68,7 +71,6 @@ describe("localized user interface", () => {
       "查看服务账号",
     );
     expect(toolText("env-sim-keycloak_keycloak_user_role_assign").name).toBe("授予环境角色");
-    expect(toolText("functions.k8s_apply_manifest").name).toBe("应用资源变更");
     expect(toolText("grafana.query_loki").name).toBe("查询日志");
     expect(toolServerLabel("agentos/team-sessions")).toBe("团队协作");
     expect(toolText("unknown_internal_name")).toEqual({
@@ -76,11 +78,11 @@ describe("localized user interface", () => {
       description: "",
     });
     await i18n.changeLanguage("en");
-    expect(toolText("k8s_get_resources")).toMatchObject({ name: "List resources" });
+    expect(toolText("invoke_session")).toMatchObject({ name: "Delegate and await results" });
     expect(toolText("env-sim_grafana_query_sql").name).toBe("Query SQL data");
     expect(toolText("env-sim-zammad_add_ticket_note").name).toBe("Add ticket note");
     expect(toolText("env-sim-keycloak_keycloak_identity_get").name).toBe("Get current identity");
-    expect(toolText("k8s_apply_manifest").description).toMatch(/Create or update/);
+    expect(toolText("ask_user").description).toMatch(/missing information/);
     expect(toolText("unknown_internal_name", "Provider supplied purpose")).toEqual({
       name: "unknown_internal_name",
       description: "Provider supplied purpose",

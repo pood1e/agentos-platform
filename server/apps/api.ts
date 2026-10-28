@@ -1,8 +1,6 @@
-import { resolve } from "node:path";
 import { CoreV1Api } from "@kubernetes/client-node";
 import { registerDelegation } from "../authorization/delegation.js";
 import { registerConsole } from "../console/app.js";
-import { loadPack } from "../console/pack.js";
 import { consoleService } from "../console/service.js";
 import { templateWriter } from "../console/template-writer.js";
 import { configurationClients } from "../kagent/configuration.js";
@@ -35,7 +33,6 @@ const { access, operations, environmentToken, metadata, oauth, identity, executi
 const projection = queryServices(config, clients, execution.store);
 
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
-const packRoot = process.env.AGENTOS_PACK_DIR ? resolve(process.env.AGENTOS_PACK_DIR) : undefined;
 const entryAgent = process.env.AGENTOS_ENTRY_AGENT ?? "assistant";
 const release = process.env.AGENTOS_RELEASE ?? "agentos";
 await registerDelegation(app, {
@@ -94,7 +91,6 @@ await registerConsole(app, {
     access,
     roleDefaults: roleDefaults(),
     replaceTemplate: templateWriter(config.kube),
-    pack: loadPack(packRoot),
     voice: voice?.console,
     executions: execution.registry,
     entryAgent,
@@ -112,7 +108,6 @@ await registerConsole(app, {
     knowledge,
     speech: speechSettings,
   }),
-  packRoot,
 });
 registerHealth(app, () => configuration.healthy() && access.healthy());
 closeOnSignal(app, [

@@ -11,7 +11,6 @@ import {
   TaskState,
 } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
-import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { consoleService } from "../server/console/service.js";
@@ -60,7 +59,6 @@ async function workspace(state = TaskState.COMPLETED) {
             access: testBindings(env.fake),
             roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
             replaceTemplate: async (value) => env.fake.replaceTemplate(value),
-            pack: create(PackSchema),
           }),
         ),
       { router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] } },

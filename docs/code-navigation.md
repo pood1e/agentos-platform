@@ -17,7 +17,7 @@
 | 路径 | 内容 |
 | --- | --- |
 | `server/apps` | api、dataplane 入口与可选遥测初始化 |
-| `server/console` | 控制台 RPC、原生 HITL 回复、方案包与角色管理 |
+| `server/console` | 控制台 RPC、原生 HITL 回复与角色管理 |
 | `server/authorization` | 用户与工作负载认证、离线委派、执行绑定、凭据和逐调用授权 |
 | `server/execution` | 可选外部执行 MCP、来源身份与分页结果 |
 | `server/governance` | 环境配置、AccessPlan Informer 与已编译工具决策 |
@@ -38,7 +38,7 @@
 | `src/features` | 聊天、执行记录、Agent 团队和管理页面；`chat/apps` 为 MCP Apps 宿主接线 |
 | `src/lib`、`src/i18n` | RPC 客户端、方案展示与平台文案 |
 | `shared/browser` | 对外发布的语音适配器与 MCP AppBridge 封装 |
-| `web` | nginx、oauth2-proxy 与沙箱页配置 |
+| `web` | nginx、oauth2-proxy、方案包资源与沙箱页配置 |
 | `controller/api`、`controller/config/crd/bases` | AccessPlan / Preset 类型与 CRD |
 | `controller/internal/compile`、`controller/internal/reconcile` | 资源编译、SSA、所有权与状态收敛 |
 | `controller/internal/connections` | kagent 可选 agentgateway 模块的平台配置 |

@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
 import { create } from "@bufbuild/protobuf";
 import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
+import { inject } from "vitest";
 import type { Task } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
-import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
 import {
   ExecutionBindingSchema,
   type ExecutionIdentity,
@@ -105,10 +104,7 @@ export async function until(check: () => boolean | Promise<boolean>, timeout = 3
   }
 }
 
-export const fixturePlans = () =>
-  JSON.parse(
-    readFileSync(new URL("../gen/test-access-plans.json", import.meta.url), "utf8"),
-  ) as AccessPlan[];
+export const fixturePlans = () => JSON.parse(inject("accessPlans")) as AccessPlan[];
 
 /** Native credential isolation and execution requirements in the fake workspace. */
 export function testBindings(fake: FakeKagent) {
@@ -142,7 +138,6 @@ export function consoleClient(
     access: testBindings(env.fake),
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
     replaceTemplate: async (template) => env.fake.replaceTemplate(template),
-    pack: create(PackSchema),
     ...overrides,
   });
   return createClient(

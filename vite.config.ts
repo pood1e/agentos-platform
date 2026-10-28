@@ -37,8 +37,7 @@ export default defineConfig({
     proxy: {
       "/agentos.console.v1.ConsoleService": api,
       "/agentos.management.v1.ManagementService": api,
-      "/pack/": api,
     },
   },
-  test: { include: ["tests/**/*.test.ts"] },
+  test: { include: ["tests/**/*.test.ts"], globalSetup: ["tests/access-plans.setup.ts"] },
 });

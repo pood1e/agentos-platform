@@ -1,7 +1,6 @@
 import type { Interceptor, ServiceImpl } from "@connectrpc/connect";
 import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
 import { createValidateInterceptor } from "@connectrpc/validate";
-import fastifyStatic from "@fastify/static";
 import type { FastifyInstance } from "fastify";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
@@ -10,8 +9,6 @@ import { consoleErrors } from "./interceptor.js";
 export interface ConsoleRoutes {
   service: ServiceImpl<typeof ConsoleService>;
   management?: ServiceImpl<typeof ManagementService>;
-  /** Solution pack assets served under /pack/. */
-  packRoot?: string;
   context?: Interceptor;
 }
 
@@ -27,9 +24,4 @@ export async function registerConsole(app: FastifyInstance, routes: ConsoleRoute
       if (routes.management) router.service(ManagementService, routes.management);
     },
   });
-  if (routes.packRoot)
-    await app.register(fastifyStatic, {
-      root: routes.packRoot,
-      prefix: "/pack/",
-    });
 }

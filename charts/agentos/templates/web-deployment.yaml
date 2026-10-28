@@ -32,6 +32,19 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.pack.image }}
+      initContainers:
+        - name: pack
+          image: {{ . | quote }}
+          command: [cp, -R, /pack/., /usr/share/nginx/pack/]
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          securityContext:
+            {{- include "agentos.containerSecurityContext" $ | nindent 12 }}
+          volumeMounts:
+            - {name: pack, mountPath: /usr/share/nginx/pack}
+      {{- end }}
       containers:
         - name: proxy
           image: {{ .Values.web.proxyImage | quote }}
@@ -46,7 +59,6 @@ spec:
             - --reverse-proxy=true
             - --skip-provider-button=true
             - --api-route=^/agentos\.
-            - --api-route=^/pack/
             - --request-logging=false
             - --silence-ping-logging=true
           env:
@@ -82,6 +94,9 @@ spec:
           volumeMounts:
             - {name: nginx-config, mountPath: /etc/nginx/conf.d}
             - {name: nginx-runtime, mountPath: /tmp}
+            {{- if .Values.pack.image }}
+            - {name: pack, mountPath: /usr/share/nginx/pack, readOnly: true}
+            {{- end }}
       volumes:
         - name: proxy-config
           projected:
@@ -92,6 +107,9 @@ spec:
                   items: [{key: client-secret, path: client-secret}]
         - {name: nginx-config, emptyDir: {sizeLimit: 1Mi}}
         - {name: nginx-runtime, emptyDir: {sizeLimit: 64Mi}}
+        {{- if .Values.pack.image }}
+        - {name: pack, emptyDir: {sizeLimit: 64Mi}}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

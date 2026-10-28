@@ -39,9 +39,6 @@ app.kubernetes.io/component: {{ .component }}
 - {name: AGENTOS_GOVERNANCE_CONFIG, value: /etc/agentos-governance/connections.json}
 - {name: AGENTOS_ENVIRONMENT_CA_DIR, value: /etc/agentos-environments}
 {{- end }}
-{{- if and .pack $root.Values.pack.image }}
-- {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
-{{- end }}
 {{ include "agentos.telemetryEnv" . }}
 {{- end -}}
 
@@ -64,7 +61,6 @@ app.kubernetes.io/component: {{ .component }}
 {{- define "agentos.platformDeployment" -}}
 {{- $root := .root -}}
 {{- $values := index $root.Values .component -}}
-{{- $pack := and .pack $root.Values.pack.image -}}
 {{- $environments := $root.Values.global.agentos.environments -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -109,20 +105,6 @@ spec:
           labelSelector:
             matchLabels:
               {{- include "agentos.platformSelector" . | nindent 14 }}
-      {{- if $pack }}
-      initContainers:
-        - name: pack
-          image: {{ $root.Values.pack.image | quote }}
-          command: [cp, -R, /pack/., /etc/agentos-pack/]
-          resources:
-            requests: {cpu: 10m, memory: 16Mi}
-            limits: {cpu: 100m, memory: 64Mi}
-          securityContext:
-            {{- include "agentos.containerSecurityContext" $root | nindent 12 }}
-          volumeMounts:
-            - {name: tools, mountPath: /etc/agentos, readOnly: true}
-            - {name: pack, mountPath: /etc/agentos-pack}
-      {{- end }}
       containers:
         - name: {{ .component }}
           image: {{ printf "%s@%s" $root.Values.image.repository $root.Values.image.digest | quote }}
@@ -162,9 +144,6 @@ spec:
             - {name: environment-ca, mountPath: /etc/agentos-environments, readOnly: true}
             - {name: governance, mountPath: /etc/agentos-governance, readOnly: true}
             {{- end }}
-            {{- if $pack }}
-            - {name: pack, mountPath: /etc/agentos-pack, readOnly: true}
-            {{- end }}
             {{- with .mounts }}
             {{- . | nindent 12 }}
             {{- end }}
@@ -186,10 +165,6 @@ spec:
               {{- end }}
         - name: governance
           secret: {secretName: agentos-governance}
-        {{- end }}
-        {{- if $pack }}
-        - name: pack
-          emptyDir: {sizeLimit: 64Mi}
         {{- end }}
         {{- with .volumes }}
         {{- . | nindent 8 }}
