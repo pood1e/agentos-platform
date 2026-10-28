@@ -176,7 +176,8 @@ jobs:
           uv venv .cache/venv
           uv pip install --python .cache/venv/bin/python -r ci/requirements.txt
           .cache/venv/bin/python ci/chart-schemas.py
-          export KUBEBUILDER_ASSETS="$(setup-envtest use 1.37 -p path)"
+          KUBEBUILDER_ASSETS="$(setup-envtest use 1.37 -p path)"
+          export KUBEBUILDER_ASSETS
           go -C controller test -race -count=1 ./...
           go -C controller vet ./...
   voice:
@@ -241,7 +242,9 @@ jobs:
           key: go-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles('mise.lock', 'runtime/**/*.patch') }}
           restore-keys: |
             go-${{ runner.os }}-${{ matrix.component }}-
-      - run: echo "KUBEBUILDER_ASSETS=$(setup-envtest use 1.37 -p path)" >> "$GITHUB_ENV"
+      - run: |
+          assets="$(setup-envtest use 1.37 -p path)"
+          echo "KUBEBUILDER_ASSETS=$assets" >> "$GITHUB_ENV"
         if: matrix.component == 'controller'
       - run: psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
       - run: ci/verify-${{ matrix.component }}.sh

@@ -34,9 +34,6 @@ deployment-check:
     - ansible-playbook environments/connect.yaml --syntax-check
     - ci/check-charts.sh
     - python ci/test-artifacts.py
-  artifacts:
-    paths: [.cache/chart-check/*crds*.yaml]
-    expire_in: 1 day
 
 platform-controller-verify:
   extends: .agentos-go
