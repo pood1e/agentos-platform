@@ -45,14 +45,9 @@ global:
     skills:
     - skill:
         name: service-checks
-        git:
-          commit: 0123456789abcdef0123456789abcdef01234567
+        oci: registry.example.test/team/skills@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         path: skills/service-checks
       description: Service health checks
-    skillRepository:
-      host: git.example.test
-      path: /team/skills.git
-      secretRef: example-skill-repository
 agentos:
   image:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

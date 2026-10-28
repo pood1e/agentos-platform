@@ -19,6 +19,11 @@ tests:
     unrecognized: true
   asserts:
   - failedTemplate: {}
+- it: rejects the removed Skill Git proxy configuration
+  set:
+    global.agentos.skillRepository: {host: git.example.test, path: /team/skills.git, secretRef: skills}
+  asserts:
+  - failedTemplate: {errorPattern: skillRepository}
 - it: rejects the removed single-process console values
   set:
     console.resources: {requests: {cpu: 100m}}

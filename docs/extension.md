@@ -5,7 +5,7 @@
 | 扩展点 | 配置与职责 |
 | --- | --- |
 | Agent 团队 | Preset 中的原生 `AgentTemplate` / `Agent`，声明角色、提示词、工具和 Harness |
-| Skill | `global.agentos.skills` 使用原生来源，固定内容版本；平台提供共享目录、dry-run 校验与只读 Git 网关 |
+| Skill | `global.agentos.skills` 固定原生制品来源，平台提供共享目录与 dry-run 校验，kagent 加载内容 |
 | 工具与身份 | `global.agentos.toolsets` / `identities` 编译为 AccessPlan，生成工具视图和原生确认绑定 |
 | 环境 | `global.agentos.environments` 与 proto `EnvironmentConnection` 声明工具确认模式、OAuth 资源、网关与 API |
 | 连接器 | 环境 MCP 服务及 `environment_connectors`，由方案包提供目标系统和各身份凭据 |
@@ -36,8 +36,7 @@ global:
         environments: [<environment>, ...]
         services: {<service>: read}
     skills:
-      - skill: {name: <skill>, git: {commit: <sha>}, path: skills/<skill>}
-    skillRepository: {host: <git-host>, path: /<group>/<repo>.git, secretRef: agentos-skill-repository}
+      - skill: {name: <skill>, oci: <registry>/<image>@sha256:<digest>, path: skills/<skill>}
 ```
 
 | 访问级别 | 只读工具 | 写工具 |
@@ -53,7 +52,8 @@ global:
 `governance: direct` 按身份权限直接调用。业务审批、工单、规则和结果回写由业务服务实现。
 环境连接与生命周期见[环境接入](environments.md)。
 
-Skill 省略 `git.url` 时使用平台 Skill 网关；`skillRepository` 指定代理的只读仓库。
+Skill 使用 digest 固定的 OCI 容器镜像与镜像内相对路径。镜像从 `scratch` 构建，只复制 Skill 内容；Substrate worker 通过原生镜像卷只读挂载，私有仓库凭据由站点配置在 worker 的镜像拉取链路。
+Git 来源填写完整 `git.url` 与固定 `git.commit`，S3 来源填写原生对象版本；来源与路径由 kagent CRD 和 Harness 校验。
 业务角色模板通过平台共享模板生成 Preset，`agentos.presetSkill` 可引用 Skill 目录：
 
 ```yaml

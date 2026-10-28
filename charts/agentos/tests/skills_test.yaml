@@ -1,0 +1,36 @@
+suite: native skill sources
+values:
+- ../../../tests/fixtures/chart-values.yaml
+templates:
+- skill-catalog.yaml
+tests:
+- it: preserves digest-pinned OCI sources in the shared catalog
+  set:
+    global.agentos.skills:
+    - skill:
+        name: service-checks
+        oci: registry.example.test/team/skills@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        path: skills/service-checks
+      description: Service health checks
+  asserts:
+  - equal:
+      path: spec.resources[0].data["catalog.json"]
+      value: '{"items":[{"description":"Service health checks","skill":{"name":"service-checks","oci":"registry.example.test/team/skills@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","path":"skills/service-checks"}}]}'
+- it: preserves explicit native Git URLs and commits
+  set:
+    global.agentos.skills:
+    - skill:
+        name: service-checks
+        git:
+          url: https://git.example.test/team/skills.git
+          commit: 0123456789abcdef0123456789abcdef01234567
+        path: skills/service-checks
+  asserts:
+  - equal:
+      path: spec.resources[0].data["catalog.json"]
+      value: '{"items":[{"skill":{"git":{"commit":"0123456789abcdef0123456789abcdef01234567","url":"https://git.example.test/team/skills.git"},"name":"service-checks","path":"skills/service-checks"}}]}'
+- it: publishes an empty catalog when no skills are configured
+  asserts:
+  - equal:
+      path: spec.resources[0].data["catalog.json"]
+      value: '{"items":[]}'
