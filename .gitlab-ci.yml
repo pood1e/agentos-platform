@@ -31,7 +31,6 @@ workflow:
           - deploy/**/*
           - environments/**/*
           - proto/**/*
-          - runtime/**/*
           - server/**/*
           - shared/**/*
           - src/**/*

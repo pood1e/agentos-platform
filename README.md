@@ -10,7 +10,7 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 ## 部署
 
 参考部署通过 Ansible collection 安装 K3s、运行时与平台 Chart，运行节点需支持 KVM。语音、遥测和外部执行入口按需启用。
-制品验签、站点变量与安装步骤见[构建与部署](docs/delivery.md)，目标系统接入见[环境接入](docs/environments.md)，kagent 源码与构建方式见[运行时构建](runtime/kagent/README.md)。
+制品验签、站点变量与安装步骤见[构建与部署](docs/delivery.md)，目标系统接入见[环境接入](docs/environments.md)；kagent 与 Substrate 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/agentos/1.0.0-alpha17) 与 [pood1e/substrate](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 的 `agentos/*` 分支构建并发布镜像。
 
 ## 开发
 

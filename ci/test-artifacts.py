@@ -241,12 +241,6 @@ class OCITest(unittest.TestCase):
                 "/web",
                 "/platform-controller",
                 "/voice",
-                "/kagent-controller",
-                "/claude-harness",
-                "/standard-harness",
-                "/codex-harness",
-                "/substrate/ateapi",
-                "/substrate/ateworker-microvm",
             ]
             for index, suffix in enumerate(suffixes):
                 reference = registry + suffix + ":" + revision

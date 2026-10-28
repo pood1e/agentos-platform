@@ -4,12 +4,9 @@ on:
     branches: [main]
     paths:
       - 'controller/**'
-      - 'runtime/**'
       - 'third_party/kagent/**'
       - 'third_party/substrate/**'
-      - 'ci/prepare-substrate.sh'
-      - 'ci/verify-controller.sh'
-      - 'ci/verify-substrate.sh'
+      - 'ci/verify-runtime-protos.sh'
       - 'ci/generate-controller.sh'
       - 'ci/chart-schemas.py'
       - 'ci/requirements.txt'
@@ -48,7 +45,7 @@ jobs:
               - '{controller/**,ci/{generate-controller.sh,chart-schemas.py,requirements.txt},deploy/vars.yaml,mise.toml,mise.lock,.github/workflows/verify.yaml}'
               - '!**/*.md'
             runtime:
-              - '{runtime/**,third_party/{kagent,substrate}/**,ci/{prepare-substrate,verify-controller,verify-substrate}.sh,mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '{third_party/{kagent,substrate}/**,ci/verify-runtime-protos.sh,.github/workflows/verify.yaml}'
               - '!**/*.md'
             voice:
               - '{voice/**,proto/**,contracts/**,third_party/**/*.proto,package*.json,pyproject.toml,mise.toml,mise.lock,ci/{contracts,node-contracts}.py,ci/{requirements,voice-test-requirements}.txt,.github/workflows/verify.yaml}'
@@ -209,44 +206,9 @@ jobs:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        component: [controller, substrate]
-    services:
-      postgres:
-        image: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
-        env:
-          POSTGRES_DB: agentos
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: agentos-ci
-        ports: ['5432:5432']
-        options: --health-cmd "pg_isready -U postgres -d agentos" --health-interval 2s --health-retries 15
-    env:
-      CHANGE_TEST_DATABASE_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
-      KAGENT_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
-      SUBSTRATE_TEST_POSTGRES_URL: postgresql://postgres:agentos-ci@localhost:5432/agentos?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
-        with:
-          version: 2026.10.18
-          install_args: go go:sigs.k8s.io/controller-runtime/tools/setup-envtest
-      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/.cache/golangci-lint
-          key: go-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles('mise.lock', 'ci/verify-controller.sh', 'ci/prepare-substrate.sh') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ matrix.component }}-
-      - run: |
-          assets="$(setup-envtest use 1.37 -p path)"
-          echo "KUBEBUILDER_ASSETS=$assets" >> "$GITHUB_ENV"
-        if: matrix.component == 'controller'
-      - run: psql "$CHANGE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
-      - run: ci/verify-${{ matrix.component }}.sh
+      - run: ci/verify-runtime-protos.sh
   required:
     name: Required checks
     if: always()

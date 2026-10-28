@@ -55,6 +55,7 @@
                                           | map('basename') | map('regex_replace', '\.yaml$', '') | list,
                        'solutionTemplates': lookup('ansible.builtin.fileglob', '../tests/fixtures/solution-chart/presets/engineers/*.yaml', wantlist=true)
                                             | map('basename') | map('regex_replace', '\.yaml$', '') | list,
-                       'controllerImage': kagent_controller_image, 'microvmImage': substrate_microvm_image}} | to_nice_json }}
+                       'controllerImage': kagent_controller_image, 'microvmImage': substrate_microvm_image,
+                       'runtimeVersion': kagent_runtime_version}} | to_nice_json }}
         dest: "{{ output }}/test-data.json"
         mode: "0600"

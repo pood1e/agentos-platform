@@ -29,18 +29,6 @@
     kubernetes.core.k8s_info:
       kubeconfig: "{{ kubeconfig_path }}"
   tasks:
-    - name: Verify runtime image signatures
-      ansible.builtin.include_tasks: tasks/verify-oci.yaml
-      vars:
-        delivery_artifact:
-          reference: "{{ item }}"
-          version: "{{ delivery_version }}"
-          revision: "{{ delivery_revision }}"
-          public_key: "{{ delivery_public_key }}"
-      loop: >-
-        {{ [kagent_controller_image, substrate_api_image, substrate_microvm_image]
-           + (harness_defaults.values() | map(attribute='workload.image') | list) | unique }}
-
     - name: Install Agent Substrate CRDs
       kubernetes.core.helm:
         name: substrate-crds

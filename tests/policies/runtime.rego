@@ -24,18 +24,7 @@ deny contains "controller telemetry differs from the configured signals" if obje
 
 deny contains "Agent telemetry differs from the configured signals" if object.get(object.get(native_config, "runtimeDefaults", {}), "telemetry", null) != kagent.config.runtimeDefaults.telemetry
 
-controller_version := trim(label.Value[index + 1], "\"") if {
-	some file in input
-	endswith(file.path, "runtime/kagent/Dockerfile")
-	some label in file.contents
-	label.Cmd == "label"
-	some index, value in label.Value
-	value == "org.opencontainers.image.version"
-}
-
-deny contains "native Harness release differs from the controller image" if kagent.config.harnessImages.release != controller_version
-
-deny contains "controller image lacks its release label" if not controller_version
+deny contains "native Harness release differs from the runtime version" if kagent.config.harnessImages.release != data.test.runtimeVersion
 
 deny contains "the microVM image differs from the deployment pin" if kagent.substrateWorkerPool.workerImage != data.test.microvmImage
 

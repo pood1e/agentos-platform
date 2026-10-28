@@ -40,7 +40,7 @@ flowchart LR
 | voice worker | 可选的 LiveKit Agents 组件，提供听写、朗读与通话 |
 
 api 与 dataplane 使用同一镜像，分别配置 Service、NetworkPolicy 和 ServiceAccount。
-运行时来源与构建见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
+运行时镜像由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/agentos/1.0.0-alpha17) 与 [pood1e/substrate](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 的 `agentos/*` 分支在测试通过后发布到 GHCR，平台只固定摘要。
 
 ## 状态与资源
 

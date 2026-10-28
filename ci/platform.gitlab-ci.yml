@@ -9,7 +9,6 @@ variables:
 include:
   - local: ci/build.gitlab-ci.yml
   - local: ci/images.gitlab-ci.yml
-  - local: ci/runtime.gitlab-ci.yml
   - local: ci/python.gitlab-ci.yml
 
 verify:
@@ -106,12 +105,6 @@ package-check:
     - job: voice-verify
       artifacts: false
       optional: true
-    - job: build-controller
-    - job: build-claude-harness
-    - job: build-standard-harness
-    - job: build-codex-harness
-    - job: build-substrate-api
-    - job: build-substrate-microvm
   script: [python ci/package-chart.py]
   artifacts:
     paths: [.cache/*-metadata.json, .cache/*-metadata.ref, dist/, gen/]

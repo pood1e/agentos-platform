@@ -46,6 +46,6 @@ for scenario in .cache/chart-check .cache/chart-check/telemetry; do
     --version "$kagent_version" -f "$scenario/kagent-values.yaml" > "$scenario/native-kagent.yaml"
   conftest test --combine --policy tests/policies --namespace runtime_tests \
     --data .cache/chart-check/test-data.json "$scenario/kagent-values.yaml" \
-    .cache/chart-check/substrate-values.yaml "$scenario/native-kagent.yaml" runtime/kagent/Dockerfile
+    .cache/chart-check/substrate-values.yaml "$scenario/native-kagent.yaml"
 done
 ci/check-environment-charts.sh
