@@ -20,7 +20,7 @@ Informer 断开、计划未就绪、冲突的编译结果、未知工具均拒�
 环境模式同时发布目录与各身份的工具决策，原生工具确认属性取自环境治理模式。
 
 管理 API 每次只写一次原生连接父对象，凭据单独写入该对象拥有的 Secret。
-连接通过 `kagent.dev/connection=true` 交给 kagent 的可选 agentgateway 模块；平台提供模型参数、发现认证与路由授权策略。
+平台控制器加载 kagent 的可选 agentgateway 模块，收敛标记为 `kagent.dev/connection=true` 的连接；平台提供模型参数、发现认证与路由授权策略。
 官方 agentgateway 控制器负责代理配置与 xDS 下发。
 凭据写入失败时父对象保留，连接模块记录 `KagentReady=False`；重试保存后继续收敛。
 Model 的条件位于 `status.parents` 中 `controllerName=kagent.dev/agentgateway-connections` 的条目，Backend 使用 `status.conditions`。
