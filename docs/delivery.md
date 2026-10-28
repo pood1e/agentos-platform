@@ -97,7 +97,7 @@ kagent_telemetry:
 消息内容和原始 API 请求体采集默认关闭，分别由原生 `captureContent` 与 `captureRawApiBodies` 控制。
 部署变量应用于 `config.telemetry` 和 `config.runtimeDefaults.telemetry`，更新后由运行时部署流程生效。
 
-平台进程以 OpenTelemetry Node SDK 导出指标，平台 Chart 的 `telemetry.metrics` 配置 OTLP 出口，`protocol` 支持 `grpc` 与 `http/protobuf`，未配置端点时关闭 SDK：
+平台遥测默认关闭，配置端点后使用 OpenTelemetry Node SDK 导出指标。平台 Chart 的 `telemetry.metrics` 配置 OTLP 出口，`protocol` 支持 `grpc` 与 `http/protobuf`：
 
 ```yaml
 telemetry:
@@ -105,6 +105,9 @@ telemetry:
     endpoint: https://otlp.example.com/v1/metrics
     protocol: http/protobuf
 ```
+
+镜像直启和本地开发使用 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` 或 `OTEL_EXPORTER_OTLP_ENDPOINT` 配置端点，协议使用原生 `OTEL_EXPORTER_OTLP_METRICS_PROTOCOL`。`OTEL_SDK_DISABLED=true` 或 `OTEL_METRICS_EXPORTER=none` 关闭遥测。未启用时使用官方 API 的空操作实现；接收端不可用时平台继续处理请求。
+指标导出默认超时 1 秒，可通过 `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 调整，单位为毫秒。
 
 | 指标 | 内容 |
 | --- | --- |

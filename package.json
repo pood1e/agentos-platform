@@ -9,7 +9,7 @@
   "scripts": {
     "generate": "ci/generate-controller.sh && buf generate --template contracts/buf.gen.yaml && buf generate --template contracts/buf.errors.gen.yaml && node contracts/generate-management.mjs && tsx contracts/generate-permissions.ts",
     "dev": "vite --host 127.0.0.1",
-    "server": "tsx watch server/apps/api.ts",
+    "server": "tsx watch --import ./server/apps/telemetry.ts server/apps/api.ts",
     "build": "npm run generate && vite build && tsc --project server/tsconfig.json",
     "check": "buf lint proto && biome check . && tsc --noEmit && knip",
     "format": "biome check --write .",

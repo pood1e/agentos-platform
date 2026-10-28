@@ -25,7 +25,7 @@ tests:
     equal:
       path: spec.template.spec.containers[0].startupProbe
       value: {httpGet: {path: /healthz, port: http}, periodSeconds: 2, failureThreshold: 90}
-- it: runs each entry point from the same image with the telemetry SDK preloaded
+- it: runs each entry point from the same image with optional telemetry initialization
   asserts:
   - template: api-deployment.yaml
     equal:
