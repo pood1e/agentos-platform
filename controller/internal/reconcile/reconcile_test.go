@@ -130,7 +130,7 @@ func TestReconciliation(t *testing.T) {
 		must(t, err)
 		gateway := connections.Config(platform.PlatformGateway{
 			Name: "gateway", URL: "http://models.test:8080", MCPURL: "http://mcp.test:8080",
-			ActorIssuer: "https://actors.test", ActorKeys: "actor-keys", ModelSecret: "gateway-credential",
+			ActorIssuer: "https://actors.test", ActorJWKSBackend: "actor-jwks-backend", ModelSecret: "gateway-credential",
 		})
 		must(t, agentgateway.SetupWithManager(manager, gateway))
 		managerContext, cancel := context.WithCancel(t.Context())

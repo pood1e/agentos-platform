@@ -34,7 +34,7 @@ func run() error {
 	flag.StringVar(&gateway.MCPURL, "mcp-url", "http://agentos-mcp-gateway:8080", "Platform MCP gateway URL")
 	flag.StringVar(&gateway.ModelSecret, "model-secret", "agentos-model-client", "Model client placeholder Secret")
 	flag.StringVar(&gateway.Dataplane, "dataplane", "agentos-dataplane", "Authorization service name")
-	flag.StringVar(&gateway.ActorKeys, "actor-keys", "agentos-dataplane", "Actor JWKS service name")
+	flag.StringVar(&gateway.ActorJWKSBackend, "actor-jwks-backend", "agentos-actor-jwks", "Actor JWKS AgentgatewayBackend name")
 	flag.StringVar(&gateway.ActorIssuer, "actor-issuer", "", "Actor token issuer")
 	options := zap.Options{}
 	options.BindFlags(flag.CommandLine)

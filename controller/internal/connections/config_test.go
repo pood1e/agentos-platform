@@ -1,6 +1,7 @@
 package connections
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -59,7 +60,7 @@ func TestModelSettings(t *testing.T) {
 func TestMCPSettings(t *testing.T) {
 	config := Config(platform.PlatformGateway{
 		Name: "gateway", MCPURL: "http://mcp.test:8080", Dataplane: "dataplane",
-		ActorIssuer: "https://actors.test", ActorKeys: "actor-keys",
+		ActorIssuer: "https://actors.test", ActorJWKSBackend: "actor-jwks",
 	})
 	source := &agw.AgentgatewayBackend{
 		ObjectMeta: metav1.ObjectMeta{Name: "tools", Namespace: "team", Annotations: map[string]string{"agentos.dev/description": "Operations tools"}},
@@ -81,8 +82,13 @@ func TestMCPSettings(t *testing.T) {
 			}
 		case *agw.AgentgatewayPolicy:
 			auth := object.Spec.Traffic.JWTAuthentication
+			remote := auth.Providers[0].JWKS.Remote
+			wantRef := gw.BackendObjectReference{Group: ptr.To(gw.Group("agentgateway.dev")), Kind: ptr.To(gw.Kind("AgentgatewayBackend")), Name: "actor-jwks"}
+			if !reflect.DeepEqual(remote.BackendRef, &wantRef) {
+				t.Fatalf("JWKS backend = %+v, want %+v", remote.BackendRef, wantRef)
+			}
 			if auth.Providers[0].Issuer != "https://actors.test" || auth.Providers[0].Audiences[0] != "http://mcp.test:8080" ||
-				*auth.Providers[0].JWKS.Remote.JwksPath != "/keys/actor" || auth.Location.Expression == nil ||
+				*auth.Providers[0].JWKS.Remote.JwksPath != "/openid/v1/jwks" || auth.Location.Expression == nil ||
 				object.Spec.Traffic.Authorization == nil {
 				t.Fatalf("platform authorization lost: %+v", object)
 			}

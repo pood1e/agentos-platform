@@ -25,6 +25,12 @@ execution:
   databaseCASecret: kagent-postgres-ca
   substrateURL: https://api.ate-system.svc
   actorIssuer: https://idp.ate-system.svc
+  actorJWKS:
+    static: {host: idp.ate-system.svc, port: 443}
+    policies:
+      tls:
+        sni: idp.ate-system.svc
+        caCertificateRefs: [{name: substrate-service-dns-ca, kind: ConfigMap}]
 api:
   replicas: 2
   resources:

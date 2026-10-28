@@ -1,6 +1,5 @@
 import { AuthenticationV1Api } from "@kubernetes/client-node";
 import { ExtMcp } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
-import { actorKeyServer } from "../authorization/keys.js";
 import { modelAuthorization } from "../authorization/models.js";
 import { registerRuntime } from "../authorization/native.js";
 import { platformToolAuthorization } from "../authorization/platform-tools.js";
@@ -95,13 +94,11 @@ const persistence = grpcServer(app, {
   routes: (router) =>
     registerRuntime(router, runtime, config.kagent, clients, knowledge.scope, app.log),
 });
-const keys = actorKeyServer(app, runtime.actorKeys);
 registerHealth(app, async () => configuration.healthy() && access.healthy());
 closeOnSignal(app, [configuration.close, access.close, execution.close]);
 const { host } = listenConfig();
 await Promise.all([
   guardrails.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), host),
   persistence.listen(Number(process.env.AGENTOS_RUNTIME_PORT ?? "9091"), host),
-  keys.listen({ host, port: Number(process.env.AGENTOS_JWKS_PORT ?? "9092") }),
 ]);
 await app.listen(listenConfig());

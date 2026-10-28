@@ -11,7 +11,7 @@ spec:
     mcpURL: http://{{ .Values.platform.release }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080
     modelSecret: {{ .Values.platform.release }}-model-client
     dataplane: {{ .Values.platform.release }}-dataplane
-    actorKeys: {{ .Values.platform.release }}-dataplane
+    actorJWKSBackend: {{ .Values.platform.release }}-actor-jwks
     actorIssuer: {{ .Values.platform.actorIssuer | quote }}
   environments:{{ if not .Values.environments }} []{{ end }}
     {{- range .Values.environments }}

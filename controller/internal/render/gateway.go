@@ -12,8 +12,8 @@ import (
 // Gateway reads explicit controller endpoint arguments from a platform Chart render.
 func Gateway(objects []*unstructured.Unstructured, release, namespace string) platform.PlatformGateway {
 	base, suffix := "http://"+release, "."+namespace+".svc.cluster.local:8080"
-	gateway := platform.PlatformGateway{Name: release + "-gateway", URL: base + "-gateway" + suffix, MCPURL: base + "-mcp-gateway" + suffix, ModelSecret: release + "-model-client", Dataplane: release + "-dataplane", ActorKeys: release + "-dataplane"}
-	fields := map[string]*string{"gateway": &gateway.Name, "gateway-url": &gateway.URL, "mcp-url": &gateway.MCPURL, "model-secret": &gateway.ModelSecret, "dataplane": &gateway.Dataplane, "actor-keys": &gateway.ActorKeys, "actor-issuer": &gateway.ActorIssuer}
+	gateway := platform.PlatformGateway{Name: release + "-gateway", URL: base + "-gateway" + suffix, MCPURL: base + "-mcp-gateway" + suffix, ModelSecret: release + "-model-client", Dataplane: release + "-dataplane", ActorJWKSBackend: release + "-actor-jwks"}
+	fields := map[string]*string{"gateway": &gateway.Name, "gateway-url": &gateway.URL, "mcp-url": &gateway.MCPURL, "model-secret": &gateway.ModelSecret, "dataplane": &gateway.Dataplane, "actor-jwks-backend": &gateway.ActorJWKSBackend, "actor-issuer": &gateway.ActorIssuer}
 	for _, object := range objects {
 		if object.GetKind() != "Deployment" || object.GetLabels()["app.kubernetes.io/name"] != "agentos-controller" {
 			continue

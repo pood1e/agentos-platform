@@ -4652,7 +4652,7 @@ spec:
                 properties:
                   actorIssuer:
                     type: string
-                  actorKeys:
+                  actorJWKSBackend:
                     type: string
                   dataplane:
                     type: string
@@ -4666,7 +4666,7 @@ spec:
                     type: string
                 required:
                 - actorIssuer
-                - actorKeys
+                - actorJWKSBackend
                 - dataplane
                 - mcpURL
                 - modelSecret

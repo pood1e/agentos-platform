@@ -42,8 +42,8 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.dataplaneService" -}}
 {{- printf "%s-dataplane" (include "agentos.name" .) -}}
 {{- end -}}
-{{- define "agentos.actorKeysService" -}}
-{{- include "agentos.dataplaneService" . -}}
+{{- define "agentos.actorJWKSBackend" -}}
+{{- printf "%s-actor-jwks" (include "agentos.name" .) -}}
 {{- end -}}
 {{- define "agentos.runtimeURL" -}}
 {{- printf "http://%s.%s.svc.cluster.local:9091" (include "agentos.dataplaneService" .) .Release.Namespace -}}

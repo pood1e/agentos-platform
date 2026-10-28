@@ -51,8 +51,8 @@ tests:
   - isKind:
       of: AccessPlan
   - equal:
-      path: spec.platform.actorKeys
-      value: agentos-dataplane
+      path: spec.platform.actorJWKSBackend
+      value: agentos-actor-jwks
   - equal:
       path: spec.environments[0].governance
       value: approval

@@ -545,7 +545,13 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["databaseSecret", "databaseCASecret", "substrateURL", "actorIssuer"],
+      "required": [
+        "databaseSecret",
+        "databaseCASecret",
+        "substrateURL",
+        "actorIssuer",
+        "actorJWKS"
+      ],
       "properties": {
         "databaseSecret": {
           "type": "string",
@@ -564,6 +570,32 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^https://"
+        },
+        "actorJWKS": {
+          "description": "Native AgentgatewayBackend spec for the Actor issuer HTTPS endpoint; CA references are in the release namespace.",
+          "type": "object",
+          "required": ["static", "policies"],
+          "properties": {
+            "policies": {
+              "type": "object",
+              "required": ["tls"],
+              "properties": {
+                "tls": {
+                  "type": "object",
+                  "required": ["caCertificateRefs"],
+                  "not": {
+                    "required": ["insecureSkipVerify"]
+                  },
+                  "properties": {
+                    "caCertificateRefs": {
+                      "type": "array",
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
         "keySecret": {
           "type": "string",

@@ -72,13 +72,13 @@ type Environment struct {
 
 // PlatformGateway supplies the native gateway and the platform service endpoints.
 type PlatformGateway struct {
-	Name        string `json:"name"`
-	URL         string `json:"url"`
-	MCPURL      string `json:"mcpURL"`
-	ModelSecret string `json:"modelSecret"`
-	Dataplane   string `json:"dataplane"`
-	ActorKeys   string `json:"actorKeys"`
-	ActorIssuer string `json:"actorIssuer"`
+	Name             string `json:"name"`
+	URL              string `json:"url"`
+	MCPURL           string `json:"mcpURL"`
+	ModelSecret      string `json:"modelSecret"`
+	Dataplane        string `json:"dataplane"`
+	ActorJWKSBackend string `json:"actorJWKSBackend"`
+	ActorIssuer      string `json:"actorIssuer"`
 }
 
 // AccessPlanSpec is the sole source of tool tiers and identity compilation.

@@ -68,8 +68,22 @@ func RuntimeTraffic(gateway *platform.PlatformGateway, audience, catalogPath str
 		expression = "(request.path != " + literal(catalogPath) + " && " + expression + ")"
 	}
 	expression += " || (!('x-substrate-actor-token' in request.headers) && 'authorization' in request.headers)"
+	provider := agw.JWTProvider{
+		Issuer: gateway.ActorIssuer, Audiences: []string{audience},
+		JWKS: agw.JWKS{Remote: &agw.RemoteJWKS{
+			PolicyBackendEndpoint: agw.PolicyBackendEndpoint{BackendRef: &gw.BackendObjectReference{
+				Group: ptr.To(gw.Group(agw.GroupVersion.Group)), Kind: ptr.To(gw.Kind("AgentgatewayBackend")),
+				Name: gw.ObjectName(gateway.ActorJWKSBackend),
+			}},
+			JwksPath: ptr.To("/openid/v1/jwks"),
+		}},
+		Validation: &agw.JWTValidationOptions{RequiredClaims: ptr.To([]agw.JWTClaim{"sub", "exp", "aud"})},
+	}
 	return &agw.Traffic{
-		JWTAuthentication: &agw.JWTAuthentication{Mode: agw.JWTAuthenticationMode("Permissive"), PreserveToken: true, Location: &agw.AuthorizationExtractionLocation{Expression: ptr.To(agw.CELExpression("'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') : ''"))}, Providers: []agw.JWTProvider{{Issuer: gateway.ActorIssuer, Audiences: []string{audience}, JWKS: agw.JWKS{Remote: &agw.RemoteJWKS{PolicyBackendEndpoint: endpoint(gateway.ActorKeys, 9092), JwksPath: ptr.To("/keys/actor")}}, Validation: &agw.JWTValidationOptions{RequiredClaims: ptr.To([]agw.JWTClaim{"sub", "exp", "aud"})}}}},
-		Authorization:     authorization(expression),
+		JWTAuthentication: &agw.JWTAuthentication{
+			Mode: "Permissive", PreserveToken: true, Providers: []agw.JWTProvider{provider},
+			Location: &agw.AuthorizationExtractionLocation{Expression: ptr.To(agw.CELExpression("'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') : ''"))},
+		},
+		Authorization: authorization(expression),
 	}
 }
