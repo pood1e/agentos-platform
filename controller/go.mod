@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/agentgateway/agentgateway v1.7.0
 	github.com/kagent-dev/kagent/go v0.0.0-20261027205517-bc8002dbaa78
-	github.com/kagent-dev/kagent/go/integrations/agentgateway v0.0.0-20261028094430-7ecaf78bb4cf
+	github.com/kagent-dev/kagent/go/integrations/agentgateway v0.0.0-20261028095952-285b83638e97
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
@@ -84,4 +84,4 @@ replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agen
 
 replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261028081249-20923c716154
 
-replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261028094430-7ecaf78bb4cf
+replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261028095952-285b83638e97
