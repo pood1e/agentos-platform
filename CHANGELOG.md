@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.41.0](https://github.com/pood1e/agentos-platform/compare/v0.40.0...v0.41.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* ConsoleService 删除 TranscribeAudio、SynthesizeSpeech、StartVoiceCall、EndVoiceCall，新增 StartVoiceSession；GetSpeechCapabilitiesResponse 删除 voice_calls、新增 enabled 并重排字段号；agentos.voice.v1 改为 VoiceService 与 VoiceEvent；@agentos/contracts 的 shared/browser/speech 改为 shared/browser/voice，speechText 移至 shared/speech-text；voice.secretRef 只需 api-key 与 api-secret；worker 镜像入口改为 python -m livekit.agents start。
+* 删除 build/server/platform/main.js 与 Chart 的 console 资源和 console.resources；新增 api、dataplane、worker（replicas、resources）与 telemetry.metrics 值。Service 改为 <release>-api 与 <release>-dataplane，ServiceAccount 按进程拆分；WorkloadAuthentication.platform_subject 改为 platform_subjects；identity 入口改为 build/server/apps/identity.js；npm 脚本 server 启动 api 入口，删除 start。
+
+### Code Refactoring
+
+* 平台服务拆分为 api、dataplane 与 worker 进程 ([#172](https://github.com/pood1e/agentos-platform/issues/172)) ([ac07e2a](https://github.com/pood1e/agentos-platform/commit/ac07e2a674d206c2bb7dd3e32954cd25b9206be4))
+* 语音统一经 LiveKit，通话轮次由 voice worker 编排 ([#176](https://github.com/pood1e/agentos-platform/issues/176)) ([8ac5bcc](https://github.com/pood1e/agentos-platform/commit/8ac5bcc29ef5b3b899283461f252148976b83d0a))
+
 ## [0.40.0](https://github.com/pood1e/agentos-platform/compare/v0.39.0...v0.40.0) (2026-10-27)
 
 
