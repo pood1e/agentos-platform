@@ -15,9 +15,7 @@ api := platform("api")
 
 dataplane := platform("dataplane")
 
-worker := platform("worker")
-
-workloads := [api, dataplane, worker]
+workloads := [api, dataplane]
 
 environment_of(deployment) := {entry.name: entry | some entry in deployment.spec.template.spec.containers[0].env}
 
@@ -169,7 +167,6 @@ deny contains sprintf("required %s environment %s is absent", [component, name])
 	some component, names in {
 		"api": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_MODEL_TOKEN_FILE", "AGENTOS_SPEECH_SECRET"},
 		"dataplane": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_GATEWAY_URL", "AGENTOS_ACTOR_AUDIENCES", "AGENTOS_WORKLOAD_AUTH_CONFIG", "AGENTOS_MODEL_TOKEN_FILE"},
-		"worker": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER"},
 	}
 	some name in names
 	not environment_of(platform(component))[name]

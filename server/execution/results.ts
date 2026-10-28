@@ -7,12 +7,12 @@ import {
 import type { InvokeSessionOutput } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import { redact } from "../../shared/redact.js";
 import type { TaskGraph } from "../read-model/graph.js";
-import type { TaskProjection } from "../read-model/projection.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { taskRun } from "../read-model/views/run.js";
 
 /** Reads the requested task and its causal children, excluding later conversation turns. */
 export async function executionResult(
-  projection: Pick<TaskProjection, "fullTask">,
+  projection: Pick<TaskQueries, "fullTask">,
   graph: TaskGraph,
   rootId: string,
   execution: InvokeSessionOutput,

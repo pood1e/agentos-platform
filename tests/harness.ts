@@ -1,9 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { create } from "@bufbuild/protobuf";
 import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
-import type { FastifyBaseLogger } from "fastify";
 import type { Task } from "../gen/a2a_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { PackSchema } from "../gen/agentos/console/v1/pack_pb.js";
@@ -21,26 +19,12 @@ import { kagentClients } from "../server/kagent/clients.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { agentRef } from "../server/read-model/agents.js";
 import { ingest } from "../server/read-model/entry.js";
-import { taskProjection } from "../server/read-model/projection.js";
-import { reconciler } from "../server/read-model/reconcile.js";
+import { taskQueries } from "../server/read-model/queries.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
 import { memoryStore } from "./fixtures/execution-store.js";
 import { fixtureAgents, fixtureSessions, fixtureTasks } from "./fixtures/kagent.js";
-
-const noop = () => {};
-export const silent = {
-  level: "silent",
-  info: noop,
-  warn: noop,
-  error: noop,
-  debug: noop,
-  fatal: noop,
-  trace: noop,
-  silent: noop,
-  child: () => silent,
-} as unknown as FastifyBaseLogger;
 
 /** The console user that recorded fixtures belong to. */
 export const operator = create(ExecutionIdentitySchema, {
@@ -49,12 +33,6 @@ export const operator = create(ExecutionIdentitySchema, {
   capabilities: allCapabilities,
   credential: { case: "service", value: true },
 });
-
-function database() {
-  const uri = process.env.CHANGE_TEST_DATABASE_URL;
-  if (!uri) throw new Error("CHANGE_TEST_DATABASE_URL is required for projection tests");
-  return uri;
-}
 
 /** Binds native sessions as the collaboration MCP would: delegated sessions join their caller's tree. */
 export async function bindTasks(
@@ -108,26 +86,14 @@ export async function environment(tasks: Task[] = fixtureTasks()) {
   const store = memoryStore();
   await store.saveIdentity(operator);
   await bindTasks(store, fake, tasks);
-  const workspace = `test-${randomUUID()}`;
-  const projection = await taskProjection({
-    uri: database(),
-    workspace,
-    clients,
-    executions: store,
-  });
-  await projection.listen();
-  const reconcile = reconciler(projection, clients, "agentos", silent, 50);
+  const projection = taskQueries({ workspace: "agentos", clients, executions: store });
   return {
     fake,
     clients,
     store,
     executions: executions(store),
     projection,
-    reconcile,
-    async close() {
-      reconcile.close();
-      await projection.close();
-    },
+    async close() {},
   };
 }
 

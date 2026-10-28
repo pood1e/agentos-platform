@@ -1,1 +1,0 @@
-{{ include "agentos.platformRole" (dict "root" . "component" "worker" "rules" (include "agentos.workerRules" .)) }}

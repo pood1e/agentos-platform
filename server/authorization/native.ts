@@ -15,7 +15,6 @@ import type { KagentClients } from "../kagent/clients.js";
 import type { KnowledgeConfig } from "../knowledge/service.js";
 import { agentKey } from "../read-model/agents.js";
 import { object, text } from "../read-model/decode/messages.js";
-import type { Native } from "../read-model/projection.js";
 import type { KagentConfig } from "../shared/config.js";
 import { rpcMetrics } from "../shared/telemetry.js";
 import type { ExecutionRuntime } from "./runtime.js";
@@ -58,7 +57,6 @@ export function registerRuntime(
   config: KagentConfig,
   clients: KagentClients,
   sharedKnowledge?: KnowledgeConfig["scope"],
-  project: (tasks: Native[]) => Promise<void> = async () => {},
   log?: Pick<FastifyBaseLogger, "warn">,
 ) {
   const transport = createGrpcTransport({
@@ -112,15 +110,6 @@ export function registerRuntime(
       },
     };
   }
-  /** The projection follows successful native writes; its failures never fail the runtime. */
-  const projected = <T>(tenant: string, task: Native["task"] | undefined, response: T) => {
-    if (task)
-      void project([{ task, agentId: tenant }]).catch((error: unknown) =>
-        log?.warn({ err: error, taskId: task.id }, "Task projection write failed"),
-      );
-    return response;
-  };
-
   async function memoryOptions(context: HandlerContext, write: boolean, requested = "") {
     const { session } = await runtime.authenticatedActor(context.requestHeader);
     const execution = await runtime.registry.resolve(session);
@@ -162,8 +151,8 @@ export function registerRuntime(
     createTask: (r, c) =>
       forward(c, "CreateTask", async () => {
         if (r.task?.contextId !== r.sessionId) throw denied();
-        const { tenant, options } = await taskOptions(r.sessionId, c, "create");
-        return projected(tenant, r.task, await tasks.createTask(r, options));
+        const { options } = await taskOptions(r.sessionId, c, "create");
+        return tasks.createTask(r, options);
       }),
     getTask: (r, c) =>
       forward(c, "GetTask", async () =>
@@ -172,8 +161,8 @@ export function registerRuntime(
     updateTask: (r, c) =>
       forward(c, "UpdateTask", async () => {
         if (r.task?.contextId !== r.sessionId) throw denied();
-        const { tenant, options } = await taskOptions(r.sessionId, c, "update");
-        return projected(tenant, r.task, await tasks.updateTask(r, options));
+        const { options } = await taskOptions(r.sessionId, c, "update");
+        return tasks.updateTask(r, options);
       }),
     listTasks: (r, c) =>
       forward(c, "ListTasks", async () => {

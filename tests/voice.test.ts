@@ -51,7 +51,6 @@ let worker: ReturnType<typeof createClient<typeof VoiceService>>;
 
 beforeAll(async () => {
   env = await environment();
-  await env.reconcile.refresh();
   sessions = await voiceSessions(uri, `voice-${randomUUID()}`);
   const voice = voiceConsole(settings, sessions, rooms, env.clients, env.executions);
   browser = consoleClient(env, { voice });

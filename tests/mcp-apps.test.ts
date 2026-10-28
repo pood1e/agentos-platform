@@ -31,7 +31,6 @@ it("retains independent App instances when later calls share the same resource",
     env.task.artifacts.push(revision);
   }
   env.fake.update(env.task, TaskState.COMPLETED);
-  await env.reconcile.refresh();
   const controller = new AbortController();
   try {
     for await (const { conversation } of env.client.watchConversation(

@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { ArtifactSchema, Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { ingest } from "../server/read-model/entry.js";
-import { encodeEntry, entryRevision } from "../server/read-model/record.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { syntheticOperations } from "./fake-kagent/scenario.js";
 import { fixtureIds, fixtureState, fixtureTasks } from "./fixtures/kagent.js";
@@ -123,7 +122,7 @@ describe("streamed task content", () => {
       status: { state: TaskState.WORKING, timestamp: timestampFromMs(1000) },
       artifacts: [{ artifactId: "answer", parts: [{ content: { case: "text", value: "first" } }] }],
     });
-    const revision = () => entryRevision(encodeEntry(ingest(task, "agentos/inspection")));
+    const revision = () => ingest(task, "agentos/inspection").version;
     const previous = revision();
     task.artifacts[0].parts[0].content = { case: "text", value: "updated" };
     expect(ingest(task, "agentos/inspection").answer).toBe("updated");
@@ -131,7 +130,7 @@ describe("streamed task content", () => {
     expect(revision()).toBe(revision());
   });
 
-  it("keeps compact entries in the projection and loads finished payloads once on demand", async () => {
+  it("reads current native task payloads on demand", async () => {
     const env = await environment();
     const seeded = syntheticOperations(220);
     env.fake.load({
@@ -140,16 +139,15 @@ describe("streamed task content", () => {
     });
     await bindTasks(env.store, env.fake, seeded.tasks);
     try {
-      await env.reconcile.refresh();
       env.fake.fetched.length = 0;
       const entry = await env.projection.entry("synthetic-task-0");
       expect(entry).toBeDefined();
-      expect(env.fake.fetched).toHaveLength(0);
+      expect(env.fake.fetched).toContain("synthetic-task-0");
       if (!entry) return;
       expect((await env.projection.fullTask(entry))?.id).toBe("synthetic-task-0");
       expect(env.fake.fetched).toContain("synthetic-task-0");
       await env.projection.fullTask(entry);
-      expect(env.fake.fetched.filter((id) => id === "synthetic-task-0")).toHaveLength(1);
+      expect(env.fake.fetched.filter((id) => id === "synthetic-task-0")).toHaveLength(3);
     } finally {
       await env.close();
     }

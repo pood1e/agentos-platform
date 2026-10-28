@@ -15,7 +15,7 @@ tests:
       value: {type: RollingUpdate, rollingUpdate: {maxSurge: 1, maxUnavailable: 0}}
   - template: dataplane-deployment.yaml
     equal: {path: spec.minReadySeconds, value: 5}
-  - template: worker-deployment.yaml
+  - template: dataplane-deployment.yaml
     equal: {path: spec.template.spec.terminationGracePeriodSeconds, value: 60}
   - template: dataplane-deployment.yaml
     equal:
@@ -35,11 +35,11 @@ tests:
     equal:
       path: spec.template.spec.containers[0].command
       value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/dataplane.js]
-  - template: worker-deployment.yaml
+  - template: dataplane-deployment.yaml
     equal:
       path: spec.template.spec.containers[0].command
-      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/worker.js]
-  - template: worker-deployment.yaml
+      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/dataplane.js]
+  - template: dataplane-deployment.yaml
     equal:
       path: spec.template.spec.containers[0].image
       value: registry.example.com/agentos@sha256:0000000000000000000000000000000000000000000000000000000000000000
@@ -59,21 +59,16 @@ tests:
   template: dataplane-deployment.yaml
   asserts:
   - failedTemplate: {errorPattern: 'dataplane.replicas'}
-- it: admits no inbound worker connections
-  template: worker-networkpolicy.yaml
-  asserts:
-  - equal: {path: spec.policyTypes, value: [Ingress]}
-  - notExists: {path: spec.ingress}
 - it: exports platform metrics only when an endpoint is configured
   asserts:
   - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content: {name: OTEL_SDK_DISABLED, value: 'true'}
-  - template: worker-deployment.yaml
+  - template: dataplane-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
-      content: {name: OTEL_SERVICE_NAME, value: agentos-worker}
+      content: {name: OTEL_SERVICE_NAME, value: agentos-dataplane}
 - it: exports metrics over OTLP with the configured protocol
   set:
     telemetry.metrics: {endpoint: 'http://collector.telemetry.svc.cluster.local:4318/v1/metrics', protocol: http/protobuf}
@@ -97,7 +92,7 @@ tests:
   asserts:
   - template: api-deployment.yaml
     equal: {path: 'spec.template.spec.initContainers[0].name', value: pack}
-  - template: worker-deployment.yaml
+  - template: dataplane-deployment.yaml
     notExists: {path: spec.template.spec.initContainers}
   - template: dataplane-deployment.yaml
     notExists: {path: spec.template.spec.initContainers}

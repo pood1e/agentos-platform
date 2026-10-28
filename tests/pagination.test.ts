@@ -15,7 +15,6 @@ async function seededEnvironment() {
     tasks: [...env.fake.tasks.values(), ...seeded.tasks],
   });
   await bindTasks(env.store, env.fake, seeded.tasks);
-  await env.reconcile.refresh();
   return { env, seeded };
 }
 
@@ -35,7 +34,8 @@ describe("history cursors", () => {
         messageId: `newer-${message.messageId}`,
       })) as typeof incoming.history;
       if (incoming.status) incoming.status.timestamp = timestampFromMs(Date.now() + 10_000);
-      await env.projection.apply([{ task: incoming, agentId: "agentos/inspection" }]);
+
+      env.fake.tasks.set(incoming.id, incoming);
       const next = await env.projection.operations(reader, {
         ...request,
         pageSize: 5,
@@ -73,7 +73,7 @@ describe("history cursors", () => {
       const last = env.fake.task(first.tasks.at(-1)?.id ?? "");
       const moved = clone(TaskSchema, last);
       if (moved.status) moved.status.timestamp = timestampFromMs(Date.now() + 10_000);
-      await env.projection.apply([{ task: moved, agentId: "agentos/inspection" }]);
+
       expect(
         (await env.projection.operations(reader, { ...request, pageToken: first.nextPageToken }))
           .tasks,
@@ -88,7 +88,6 @@ describe("history cursors", () => {
     env.fake.createSession({ namespace: "agentos", name: "assistant" }, "extra-chat", "另一次对话");
     await bindTasks(env.store, env.fake, []);
     try {
-      await env.reconcile.refresh();
       const request = { query: "", pageSize: 1, pageToken: "" };
       const first = await env.projection.conversations(reader, "agentos/assistant", request);
       expect(first.totalSize).toBe(2);

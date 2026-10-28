@@ -23,11 +23,10 @@ import runSchema from "../../gen/schema/agentos.execution.v1.RunExecutionRequest
 };
 import { type Executions, relatedExecutions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentKey, sessionInfo } from "../read-model/agents.js";
+import { agentKey } from "../read-model/agents.js";
 import { cancelTree } from "../read-model/cancel.js";
 import { taskOutput } from "../read-model/decode/output.js";
-import type { TaskProjection } from "../read-model/projection.js";
-import { refreshSession } from "../read-model/reconcile.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { busy, outcomeState, taskTree } from "../read-model/tree.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { inputSchema, result, validator } from "../team-sessions/schema.js";
@@ -36,7 +35,7 @@ import { executionResult } from "./results.js";
 /** Machine callers use ordinary native executions; scheduling and workflow state stay outside. */
 export function executionTools(
   clients: KagentClients,
-  projection: TaskProjection,
+  projection: TaskQueries,
   workspace: string,
   registry: Executions,
   identity: ExecutionIdentity,
@@ -85,7 +84,7 @@ export function executionTools(
   }
   async function observed(ref?: ExecutionReference) {
     const target = reference(ref);
-    const root = await projection.taskOfMessage(target.messageId);
+    const root = await projection.taskOfMessage(target.messageId, identity.subject);
     if (!root || root.agentId !== agentKey(target.ref.agent))
       throw new ConnectError("Execution not found", Code.NotFound);
     const { session } = await clients.sessions.getSession(
@@ -130,7 +129,6 @@ export function executionTools(
         const { ref, messageId } = reference(request.execution);
         const session = await admitted(ref);
         await registry.resolve(session);
-        await projection.apply([], [sessionInfo(session)]);
         const task = await projection.send(
           agentKey(session.agent),
           create(MessageSchema, {
@@ -188,7 +186,6 @@ export function executionTools(
         const { ref } = reference(fromJson(ExecutionReferenceSchema, args));
         const session = await admitted(ref);
         await registry.revoke(session, identity);
-        await refreshSession(projection, clients, session.id, context.mcpReq.signal);
         let current: Awaited<ReturnType<typeof observed>>;
         try {
           current = await observed(ref);
@@ -210,7 +207,7 @@ export function executionTools(
           current.tree.entries.map((entry) => entry.contextId),
           true,
         );
-        await cancelTree(clients, projection, current.tree, context.mcpReq.signal);
+        await cancelTree(clients, current.tree, context.mcpReq.signal);
         return result(InvokeSessionOutputSchema, (await observed(ref)).execution);
       },
     );

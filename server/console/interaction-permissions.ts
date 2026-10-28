@@ -3,13 +3,13 @@ import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { TaskProjection } from "../read-model/projection.js";
+import type { TaskQueries } from "../read-model/queries.js";
 
 export type AuthorizeTools = (session: Session, tools: string[]) => Promise<void>;
 
 /** Readable history is independent from current execution and approval authority. */
 export function interactionPermissions(
-  projection: Pick<TaskProjection, "entry">,
+  projection: Pick<TaskQueries, "entry">,
   clients: KagentClients,
   executions: Executions,
   authorizeTools?: AuthorizeTools,

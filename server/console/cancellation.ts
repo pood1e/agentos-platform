@@ -2,15 +2,14 @@ import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_
 import { type Executions, relatedExecutions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { cancelTree } from "../read-model/cancel.js";
-import type { TaskProjection } from "../read-model/projection.js";
-import { refreshContexts } from "../read-model/reconcile.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { terminal } from "../read-model/state.js";
 import { taskTree } from "../read-model/tree.js";
 import { notFound } from "../shared/errors.js";
 import { viewer, visibleGraph } from "./history.js";
 
 export function cancellationCommands(
-  projection: TaskProjection,
+  projection: TaskQueries,
   clients: KagentClients,
   executions: Executions,
 ) {
@@ -28,22 +27,11 @@ export function cancellationCommands(
     );
     return { root: tree.root, entries: [...entries.values()] };
   }
-  // A worker accepted during cancellation can appear after the last projected state.
-  const refresh = (tree: Awaited<ReturnType<typeof treeFor>>, signal: AbortSignal) =>
-    refreshContexts(
-      projection,
-      clients,
-      [...new Map(tree.entries.map((entry) => [entry.contextId, entry.agentId])).entries()].map(
-        ([id, agentId]) => ({ id, agentId }),
-      ),
-      signal,
-    );
-
   return async (taskId: string, identity: ExecutionIdentity, signal: AbortSignal) => {
     const initial = await treeFor(taskId, identity);
     return projection.exclusive(initial.root.contextId, async () => {
       const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
-      await refresh(initial, deadline);
+      let rootCanceled = false;
       for (;;) {
         deadline.throwIfAborted();
         const tree = await treeFor(initial.root.id, identity);
@@ -59,9 +47,9 @@ export function cancellationCommands(
           session,
           tree.entries.map((entry) => entry.contextId),
         );
-        if (tree.entries.every((entry) => terminal(entry.state))) return;
-        await cancelTree(clients, projection, tree, deadline);
-        await refresh(tree, deadline);
+        if (rootCanceled && tree.entries.every((entry) => terminal(entry.state))) return;
+        await cancelTree(clients, rootCanceled ? { entries: tree.entries } : tree, deadline);
+        rootCanceled = true;
       }
     });
   };

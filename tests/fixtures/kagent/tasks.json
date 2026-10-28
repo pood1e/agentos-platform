@@ -2,7 +2,10 @@
   {
     "id": "01a130a5-2363-76a6-8971-98a1a6459036",
     "contextId": "01a130a5-207d-7734-842b-8c01a7b0a9e5",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T15:05:57.564060654Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T15:05:57.564060654Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130a5-3987-7a9e-b404-542d73b29b8b",
@@ -12,15 +15,22 @@
           },
           {
             "data": {
-              "args": { "namespace": "agentos" },
+              "args": {
+                "namespace": "agentos"
+              },
               "name": "list_agents",
               "id": "call_IYNCpMOZYDiBWdRBbzFX0yT1"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "promptTokenCount": 1287, "candidatesTokenCount": 57 },
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 1287,
+            "candidatesTokenCount": 57
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:04:58.889196Z"
         }
       },
@@ -35,10 +45,14 @@
               },
               "id": "call_IYNCpMOZYDiBWdRBbzFX0yT1"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:04:58.938197Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:04:58.938197Z"
+        }
       },
       {
         "artifactId": "01a130a5-548a-78ce-bc93-a6c506f254bf",
@@ -49,18 +63,26 @@
           {
             "data": {
               "args": {
-                "agent": { "namespace": "agentos", "name": "remediation" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "remediation"
+                },
                 "name": "approval-smoke 创建与审批验证",
                 "requestId": "approval-smoke-remediation-20261012-01"
               },
               "name": "create_session",
               "id": "call_ba9u5wWfRukKVWCXIwj2Dugu"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 89, "promptTokenCount": 5904 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 89,
+            "promptTokenCount": 5904
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:06.592874Z"
         }
       },
@@ -75,10 +97,14 @@
               },
               "id": "call_ba9u5wWfRukKVWCXIwj2Dugu"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:06.64847Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:06.64847Z"
+        }
       },
       {
         "artifactId": "01a130a5-7086-772a-8f5a-a7109ab02dd3",
@@ -96,7 +122,9 @@
               "name": "invoke_session",
               "id": "call_MEJHSayznYaFHpYToAVEf885"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -125,10 +153,14 @@
               },
               "id": "call_MEJHSayznYaFHpYToAVEf885"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:47.838916Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:47.838916Z"
+        }
       },
       {
         "artifactId": "01a130a6-1135-7081-a189-af2556199fd9",
@@ -169,7 +201,10 @@
   {
     "id": "01a130a8-764e-7c01-87c5-3fb41f07b490",
     "contextId": "01a130a5-207d-7734-842b-8c01a7b0a9e5",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T15:09:32.388271613Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T15:09:32.388271613Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130a8-8b09-7ab4-8b35-9ca9f1fdd237",
@@ -181,13 +216,18 @@
             "data": {
               "id": "call_DlppSn1eBbnlkglvXyKPOc4v",
               "args": {
-                "agent": { "namespace": "agentos", "name": "knowledge" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "knowledge"
+                },
                 "name": "approval-smoke 真实结果持久化",
                 "requestId": "approval-smoke-knowledge-20261012-01"
               },
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -210,10 +250,14 @@
               "id": "call_DlppSn1eBbnlkglvXyKPOc4v",
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:08:37.789629Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:08:37.789629Z"
+        }
       },
       {
         "artifactId": "01a130a8-a9cc-760b-bd25-5d33d7a2f557",
@@ -231,7 +275,9 @@
                 "session_id": "01a130a8-982b-7ef6-bc08-10e6b1088540"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -260,10 +306,14 @@
               },
               "id": "call_qVSCqsaM4fICLNJjHpgY4YdP"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:20.016417Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:20.016417Z"
+        }
       },
       {
         "artifactId": "01a130a9-514f-7f3e-83e5-32c021910dc8",
@@ -284,7 +334,7 @@
     ],
     "history": [
       {
-        "messageId": "resume-01a130a5-965c-73ec-8feb-0213f1e52dd5-b67c8aa2-0d02-4fec-8673-74d31cafaaa5",
+        "messageId": "kagent-continuation-resume-01a130a5-965c-73ec-8feb-0213f1e52dd5-b67c8aa2-0d02-4fec-8673-74d31cafaaa5",
         "contextId": "01a130a5-207d-7734-842b-8c01a7b0a9e5",
         "taskId": "01a130a8-764e-7c01-87c5-3fb41f07b490",
         "role": "ROLE_USER",
@@ -293,11 +343,12 @@
             "text": "The delegated task 01a130a5-965c-73ec-8feb-0213f1e52dd5 has resumed after the user's decision and is now COMPLETED.\nUser decision: {\"type\":\"tool_approval_response\",\"approvals\":[{\"approved\":true,\"id\":\"adk-3610e10e-2dda-4012-a7ab-b3a1066f727e\"}]}\nObserved result:\n本次将只读检查 ConfigMap `agentos-lab/approval-smoke`，确认是否存在及其当前字段，以确定审批范围内是创建还是保留其他字段的更新。\n\n本次将只读列出 `agentos-lab` 中的 ConfigMap，区分目标不存在与前次读取失败，期望在任何写操作前确认目标现状。\n\n只读列表确认 `agentos-lab/approval-smoke` 当前不存在；首次直接读取失败未提供具体原因，以随后成功返回的列表为现状证据。\n\n本次变更计划：\n- **目的与范围**：仅创建 ConfigMap `agentos-lab/approval-smoke`，不创建命名空间，不修改其他资源或知识资源。\n- **具体差异**：新增 `data.status: \"verified\"`、`data.purpose: \"approval-smoke\"`。\n- **验证**：提交成功后独立重新读取，核对 namespace、name、两个 data 值，并记录 UID/resourceVersion。\n- **回退**：创建前目标不存在，恢复原状需删除此次创建的 ConfigMap；当前工具不提供删除能力，本次不执行回退，必要时另行审批并交由具备权限者执行。\n\n本次将调用处置写工具提交上述最小完整 manifest，等待工具原生审批暂停中的用户决定；只有批准后才允许实际创建，拒绝则不执行。\n\n本次将独立重新读取 ConfigMap `agentos-lab/approval-smoke`，验证写工具报告的创建结果，期望确认 namespace/name、两个 data 值以及 UID/resourceVersion。\n\n## 处置结果：创建成功，独立读取验证通过\n\n### 审批与真实执行\n- **审批路径**：已通过处置工具 `k8s_apply_manifest` 提交原生审批写调用，未使用其他写入路径。\n- **审批决定证据限制**：工具返回未单独提供“批准/拒绝”记录、审批人或审批 ID，因此无法直接引用审批决定；返回的是实际执行成功结果。\n- **真实执行结果**：`configmap/approval-smoke created`。\n- **变更范围**：仅提交 ConfigMap `agentos-lab/approval-smoke`。未创建命名空间，未修改其他资源，未创建知识资源。\n\n### 现状检查与独立验证\n写前直接读取失败，但随后成功列出的 `agentos-lab` ConfigMap 列表中不存在目标，因此本次采用**创建**，不是更新。\n\n写后使用独立 `k8s_get_resource_yaml` 调用重新读取，结果如下：\n\n| 验证项 | 实际读取值 | 结果 |\n|---|---|---|\n| kind | `ConfigMap` | 通过 |\n| namespace | `agentos-lab` | 通过 |\n| name | `approval-smoke` | 通过 |\n| data.status | `verified` | 通过 |\n| data.purpose | `approval-smoke` | 通过 |\n\n**读取证据**\n```yaml\nuid: aa846b62-c21f-4fd3-a9e3-425fa8323277\nresourceVersion: \"33647\"\ncreationTimestamp: \"2026-10-12T15:07:57Z\"\n```\n\n### 标识与交接\n- **资源引用**：`v1 / ConfigMap / agentos-lab / approval-smoke`\n- **Session/Task 标识**：当前上下文及工具返回均未提供，无法报告真实标识。\n- **回退**：恢复创建前状态需删除该 ConfigMap；本次未执行删除，当前工具亦不提供删除能力，须另行审批。\n- **可复用经验**：直接读取失败不能直接等同于资源不存在，应通过成功的只读查询确认；写工具成功结果还需独立重新读取验证。审批与 Session/Task 标识需由运行平台保留，不能从资源 UID 或 resourceVersion 推断。\n\n以上证据可交给后续知识成员沉淀。\nContinue the original goal using this result. Choose any necessary validation or knowledge persistence based on the evidence, and report actual outcomes in the original task's language."
           }
         ],
-        "metadata": {
-          "agentos.dev/resumed-task": "01a130a5-965c-73ec-8feb-0213f1e52dd5",
-          "agentos.dev/parent-task": "01a130a5-2363-76a6-8971-98a1a6459036"
-        },
-        "extensions": ["https://kagent.dev/extensions/hitl/v1"]
+        "metadata": {},
+        "extensions": ["https://kagent.dev/extensions/hitl/v1"],
+        "referenceTaskIds": [
+          "01a130a5-2363-76a6-8971-98a1a6459036",
+          "01a130a5-965c-73ec-8feb-0213f1e52dd5"
+        ]
       }
     ],
     "metadata": {
@@ -308,7 +359,10 @@
   {
     "id": "01a130b0-9637-7d31-93f5-7e9fb23e9839",
     "contextId": "01a130a5-207d-7734-842b-8c01a7b0a9e5",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T15:17:40.513187932Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T15:17:40.513187932Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130b0-bb8f-788e-b43e-275ed465941d",
@@ -329,7 +383,7 @@
     ],
     "history": [
       {
-        "messageId": "resume-01a130a8-e89a-71b5-8310-92a258f760ac-6edfab0e-c479-4e28-942c-a6898ea4c7fe",
+        "messageId": "kagent-continuation-resume-01a130a8-e89a-71b5-8310-92a258f760ac-6edfab0e-c479-4e28-942c-a6898ea4c7fe",
         "contextId": "01a130a5-207d-7734-842b-8c01a7b0a9e5",
         "taskId": "01a130b0-9637-7d31-93f5-7e9fb23e9839",
         "role": "ROLE_USER",
@@ -338,11 +392,12 @@
             "text": "The delegated task 01a130a8-e89a-71b5-8310-92a258f760ac has resumed after the user's decision and is now COMPLETED.\nUser decision: {\"id\":\"adk-3a6c91d2-2f88-49c5-8ab4-3bdc95ff489b\",\"answers\":[{\"answer\":[\"拒绝：不写入\"]}],\"type\":\"ask_user_response\"}\nObserved result:\n我将先检索 agentos-knowledge 中已有的 ConfigMap 知识记录，确认是否存在目标记录或相关经验，全程仅允许写入 knowledge-approval-smoke。\n\n检索结果显示 agentos-knowledge 中只有 kube-root-ca.crt，没有目标知识记录；我将通过原生审批工具请求您决定是否创建指定 ConfigMap，历史处置事实会明确标注为您提供的 Session/Task 结果，而非本知识会话重新核验。\n\n**本次持久化未执行：您在原生审批工具中选择了“拒绝：不写入”。**\n\n- **目标资源类型**：`ConfigMap`\n- **目标引用**：`agentos-knowledge/knowledge-approval-smoke`（仅为拟写入目标，不是已存储记录）\n- **检索结果**：成功列出 `agentos-knowledge` 中的 ConfigMap，仅发现 `kube-root-ca.crt`，未发现目标知识记录。\n- **实际操作**：只执行了读取检索及审批请求；未调用 `k8s_apply_manifest`，未创建命名空间，也未修改任何资源。\n- **存储验证**：因审批被拒绝，未写入，亦未进行写后读取验证；无目标知识记录的 UID/resourceVersion 可返回。\n\n历史处置的 `approved=true` 与审批 ID `adk-3610e10e-2dda-4012-a7ab-b3a1066f727e` 属于您提供的历史事实，来源为协调者收到的平台后续通知，**不能替代本次知识存储审批**。\n\n知识会话 Session：`01a130a8-982b-7ef6-bc08-10e6b1088540`。\nContinue the original goal using this result. Choose any necessary validation or knowledge persistence based on the evidence, and report actual outcomes in the original task's language."
           }
         ],
-        "metadata": {
-          "agentos.dev/parent-task": "01a130a8-764e-7c01-87c5-3fb41f07b490",
-          "agentos.dev/resumed-task": "01a130a8-e89a-71b5-8310-92a258f760ac"
-        },
-        "extensions": ["https://kagent.dev/extensions/hitl/v1"]
+        "metadata": {},
+        "extensions": ["https://kagent.dev/extensions/hitl/v1"],
+        "referenceTaskIds": [
+          "01a130a8-764e-7c01-87c5-3fb41f07b490",
+          "01a130a8-e89a-71b5-8310-92a258f760ac"
+        ]
       }
     ],
     "metadata": {
@@ -353,7 +408,10 @@
   {
     "id": "01a130a5-965c-73ec-8feb-0213f1e52dd5",
     "contextId": "01a130a5-5f67-753b-934f-a90c7dd745a2",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T15:08:28.146619044Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T15:08:28.146619044Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130a5-a7a9-7924-b911-e348183b4897",
@@ -371,11 +429,16 @@
               },
               "name": "k8s_get_resource_yaml"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 86, "promptTokenCount": 1259 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 86,
+            "promptTokenCount": 1259
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:27.333311Z"
         }
       },
@@ -390,10 +453,14 @@
                 "error": "Tool execution failed. Details: [Kubernetes] get configmap approval-smoke -o yaml -n agentos-lab failed: exit status 1"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:27.43731Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:27.43731Z"
+        }
       },
       {
         "artifactId": "01a130a5-c0d1-7148-84ba-a4ba12174b1d",
@@ -411,7 +478,9 @@
               },
               "name": "k8s_get_resources"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -436,10 +505,14 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:34.341929Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:34.341929Z"
+        }
       },
       {
         "artifactId": "01a130a5-de46-7979-942a-ad9053397a09",
@@ -455,7 +528,9 @@
               "name": "k8s_apply_manifest",
               "id": "call_aEKwwQeEH9nUzboALAzsNoMx"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -478,24 +553,36 @@
               "id": "call_aEKwwQeEH9nUzboALAzsNoMx",
               "name": "k8s_apply_manifest"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:47.670321Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:05:47.670321Z"
+        }
       },
       {
         "artifactId": "01a130a7-fb20-7903-8aca-21aea9987512",
         "parts": [
           {
             "data": {
-              "response": { "output": { "output": "configmap/approval-smoke created\n" } },
+              "response": {
+                "output": {
+                  "output": "configmap/approval-smoke created\n"
+                }
+              },
               "id": "call_aEKwwQeEH9nUzboALAzsNoMx",
               "name": "k8s_apply_manifest"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:07:57.585645Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:07:57.585645Z"
+        }
       },
       {
         "artifactId": "01a130a8-115b-7ce4-bda1-39592b754cd0",
@@ -513,7 +600,9 @@
               "name": "k8s_get_resource_yaml",
               "id": "call_1WqEgJyRDGquQR424TLNj0W0"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -539,10 +628,14 @@
               },
               "id": "call_1WqEgJyRDGquQR424TLNj0W0"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:08:05.400737Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:08:05.400737Z"
+        }
       },
       {
         "artifactId": "01a130a8-2b63-7cb0-8b20-bfeb231201ee",
@@ -552,7 +645,10 @@
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 530, "promptTokenCount": 2703 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 530,
+            "promptTokenCount": 2703
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:08:28.118116Z"
         }
       }
@@ -603,10 +699,19 @@
         "contextId": "01a130a5-5f67-753b-934f-a90c7dd745a2",
         "taskId": "01a130a5-965c-73ec-8feb-0213f1e52dd5",
         "role": "ROLE_USER",
-        "parts": [{ "text": "Approved: k8s_apply_manifest" }],
+        "parts": [
+          {
+            "text": "Approved: k8s_apply_manifest"
+          }
+        ],
         "metadata": {
           "https://kagent.dev/extensions/hitl/v1": {
-            "approvals": [{ "approved": true, "id": "adk-3610e10e-2dda-4012-a7ab-b3a1066f727e" }],
+            "approvals": [
+              {
+                "approved": true,
+                "id": "adk-3610e10e-2dda-4012-a7ab-b3a1066f727e"
+              }
+            ],
             "type": "tool_approval_response"
           }
         },
@@ -621,7 +726,10 @@
   {
     "id": "01a130a8-e89a-71b5-8310-92a258f760ac",
     "contextId": "01a130a8-982b-7ef6-bc08-10e6b1088540",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T15:17:18.193899555Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T15:17:18.193899555Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130a8-faa7-7bbc-be3c-455a87aeb985",
@@ -639,12 +747,17 @@
               "name": "k8s_get_resources",
               "id": "call_4x69fP4tuwRV93gNiGbKd5hW"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:05.567871Z",
-          "kagent.dev/a2a/usage": { "promptTokenCount": 1542, "candidatesTokenCount": 80 }
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 1542,
+            "candidatesTokenCount": 80
+          }
         }
       },
       {
@@ -660,10 +773,14 @@
               },
               "id": "call_4x69fP4tuwRV93gNiGbKd5hW"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:05.68209Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:05.68209Z"
+        }
       },
       {
         "artifactId": "01a130a9-1509-76f0-95a0-bf9a26a1aae1",
@@ -685,7 +802,9 @@
               "name": "ask_user",
               "id": "call_wTFSYy6Rn5gW5nz3x4lRiuBB"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -715,10 +834,14 @@
               "id": "call_wTFSYy6Rn5gW5nz3x4lRiuBB",
               "name": "ask_user"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:19.846991Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:09:19.846991Z"
+        }
       },
       {
         "artifactId": "01a130b0-3486-726c-a7ee-55a85cbe8101",
@@ -731,10 +854,14 @@
                 "result": "[{\"answer\":[\"拒绝：不写入\"],\"question\":\"是否批准通过 k8s_apply_manifest 仅创建 agentos-knowledge/knowledge-approval-smoke（资源类型 ConfigMap，标签 agentos.dev/kind: knowledge），将您提供的已核验处置事实写入 data.record.md，并随后读取验证？记录将包含：处置 Session/Task 及 COMPLETED；先前直接 GET 失败不证明不存在，随后成功列表确认目标不存在；经批准 apply 返回 configmap/approval-smoke created；独立读取验证 agentos-lab/approval-smoke 的 status、purpose、UID、resourceVersion、creationTimestamp；历史 approved=true 及审批ID明确注明来源为协调者收到的平台后续通知，而非处置成员工具返回；仅创建该 ConfigMap、无其他变更、未执行回退；知识会话 Session，以及适用条件与回退说明。不会创建命名空间、修改其他资源或写入敏感凭据。此审批仅用于本次知识存储，不以历史审批替代。\"}]"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:16:56.573976Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:16:56.573976Z"
+        }
       },
       {
         "artifactId": "01a130b0-5261-7233-96c7-6595cfa1420d",
@@ -796,10 +923,18 @@
         "contextId": "01a130a8-982b-7ef6-bc08-10e6b1088540",
         "taskId": "01a130a8-e89a-71b5-8310-92a258f760ac",
         "role": "ROLE_USER",
-        "parts": [{ "text": "拒绝：不写入" }],
+        "parts": [
+          {
+            "text": "拒绝：不写入"
+          }
+        ],
         "metadata": {
           "https://kagent.dev/extensions/hitl/v1": {
-            "answers": [{ "answer": ["拒绝：不写入"] }],
+            "answers": [
+              {
+                "answer": ["拒绝：不写入"]
+              }
+            ],
             "type": "ask_user_response",
             "id": "adk-3a6c91d2-2f88-49c5-8ab4-3bdc95ff489b"
           }
@@ -815,7 +950,10 @@
   {
     "id": "01a130bc-8bec-730a-a1e8-9efadfd9f185",
     "contextId": "01a130bc-88a8-758e-a51c-14f94e4f97f1",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T15:33:30.101433469Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T15:33:30.101433469Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130bc-9c79-78a0-8662-a80a3978af4a",
@@ -833,12 +971,17 @@
                 "resource_name": "approval-rejected-smoke"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:32.36105Z",
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 88, "promptTokenCount": 1152 }
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 88,
+            "promptTokenCount": 1152
+          }
         }
       },
       {
@@ -852,10 +995,14 @@
               "id": "call_F8UTuPx9woZbUxDKk9pMgkrH",
               "name": "k8s_get_resource_yaml"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:32.475511Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:32.475511Z"
+        }
       },
       {
         "artifactId": "01a130bc-b76d-707c-8356-fc31c720b60b",
@@ -873,7 +1020,9 @@
               "name": "k8s_get_resources",
               "id": "call_Cpdbrs9kQdYKlqez44AzUIj0"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -898,10 +1047,14 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:39.072956Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:39.072956Z"
+        }
       },
       {
         "artifactId": "01a130bc-d707-7a3c-9c7f-8ff0d6013329",
@@ -917,7 +1070,9 @@
               "name": "k8s_apply_manifest",
               "id": "call_HvVP0l71VneY1YTktfOZnmuP"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -940,24 +1095,34 @@
               "id": "call_HvVP0l71VneY1YTktfOZnmuP",
               "name": "k8s_apply_manifest"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:50.660632Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:30:50.660632Z"
+        }
       },
       {
         "artifactId": "01a130bf-33b7-7080-921a-ddcbf48b4eef",
         "parts": [
           {
             "data": {
-              "response": { "error": "error tool \"k8s_apply_manifest\" call is rejected" },
+              "response": {
+                "error": "error tool \"k8s_apply_manifest\" call is rejected"
+              },
               "id": "call_HvVP0l71VneY1YTktfOZnmuP",
               "name": "k8s_apply_manifest"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T15:33:19.40487Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T15:33:19.40487Z"
+        }
       },
       {
         "artifactId": "01a130bf-4298-7d48-a95a-b2bb65927d9f",
@@ -967,7 +1132,10 @@
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "promptTokenCount": 2496, "candidatesTokenCount": 232 },
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 2496,
+            "candidatesTokenCount": 232
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T15:33:30.083086Z"
         }
       }
@@ -1020,7 +1188,9 @@
         "taskId": "01a130bc-8bec-730a-a1e8-9efadfd9f185",
         "role": "ROLE_USER",
         "parts": [
-          { "text": "Rejected: k8s_apply_manifest\nMVP 验证：拒绝这次测试写入，保留资源现状" }
+          {
+            "text": "Rejected: k8s_apply_manifest\nMVP 验证：拒绝这次测试写入，保留资源现状"
+          }
         ],
         "metadata": {
           "https://kagent.dev/extensions/hitl/v1": {
@@ -1045,7 +1215,10 @@
   {
     "id": "01a130dd-0e64-7b51-905e-22cfa972b980",
     "contextId": "01a130dd-0bbf-731d-a11c-8ed241305659",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T16:07:28.679595460Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T16:07:28.679595460Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130dd-2669-752f-a933-20580eb59851",
@@ -1056,14 +1229,21 @@
           {
             "data": {
               "id": "call_J3RLEKzoRGwyQjTrken3MQEt",
-              "args": { "namespace": "agentos" },
+              "args": {
+                "namespace": "agentos"
+              },
               "name": "list_agents"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 59, "promptTokenCount": 2512 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 59,
+            "promptTokenCount": 2512
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:03.78225Z"
         }
       },
@@ -1076,7 +1256,10 @@
                 "output": {
                   "agents": [
                     {
-                      "ref": { "namespace": "agentos", "name": "diagnosis" },
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "diagnosis"
+                      },
                       "resource": {
                         "value": {
                           "kind": "Agent",
@@ -1095,7 +1278,11 @@
                                       "f:agentos.dev/description": {}
                                     }
                                   },
-                                  "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} }
+                                  "f:spec": {
+                                    "f:templateRef": {},
+                                    ".": {},
+                                    "f:harnessRef": {}
+                                  }
                                 },
                                 "manager": "OpenAPI-Generator",
                                 "operation": "Update"
@@ -1167,8 +1354,12 @@
                             "creationTimestamp": "2026-10-12T09:02:02Z"
                           },
                           "spec": {
-                            "templateRef": { "name": "diagnosis" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "diagnosis"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "desiredRevision": "0b3dd286dece993f79070b9a998852f72ae8b9f9c295441df57d11da7aaf8547",
@@ -1216,7 +1407,10 @@
                       }
                     },
                     {
-                      "ref": { "name": "inspection", "namespace": "agentos" },
+                      "ref": {
+                        "name": "inspection",
+                        "namespace": "agentos"
+                      },
                       "resource": {
                         "value": {
                           "status": {
@@ -1272,7 +1466,11 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { "f:harnessRef": {}, "f:templateRef": {}, ".": {} },
+                                  "f:spec": {
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {},
+                                    ".": {}
+                                  },
                                   "f:metadata": {
                                     "f:annotations": {
                                       "f:agentos.dev/description": {},
@@ -1347,8 +1545,12 @@
                             "uid": "d025f929-27b8-4447-a9d8-73a39f3affea"
                           },
                           "spec": {
-                            "templateRef": { "name": "inspection" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "inspection"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           }
                         },
                         "apiVersion": "api.kagent.dev/v1alpha3",
@@ -1356,7 +1558,10 @@
                       }
                     },
                     {
-                      "ref": { "name": "knowledge", "namespace": "agentos" },
+                      "ref": {
+                        "name": "knowledge",
+                        "namespace": "agentos"
+                      },
                       "resource": {
                         "value": {
                           "apiVersion": "api.kagent.dev/v1alpha3",
@@ -1376,7 +1581,11 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} },
+                                  "f:spec": {
+                                    "f:templateRef": {},
+                                    ".": {},
+                                    "f:harnessRef": {}
+                                  },
                                   "f:metadata": {
                                     "f:annotations": {
                                       ".": {},
@@ -1448,8 +1657,12 @@
                             "resourceVersion": "36886"
                           },
                           "spec": {
-                            "harnessRef": { "name": "memory" },
-                            "templateRef": { "name": "knowledge" }
+                            "harnessRef": {
+                              "name": "memory"
+                            },
+                            "templateRef": {
+                              "name": "knowledge"
+                            }
                           },
                           "status": {
                             "observedGeneration": 2,
@@ -1512,7 +1725,11 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { "f:harnessRef": {}, "f:templateRef": {}, ".": {} },
+                                  "f:spec": {
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {},
+                                    ".": {}
+                                  },
                                   "f:metadata": {
                                     "f:annotations": {
                                       ".": {},
@@ -1588,8 +1805,12 @@
                             }
                           },
                           "spec": {
-                            "templateRef": { "name": "remediation" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "remediation"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "desiredRevision": "73fd88c8cbf9cb40861a461fd2655813ec827817eeb60ebfbcb662d40c63fe2a",
@@ -1633,14 +1854,21 @@
                           "apiVersion": "api.kagent.dev/v1alpha3"
                         }
                       },
-                      "ref": { "namespace": "agentos", "name": "remediation" }
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "remediation"
+                      }
                     },
                     {
                       "resource": {
                         "value": {
                           "spec": {
-                            "harnessRef": { "name": "standard" },
-                            "templateRef": { "name": "coordinator" }
+                            "harnessRef": {
+                              "name": "standard"
+                            },
+                            "templateRef": {
+                              "name": "coordinator"
+                            }
                           },
                           "status": {
                             "observedGeneration": 1,
@@ -1704,7 +1932,11 @@
                                       "f:agentos.dev/delegates": {}
                                     }
                                   },
-                                  "f:spec": { "f:harnessRef": {}, "f:templateRef": {}, ".": {} }
+                                  "f:spec": {
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {},
+                                    ".": {}
+                                  }
                                 },
                                 "manager": "OpenAPI-Generator",
                                 "operation": "Update",
@@ -1775,7 +2007,10 @@
                         "apiVersion": "api.kagent.dev/v1alpha3",
                         "kind": "Agent"
                       },
-                      "ref": { "namespace": "agentos", "name": "coordinator" }
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "coordinator"
+                      }
                     }
                   ]
                 }
@@ -1783,30 +2018,44 @@
               "id": "call_J3RLEKzoRGwyQjTrken3MQEt",
               "name": "list_agents"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:03.852138Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:03.852138Z"
+        }
       },
       {
         "artifactId": "01a130dd-447a-77d7-b03a-025bf88d255e",
         "parts": [
-          { "text": "我将为就绪的巡检成员创建独立会话，用于取得目标资源的只读核验证据。\n" },
+          {
+            "text": "我将为就绪的巡检成员创建独立会话，用于取得目标资源的只读核验证据。\n"
+          },
           {
             "data": {
               "id": "call_v6bWqi7OVS2YLKJj9PG2phi6",
               "args": {
                 "requestId": "146d3ab7-1f20-4dea-919d-98e1fba785a1",
-                "agent": { "namespace": "agentos", "name": "inspection" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "inspection"
+                },
                 "name": "只读核验 approval-rag-smoke"
               },
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 101, "promptTokenCount": 6956 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 101,
+            "promptTokenCount": 6956
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:12.830766Z"
         }
       },
@@ -1829,16 +2078,23 @@
                     "a2aAuthority": "session-01a130dd-50c1-7abf-b922-1870b2958b6d.agentos.actors.resources.substrate.ate.dev",
                     "createdAt": "2026-10-12T16:06:12.931062Z",
                     "preparedRevision": "609d17fbc5c75799da3a138b2ee14c2aeab50b918b820a3cf30f7e5a8b0cc3bd",
-                    "agent": { "name": "inspection", "namespace": "agentos" },
+                    "agent": {
+                      "name": "inspection",
+                      "namespace": "agentos"
+                    },
                     "state": "RUNTIME_STATE_READY"
                   }
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:12.893757Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:12.893757Z"
+        }
       },
       {
         "artifactId": "01a130dd-695d-7177-952e-a8323767b383",
@@ -1856,11 +2112,16 @@
                 "message_id": "d28506aa-8a9a-407b-9ffc-d6d55c276cdc"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 226, "promptTokenCount": 7303 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 226,
+            "promptTokenCount": 7303
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:26.855744Z"
         }
       },
@@ -1881,10 +2142,14 @@
               "id": "call_PcN157OvwOi7Y5gtyYdBhe2M",
               "name": "invoke_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:54.775249Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:54.775249Z"
+        }
       },
       {
         "artifactId": "01a130de-0a3e-71ef-b81d-003bf296b983",
@@ -1897,12 +2162,17 @@
               "name": "create_session",
               "id": "call_4s7EdopY1dAEpuAH1sGy19ft",
               "args": {
-                "agent": { "namespace": "agentos", "name": "knowledge" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "knowledge"
+                },
                 "name": "事后异步沉淀 approval-rag-smoke",
                 "requestId": "a78d75eb-0466-4bfc-9db9-63028839d443"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -1930,7 +2200,10 @@
                     "contextId": "01a130de-172e-7c81-83b5-9407668dd87e",
                     "preparedRevision": "7e8eba623b1cd15d777dee9ff8d38bdb38727f8106ddb4e362774701dc7e54b6",
                     "createdAt": "2026-10-12T16:07:03.728317Z",
-                    "agent": { "name": "knowledge", "namespace": "agentos" },
+                    "agent": {
+                      "name": "knowledge",
+                      "namespace": "agentos"
+                    },
                     "a2aAuthority": "session-01a130de-172e-7c81-83b5-9407668dd87e.agentos.actors.resources.substrate.ate.dev",
                     "operation": "RUNTIME_OPERATION_NONE",
                     "updatedAt": "2026-10-12T16:07:03.738806747Z",
@@ -1939,10 +2212,14 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:03.693187Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:03.693187Z"
+        }
       },
       {
         "artifactId": "01a130de-282a-7686-88ef-e99fb0cbc768",
@@ -1965,7 +2242,9 @@
                 ]
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -2002,16 +2281,22 @@
                       }
                     ],
                     "id": "01a130de-59b6-77b2-8e04-21a814d48ec9",
-                    "status": { "state": "TASK_STATE_SUBMITTED" },
+                    "status": {
+                      "state": "TASK_STATE_SUBMITTED"
+                    },
                     "contextId": "01a130de-172e-7c81-83b5-9407668dd87e"
                   }
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:20.883271Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:20.883271Z"
+        }
       },
       {
         "artifactId": "01a130de-6d78-7c72-a97f-bfa92f7ee28e",
@@ -2021,7 +2306,10 @@
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 92, "promptTokenCount": 9390 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 92,
+            "promptTokenCount": 9390
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:28.650912Z"
         }
       }
@@ -2048,7 +2336,10 @@
   {
     "id": "01a130dd-8a0c-7e3a-b122-4a7f18df2e4c",
     "contextId": "01a130dd-50c1-7abf-b922-1870b2958b6d",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T16:06:54.687849088Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T16:06:54.687849088Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130dd-9e11-7be8-8087-5e30da3df925",
@@ -2066,12 +2357,17 @@
                 "resource_type": "configmap"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:35.616007Z",
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 95, "promptTokenCount": 1162 }
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 95,
+            "promptTokenCount": 1162
+          }
         }
       },
       {
@@ -2087,10 +2383,14 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:35.714396Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:35.714396Z"
+        }
       },
       {
         "artifactId": "01a130dd-bc6e-7b67-9ee4-18896af8f953",
@@ -2101,7 +2401,10 @@
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:06:54.650948Z",
-          "kagent.dev/a2a/usage": { "promptTokenCount": 1451, "candidatesTokenCount": 471 }
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 1451,
+            "candidatesTokenCount": 471
+          }
         }
       }
     ],
@@ -2126,7 +2429,10 @@
   {
     "id": "01a130de-59b6-77b2-8e04-21a814d48ec9",
     "contextId": "01a130de-172e-7c81-83b5-9407668dd87e",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-12T16:08:34.685205922Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-12T16:08:34.685205922Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a130de-76fb-7dac-a272-b6083823910d",
@@ -2142,12 +2448,17 @@
               },
               "name": "load_memory"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:32.870897Z",
-          "kagent.dev/a2a/usage": { "promptTokenCount": 3867, "candidatesTokenCount": 148 }
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 3867,
+            "candidatesTokenCount": 148
+          }
         }
       },
       {
@@ -2232,10 +2543,14 @@
               "id": "call_VLiozEXxCIuYrgxrwqQjZq90",
               "name": "load_memory"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:33.898483Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:33.898483Z"
+        }
       },
       {
         "artifactId": "01a130de-a7d7-7a07-b9d8-dd5f193df600",
@@ -2251,7 +2566,9 @@
               "name": "save_memory",
               "id": "call_3tVTGfmRxh1Y1kOTH6Y4fcP2"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -2268,14 +2585,20 @@
         "parts": [
           {
             "data": {
-              "response": { "status": "Successfully saved information to long-term memory." },
+              "response": {
+                "status": "Successfully saved information to long-term memory."
+              },
               "id": "call_3tVTGfmRxh1Y1kOTH6Y4fcP2",
               "name": "save_memory"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:57.10822Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:07:57.10822Z"
+        }
       },
       {
         "artifactId": "01a130df-102a-73d5-a3dc-704cfb27b831",
@@ -2291,12 +2614,17 @@
                 "query": "agentos-lab approval-rag-smoke 独立只读巡检 仅一次查询 已有资源未修改 verified approval-rag 来源 Session 01a130dd-50c1-7abf-b922-1870b2958b6d Task 01a130dd-8a0c-7e3a-b122-4a7f18df2e4c resourceVersion 36911 UID"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-12T16:08:12.082214Z",
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 153, "promptTokenCount": 7180 }
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 153,
+            "promptTokenCount": 7180
+          }
         }
       },
       {
@@ -2381,10 +2709,14 @@
               "id": "call_qNMte9EWU5ppmtHdx6ZYRHuA",
               "name": "load_memory"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-12T16:08:12.800535Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-12T16:08:12.800535Z"
+        }
       },
       {
         "artifactId": "01a130df-55b8-7048-85ae-7e98de714dd9",
@@ -2425,7 +2757,10 @@
   {
     "id": "01a13307-c0af-7ed4-b9f7-ee38d77b0a98",
     "contextId": "01a13307-bec0-770e-b5a5-f19651bbe3fc",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-13T02:12:54.106204729Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-13T02:12:54.106204729Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a13307-d1be-7c1d-9aa0-28fb1c61c75e",
@@ -2434,13 +2769,21 @@
             "text": "我会先查询当前工作空间的工具目录，只选择实际存在的只读 Kubernetes 工具，再生成并校验角色草稿，不创建或保存角色。"
           },
           {
-            "data": { "id": "call_BbMxfOyd3TJ2GbxFxxizEO4H", "name": "list_role_tools" },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "data": {
+              "id": "call_BbMxfOyd3TJ2GbxFxxizEO4H",
+              "name": "list_role_tools"
+            },
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:11:54.651009Z",
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 56, "promptTokenCount": 1295 }
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 56,
+            "promptTokenCount": 1295
+          }
         }
       },
       {
@@ -2760,7 +3103,10 @@
                           "description": "Perform rollout operations on Kubernetes resources (history, pause, restart, resume, status, undo)",
                           "name": "k8s_rollout"
                         },
-                        { "description": "Scale a Kubernetes deployment", "name": "k8s_scale" },
+                        {
+                          "description": "Scale a Kubernetes deployment",
+                          "name": "k8s_scale"
+                        },
                         {
                           "description": "Wait for a condition on Kubernetes resources (kubectl wait). Blocks until the condition is met or the timeout elapses.",
                           "name": "k8s_wait"
@@ -2776,10 +3122,14 @@
               },
               "id": "call_BbMxfOyd3TJ2GbxFxxizEO4H"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:11:54.722011Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:11:54.722011Z"
+        }
       },
       {
         "artifactId": "01a13307-ec87-78e8-bfd6-5e83395f24ee",
@@ -2792,13 +3142,18 @@
               "name": "prepare_role",
               "id": "call_t352K4AitVhbmKUJCvBQXty6",
               "args": {
-                "ref": { "namespace": "agentos", "name": "service-health" },
+                "ref": {
+                  "namespace": "agentos",
+                  "name": "service-health"
+                },
                 "resource": {
                   "apiVersion": "api.kagent.dev/v1alpha3",
                   "kind": "AgentTemplate",
                   "value": {
                     "metadata": {
-                      "annotations": { "agentos.dev/display-name": "服务健康工程师" },
+                      "annotations": {
+                        "agentos.dev/display-name": "服务健康工程师"
+                      },
                       "name": "service-health",
                       "namespace": "agentos"
                     },
@@ -2807,7 +3162,10 @@
                         {
                           "mcp": {
                             "requireApproval": false,
-                            "server": { "kind": "RemoteMCPServer", "name": "kagent-tool-server" },
+                            "server": {
+                              "kind": "RemoteMCPServer",
+                              "name": "kagent-tool-server"
+                            },
                             "tools": [
                               "k8s_get_resources",
                               "k8s_get_resource_yaml",
@@ -2825,7 +3183,9 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -2844,7 +3204,10 @@
             "data": {
               "response": {
                 "output": {
-                  "ref": { "name": "service-health", "namespace": "agentos" },
+                  "ref": {
+                    "name": "service-health",
+                    "namespace": "agentos"
+                  },
                   "resource": {
                     "apiVersion": "api.kagent.dev/v1alpha3",
                     "kind": "AgentTemplate",
@@ -2853,7 +3216,9 @@
                       "kind": "AgentTemplate",
                       "metadata": {
                         "namespace": "agentos",
-                        "annotations": { "agentos.dev/display-name": "服务健康工程师" },
+                        "annotations": {
+                          "agentos.dev/display-name": "服务健康工程师"
+                        },
                         "name": "service-health"
                       },
                       "spec": {
@@ -2861,7 +3226,10 @@
                           {
                             "mcp": {
                               "requireApproval": false,
-                              "server": { "kind": "RemoteMCPServer", "name": "kagent-tool-server" },
+                              "server": {
+                                "kind": "RemoteMCPServer",
+                                "name": "kagent-tool-server"
+                              },
                               "tools": [
                                 "k8s_get_resources",
                                 "k8s_get_resource_yaml",
@@ -2880,10 +3248,14 @@
               "id": "call_t352K4AitVhbmKUJCvBQXty6",
               "name": "prepare_role"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:12:36.242618Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:12:36.242618Z"
+        }
       },
       {
         "artifactId": "01a13308-a2e1-713f-8abf-a89e31111968",
@@ -2893,7 +3265,10 @@
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 180, "promptTokenCount": 6258 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 180,
+            "promptTokenCount": 6258
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:12:54.08973Z"
         }
       }
@@ -2921,7 +3296,10 @@
   {
     "id": "01a13309-e4a9-72f5-b164-5b98e3dc052b",
     "contextId": "01a13309-e1fc-7f0a-a274-21ac47fe36ca",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-13T02:18:40.141658777Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-13T02:18:40.141658777Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a13309-f5b9-7df9-97fb-cd85c5f2d7d1",
@@ -2931,16 +3309,23 @@
           },
           {
             "data": {
-              "args": { "namespace": "agentos" },
+              "args": {
+                "namespace": "agentos"
+              },
               "name": "list_agents",
               "id": "call_ChyALIwz9S4pm3mgUmPDouoR"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:15.9956Z",
-          "kagent.dev/a2a/usage": { "promptTokenCount": 2223, "candidatesTokenCount": 85 }
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 2223,
+            "candidatesTokenCount": 85
+          }
         }
       },
       {
@@ -2953,7 +3338,10 @@
                 "output": {
                   "agents": [
                     {
-                      "ref": { "name": "diagnosis", "namespace": "agentos" },
+                      "ref": {
+                        "name": "diagnosis",
+                        "namespace": "agentos"
+                      },
                       "resource": {
                         "value": {
                           "kind": "Agent",
@@ -2972,7 +3360,11 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} },
+                                  "f:spec": {
+                                    ".": {},
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {}
+                                  },
                                   "f:metadata": {
                                     "f:annotations": {
                                       ".": {},
@@ -3044,8 +3436,12 @@
                             "resourceVersion": "41498"
                           },
                           "spec": {
-                            "templateRef": { "name": "diagnosis" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "diagnosis"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "conditions": [
@@ -3175,7 +3571,11 @@
                                       "f:agentos.dev/description": {}
                                     }
                                   },
-                                  "f:spec": { "f:harnessRef": {}, "f:templateRef": {}, ".": {} }
+                                  "f:spec": {
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {},
+                                    ".": {}
+                                  }
                                 }
                               }
                             ],
@@ -3184,8 +3584,12 @@
                             "resourceVersion": "40924"
                           },
                           "spec": {
-                            "harnessRef": { "name": "standard" },
-                            "templateRef": { "name": "inspection" }
+                            "harnessRef": {
+                              "name": "standard"
+                            },
+                            "templateRef": {
+                              "name": "inspection"
+                            }
                           },
                           "status": {
                             "conditions": [
@@ -3230,7 +3634,10 @@
                         },
                         "apiVersion": "api.kagent.dev/v1alpha3"
                       },
-                      "ref": { "name": "inspection", "namespace": "agentos" }
+                      "ref": {
+                        "name": "inspection",
+                        "namespace": "agentos"
+                      }
                     },
                     {
                       "resource": {
@@ -3264,7 +3671,11 @@
                                       "f:agentos.dev/display-name": {}
                                     }
                                   },
-                                  "f:spec": { "f:harnessRef": {}, "f:templateRef": {}, ".": {} }
+                                  "f:spec": {
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {},
+                                    ".": {}
+                                  }
                                 }
                               },
                               {
@@ -3325,8 +3736,12 @@
                             ]
                           },
                           "spec": {
-                            "harnessRef": { "name": "memory" },
-                            "templateRef": { "name": "knowledge" }
+                            "harnessRef": {
+                              "name": "memory"
+                            },
+                            "templateRef": {
+                              "name": "knowledge"
+                            }
                           },
                           "status": {
                             "observedGeneration": 2,
@@ -3370,10 +3785,16 @@
                           "apiVersion": "api.kagent.dev/v1alpha3"
                         }
                       },
-                      "ref": { "name": "knowledge", "namespace": "agentos" }
+                      "ref": {
+                        "name": "knowledge",
+                        "namespace": "agentos"
+                      }
                     },
                     {
-                      "ref": { "namespace": "agentos", "name": "remediation" },
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "remediation"
+                      },
                       "resource": {
                         "apiVersion": "api.kagent.dev/v1alpha3",
                         "kind": "Agent",
@@ -3400,7 +3821,11 @@
                                       "f:agentos.dev/display-name": {}
                                     }
                                   },
-                                  "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} }
+                                  "f:spec": {
+                                    ".": {},
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {}
+                                  }
                                 },
                                 "manager": "OpenAPI-Generator",
                                 "operation": "Update",
@@ -3467,8 +3892,12 @@
                             "resourceVersion": "41496"
                           },
                           "spec": {
-                            "templateRef": { "name": "remediation" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "remediation"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "latestSuccessfulRevision": "2b9c9ff89cc37953503cfff2ebf28ad615a1efb5e00243cb34268f7809dc94b6",
@@ -3513,7 +3942,10 @@
                       }
                     },
                     {
-                      "ref": { "namespace": "agentos", "name": "service-health" },
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "service-health"
+                      },
                       "resource": {
                         "kind": "Agent",
                         "value": {
@@ -3521,7 +3953,9 @@
                           "kind": "Agent",
                           "metadata": {
                             "uid": "d05e9d74-0a54-4284-ad7c-25eb5a17ce89",
-                            "labels": { "agentos.dev/role": "service-health" },
+                            "labels": {
+                              "agentos.dev/role": "service-health"
+                            },
                             "name": "service-health",
                             "creationTimestamp": "2026-10-13T02:12:55Z",
                             "generation": 1,
@@ -3533,9 +3967,16 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} },
+                                  "f:spec": {
+                                    "f:templateRef": {},
+                                    ".": {},
+                                    "f:harnessRef": {}
+                                  },
                                   "f:metadata": {
-                                    "f:labels": { ".": {}, "f:agentos.dev/role": {} },
+                                    "f:labels": {
+                                      ".": {},
+                                      "f:agentos.dev/role": {}
+                                    },
                                     "f:annotations": {
                                       ".": {},
                                       "f:agentos.dev/description": {},
@@ -3608,8 +4049,12 @@
                             "namespace": "agentos"
                           },
                           "spec": {
-                            "harnessRef": { "name": "standard" },
-                            "templateRef": { "name": "service-health" }
+                            "harnessRef": {
+                              "name": "standard"
+                            },
+                            "templateRef": {
+                              "name": "service-health"
+                            }
                           },
                           "status": {
                             "observedGeneration": 1,
@@ -3659,8 +4104,12 @@
                         "kind": "Agent",
                         "value": {
                           "spec": {
-                            "templateRef": { "name": "coordinator" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "coordinator"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "conditions": [
@@ -3714,7 +4163,11 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} },
+                                  "f:spec": {
+                                    "f:templateRef": {},
+                                    ".": {},
+                                    "f:harnessRef": {}
+                                  },
                                   "f:metadata": {
                                     "f:annotations": {
                                       "f:agentos.dev/delegates": {},
@@ -3794,17 +4247,24 @@
                         },
                         "apiVersion": "api.kagent.dev/v1alpha3"
                       },
-                      "ref": { "namespace": "agentos", "name": "coordinator" }
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "coordinator"
+                      }
                     }
                   ]
                 }
               },
               "id": "call_ChyALIwz9S4pm3mgUmPDouoR"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:16.076651Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:16.076651Z"
+        }
       },
       {
         "artifactId": "01a1330a-1558-7e61-84f1-1ef6076702e6",
@@ -3816,17 +4276,25 @@
             "data": {
               "id": "call_zZmT9Mej8tp23kSpCdbL7haU",
               "args": {
-                "agent": { "namespace": "agentos", "name": "coordinator" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "coordinator"
+                },
                 "name": "agentos-lab 服务健康只读检查",
                 "requestId": "8dbb9a24-e035-48c2-a717-c385658f6aea"
               },
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "promptTokenCount": 7664, "candidatesTokenCount": 114 },
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 7664,
+            "candidatesTokenCount": 114
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:24.86688Z"
         }
       },
@@ -3842,7 +4310,10 @@
                     "a2aAuthority": "session-01a1330a-23b5-76c9-b207-3c8f63a1121b.agentos.actors.resources.substrate.ate.dev",
                     "contextId": "01a1330a-23b5-76c9-b207-3c8f63a1121b",
                     "preparedRevision": "6aa859c6b740993ab98f9199fa6a9ca0f5fb7ddf58a54a3b97b805304bb81c56",
-                    "agent": { "namespace": "agentos", "name": "coordinator" },
+                    "agent": {
+                      "namespace": "agentos",
+                      "name": "coordinator"
+                    },
                     "state": "RUNTIME_STATE_READY",
                     "createdAt": "2026-10-13T02:14:24.951749Z",
                     "creator": "agentos",
@@ -3855,10 +4326,14 @@
               "id": "call_zZmT9Mej8tp23kSpCdbL7haU",
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:24.926199Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:24.926199Z"
+        }
       },
       {
         "artifactId": "01a1330a-3c48-7cdb-9c9b-69946f9e66e3",
@@ -3876,7 +4351,9 @@
               "name": "invoke_session",
               "id": "call_imiahreChP9b4bs7zp3rfKdF"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -3905,10 +4382,14 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:18:18.084696Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:18:18.084696Z"
+        }
       },
       {
         "artifactId": "01a1330d-c64f-787c-8ed3-d03b9d022f40",
@@ -3950,7 +4431,10 @@
   {
     "id": "01a1330a-6edd-70a7-8d53-79b3d6516067",
     "contextId": "01a1330a-23b5-76c9-b207-3c8f63a1121b",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-13T02:18:12.876502897Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-13T02:18:12.876502897Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a1330a-815f-758d-82c5-8b79e604ed4d",
@@ -3960,15 +4444,22 @@
           },
           {
             "data": {
-              "args": { "namespace": "agentos" },
+              "args": {
+                "namespace": "agentos"
+              },
               "name": "list_agents",
               "id": "call_3SycOdyLfa6ZNHgFhx0QArxI"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "promptTokenCount": 2821, "candidatesTokenCount": 67 },
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 2821,
+            "candidatesTokenCount": 67
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:51.035328Z"
         }
       },
@@ -3983,7 +4474,10 @@
                 "output": {
                   "agents": [
                     {
-                      "ref": { "namespace": "agentos", "name": "diagnosis" },
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "diagnosis"
+                      },
                       "resource": {
                         "apiVersion": "api.kagent.dev/v1alpha3",
                         "kind": "Agent",
@@ -4004,7 +4498,11 @@
                                       "f:agentos.dev/description": {}
                                     }
                                   },
-                                  "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} }
+                                  "f:spec": {
+                                    "f:templateRef": {},
+                                    ".": {},
+                                    "f:harnessRef": {}
+                                  }
                                 },
                                 "manager": "OpenAPI-Generator"
                               },
@@ -4076,8 +4574,12 @@
                             "generation": 1
                           },
                           "spec": {
-                            "harnessRef": { "name": "standard" },
-                            "templateRef": { "name": "diagnosis" }
+                            "harnessRef": {
+                              "name": "standard"
+                            },
+                            "templateRef": {
+                              "name": "diagnosis"
+                            }
                           },
                           "status": {
                             "observedGeneration": 1,
@@ -4209,15 +4711,23 @@
                                       ".": {}
                                     }
                                   },
-                                  "f:spec": { "f:templateRef": {}, ".": {}, "f:harnessRef": {} }
+                                  "f:spec": {
+                                    "f:templateRef": {},
+                                    ".": {},
+                                    "f:harnessRef": {}
+                                  }
                                 }
                               }
                             ],
                             "name": "inspection"
                           },
                           "spec": {
-                            "templateRef": { "name": "inspection" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "inspection"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "desiredRevision": "609d17fbc5c75799da3a138b2ee14c2aeab50b918b820a3cf30f7e5a8b0cc3bd",
@@ -4260,10 +4770,16 @@
                           }
                         }
                       },
-                      "ref": { "name": "inspection", "namespace": "agentos" }
+                      "ref": {
+                        "name": "inspection",
+                        "namespace": "agentos"
+                      }
                     },
                     {
-                      "ref": { "namespace": "agentos", "name": "knowledge" },
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "knowledge"
+                      },
                       "resource": {
                         "apiVersion": "api.kagent.dev/v1alpha3",
                         "kind": "Agent",
@@ -4285,7 +4801,11 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} },
+                                  "f:spec": {
+                                    ".": {},
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {}
+                                  },
                                   "f:metadata": {
                                     "f:annotations": {
                                       ".": {},
@@ -4356,8 +4876,12 @@
                             "resourceVersion": "41499"
                           },
                           "spec": {
-                            "templateRef": { "name": "knowledge" },
-                            "harnessRef": { "name": "memory" }
+                            "templateRef": {
+                              "name": "knowledge"
+                            },
+                            "harnessRef": {
+                              "name": "memory"
+                            }
                           },
                           "status": {
                             "desiredRevision": "91f62d10c561c260d57799d2db1e899f96a09b1c5b467a87e1222da1818ba40e",
@@ -4463,7 +4987,11 @@
                                       ".": {}
                                     }
                                   },
-                                  "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} }
+                                  "f:spec": {
+                                    ".": {},
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {}
+                                  }
                                 },
                                 "manager": "OpenAPI-Generator",
                                 "operation": "Update"
@@ -4535,15 +5063,25 @@
                             "creationTimestamp": "2026-10-12T09:02:02Z"
                           },
                           "spec": {
-                            "harnessRef": { "name": "standard" },
-                            "templateRef": { "name": "remediation" }
+                            "harnessRef": {
+                              "name": "standard"
+                            },
+                            "templateRef": {
+                              "name": "remediation"
+                            }
                           }
                         }
                       },
-                      "ref": { "name": "remediation", "namespace": "agentos" }
+                      "ref": {
+                        "name": "remediation",
+                        "namespace": "agentos"
+                      }
                     },
                     {
-                      "ref": { "namespace": "agentos", "name": "service-health" },
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "service-health"
+                      },
                       "resource": {
                         "value": {
                           "metadata": {
@@ -4557,7 +5095,9 @@
                             "creationTimestamp": "2026-10-13T02:12:55Z",
                             "namespace": "agentos",
                             "generation": 1,
-                            "labels": { "agentos.dev/role": "service-health" },
+                            "labels": {
+                              "agentos.dev/role": "service-health"
+                            },
                             "managedFields": [
                               {
                                 "manager": "app",
@@ -4566,9 +5106,16 @@
                                 "apiVersion": "api.kagent.dev/v1alpha3",
                                 "fieldsType": "FieldsV1",
                                 "fieldsV1": {
-                                  "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} },
+                                  "f:spec": {
+                                    ".": {},
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {}
+                                  },
                                   "f:metadata": {
-                                    "f:labels": { ".": {}, "f:agentos.dev/role": {} },
+                                    "f:labels": {
+                                      ".": {},
+                                      "f:agentos.dev/role": {}
+                                    },
                                     "f:annotations": {
                                       "f:agentos.dev/display-name": {},
                                       ".": {},
@@ -4635,8 +5182,12 @@
                             ]
                           },
                           "spec": {
-                            "harnessRef": { "name": "standard" },
-                            "templateRef": { "name": "service-health" }
+                            "harnessRef": {
+                              "name": "standard"
+                            },
+                            "templateRef": {
+                              "name": "service-health"
+                            }
                           },
                           "status": {
                             "conditions": [
@@ -4706,7 +5257,11 @@
                                       "f:agentos.dev/display-name": {}
                                     }
                                   },
-                                  "f:spec": { ".": {}, "f:harnessRef": {}, "f:templateRef": {} }
+                                  "f:spec": {
+                                    ".": {},
+                                    "f:harnessRef": {},
+                                    "f:templateRef": {}
+                                  }
                                 },
                                 "manager": "OpenAPI-Generator",
                                 "operation": "Update"
@@ -4778,8 +5333,12 @@
                             }
                           },
                           "spec": {
-                            "templateRef": { "name": "coordinator" },
-                            "harnessRef": { "name": "standard" }
+                            "templateRef": {
+                              "name": "coordinator"
+                            },
+                            "harnessRef": {
+                              "name": "standard"
+                            }
                           },
                           "status": {
                             "latestSuccessfulRevision": "6aa859c6b740993ab98f9199fa6a9ca0f5fb7ddf58a54a3b97b805304bb81c56",
@@ -4824,16 +5383,23 @@
                           "kind": "Agent"
                         }
                       },
-                      "ref": { "namespace": "agentos", "name": "coordinator" }
+                      "ref": {
+                        "namespace": "agentos",
+                        "name": "coordinator"
+                      }
                     }
                   ]
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:51.109611Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:51.109611Z"
+        }
       },
       {
         "artifactId": "01a1330a-9934-774d-b587-b9f17a970744",
@@ -4846,12 +5412,17 @@
               "id": "call_XxPWrj14nMFhXKx8yc8mdwWA",
               "args": {
                 "requestId": "bdd650fd-b0dc-4382-89c0-caa33c0c8f9b",
-                "agent": { "namespace": "agentos", "name": "knowledge" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "knowledge"
+                },
                 "name": "agentos-lab服务健康历史只读检索"
               },
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -4879,7 +5450,10 @@
                     "a2aAuthority": "session-01a1330a-a623-7e70-9a4d-79beb189ba19.agentos.actors.resources.substrate.ate.dev",
                     "contextId": "01a1330a-a623-7e70-9a4d-79beb189ba19",
                     "createdAt": "2026-10-13T02:14:58.341977Z",
-                    "agent": { "name": "knowledge", "namespace": "agentos" },
+                    "agent": {
+                      "name": "knowledge",
+                      "namespace": "agentos"
+                    },
                     "creator": "agentos",
                     "updatedAt": "2026-10-13T02:14:58.354635162Z"
                   }
@@ -4888,10 +5462,14 @@
               "id": "call_XxPWrj14nMFhXKx8yc8mdwWA",
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:58.32194Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:14:58.32194Z"
+        }
       },
       {
         "artifactId": "01a1330a-bef8-77f5-803a-5a420cc6ffcc",
@@ -4909,7 +5487,9 @@
                 "message_id": "ca8a024f-8382-4451-90b8-26eb6500f51a"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -4938,10 +5518,14 @@
               "id": "call_Ec0bs7i38xBw59aZwEp0gat7",
               "name": "invoke_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:05.487386Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:05.487386Z"
+        }
       },
       {
         "artifactId": "01a1330b-c3e1-7eab-85ab-4c815b04623c",
@@ -4952,14 +5536,19 @@
           {
             "data": {
               "args": {
-                "agent": { "namespace": "agentos", "name": "service-health" },
+                "agent": {
+                  "namespace": "agentos",
+                  "name": "service-health"
+                },
                 "name": "agentos-lab服务健康只读检查",
                 "requestId": "4b060019-f86a-4a90-aad9-c5ce0a53ebc2"
               },
               "name": "create_session",
               "id": "call_jnl1VPG35UNC0r2gtA7AjitM"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -4981,7 +5570,10 @@
                 "output": {
                   "session": {
                     "state": "RUNTIME_STATE_READY",
-                    "agent": { "namespace": "agentos", "name": "service-health" },
+                    "agent": {
+                      "namespace": "agentos",
+                      "name": "service-health"
+                    },
                     "updatedAt": "2026-10-13T02:16:14.458652567Z",
                     "name": "agentos-lab服务健康只读检查",
                     "creator": "agentos",
@@ -4997,10 +5589,14 @@
               "id": "call_jnl1VPG35UNC0r2gtA7AjitM",
               "name": "create_session"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:14.423921Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:14.423921Z"
+        }
       },
       {
         "artifactId": "01a1330b-e420-7f3d-ad0f-26e56c97ebfa",
@@ -5018,7 +5614,9 @@
                 "message_id": "b3a12d40-44ce-4d52-b805-547b88649e52"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -5047,10 +5645,14 @@
                 }
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:17:40.438956Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:17:40.438956Z"
+        }
       },
       {
         "artifactId": "01a1330d-31a8-7b7c-bdcc-35623c04c04a",
@@ -5060,7 +5662,10 @@
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 922, "promptTokenCount": 12527 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 922,
+            "promptTokenCount": 12527
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:18:12.836342Z"
         }
       }
@@ -5086,7 +5691,10 @@
   {
     "id": "01a1330a-e23f-777e-b890-4ddbadb2a02d",
     "contextId": "01a1330a-a623-7e70-9a4d-79beb189ba19",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-13T02:16:05.382660228Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-13T02:16:05.382660228Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a1330a-fe00-7128-8e3b-5c4741a4c8ec",
@@ -5102,12 +5710,17 @@
                 "query": "agentos-lab 命名空间 service-health 服务健康 历史经验 Deployment 期望 replicas readyReplicas availableReplicas Service Endpoints EndpointSlice 端点 状态 来源 Session Task 资源路径"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:15:24.395927Z",
-          "kagent.dev/a2a/usage": { "promptTokenCount": 2995, "candidatesTokenCount": 117 }
+          "kagent.dev/a2a/usage": {
+            "promptTokenCount": 2995,
+            "candidatesTokenCount": 117
+          }
         }
       },
       {
@@ -5192,10 +5805,14 @@
               },
               "id": "call_0XZu9Hg2qnUGGBeReWy5aB9Y"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:15:24.987516Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:15:24.987516Z"
+        }
       },
       {
         "artifactId": "01a1330b-2493-74b1-9170-a6682d3cfc5f",
@@ -5211,7 +5828,9 @@
               "name": "load_memory",
               "id": "call_TmBLADaQVHya54J15zmIaEQE"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
@@ -5305,10 +5924,14 @@
               "id": "call_TmBLADaQVHya54J15zmIaEQE",
               "name": "load_memory"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:15:35.979786Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:15:35.979786Z"
+        }
       },
       {
         "artifactId": "01a1330b-4f41-7dde-aaa4-f1252aded891",
@@ -5348,7 +5971,10 @@
   {
     "id": "01a1330c-3ef7-74ca-91ae-73d7f74b8e2e",
     "contextId": "01a1330b-cf6b-74b8-b761-b69b5d7a3b9c",
-    "status": { "state": "TASK_STATE_COMPLETED", "timestamp": "2026-10-13T02:17:40.381087241Z" },
+    "status": {
+      "state": "TASK_STATE_COMPLETED",
+      "timestamp": "2026-10-13T02:17:40.381087241Z"
+    },
     "artifacts": [
       {
         "artifactId": "01a1330c-5096-7dbf-b1a8-7d2e0c867bb5",
@@ -5366,11 +5992,16 @@
                 "resource_type": "deployment"
               }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 91, "promptTokenCount": 2258 },
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 91,
+            "promptTokenCount": 2258
+          },
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:50.220832Z"
         }
       },
@@ -5387,10 +6018,14 @@
               },
               "id": "call_pfABwW6ujGhDFgbvDXH4ELi4"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:50.328468Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:50.328468Z"
+        }
       },
       {
         "artifactId": "01a1330c-6f73-7940-a6e2-4b88347b9942",
@@ -5402,14 +6037,23 @@
             "data": {
               "name": "k8s_get_resources",
               "id": "call_geo5U0QpeaY3EdDf989XiFav",
-              "args": { "resource_type": "service", "namespace": "agentos-lab", "output": "json" }
+              "args": {
+                "resource_type": "service",
+                "namespace": "agentos-lab",
+                "output": "json"
+              }
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_call" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_call"
+            }
           }
         ],
         "metadata": {
           "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:57.602291Z",
-          "kagent.dev/a2a/usage": { "candidatesTokenCount": 82, "promptTokenCount": 2415 }
+          "kagent.dev/a2a/usage": {
+            "candidatesTokenCount": 82,
+            "promptTokenCount": 2415
+          }
         }
       },
       {
@@ -5425,10 +6069,14 @@
               },
               "id": "call_geo5U0QpeaY3EdDf989XiFav"
             },
-            "metadata": { "kagent.dev/a2a/part-type": "function_response" }
+            "metadata": {
+              "kagent.dev/a2a/part-type": "function_response"
+            }
           }
         ],
-        "metadata": { "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:57.715857Z" }
+        "metadata": {
+          "kagent.dev/a2a/timeline-position": "2026-10-13T02:16:57.715857Z"
+        }
       },
       {
         "artifactId": "01a1330c-8a98-7e67-b963-712161712a73",

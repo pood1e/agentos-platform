@@ -19,7 +19,6 @@ describe("operation ownership", () => {
   it("keeps a completed worker's caller active until its native continuation arrives", async () => {
     const env = await environment(decidedTasks());
     try {
-      await env.reconcile.refresh();
       const graph = await env.projection.graphOf({ taskId: ids.approvalRoot });
       const tree = graph && taskTree(graph, ids.approvalRoot);
       assert(graph && tree);

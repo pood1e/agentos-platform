@@ -369,26 +369,6 @@
       },
       "required": ["replicas", "resources"]
     },
-    "worker": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "replicas": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "resources": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": {
-              "type": ["string", "number"]
-            }
-          }
-        }
-      },
-      "required": ["replicas", "resources"]
-    },
     "telemetry": {
       "type": "object",
       "additionalProperties": false,
@@ -849,7 +829,6 @@
     "kagent",
     "api",
     "dataplane",
-    "worker",
     "telemetry",
     "speech",
     "route",

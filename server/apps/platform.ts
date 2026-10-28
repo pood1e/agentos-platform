@@ -8,10 +8,9 @@ import { oidcIdentity } from "../authorization/oidc.js";
 import type { ExecutionStore } from "../authorization/store.js";
 import { toolBindings } from "../governance/bindings.js";
 import { governanceConfig } from "../governance/config.js";
-import { jobQueue } from "../jobs/queue.js";
 import { type KagentClients, kagentClients, kagentTransport } from "../kagent/clients.js";
 import { toolMetadata } from "../kagent/tool-metadata.js";
-import { taskProjection } from "../read-model/projection.js";
+import { taskQueries } from "../read-model/queries.js";
 import { kagentConfig, requiredEnv } from "../shared/config.js";
 
 /** Settings every platform process reads from its workload environment. */
@@ -91,28 +90,13 @@ export async function executionServices(
   return { access, operations, environmentToken, metadata, oauth, identity, execution };
 }
 
-/** The shared projection and the job queue its writes enqueue coordination into. */
-export async function projectionServices(
+/** Native task queries share the authorization store, without another database client. */
+export function queryServices(
   config: PlatformConfig,
   clients: KagentClients,
-  executions: Pick<ExecutionStore, "bindings">,
-  log: FastifyBaseLogger,
-  consumer = false,
+  executions: ExecutionStore,
 ) {
-  const projection = await taskProjection({
-    ...config.database,
-    workspace: config.workspace,
-    clients,
-    executions,
-  });
-  const jobs = await jobQueue(
-    config.database.uri,
-    config.workspace,
-    log,
-    config.database.ca,
-    consumer,
-  );
-  return { projection, jobs };
+  return taskQueries({ workspace: config.workspace, clients, executions });
 }
 
 /** Drains the servers on SIGTERM, then closes dependencies in order. */

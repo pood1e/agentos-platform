@@ -3,7 +3,7 @@ import type { ExecutionIdentity } from "../../gen/agentos/execution/v1/identity_
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { Viewer } from "../read-model/listings.js";
-import type { TaskProjection } from "../read-model/projection.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { notFound } from "../shared/errors.js";
 
 /** Whose executions a request reads; administrators also read shared service work. */
@@ -21,7 +21,7 @@ const readable = (subject: string, reader: Viewer) =>
  * Read access survives cancellation and credential expiry; it never grants execution authority.
  */
 export async function visibleGraph(
-  projection: Pick<TaskProjection, "entry" | "session" | "graph">,
+  projection: Pick<TaskQueries, "entry" | "session" | "graph">,
   reader: Viewer,
   id: { taskId?: string; contextId?: string },
 ) {

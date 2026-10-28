@@ -7,7 +7,6 @@ it("filters and counts executions before paging and binds cursors to their filte
   const reader = { subject: operator.subject, administrator: false };
   const request = { query: "", pageToken: "", pageSize: 1 };
   try {
-    await env.reconcile.refresh();
     const all = await env.projection.operations(reader, { ...request, pageSize: 100 });
     expect(all.tasks.length).toBeGreaterThan(1);
     const [head, second] = all.tasks;

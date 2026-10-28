@@ -1,125 +1,118 @@
-import { create, fromBinary } from "@bufbuild/protobuf";
-import type postgres from "postgres";
+import { create } from "@bufbuild/protobuf";
 import { TaskState } from "../../gen/a2a_pb.js";
 import type { ListTasksRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
-import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
-import { decodeCursor, encodeCursor, type PageRequest } from "./page.js";
-import type { ReadStore } from "./store.js";
-import { stamp } from "./views/runs.js";
+import type { ExecutionBinding } from "../../gen/agentos/execution/v1/identity_pb.js";
+import type { ExecutionStore } from "../authorization/store.js";
+import type { TaskGraph } from "./graph.js";
+import { type PageRequest, pageOf } from "./page.js";
+import { terminal } from "./state.js";
+import { taskTree } from "./tree.js";
+import { conversationProgress } from "./views/conversation-work.js";
+import { pendingApproval, stamp } from "./views/runs.js";
+import { taskSummary } from "./views/task.js";
 
-/** Whose execution trees a request reads: its subject, plus service work for administrators. */
+/** Personal executions, plus service work for administrators. */
 export interface Viewer {
   subject: string;
   administrator: boolean;
   systemOnly?: boolean;
 }
 
-const settled = [TaskState.COMPLETED, TaskState.FAILED, TaskState.CANCELED, TaskState.REJECTED];
-const waiting = [TaskState.INPUT_REQUIRED, TaskState.AUTH_REQUIRED];
-const like = (needle: string) => `%${needle.replace(/[\\%_]/g, "\\$&")}%`;
-
-function visible(sql: postgres.Sql, column: string, viewer: Viewer) {
-  if (viewer.systemOnly) return sql`${sql(column)} like 'service:%'`;
-  return viewer.administrator
-    ? sql`(${sql(column)} = ${viewer.subject} or ${sql(column)} like 'service:%')`
-    : sql`${sql(column)} = ${viewer.subject}`;
-}
-
-function after(sql: postgres.Sql, request: PageRequest, scope: string, id: string) {
-  if (!request.pageToken) return sql`true`;
-  const cursor = decodeCursor(request.pageToken, scope, request.query);
-  return sql`(updated_at < ${Number(cursor.afterTime)} or (updated_at = ${Number(cursor.afterTime)}
-    and ${sql(id)} > ${cursor.afterId}))`;
-}
-
-function page(
-  rows: postgres.Row[],
-  request: PageRequest,
-  scope: string,
-  id: (row: postgres.Row) => string,
+export function listings(
+  load: (bindings: ExecutionBinding[]) => Promise<TaskGraph>,
+  inventory: ExecutionStore["inventory"],
 ) {
-  const size = request.pageSize || 12;
-  const last = rows.length > size ? rows[size - 1] : undefined;
-  return {
-    rows: rows.slice(0, size),
-    nextPageToken: last
-      ? encodeCursor(scope, request.query, { id: id(last), time: Number(last.updated_at) })
-      : "",
-  };
-}
-
-export function listings({ sql, workspace }: Pick<ReadStore, "sql" | "workspace">) {
+  const visible = async (viewer: Viewer) =>
+    load(
+      await inventory({
+        subject: viewer.subject,
+        services: viewer.administrator,
+        systemOnly: viewer.systemOnly,
+      }),
+    );
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
+      const graph = await visible(viewer);
       const needle = request.query.trim().toLowerCase();
-      const scope = `conversations:${agentId}`;
-      const filter = () => sql`workspace = ${workspace} and agent_id = ${agentId}
-        and ${visible(sql, "subject", viewer)} and search like ${like(needle)}`;
-      const [rows, [count]] = await Promise.all([
-        sql`select context_id, title, state, updated_at from agentos_read.conversations
-          where ${filter()} and ${after(sql, request, scope, "context_id")}
-          order by updated_at desc, context_id limit ${(request.pageSize || 12) + 1}`,
-        sql`select count(*)::int as total from agentos_read.conversations where ${filter()}`,
-      ]);
-      const result = page(rows, request, scope, (row) => row.context_id);
+      const rows = graph
+        .sessions()
+        .filter((session) => session.agentId === agentId)
+        .filter((session) =>
+          [session.name, ...graph.contextEntries(session.id).map((entry) => entry.prompt)]
+            .join(" ")
+            .toLowerCase()
+            .includes(needle),
+        )
+        .map((session) => {
+          const progress = conversationProgress(graph, session.id);
+          return {
+            id: session.id,
+            time: Math.max(session.updatedAt ?? 0, progress.updatedAt),
+            title: session.name,
+            state: progress.state,
+          };
+        })
+        .sort((a, b) => b.time - a.time || a.id.localeCompare(b.id));
+      const page = pageOf(rows, request, `conversations:${agentId}`, (row) => row);
       return {
-        conversations: result.rows.map((row) =>
+        conversations: page.items.map((row) =>
           create(ConversationSummarySchema, {
-            contextId: row.context_id,
+            contextId: row.id,
             title: row.title,
             state: row.state,
-            updatedAt: stamp(Number(row.updated_at) || undefined),
+            updatedAt: stamp(row.time || undefined),
           }),
         ),
-        totalSize: count?.total ?? 0,
-        nextPageToken: result.nextPageToken,
+        totalSize: page.totalSize,
+        nextPageToken: page.nextPageToken,
       };
     },
     async operations(
       viewer: Viewer,
       request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer">>,
     ) {
-      const needle = request.query.trim().toLowerCase();
+      const graph = await visible(viewer);
       const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
       const engineer = request.engineer ?? "";
+      const needle = request.query.trim().toLowerCase();
+      const rows = graph
+        .relations()
+        .roots.flatMap((root) => {
+          const tree = taskTree(graph, root.id);
+          if (!tree || (engineer && !tree.entries.some((entry) => entry.agentId === engineer)))
+            return [];
+          const summary = taskSummary(graph, tree);
+          if (states.length && !states.includes(summary.state)) return [];
+          if (![summary.prompt, root.id].join(" ").toLowerCase().includes(needle)) return [];
+          return [{ id: root.id, time: tree.updatedAt ?? 0, summary }];
+        })
+        .sort((a, b) => b.time - a.time || a.id.localeCompare(b.id));
       const scope = `tasks:${JSON.stringify([states, engineer, viewer.systemOnly === true])}`;
-      const filter = () => sql`o.workspace = ${workspace} and ${visible(sql, "o.subject", viewer)}
-        and (${!states.length} or o.state = any(${states}::int[]))
-        and (${!engineer} or ${engineer} = any(o.members))
-        and o.search like ${like(needle)}`;
-      const [rows, [count]] = await Promise.all([
-        sql`select o.task_id, o.updated_at, o.summary from agentos_read.operations o
-          where ${filter()} and ${after(sql, request, scope, "o.task_id")}
-          order by o.updated_at desc, o.task_id limit ${(request.pageSize || 12) + 1}`,
-        sql`select count(*)::int as total from agentos_read.operations o where ${filter()}`,
-      ]);
-      const result = page(rows, request, scope, (row) => row.task_id);
+      const page = pageOf(rows, request, scope, (row) => row);
       return {
-        tasks: result.rows.map((row) => fromBinary(TaskSummarySchema, row.summary)),
-        totalSize: count?.total ?? 0,
-        nextPageToken: result.nextPageToken,
+        tasks: page.items.map((row) => row.summary),
+        totalSize: page.totalSize,
+        nextPageToken: page.nextPageToken,
       };
     },
-    /** Per-agent activity over the viewer's executions. */
     async agentActivity(viewer: Viewer) {
-      const rows = await sql`select agent_id,
-          count(*) filter (where not (state = any(${settled}::int[])))::int as active,
-          coalesce(sum(call_count), 0)::int as calls,
-          bool_or(pending_approval and not (state = any(${settled}::int[]))) as approval,
-          bool_or(state = any(${waiting}::int[])) as interrupted
-        from agentos_read.tasks where workspace = ${workspace} and ${visible(sql, "subject", viewer)}
-        group by agent_id`;
+      const graph = await visible(viewer);
       return new Map(
-        rows.map((row) => [
-          row.agent_id as string,
-          {
-            active: row.active as number,
-            calls: row.calls as number,
-            approval: !!row.approval,
-            interrupted: !!row.interrupted,
-          },
-        ]),
+        graph.agents().map((agent) => {
+          const entries = graph.agentEntries(agent.id);
+          return [
+            agent.id,
+            {
+              active: entries.filter((entry) => !terminal(entry.state)).length,
+              calls: entries.reduce((total, entry) => total + entry.calls.length, 0),
+              approval: entries.some((entry) => !terminal(entry.state) && pendingApproval(entry)),
+              interrupted: entries.some((entry) =>
+                [TaskState.INPUT_REQUIRED, TaskState.AUTH_REQUIRED].includes(entry.state),
+              ),
+            },
+          ];
+        }),
       );
     },
   };

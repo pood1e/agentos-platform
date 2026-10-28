@@ -5,13 +5,9 @@ import { type Message, type Part, Role, type Task } from "../../../gen/a2a_pb.js
 export const timelineKey = "kagent.dev/a2a/timeline-position";
 export const partTypeKey = "kagent.dev/a2a/part-type";
 export const createdAtKey = "kagent.dev/a2a/task-created-at";
-export const parentTaskKey = "agentos.dev/parent-task";
-export const resumedTaskKey = "agentos.dev/resumed-task";
 export const intentKey = "agentos.dev/intent";
 
 export { object, text } from "../../../shared/json.js";
-
-import { text } from "../../../shared/json.js";
 
 function partsText(parts: Part[]): string {
   return parts
@@ -34,8 +30,6 @@ export const millis = (timestamp?: Timestamp) => (timestamp ? timestampMs(timest
 export const statusMillis = (task: Task) => millis(task.status?.timestamp);
 
 export const createdMillis = (task: Task) => isoMillis(task.metadata?.[createdAtKey]);
-
-export const metadataText = (message: Message, key: string) => text(message.metadata?.[key]);
 
 export const taskSources = (task: Task) => [
   ...task.history.map((message) => ({

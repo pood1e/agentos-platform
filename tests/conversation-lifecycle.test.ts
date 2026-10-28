@@ -47,7 +47,6 @@ async function workspace(state = TaskState.COMPLETED) {
   });
   env.fake.update(task, state);
   await registry.bind(root, owner);
-  await env.reconcile.refresh();
   const client = createClient(
     ConsoleService,
     createRouterTransport(
@@ -90,7 +89,6 @@ it("lets a read-only owner delete settled native history and closes its executio
   expect(await env.projection.session(env.root.id)).toBeUndefined();
   expect(await env.projection.entry(env.task.id)).toBeUndefined();
   expect((await env.list()).totalSize).toBe(0);
-  await env.reconcile.refresh();
   expect((await env.list()).totalSize).toBe(0);
   expect((await env.registry.record(env.root, true)).binding.revoked).toBe(true);
   await expect(
@@ -178,7 +176,6 @@ it("includes a background child in history status and deletion protection while 
     }),
   );
   env.fake.update(env.task, TaskState.COMPLETED);
-  await env.reconcile.refresh();
   const graph = await env.projection.graphOf({ contextId: env.root.id });
   if (!graph) throw new Error("Missing conversation tree");
   expect((await conversation(graph, env.root.agent, env.root.id, async () => undefined)).busy).toBe(
@@ -189,7 +186,6 @@ it("includes a background child in history status and deletion protection while 
     code: Code.FailedPrecondition,
   });
   env.fake.update(task, TaskState.COMPLETED);
-  await env.reconcile.refresh();
   expect((await env.list()).conversations[0].state).toBe(ActivityState.SUCCEEDED);
   await env.client.deleteSession({ sessionId: env.root.id });
 });

@@ -4,15 +4,7 @@ import { Role, type Task, TaskSchema, TaskState } from "../../gen/a2a_pb.js";
 import type { Interaction } from "../../gen/agentos/console/v1/task_pb.js";
 import { type CallEntry, callEntries } from "./calls.js";
 import { isHitlResponse } from "./decode/hitl.js";
-import {
-  createdMillis,
-  messageText,
-  metadataText,
-  parentTaskKey,
-  resumedTaskKey,
-  statusMillis,
-  timeline,
-} from "./decode/messages.js";
+import { createdMillis, messageText, statusMillis, timeline } from "./decode/messages.js";
 import { taskOutput } from "./decode/output.js";
 import { approvals, type Decision, interactions, latestDecision } from "./interactions.js";
 
@@ -46,9 +38,6 @@ function taskVersion(task: Task): string {
   return createHash("sha256").update(toBinary(TaskSchema, task)).digest("base64url");
 }
 
-const firstMetadata = (task: Task, key: string) =>
-  task.history.map((message) => metadataText(message, key)).find(Boolean) ?? "";
-
 export function ingest(task: Task, agentId: string): TaskEntry {
   const calls = callEntries(task, approvals(task));
   const users = task.history.filter((message) => message.role === Role.USER);
@@ -66,7 +55,10 @@ export function ingest(task: Task, agentId: string): TaskEntry {
     prompt: messageText(users[0]),
     messageIds: users.map((message) => message.messageId),
     userMessages: users
-      .filter((message) => !metadataText(message, parentTaskKey) && !isHitlResponse(message))
+      .filter(
+        (message) =>
+          !message.messageId.startsWith("kagent-continuation-") && !isHitlResponse(message),
+      )
       .flatMap((message) => {
         const value = messageText(message);
         return value ? [{ id: message.messageId, text: value }] : [];
@@ -74,8 +66,12 @@ export function ingest(task: Task, agentId: string): TaskEntry {
     ...taskOutput(task),
     calls,
     interactions: interactions(task, agentId, calls),
-    parentTaskId: firstMetadata(task, parentTaskKey),
-    resumedTaskId: firstMetadata(task, resumedTaskKey),
+    parentTaskId:
+      users.find((message) => message.messageId.startsWith("kagent-continuation-"))
+        ?.referenceTaskIds[0] ?? "",
+    resumedTaskId:
+      users.find((message) => message.messageId.startsWith("kagent-continuation-"))
+        ?.referenceTaskIds[1] ?? "",
     decision: latestDecision(task),
   };
 }

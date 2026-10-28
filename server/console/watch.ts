@@ -1,7 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { type DescMessage, equals, type MessageShape } from "@bufbuild/protobuf";
-import type { TaskProjection } from "../read-model/projection.js";
-import { unavailable } from "../shared/errors.js";
+import type { TaskQueries } from "../read-model/queries.js";
 
 const settle = 250;
 const healthCheck = 5_000;
@@ -15,16 +14,13 @@ const sleep = (ms: number, signal: AbortSignal) =>
   });
 
 export interface WatchOptions {
-  /** Execution trees the view depends on; any change wakes the view while unknown. */
-  roots?: () => ReadonlySet<string> | undefined;
   /** Registers other change sources, such as live task streams; returns their cleanup. */
   wakes?: (touch: () => void) => () => void;
-  poll?: boolean;
 }
 
 /** Yields the current view, then a new view whenever its execution trees change. */
 export async function* watch<Desc extends DescMessage>(
-  projection: Pick<TaskProjection, "onChange" | "healthy">,
+  projection: Pick<TaskQueries, "onChange">,
   schema: Desc,
   signal: AbortSignal,
   view: () => MessageShape<Desc> | Promise<MessageShape<Desc>>,
@@ -36,17 +32,13 @@ export async function* watch<Desc extends DescMessage>(
     changed = true;
     wake();
   };
-  const unsubscribe = projection.onChange((change) => {
-    const roots = options.roots?.();
-    if (!roots || !change.roots.length || change.roots.some((root) => roots.has(root))) touch();
-  });
+  const unsubscribe = projection.onChange(touch);
   const release = options.wakes?.(touch);
   const deadline = Date.now() + lifetime;
   let last: MessageShape<Desc> | undefined;
   let sentAt = 0;
   try {
     while (!signal.aborted && Date.now() < deadline) {
-      if (!projection.healthy()) throw unavailable();
       if (changed) {
         changed = false;
         const next = await view();
@@ -62,11 +54,10 @@ export async function* watch<Desc extends DescMessage>(
       wake = () => stop.abort();
       await sleep(healthCheck, AbortSignal.any([signal, stop.signal]));
       if (!signal.aborted && last && Date.now() - sentAt >= heartbeat) {
-        if (!projection.healthy()) throw unavailable();
         sentAt = Date.now();
         yield last;
       }
-      if (options.poll) changed = true;
+      changed = true;
       wake = () => {};
     }
   } finally {

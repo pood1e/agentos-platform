@@ -7,31 +7,21 @@ import type {
 } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { Executions } from "../authorization/executions.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentKey } from "../read-model/agents.js";
-import type { TaskProjection } from "../read-model/projection.js";
-import { refreshContexts } from "../read-model/reconcile.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { awaiting } from "../read-model/state.js";
 import { conversationProgress } from "../read-model/views/conversation-work.js";
 import { notFound, precondition } from "../shared/errors.js";
 import { chatTarget } from "./history.js";
 
 export function conversationCommands(
-  projection: TaskProjection,
+  projection: TaskQueries,
   clients: KagentClients,
   namespace: string,
   entryAgent: string,
   executions: Executions,
 ) {
   /** Conversation state after re-reading every session of its execution tree natively. */
-  async function progress(sessionId: string, agentId: string) {
-    const known = await projection.graphOf({ contextId: sessionId });
-    const contexts = new Map([[sessionId, agentId]]);
-    for (const entry of known?.all() ?? []) contexts.set(entry.contextId, entry.agentId);
-    await refreshContexts(
-      projection,
-      clients,
-      [...contexts].map(([id, agentId]) => ({ id, agentId })),
-    );
+  async function progress(sessionId: string) {
     const graph = await projection.graphOf({ contextId: sessionId });
     return graph ? conversationProgress(graph, sessionId).state : ActivityState.IDLE;
   }
@@ -51,7 +41,7 @@ export function conversationCommands(
         } catch {
           throw notFound("chat.invalidConversation");
         }
-        const state = await progress(session.id, agentKey(session.agent));
+        const state = await progress(session.id);
         if (awaiting(state) || state === ActivityState.WORKING || state === ActivityState.SUBMITTED)
           throw precondition("chat.deleteBusy");
         let result: DeleteSessionResponse;
@@ -66,7 +56,6 @@ export function conversationCommands(
           throw error;
         }
         await executions.revoke(session, identity);
-        await projection.forgetSession(session.id);
         return result;
       }),
   };

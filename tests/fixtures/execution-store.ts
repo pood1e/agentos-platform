@@ -16,7 +16,29 @@ export function memoryStore(): ExecutionStore {
     if (values.get(id)?.version !== version) throw new ConnectError("Conflict", Code.Aborted);
     values.set(id, { value: structuredClone(value), version: String(Number(version ?? 0) + 1) });
   };
+  const locked = new Set<string>();
   return {
+    async exclusive(key, run) {
+      if (locked.has(key)) throw new ConnectError("Busy", Code.Aborted);
+      locked.add(key);
+      try {
+        return await run();
+      } finally {
+        locked.delete(key);
+      }
+    },
+    async inventory(filter = {}) {
+      return [...bindings.values()]
+        .map((row) => structuredClone(row.value) as ExecutionBinding)
+        .filter((row) => !filter.roots || filter.roots.includes(row.rootSessionId))
+        .filter(
+          (row) =>
+            filter.subject === undefined ||
+            row.subject === filter.subject ||
+            (filter.services && row.subject.startsWith("service:")),
+        )
+        .filter((row) => !filter.systemOnly || row.subject.startsWith("service:"));
+    },
     binding: (id) => read(bindings, id),
     chain: async (id) => {
       const chain: ExecutionBinding[] = [];

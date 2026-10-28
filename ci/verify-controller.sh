@@ -3,7 +3,7 @@ set -eu
 task_root=$(pwd)
 ci/prepare-substrate.sh
 source_dir="$task_root/.cache/controller-source"
-source_commit=a144127e59c2aa756d8c18d88c0e3dd9191a6227
+source_commit=722f06c11509ec64d3a99ae17e349d83a854de11
 git init --quiet "$source_dir"
 git -C "$source_dir" remote add origin https://github.com/pood1e/kagent.git
 git -C "$source_dir" fetch --quiet --depth 1 origin "$source_commit"
@@ -20,7 +20,7 @@ go test -race -count=1 ./core/internal/controller -run '^TestStatusForPairPublis
 make lint AWK=awk
 mkdir -p "$task_root/.cache/controller-image"
 CGO_ENABLED=0 go build -trimpath -buildvcs=false \
-  -ldflags "-s -w -X github.com/kagent-dev/kagent/go/core/internal/version.Version=1.0.0-alpha17-agentos.3 -X github.com/kagent-dev/kagent/go/core/internal/version.GitCommit=$source_commit -X github.com/kagent-dev/kagent/go/core/internal/version.SubstrateVersion=0.6.0-alpha3" \
+  -ldflags "-s -w -X github.com/kagent-dev/kagent/go/core/internal/version.Version=1.0.0-alpha17-agentos.4 -X github.com/kagent-dev/kagent/go/core/internal/version.GitCommit=$source_commit -X github.com/kagent-dev/kagent/go/core/internal/version.SubstrateVersion=0.6.0-alpha3" \
   -o "$task_root/.cache/controller-image/kagent-controller" ./core/cmd/controller
 mkdir -p "$task_root/.cache/claude-image"
 cp "$task_root/runtime/harness-toolbox/install.sh" "$task_root/.cache/claude-image/install.sh"

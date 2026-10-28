@@ -17,8 +17,7 @@ import { accessProfile, requestIdentity } from "../platform/access.js";
 import { agentKey } from "../read-model/agents.js";
 import { ingest } from "../read-model/entry.js";
 import { TaskGraph } from "../read-model/graph.js";
-import type { TaskProjection } from "../read-model/projection.js";
-import { refreshSession } from "../read-model/reconcile.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import { TaskStreams } from "../read-model/streams.js";
 import { conversation, type FullTask } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
@@ -37,7 +36,7 @@ import { watch } from "./watch.js";
 export interface ConsoleDependencies {
   apps?: McpApps;
   metadata?: ToolMetadata;
-  projection: TaskProjection;
+  projection: TaskQueries;
   clients: KagentClients;
   namespace: string;
   access: BindingView;
@@ -134,7 +133,6 @@ export function consoleService({
         identity,
         systemConversation(namespace, entryAgent, request.agent, identity, request.contextId),
       );
-      let root: string | undefined;
       let touch = () => {};
       const streams = new TaskStreams(clients, context.signal, () => touch());
       const fullTask: FullTask = async (entry) =>
@@ -146,12 +144,9 @@ export function consoleService({
         async () => {
           let graph = new TaskGraph([], [], await projection.agents());
           if (request.contextId) {
-            if (!(await projection.session(request.contextId)))
-              await refreshSession(projection, clients, request.contextId, context.signal);
             const tree = await visibleGraph(projection, reader, { contextId: request.contextId });
             if (tree?.session(request.contextId)?.agentId !== agentKey(request.agent))
               throw notFound("chat.invalidConversation");
-            root = (await projection.session(request.contextId))?.root;
             streams.follow(tree.all());
             // Live streams are fresher than the projection while their tasks run.
             graph = new TaskGraph(
@@ -174,7 +169,6 @@ export function consoleService({
           });
         },
         {
-          roots: () => (root ? new Set([root]) : undefined),
           wakes: (wake) => {
             touch = wake;
             return () => streams.close();

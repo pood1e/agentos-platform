@@ -17,7 +17,6 @@ const examplePack = fileURLToPath(new URL("fixtures/pack/", import.meta.url));
 
 async function workbench(tasks?: Task[]) {
   const env = await environment(tasks);
-  await env.reconcile.refresh();
   return { ...env, client: consoleClient(env, { pack: loadPack(examplePack) }) };
 }
 
@@ -87,7 +86,7 @@ describe("console service", () => {
   });
 
   it("starts a conversation, deduplicates retries and streams the answer", async () => {
-    const { client, fake, reconcile, close } = await workbench();
+    const { client, fake, close } = await workbench();
     const request = {
       agent: { namespace: "agentos", name: "assistant" },
       messageId: "6a2f0f8e-0000-4000-8000-000000000001",
@@ -125,7 +124,6 @@ describe("console service", () => {
     const assistant = fake.agents.find((agent) => agent.ref?.name === "assistant")?.resource;
     if (!assistant?.value) throw new Error("missing assistant");
     assistant.value.status = { conditions: [{ type: "Ready", status: "False" }] };
-    await reconcile.refresh();
     expect(await rejection(client.sendMessage({ ...request, messageId: "not-ready" }))).toEqual({
       code: Code.Unavailable,
       key: "chat.notReady",
@@ -146,7 +144,7 @@ describe("console service", () => {
     });
     fake.load({ sessions: [session], tasks: [task] });
     await bindTasks(store, fake, [task]);
-    expect(await projection.session(session.id)).toBeUndefined();
+    expect((await projection.session(session.id))?.id).toBe(session.id);
     const controller = new AbortController();
     try {
       for await (const { conversation } of client.watchConversation(

@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Code } from "@connectrpc/connect";
 import postgres from "postgres";
 import { expect, onTestFinished, it as test } from "vitest";
-import { commandLocks } from "../server/read-model/commands.js";
-import { advisoryLease } from "../server/shared/lease.js";
+import { commandLocks } from "../server/authorization/commands.js";
 
 const it = test.skipIf(!process.env.CHANGE_TEST_DATABASE_URL);
 
@@ -44,27 +43,4 @@ it("rejects overlapping commands on one conversation across API replicas", async
     }),
   ).rejects.toThrow("dispatch failed");
   expect(await second("conversation", async () => "released")).toBe("released");
-});
-
-it("elects one reconciler and hands over after a lost session or shutdown", async () => {
-  const name = `agentos_reconcile:${randomUUID()}`;
-  const admin = replica();
-  const database = { uri: process.env.CHANGE_TEST_DATABASE_URL ?? "" };
-  const first = advisoryLease(database, name),
-    second = advisoryLease(database, name);
-  onTestFinished(async () => {
-    await Promise.all([first.release(), second.release()]);
-  });
-  expect(await first.held()).toBe(true);
-  expect(await second.held()).toBe(false);
-  expect(await first.held()).toBe(true);
-  await admin`select pg_terminate_backend(pid, 1000) from pg_locks
-    where locktype = 'advisory' and granted and objsubid = 1
-      and ((classid::int8 << 32) | objid::int8) = hashtextextended(${name}, 0)`;
-  // The terminated session lost the lock; its replica reconnects as a standby.
-  expect(await second.held()).toBe(true);
-  expect(await first.held()).toBe(false);
-  expect(await second.held()).toBe(true);
-  await second.release();
-  expect(await first.held()).toBe(true);
 });

@@ -20,7 +20,7 @@ import type { KagentClients } from "../kagent/clients.js";
 import { appOnly, appResource, appVisible, type ToolMetadata } from "../kagent/tool-metadata.js";
 import { toolBaseName } from "../read-model/decode/tools.js";
 import type { TaskGraph } from "../read-model/graph.js";
-import type { TaskProjection } from "../read-model/projection.js";
+import type { TaskQueries } from "../read-model/queries.js";
 import type { FullTask } from "../read-model/views/conversation.js";
 import { taskRun } from "../read-model/views/run.js";
 import { notFound, unavailable } from "../shared/errors.js";
@@ -29,7 +29,7 @@ import { projectAppViews } from "./projection.js";
 
 interface Dependencies {
   clients: KagentClients;
-  projection: TaskProjection;
+  projection: TaskQueries;
   namespace: string;
   access: BindingView;
   operations: GovernanceConfig;

@@ -7,7 +7,6 @@ import { platformToolAuthorization } from "../authorization/platform-tools.js";
 import { executionRuntime } from "../authorization/runtime.js";
 import { gatewayAuthorization } from "../authorization/transport.js";
 import { workloadConfiguration, workloadIdentity } from "../authorization/workloads.js";
-import { enqueueCoordination } from "../jobs/coordination.js";
 import { configurationClients } from "../kagent/configuration.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { knowledgeService } from "../knowledge/service.js";
@@ -17,14 +16,13 @@ import { registerPlatformMcp } from "../platform/mcp.js";
 import { listenConfig } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
 import { rpcMetrics } from "../shared/telemetry.js";
-import { continuationJobs } from "../team-sessions/continuation.js";
 import {
   closeOnSignal,
   executionServices,
   platformApp,
   platformClients,
   platformConfig,
-  projectionServices,
+  queryServices,
 } from "./platform.js";
 
 const config = platformConfig();
@@ -37,8 +35,7 @@ const { access, environmentToken, metadata, execution } = await executionService
   configuration.clients,
   app.log,
 );
-const { projection, jobs } = await projectionServices(config, clients, execution.store, app.log);
-enqueueCoordination(projection, jobs, [continuationJobs]);
+const projection = queryServices(config, clients, execution.store);
 const runtime = executionRuntime(
   execution,
   configuration.clients,
@@ -96,28 +93,11 @@ const guardrails = grpcServer(app, {
 const persistence = grpcServer(app, {
   interceptors: [rpcMetrics("server")],
   routes: (router) =>
-    registerRuntime(
-      router,
-      runtime,
-      config.kagent,
-      clients,
-      knowledge.scope,
-      projection.apply,
-      app.log,
-    ),
+    registerRuntime(router, runtime, config.kagent, clients, knowledge.scope, app.log),
 });
 const keys = actorKeyServer(app, runtime.actorKeys);
-registerHealth(
-  app,
-  async () => configuration.healthy() && access.healthy() && (await projection.reachable()),
-);
-closeOnSignal(app, [
-  () => jobs.boss.stop({ graceful: true, timeout: 10_000 }),
-  projection.close,
-  configuration.close,
-  access.close,
-  execution.close,
-]);
+registerHealth(app, async () => configuration.healthy() && access.healthy());
+closeOnSignal(app, [configuration.close, access.close, execution.close]);
 const { host } = listenConfig();
 await Promise.all([
   guardrails.listen(Number(process.env.AGENTOS_GUARDRAILS_PORT ?? "9090"), host),
