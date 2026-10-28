@@ -133,7 +133,7 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal("missing service account verification material")
 		}
 	})
-	t.Run("speech uses native gateway authorization and credential references", func(t *testing.T) { testSpeech(t, c, scheme, ns.Name) })
+	t.Run("speech uses native gateway authorization and credential references", func(t *testing.T) { testSpeech(t, c, scheme, ns.Name, config) })
 	t.Run("native connections use deployed gateway CRDs", func(t *testing.T) {
 		manager, err := ctrl.NewManager(config, ctrl.Options{
 			Scheme: scheme, Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{ns.Name: {}}},
