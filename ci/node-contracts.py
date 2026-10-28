@@ -23,6 +23,7 @@ for directory in ("proto", "third_party"):
         shutil.copyfile(source, destination)
 for name in ("LICENSE", "buf.lock"):
     shutil.copyfile(root / name, target / name)
+shutil.copyfile(root / "gen/authorization.json", target / "authorization.json")
 package = {
     "name": "@agentos/contracts",
     "version": versions().semver,
@@ -30,7 +31,10 @@ package = {
     "repository": {"type": "git", "url": "https://github.com/pood1e/agentos-platform.git"},
     "type": "module",
     "license": "Apache-2.0",
-    "exports": {"./*": {"types": "./*.d.ts", "default": "./*.js"}},
+    "exports": {
+        "./authorization.json": "./authorization.json",
+        "./*": {"types": "./*.d.ts", "default": "./*.js"},
+    },
     "peerDependencies": {
         name: "^" + manifest["dependencies"][name]
         for name in (

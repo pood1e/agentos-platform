@@ -9,7 +9,10 @@ import yaml
 
 cache = Path(".cache/chart-check")
 cache.mkdir(parents=True, exist_ok=True)
-versions = yaml.safe_load(Path("deploy/vars.yaml").read_text())
+KAGENT = "1.0.0-alpha17"
+AGENTGATEWAY = "v1.6.0"
+GATEWAY_API = "v1.6.1"
+CERT_MANAGER = "v1.21.2"
 
 
 def download(name, version, url):
@@ -44,12 +47,12 @@ sources = [
     chart(
         "kagent-crds",
         "oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds",
-        versions["kagent_version"],
+        KAGENT,
     ),
     chart(
         "agentgateway-crds",
         "oci://cr.agentgateway.dev/charts/agentgateway-crds",
-        versions["agentgateway_version"],
+        AGENTGATEWAY,
     ),
     download(
         "traefik-crds",
@@ -58,13 +61,13 @@ sources = [
     ),
     download(
         "gateway-crds",
-        versions["gateway_api_version"],
-        f"https://github.com/kubernetes-sigs/gateway-api/releases/download/{versions['gateway_api_version']}/standard-install.yaml",
+        GATEWAY_API,
+        f"https://github.com/kubernetes-sigs/gateway-api/releases/download/{GATEWAY_API}/standard-install.yaml",
     ),
     download(
         "cert-manager-crds",
-        versions["cert_manager_version"],
-        f"https://github.com/cert-manager/cert-manager/releases/download/{versions['cert_manager_version']}/cert-manager.crds.yaml",
+        CERT_MANAGER,
+        f"https://github.com/cert-manager/cert-manager/releases/download/{CERT_MANAGER}/cert-manager.crds.yaml",
     ),
 ]
 for resource in yaml.safe_load_all("\n---\n".join(sources)):

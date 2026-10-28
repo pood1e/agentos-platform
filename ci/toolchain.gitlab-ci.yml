@@ -6,7 +6,7 @@ variables:
   CACHE_COMPRESSION_LEVEL: fastest
 
 .agentos-ci:
-  image: $AGENTOS_PLATFORM_REGISTRY/ci/tools@sha256:b207036ac2621d20b4f6937a1ab3ee8250e0f3029c9823cecf05ec857492b4ac
+  image: $AGENTOS_PLATFORM_REGISTRY/ci/tools@sha256:e75a302fdd369d357e1723b98af7a822ef07f772cf0aa91ce796c669b4811771
   tags: [$AGENTOS_CI_RUNNER]
   before_script: [mkdir -p .cache]
 

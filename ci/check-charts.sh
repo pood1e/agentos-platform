@@ -7,8 +7,7 @@ helm dependency build charts/agentos-environment --skip-refresh
 mkdir -p .cache/chart-check
 go -C controller build -o ../.cache/chart-check/render ./cmd/render
 python ci/chart-schemas.py
-ANSIBLE_CONFIG=deploy/ansible.cfg ansible-playbook ci/render-chart-values.yaml
-python -m unittest discover -s tests/deployment
+python ci/chart-fixtures.py
 conftest verify --policy tests/policies
 helm-unittest --strict charts/agentos
 helm dependency update tests/fixtures/solution-chart --skip-refresh
@@ -35,17 +34,5 @@ for name in platform alternate solution direct-only; do
   esac
   conftest test --combine --policy tests/policies --namespace main \
     --data .cache/chart-check/test-data.json "$@" ".cache/chart-check/$name.yaml"
-done
-kagent_version=$(python -c "import yaml; print(yaml.safe_load(open('deploy/vars.yaml'))['kagent_version'])")
-kagent_image=$(python -c "import yaml; print(yaml.safe_load(open('deploy/vars.yaml'))['kagent_controller_image'].replace('{{ agentos_image_registry }}', 'registry.example.com/agentos'))")
-for scenario in .cache/chart-check .cache/chart-check/telemetry; do
-  HELM_PLUGINS="$PWD/deploy/helm-plugins" \
-    AGENTOS_KUSTOMIZE_OVERLAY="$PWD/deploy/kustomize/kagent" \
-    AGENTOS_PATCHED_IMAGE="$kagent_image" \
-    helm template kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent --post-renderer agentos-kustomize \
-    --version "$kagent_version" -f "$scenario/kagent-values.yaml" > "$scenario/native-kagent.yaml"
-  conftest test --combine --policy tests/policies --namespace runtime_tests \
-    --data .cache/chart-check/test-data.json "$scenario/kagent-values.yaml" \
-    .cache/chart-check/substrate-values.yaml "$scenario/native-kagent.yaml"
 done
 ci/check-environment-charts.sh

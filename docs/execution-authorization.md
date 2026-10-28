@@ -14,7 +14,7 @@
 | `agentos-harnesses-manage` | Harness 配置 |
 
 角色可以组合；IdP 可用 `agentos-admin` 组合角色并在令牌中展开实际权限。
-管理 RPC 与浏览器共用 proto `Capability`，发布包的 `authorization.json` 由同一协议生成，供站点映射身份。
+管理 RPC 与浏览器共用 proto `Capability`，契约包的 `authorization.json` 由同一协议生成，供站点映射身份。
 
 ## 执行权限
 

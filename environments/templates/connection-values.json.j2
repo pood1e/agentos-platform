@@ -1,9 +1,0 @@
-{% set connection = {
-  'name': environment_name, 'governance': environment_governance, 'issuer': environment_issuer, 'resource': gateway_resource,
-  'gateway': {'address': ansible_host, 'host': gateway_server_name, 'nodePort': gateway_node_port | int, 'ca': gateway_certificate.resources[0].data['ca.crt'] | b64decode},
-  'toolsets': toolsets, 'identities': engineer_identities, 'titles': {}, 'apis': environment_apis
-} %}
-{% for project, connector in environment_connectors.items() %}
-{% set unused = connection.titles.update({project: connector.title | default(project)}) %}
-{% endfor %}
-{{ connection | to_nice_json }}

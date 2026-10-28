@@ -28,8 +28,6 @@ workflow:
           - controller/**/*
           - ci/**/*
           - automation/**/*
-          - deploy/**/*
-          - environments/**/*
           - proto/**/*
           - server/**/*
           - shared/**/*

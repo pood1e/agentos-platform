@@ -65,7 +65,7 @@ Preset 首次创建 `<release>-speech` Secret，用户在模型管理页保存�
 平台 Chart 以 `voice.enabled` 启用语音，`voice.image` 固定 worker 镜像摘要，`voice.secretRef` 指向包含 LiveKit `api-key` 与 `api-secret` 的 Secret，`voice.capacity` 设置 worker 并发上限。
 启用后渲染 worker、语音设置 Preset 与 worker 到 api 的网络策略。
 
-部署入口 `deploy/deploy.yaml` 在安装应用前运行 `deploy/voice.yaml`，生成 LiveKit 密钥，使用官方 Chart 安装 LiveKit Server，并复用应用 TLS 域名的 `/livekit`。
+[参考部署](https://github.com/pood1e/agentos-deploy)在安装应用前生成 LiveKit 密钥，使用官方 Chart 安装 LiveKit Server，并复用应用 TLS 域名的 `/livekit`。
 信令经 HTTPS/WSS 443，媒体使用节点 UDP 7882 或 TCP 7881，客户端需要能访问媒体地址。外部 LiveKit 通过 `voice.livekitURL`（worker 地址）与 `voice.publicURL`（浏览器地址）接入。
 
 协议见 `proto/agentos/console/v1/speech.proto` 与 `proto/agentos/voice/v1/voice.proto`，worker 位于 `voice/agentos_voice/`。

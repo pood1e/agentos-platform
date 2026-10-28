@@ -44,7 +44,6 @@
 | `controller/internal/connections` | kagent 可选 agentgateway 模块的平台配置 |
 | `charts/agentos`、`charts/agentos-controller` | 平台应用与共享控制器 library Chart |
 | `charts/agentos-environment`、`charts/agentos-connections` | 环境网关与平台连接 release |
-| `deploy`、`environments` | Ansible collection、运行时部署、站点接入与资源生命周期 |
 | `.github`、`ci` | 合并检查、构建、验签、版本与发布 |
 | `mise.toml`、`mise.lock` | 开发与 CI 工具版本及来源锁定 |
 | `tests` | 单元与集成回归；`fake-kagent` 为录制驱动替身，`proofs` 为真实组件验证 |

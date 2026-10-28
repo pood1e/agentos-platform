@@ -8,19 +8,16 @@ COPY --from=mise /usr/local/bin/mise /usr/local/bin/mise
 ENV MISE_DATA_DIR=/opt/mise MISE_CACHE_DIR=/tmp/mise-cache \
     MISE_GLOBAL_CONFIG_FILE=/opt/agentos-ci/mise.toml \
     MISE_TRUSTED_CONFIG_PATHS=/opt/agentos-ci:/builds \
-    ANSIBLE_COLLECTIONS_PATH=/opt/agentos-ci/collections \
     KUBEBUILDER_ASSETS=/usr/local/kubebuilder/bin \
     PATH=/opt/agentos-ci/venv/bin:/opt/mise/shims:$PATH
 WORKDIR /opt/agentos-ci
 COPY mise.toml mise.lock ./
 RUN mise install --locked && mise reshim && rm -rf /root/go /root/.cache /tmp/mise-cache
 COPY ci/ ci/
-COPY deploy/requirements.txt deploy/requirements.yaml deploy/
 COPY contracts/requirements.txt contracts/
 RUN uv venv /opt/agentos-ci/venv --python "$(mise which python)" \
     && uv pip install --python /opt/agentos-ci/venv/bin/python \
-       -r ci/python-requirements.txt -r deploy/requirements.txt -r contracts/requirements.txt \
-    && ansible-galaxy collection install -r deploy/requirements.yaml -p /opt/agentos-ci/collections \
+       -r ci/python-requirements.txt -r contracts/requirements.txt \
     && uv cache clean
 RUN assets="$(setup-envtest use 1.37 --bin-dir /tmp/envtest -p path)" \
     && mkdir -p /usr/local/kubebuilder/bin \
