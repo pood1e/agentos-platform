@@ -3,7 +3,7 @@ set -eu
 task_root=$(pwd)
 ci/prepare-substrate.sh
 source_dir="$task_root/.cache/controller-source"
-source_commit=722f06c11509ec64d3a99ae17e349d83a854de11
+source_commit=20923c71615472faa904d42c866177811c4c5a1b
 git init --quiet "$source_dir"
 git -C "$source_dir" remote add origin https://github.com/pood1e/kagent.git
 git -C "$source_dir" fetch --quiet --depth 1 origin "$source_commit"

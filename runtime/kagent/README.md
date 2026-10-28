@@ -1,6 +1,6 @@
 # kagent 运行时构建
 
-控制平面与 kagent、Claude、Codex 三个 Harness 从 [pood1e/kagent](https://github.com/pood1e/kagent/tree/722f06c11509ec64d3a99ae17e349d83a854de11) 的固定提交 `722f06c11509ec64d3a99ae17e349d83a854de11` 编译，基于上游 `v1.0.0-alpha17`。同版本官方镜像提供基础运行环境，构建元数据记录实际源码提交。
+控制平面与 kagent、Claude、Codex 三个 Harness 从 [pood1e/kagent](https://github.com/pood1e/kagent/tree/20923c71615472faa904d42c866177811c4c5a1b) 的固定提交 `20923c71615472faa904d42c866177811c4c5a1b` 编译，基于上游 `v1.0.0-alpha17`。同版本官方镜像提供基础运行环境，构建元数据记录实际源码提交。
 
 fork 包含 Actor 身份与逐请求授权、Memory 用户范围、工具约束与审批恢复、托管 MCP 发现、持久化父子任务续接、共享交互 / 协作 proto 及首次准备网络支持。
 原生持久化使用 `kagent.runtime.v1`，HITL 与协作使用 `kagent.api.v1`；协议来源见 [third_party/kagent](../../third_party/kagent/README.md)，启动网络依赖见 [Substrate](../substrate/README.md)。
