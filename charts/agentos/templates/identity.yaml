@@ -21,6 +21,7 @@ spec:
   template:
     metadata:
       labels:
+        app.kubernetes.io/name: agentos
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: identity
     spec:
@@ -34,8 +35,9 @@ spec:
       containers:
         - name: identity
           image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
-          command: [node, build/server/identity/main.js]
+          command: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/identity.js]
           env:
+            {{- include "agentos.telemetryEnv" (dict "root" . "component" "identity") | nindent 12 }}
             - {name: AGENTOS_HOST, value: 0.0.0.0}
             - {name: AGENTOS_PORT, value: '8080'}
             - {name: AGENTOS_IDENTITY_ISSUER, value: {{ $identity.issuer | quote }}}

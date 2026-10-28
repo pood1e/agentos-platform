@@ -11,7 +11,6 @@ import { consoleErrors } from "./interceptor.js";
 export interface ConsoleRoutes {
   service: ServiceImpl<typeof ConsoleService>;
   management?: ServiceImpl<typeof ManagementService>;
-  ready: () => boolean;
   /** Solution pack assets served under /pack/. */
   packRoot?: string;
   context?: Interceptor;
@@ -31,10 +30,6 @@ export async function registerConsole(app: FastifyInstance, routes: ConsoleRoute
       if (routes.automation) router.service(AutomationService, routes.automation);
     },
   });
-  app.get("/healthz", async () => ({ status: "ok" }));
-  app.get("/readyz", async (_request, reply) =>
-    routes.ready() ? { status: "ready" } : reply.code(503).send({ status: "synchronizing" }),
-  );
   if (routes.packRoot)
     await app.register(fastifyStatic, {
       root: routes.packRoot,

@@ -19,6 +19,11 @@ tests:
     unrecognized: true
   asserts:
   - failedTemplate: {}
+- it: rejects the removed single-process console values
+  set:
+    console.resources: {requests: {cpu: 100m}}
+  asserts:
+  - failedTemplate: {errorPattern: console}
 - it: rejects routes without a site gateway
   set:
     route.parentRefs: []

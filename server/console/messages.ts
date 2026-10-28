@@ -26,7 +26,6 @@ import type { TaskProjection } from "../read-model/projection.js";
 import { awaiting } from "../read-model/state.js";
 import { conversation } from "../read-model/views/conversation.js";
 import { conflict, fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
-import { exclusiveCommands } from "../shared/exclusive.js";
 import { messageIdentity } from "../shared/idempotency.js";
 
 export function messageCommands(
@@ -39,8 +38,8 @@ export function messageCommands(
     session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
     tools: string[],
   ) => Promise<void>,
-  exclusive = exclusiveCommands(),
 ) {
+  const { exclusive } = projection;
   async function target(request: SendMessageRequest, identity: ExecutionIdentity) {
     const ref = request.agent;
     if (!ref?.name || ref.namespace !== namespace) throw invalid("chat.invalidConversation");

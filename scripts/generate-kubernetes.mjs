@@ -38,7 +38,7 @@ const controller = {
         properties: { name: { type: "string", minLength: 1 } },
       },
     },
-    resources: root.properties.console.properties.resources,
+    resources: root.properties.api.properties.resources,
   },
 };
 root.properties.controller = controller;

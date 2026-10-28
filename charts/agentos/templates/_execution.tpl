@@ -1,5 +1,4 @@
 {{- define "agentos.executionEnv" -}}
-{{- $audiences := include "agentos.actorAudiences" . | fromJsonArray -}}
 - name: AGENTOS_EXECUTION_DATABASE_URL
   valueFrom:
     secretKeyRef: {name: {{ .Values.execution.databaseSecret }}, key: connectionString}
@@ -7,6 +6,10 @@
   valueFrom:
     secretKeyRef: {name: {{ .Values.execution.keySecret }}, key: key}
 - {name: AGENTOS_EXECUTION_DATABASE_CA, value: /etc/agentos-database/ca.crt}
+{{- end -}}
+
+{{- define "agentos.runtimeEnv" -}}
+{{- $audiences := include "agentos.actorAudiences" . | fromJsonArray -}}
 - {name: AGENTOS_RUNTIME_CA, value: /etc/agentos-runtime/ca.crt}
 - {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos-runtime/ca.crt}
 - {name: AGENTOS_RUNTIME_TOKEN, value: /etc/agentos-runtime/token}
@@ -19,7 +22,7 @@
 {{- end -}}
 
 {{- define "agentos.automationAuthorization" -}}
-backendRef: {name: {{ include "agentos.name" . }}-console, port: 9090}
+backendRef: {name: {{ include "agentos.dataplaneService" . }}, port: 9090}
 failureMode: FailClosed
 http:
   path: "'/authorize/automation'"

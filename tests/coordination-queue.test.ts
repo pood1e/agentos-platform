@@ -4,9 +4,10 @@ import { expect, it as test } from "vitest";
 import { CoordinationJobSchema } from "../gen/agentos/execution/v1/coordination_pb.js";
 import {
   type Coordinator,
-  coordinationQueue,
-  startCoordination,
+  consumeCoordination,
+  enqueueCoordination,
 } from "../server/jobs/coordination.js";
+import { jobQueue } from "../server/jobs/queue.js";
 import { environment, silent, until } from "./harness.js";
 
 const it = test.skipIf(!process.env.CHANGE_TEST_DATABASE_URL);
@@ -18,8 +19,8 @@ const reference = create(CoordinationJobSchema, {
 it("serializes a business key across replicas and recovers after an external side effect", async () => {
   const workspace = randomUUID();
   const uri = process.env.CHANGE_TEST_DATABASE_URL ?? "";
-  const first = await coordinationQueue(uri, workspace, silent);
-  const second = await coordinationQueue(uri, workspace, silent);
+  const first = await jobQueue(uri, workspace, silent, undefined, true);
+  const second = await jobQueue(uri, workspace, silent, undefined, true);
   const env = await environment();
   let active = 0,
     peak = 0,
@@ -45,8 +46,10 @@ it("serializes a business key across replicas and recovers after an external sid
     },
   };
   await first.boss.updateQueue(first.queue("approvals"), { retryDelay: 0, retryBackoff: false });
-  const stopFirst = await startCoordination(env.projection, first, [processor]);
-  const stopSecond = await startCoordination(env.projection, second, [processor]);
+  enqueueCoordination(env.projection, first, [processor]);
+  enqueueCoordination(env.projection, second, [processor]);
+  const stopFirst = await consumeCoordination(first, [processor]);
+  const stopSecond = await consumeCoordination(second, [processor]);
   await env.reconcile.refresh();
   try {
     await until(() => complete, 8_000);
@@ -63,10 +66,12 @@ it("serializes a business key across replicas and recovers after an external sid
 });
 
 it("retains exhausted references and redrives them through the native dead-letter API", async () => {
-  const jobs = await coordinationQueue(
+  const jobs = await jobQueue(
     process.env.CHANGE_TEST_DATABASE_URL ?? "",
     randomUUID(),
     silent,
+    undefined,
+    true,
   );
   const env = await environment();
   let healthy = false,
@@ -81,7 +86,8 @@ it("retains exhausted references and redrives them through the native dead-lette
     },
   };
   await jobs.boss.updateQueue(jobs.queue("approvals"), { retryLimit: 0 });
-  const stop = await startCoordination(env.projection, jobs, [processor]);
+  enqueueCoordination(env.projection, jobs, [processor]);
+  const stop = await consumeCoordination(jobs, [processor]);
   await env.reconcile.refresh();
   try {
     await until(async () => (await jobs.boss.previewRedrive(jobs.failed)).total > 0);
@@ -97,23 +103,26 @@ it("retains exhausted references and redrives them through the native dead-lette
   }
 });
 
-it("recovers pending work after the producing instance stops", async () => {
+it("runs work enqueued by a producing replica in a worker after the producer stops", async () => {
   const workspace = randomUUID();
   const uri = process.env.CHANGE_TEST_DATABASE_URL ?? "";
-  const producer = await coordinationQueue(uri, workspace, silent);
-  await producer.boss.send(
-    producer.queue("continuations"),
-    { taskId: "root", childId: "child" },
-    { singletonKey: "root:childId:child" },
-  );
+  const env = await environment();
+  const producer = await jobQueue(uri, workspace, silent);
+  const selected: Coordinator = {
+    name: "continuations",
+    select: () => [
+      create(CoordinationJobSchema, { taskId: "root", work: { case: "childId", value: "child" } }),
+    ],
+    run: async () => undefined,
+  };
+  enqueueCoordination(env.projection, producer, [selected]);
+  await env.reconcile.refresh();
   await producer.boss.stop();
-  const consumer = await coordinationQueue(uri, workspace, silent);
-  const env = await environment([]);
+  const consumer = await jobQueue(uri, workspace, silent, undefined, true);
   let consumed = false;
-  const stop = await startCoordination(env.projection, consumer, [
+  const stop = await consumeCoordination(consumer, [
     {
-      name: "continuations",
-      select: () => [],
+      ...selected,
       async run(job) {
         expect(job.work).toEqual({ case: "childId", value: "child" });
         consumed = true;

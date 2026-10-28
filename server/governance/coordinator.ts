@@ -23,6 +23,34 @@ import { taskRun } from "../read-model/views/run.js";
 import { messageIdentity } from "../shared/idempotency.js";
 import { approvalClient, approvalEnvironment } from "./client.js";
 
+/** Native pauses and finished calls whose tools have an external decision authority. */
+export function approvalJobs(config: GovernanceConfig): Pick<Coordinator, "name" | "select"> {
+  return {
+    name: "approvals",
+    select(graph, ids) {
+      return [...ids].flatMap((id) => {
+        const entry = graph.entry(id);
+        return (
+          entry?.interactions.flatMap((interaction) =>
+            interaction.kind === InteractionKind.APPROVAL &&
+            (awaiting(interaction.state) || terminal(entry.state)) &&
+            interaction.tools.some(
+              (tool) => approvalEnvironment(config.environments, tool.name)?.approvalUrl,
+            )
+              ? [
+                  create(CoordinationJobSchema, {
+                    taskId: entry.id,
+                    work: { case: "approvalId", value: interaction.id },
+                  }),
+                ]
+              : [],
+          ) ?? []
+        );
+      });
+    },
+  };
+}
+
 /** External approval operations are idempotent against the native task/tool reference. */
 export function approvalCoordinator(
   projection: Pick<TaskProjection, "entry" | "fullTask" | "send">,
@@ -77,28 +105,7 @@ export function approvalCoordinator(
     }
   }
   return {
-    name: "approvals",
-    select(graph, ids) {
-      return [...ids].flatMap((id) => {
-        const entry = graph.entry(id);
-        return (
-          entry?.interactions.flatMap((interaction) =>
-            interaction.kind === InteractionKind.APPROVAL &&
-            (awaiting(interaction.state) || terminal(entry.state)) &&
-            interaction.tools.some(
-              (tool) => approvalEnvironment(config.environments, tool.name)?.approvalUrl,
-            )
-              ? [
-                  create(CoordinationJobSchema, {
-                    taskId: entry.id,
-                    work: { case: "approvalId", value: interaction.id },
-                  }),
-                ]
-              : [],
-          ) ?? []
-        );
-      });
-    },
+    ...approvalJobs(config),
     async run(reference) {
       const entry = await projection.entry(reference.taskId);
       const interaction = entry?.interactions.find((item) => item.id === reference.work.value);

@@ -7,5 +7,5 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --fetch-timeout=30000 --fetch-retries=1 && npm cache clean --force
 COPY build ./build
 USER node
-EXPOSE 8080 9090
-CMD ["node", "build/server/platform/main.js"]
+EXPOSE 8080
+CMD ["node", "--import", "./build/server/apps/telemetry.js", "build/server/apps/api.js"]

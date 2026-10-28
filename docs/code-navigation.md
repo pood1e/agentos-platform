@@ -12,16 +12,18 @@
 | `proto/agentos/governance/v1` | 环境、可选外部审批协议 |
 | `proto/agentos/automation/v1` | 自动化 RPC、方案预置、案例 MCP 入参、worker 配置与案例事实；定时任务复用 kagent 官方协议 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
+| `server/apps` | 进程入口：api、dataplane、worker、identity，共享引导与 OpenTelemetry SDK |
 | `server/console` | 控制台服务：Connect RPC、方案包加载与资源、角色模板读写 |
-| `server/jobs` | pg-boss 协调队列、消费注册与死信重放 |
-| `server/read-model` | kagent 任务的 PostgreSQL 投影：紧凑记录、执行树、写时摘要与 SQL 列表，水位对账与查看时的 A2A 订阅 |
+| `server/jobs` | pg-boss 作业队列：协调作业的入队与消费、死信重放 |
+| `server/read-model` | kagent 任务的 PostgreSQL 投影：紧凑记录、执行树、写时摘要与 SQL 列表，水位对账、跨副本命令锁与查看时的 A2A 订阅 |
 | `server/read-model/graph.ts`、`server/console/watch.ts` | 单棵执行树的委派关系，按执行树唤醒的订阅、心跳和健康检查 |
 | `server/authorization` | Bearer 令牌校验、离线委派端点、执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
-| `server/automation` | 原生定时任务的工作空间授权、方案预置与只读执行身份绑定 |
+| `server/automation` | 原生定时任务的工作空间授权、方案预置及其原生引用、只读执行身份绑定 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
 | `server/kagent/configuration.ts` | 官方 Kubernetes Informer 配置索引与运行时授权读取 |
 | `server/mcp-apps` | MCP Apps 元数据投影、资源缓存与当前用户的只读工具回调 |
 | `server/identity` | 密码模式的内置身份源：oidc-provider 配置、站点密码登录与限速、PostgreSQL 存储 |
+| `server/shared` | 服务端公共配置、错误、健康检查、咨询锁选主与 RPC 指标 |
 | `server/management` | 管理页后端：kagent 与 agentgateway 原生资源的读写 |
 | `server/management/connections.ts` | 原生父对象与凭据保存；编译结果的管理页投影 |
 | `server/knowledge` | 团队知识检索 |
@@ -29,7 +31,7 @@
 | `shared/browser` | 对外发布的听写、流式朗读、LiveKit 通话适配器与官方 MCP AppBridge 生命周期封装 |
 | `server/team-sessions` | 协作 MCP：发现 Agent、创建与续接会话、知识检索、角色起草 |
 | `server/governance` | AccessPlan Informer、已编译工具授权、原生暂停与外部审批协调 |
-| `server/shared`、`shared/` | 服务端公共配置、错误与前后端共用模型 |
+| `shared/` | 前后端共用模型 |
 | `src/app`、`src/components` | 前端路由、布局与 shadcn/ui 组件 |
 | `src/features` | 聊天、任务、团队、管理、状态等页面 |
 | `src/features/chat` | assistant-ui 会话、流式文本、会话历史与删除、紧凑工具图标、工作 Agent 与子 Agent 结果 |
@@ -40,7 +42,7 @@
 | `src/lib` | RPC 客户端、方案包展示（`pack.ts`）与通用工具 |
 | `src/i18n` | 平台通用文案 |
 | `web` | web 镜像：前端产物与 MCP App 沙箱页的 nginx 配置 |
-| `charts/agentos` | 平台 Chart：平台 API、web、密码模式身份源、HTTPRoute、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent |
+| `charts/agentos` | 平台 Chart：api、dataplane、worker、web、密码模式身份源、HTTPRoute、平台网关资源、嵌入模型、Harness、Skill 目录与系统 Agent |
 | `tests` | 单元与集成测试；`tests/fake-kagent` 是录制驱动的 kagent 替身 |
 | `tests/fixtures/pack` | 示例方案包，供测试使用 |
 | `tests/fixtures/solution-chart` | 依赖平台 Chart 的示例方案 Chart，供 Chart 校验使用 |
@@ -59,7 +61,7 @@
 
 | 扩展路径 | 职责 |
 | --- | --- |
-| `server/platform` | 进程入口、工作负载接线与协作边界 |
+| `server/platform` | dataplane 的网关授权接线、协作 MCP 与 gRPC 排空，api 的访问上下文与环境 API 中转 |
 | `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、人工反馈入口 |
 
 | 校验入口 | 内容 |

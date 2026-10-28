@@ -10,8 +10,8 @@ spec:
     url: http://{{ .Values.platform.release }}-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080
     mcpURL: http://{{ .Values.platform.release }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080
     modelSecret: {{ .Values.platform.release }}-model-client
-    dataplane: {{ .Values.platform.release }}-console
-    actorKeys: {{ .Values.platform.release }}-console
+    dataplane: {{ .Values.platform.release }}-dataplane
+    actorKeys: {{ .Values.platform.release }}-dataplane
     actorIssuer: {{ .Values.platform.actorIssuer | quote }}
   environments:{{ if not .Values.environments }} []{{ end }}
     {{- range .Values.environments }}

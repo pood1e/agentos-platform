@@ -1,0 +1,105 @@
+suite: platform processes, rollout and isolation
+values:
+- ../../../tests/fixtures/chart-values.yaml
+release:
+  name: agentos
+  namespace: agentos
+templates:
+- '*.yaml'
+tests:
+- it: drains requests before replacing a ready instance of every process
+  asserts:
+  - template: api-deployment.yaml
+    equal:
+      path: spec.strategy
+      value: {type: RollingUpdate, rollingUpdate: {maxSurge: 1, maxUnavailable: 0}}
+  - template: dataplane-deployment.yaml
+    equal: {path: spec.minReadySeconds, value: 5}
+  - template: worker-deployment.yaml
+    equal: {path: spec.template.spec.terminationGracePeriodSeconds, value: 60}
+  - template: dataplane-deployment.yaml
+    equal:
+      path: spec.template.spec.containers[0].lifecycle.preStop
+      value: {sleep: {seconds: 5}}
+  - template: api-deployment.yaml
+    equal:
+      path: spec.template.spec.containers[0].startupProbe
+      value: {httpGet: {path: /healthz, port: http}, periodSeconds: 2, failureThreshold: 90}
+- it: runs each entry point from the same image with the telemetry SDK preloaded
+  asserts:
+  - template: api-deployment.yaml
+    equal:
+      path: spec.template.spec.containers[0].command
+      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/api.js]
+  - template: dataplane-deployment.yaml
+    equal:
+      path: spec.template.spec.containers[0].command
+      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/dataplane.js]
+  - template: worker-deployment.yaml
+    equal:
+      path: spec.template.spec.containers[0].command
+      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/worker.js]
+  - template: worker-deployment.yaml
+    equal:
+      path: spec.template.spec.containers[0].image
+      value: registry.example.com/agentos@sha256:0000000000000000000000000000000000000000000000000000000000000000
+- it: keeps two dataplane replicas available during voluntary disruption
+  asserts:
+  - template: dataplane-deployment.yaml
+    equal: {path: spec.replicas, value: 2}
+  - template: dataplane-poddisruptionbudget.yaml
+    equal: {path: spec.maxUnavailable, value: 1}
+  - template: dataplane-poddisruptionbudget.yaml
+    equal:
+      path: spec.selector.matchLabels
+      value: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: agentos, app.kubernetes.io/component: dataplane}
+- it: rejects a single dataplane replica
+  set:
+    dataplane.replicas: 1
+  template: dataplane-deployment.yaml
+  asserts:
+  - failedTemplate: {errorPattern: 'dataplane.replicas'}
+- it: admits no inbound worker connections
+  template: worker-networkpolicy.yaml
+  asserts:
+  - equal: {path: spec.policyTypes, value: [Ingress]}
+  - notExists: {path: spec.ingress}
+- it: exports platform metrics only when an endpoint is configured
+  asserts:
+  - template: api-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: OTEL_SDK_DISABLED, value: 'true'}
+  - template: worker-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: OTEL_SERVICE_NAME, value: agentos-worker}
+- it: exports metrics over OTLP with the configured protocol
+  set:
+    telemetry.metrics: {endpoint: 'http://collector.telemetry.svc.cluster.local:4318/v1/metrics', protocol: http/protobuf}
+  template: dataplane-deployment.yaml
+  asserts:
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT, value: 'http://collector.telemetry.svc.cluster.local:4318/v1/metrics'}
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: OTEL_EXPORTER_OTLP_METRICS_PROTOCOL, value: http/protobuf}
+  - contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: OTEL_TRACES_EXPORTER, value: none}
+  - notContains:
+      path: spec.template.spec.containers[0].env
+      content: {name: OTEL_SDK_DISABLED, value: 'true'}
+- it: copies the solution pack into the processes that read it
+  set:
+    pack.image: registry.example.com/pack@sha256:2222222222222222222222222222222222222222222222222222222222222222
+  asserts:
+  - template: api-deployment.yaml
+    equal: {path: 'spec.template.spec.initContainers[0].name', value: pack}
+  - template: worker-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
+  - template: dataplane-deployment.yaml
+    notExists: {path: spec.template.spec.initContainers}

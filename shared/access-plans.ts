@@ -61,8 +61,10 @@ export async function watchAccessPlans(
   );
   informer.on("error", (error: unknown) => {
     ready = false;
+    // Stopping the informer aborts its watch.
+    if (closed) return;
     log.error({ err: error }, "Authorization plan watch unavailable");
-    if (!closed && !retry)
+    if (!retry)
       retry = setTimeout(() => {
         retry = undefined;
         void informer.start();

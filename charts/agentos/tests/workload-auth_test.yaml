@@ -20,7 +20,7 @@ tests:
       - apiGroups: [authentication.k8s.io]
         resources: [tokenreviews]
         verbs: [create]
-- it: binds the verifier to this release's console identity
+- it: binds the verifier to this release's dataplane identity
   template: workload-auth-rolebinding.yaml
   asserts:
   - equal:
@@ -33,5 +33,5 @@ tests:
       path: subjects
       value:
       - kind: ServiceAccount
-        name: platform-console
+        name: platform-dataplane
         namespace: operations

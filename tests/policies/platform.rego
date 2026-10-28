@@ -4,13 +4,26 @@ import rego.v1
 
 objects := [entry.contents | some entry in input; is_object(entry.contents); entry.contents.kind]
 
-console := resource if {
+platform(component) := resource if {
 	some resource in objects
 	resource.kind == "Deployment"
-	endswith(resource.metadata.name, "-console")
+	resource.spec.template.metadata.labels["app.kubernetes.io/name"] == "agentos"
+	resource.spec.template.metadata.labels["app.kubernetes.io/component"] == component
 }
 
-environment := {entry.name: entry | some entry in console.spec.template.spec.containers[0].env}
+api := platform("api")
+
+dataplane := platform("dataplane")
+
+worker := platform("worker")
+
+workloads := [api, dataplane, worker]
+
+environment_of(deployment) := {entry.name: entry | some entry in deployment.spec.template.spec.containers[0].env}
+
+api_environment := environment_of(api)
+
+dataplane_environment := environment_of(dataplane)
 hostname(url) := split(split(split(url, "://")[1], "/")[0], ":")[0]
 
 resource_exists(kind, name) if {
@@ -89,15 +102,18 @@ deny contains "native MCP session owner differs from the controller user" if {
 	policy.metadata.name == "kagent-collaboration-tool-access"
 	some header in policy.spec.traffic.transformation.request.set
 	header.name == "x-user-id"
-	json.unmarshal(header.value) != environment.KAGENT_USER_ID.value
+	json.unmarshal(header.value) != api_environment.KAGENT_USER_ID.value
 }
 
 deny contains "missing native collaboration owner policy" if not resource_exists("AgentgatewayPolicy", "kagent-collaboration-tool-access")
 
-deny contains "workload model token is not read from the projected volume" if environment.AGENTOS_MODEL_TOKEN_FILE.value != "/var/run/agentos-model/token"
+deny contains "workload model token is not read from the projected volume" if {
+	some environment in [api_environment, dataplane_environment]
+	environment.AGENTOS_MODEL_TOKEN_FILE.value != "/var/run/agentos-model/token"
+}
 
 deny contains "runtime origins must remain inside the cluster" if {
-	urls := array.concat([environment.AGENTOS_GATEWAY_URL.value, environment.AGENTOS_MCP_GATEWAY_URL.value], json.unmarshal(environment.AGENTOS_ACTOR_AUDIENCES.value))
+	urls := array.concat([api_environment.AGENTOS_GATEWAY_URL.value, api_environment.AGENTOS_MCP_GATEWAY_URL.value], json.unmarshal(dataplane_environment.AGENTOS_ACTOR_AUDIENCES.value))
 	some url in urls
 	not endswith(hostname(url), ".svc.cluster.local")
 }
@@ -106,7 +122,7 @@ deny contains "the API route does not target the platform HTTP service" if {
 	some route in objects
 	route.kind == "HTTPRoute"
 	endswith(route.metadata.name, "-api")
-	route.spec.rules[0].backendRefs[0] != {"name": console.metadata.name, "port": 8080}
+	route.spec.rules[0].backendRefs[0] != {"name": api.metadata.name, "port": 8080}
 }
 
 deny contains sprintf("the platform chart renders site resource %s/%s", [resource.kind, resource.metadata.name]) if {
@@ -114,17 +130,17 @@ deny contains sprintf("the platform chart renders site resource %s/%s", [resourc
 	resource.kind in {"Namespace", "Middleware", "Ingress"}
 }
 
-deny contains "collaboration must share the platform API process" if {
+deny contains "collaboration must run in the dataplane" if {
 	some resource in objects
 	resource.kind == "Deployment"
 	endswith(resource.metadata.name, "-team-sessions")
 }
 
-deny contains "team-sessions does not target the platform API" if {
+deny contains "team-sessions does not target the dataplane" if {
 	some backend in objects
 	backend.kind == "AgentgatewayBackend"
 	backend.metadata.name == "team-sessions"
-	backend.spec.mcp.targets[0].static.host != console.metadata.name
+	backend.spec.mcp.targets[0].static.host != dataplane.metadata.name
 }
 
 deny contains "team-sessions uses a different HTTP port" if {
@@ -136,40 +152,44 @@ deny contains "team-sessions uses a different HTTP port" if {
 
 deny contains "OIDC requires native client and delegation secret references" if {
 	some name, key in {"AGENTOS_OIDC_CLIENT_SECRET": "client-secret", "AGENTOS_COOKIE_SECRET": "delegation"}
-	object.get(object.get(object.get(object.get(environment, name, {}), "valueFrom", {}), "secretKeyRef", {}), "key", "") != key
+	object.get(object.get(object.get(object.get(api_environment, name, {}), "valueFrom", {}), "secretKeyRef", {}), "key", "") != key
 }
 
 deny contains "speech configuration must remain in the managed Secret" if {
-	environment.AGENTOS_SPEECH_SECRET.value != sprintf("%s-speech", [trim_suffix(console.metadata.name, "-console")])
+	api_environment.AGENTOS_SPEECH_SECRET.value != sprintf("%s-speech", [trim_suffix(api.metadata.name, "-api")])
 }
 
-deny contains "speech credentials are projected into the console" if {
-	some volume in console.spec.template.spec.volumes
+deny contains "speech credentials are projected into a platform process" if {
+	some workload in workloads
+	some volume in workload.spec.template.spec.volumes
 	startswith(volume.name, "speech")
 }
 
-deny contains "speech credentials are mounted in the console" if {
-	some mount in console.spec.template.spec.containers[0].volumeMounts
-	startswith(mount.name, "speech")
+deny contains sprintf("required %s environment %s is absent", [component, name]) if {
+	some component, names in {
+		"api": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_MODEL_TOKEN_FILE", "AGENTOS_SPEECH_SECRET"},
+		"dataplane": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_GATEWAY_URL", "AGENTOS_ACTOR_AUDIENCES", "AGENTOS_WORKLOAD_AUTH_CONFIG", "AGENTOS_MODEL_TOKEN_FILE"},
+		"worker": {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER"},
+	}
+	some name in names
+	not environment_of(platform(component))[name]
 }
 
-deny contains sprintf("required platform environment %s is absent", [name]) if {
-	some name in {"KAGENT_USER_ID", "AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_ACTOR_AUDIENCES", "AGENTOS_WORKLOAD_AUTH_CONFIG", "AGENTOS_MODEL_TOKEN_FILE", "AGENTOS_SPEECH_SECRET"}
-	not environment[name]
+deny contains "the dataplane lacks a second replica or its disruption budget" if {
+	dataplane.spec.replicas < 2
 }
 
-deny contains "gateway NetworkPolicy excludes the console" if {
-	some policy in objects
-	policy.kind == "NetworkPolicy"
-	endswith(policy.metadata.name, "-gateway")
-	not console_peer(policy)
+deny contains "the dataplane lacks a second replica or its disruption budget" if {
+	not disruption_budget(dataplane)
 }
 
-console_peer(policy) if {
-	some ingress in policy.spec.ingress
-	some peer in ingress.from
-	peer.podSelector.matchLabels["app.kubernetes.io/component"] == "console"
+disruption_budget(deployment) if {
+	some budget in objects
+	budget.kind == "PodDisruptionBudget"
+	budget.spec.selector.matchLabels == deployment.spec.selector.matchLabels
+	budget.spec.maxUnavailable == 1
 }
+
 
 deny contains "native session owner headers must be unique" if {
 	some policy in objects

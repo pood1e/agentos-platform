@@ -28,7 +28,7 @@ export async function registerPlatformMcp(
   workloads: WorkloadIdentity,
   access: BindingView,
   knowledge: ReturnType<typeof knowledgeService>,
-  presets: ScheduledRunPreset[] = [],
+  presets: () => Promise<ScheduledRunPreset[]>,
 ) {
   const tools = sessionTools(clients, config.namespace, access, knowledge, projection);
   await registerTeamSessions(app, tools, async (headers, method, tool) => {

@@ -4,53 +4,29 @@ import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import type { FastifyBaseLogger } from "fastify";
 import { createRemoteJWKSet } from "jose";
-import type { Configuration } from "openid-client";
 import type { McpRequest } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { Control } from "../../gen/ateapi_pb.js";
-import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { scheduledIdentity } from "../automation/identity.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
+import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import { text } from "../read-model/decode/messages.js";
-import { toolBaseName } from "../read-model/decode/tools.js";
 import { requiredEnv } from "../shared/config.js";
 import { actorTokenHeader, actorVerifier, runtimeIdentity } from "./actor.js";
-import { agentRoles } from "./agent-role.js";
 import type { EnvironmentTokens } from "./environment-tokens.js";
-import { executions } from "./executions.js";
+import type { ExecutionAccess } from "./execution.js";
 import { mcpAuthorization } from "./mcp.js";
-import { offlineCredentials } from "./offline.js";
-import type { jwtIdentity } from "./oidc.js";
-import { executionStore } from "./store.js";
-import { authorizeToolSelection } from "./tools.js";
 
-export async function executionRuntime(
+/** Signed Actor identity and per-call authorization on the Agent data path. */
+export function executionRuntime(
+  execution: ExecutionAccess,
   clients: KagentClients,
   workspace: string,
   access: BindingView,
-  verify: ReturnType<typeof jwtIdentity>,
-  nativeCreator: string,
   environmentToken: EnvironmentTokens,
-  oauth: Configuration,
-  metadata: ToolMetadata = toolMetadata(clients),
+  metadata: ToolMetadata,
   log?: Pick<FastifyBaseLogger, "error">,
 ) {
-  const persistent = await executionStore(
-    requiredEnv("AGENTOS_EXECUTION_DATABASE_URL"),
-    Buffer.from(requiredEnv("AGENTOS_EXECUTION_KEY"), "base64"),
-    workspace,
-    process.env.AGENTOS_EXECUTION_DATABASE_CA
-      ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
-      : undefined,
-  );
-  const background = offlineCredentials(persistent, oauth, verify);
-  const registry = executions(
-    persistent,
-    verify,
-    scheduledIdentity(clients, workspace, nativeCreator),
-    background.resolve,
-  );
+  const { registry, agentRole } = execution;
   const workspaces = new Set<string>(
     JSON.parse(process.env.AGENTOS_EXECUTION_WORKSPACES ?? JSON.stringify([workspace])),
   );
@@ -111,7 +87,6 @@ export async function executionRuntime(
       throw new ConnectError("Signed runtime identity required", Code.Unauthenticated);
     return { session: await resolveRuntime(bearer.slice(7)) };
   };
-  const agentRole = agentRoles(clients);
   const route = async (target: { serviceNames: string[]; metadataContext?: JsonObject }) => {
     const environment = text(target.metadataContext?.environment);
     const identity = text(target.metadataContext?.identity);
@@ -182,37 +157,19 @@ export async function executionRuntime(
       );
     },
   );
-  const authorizeTools = async (session: Session, tools: string[]) => {
-    const context = await registry.resolve(session);
-    const { engineer, role } = await agentRole(session);
-    const bindings = await access();
-    authorizeToolSelection(bindings, engineer, role, tools, context.write);
-    if (
-      await metadata.appOnlyCalls(
-        tools.flatMap((tool) => bindings.environmentCalls(role.tools, toolBaseName(tool))),
-        workspace,
-      )
-    )
-      throw new ConnectError("App-only tools cannot be called by Agents", Code.PermissionDenied);
-  };
   return {
-    registry,
-    store: persistent,
+    ...execution,
     issuer,
     actorKeys: async () => {
       await keys.reload();
       return keys.jwks();
     },
-    background,
     actor,
     authenticatedActor,
-    agentRole,
     resolve,
     guardrails,
     authorizeTransport,
-    authorizeTools,
-    close: persistent.close,
   };
 }
 
-export type ExecutionRuntime = Awaited<ReturnType<typeof executionRuntime>>;
+export type ExecutionRuntime = ReturnType<typeof executionRuntime>;

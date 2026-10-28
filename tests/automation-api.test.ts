@@ -10,6 +10,7 @@ import { ExecutionIdentitySchema } from "../gen/agentos/execution/v1/identity_pb
 import { ScheduledRunSchema } from "../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { automationPresets } from "../server/automation/presets.js";
 import { automationService } from "../server/automation/service.js";
+import { presetStore } from "../server/automation/store.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { environment } from "./harness.js";
@@ -26,13 +27,14 @@ async function setup() {
     write: false,
     capabilities: [Capability.TASKS_MANAGE],
   });
-  const presets = automationPresets("agentos", "tests/fixtures/pack");
-  await presets.seed(env.clients);
+  const store = await presetStore(process.env.CHANGE_TEST_DATABASE_URL ?? "", randomUUID());
+  close.push(() => store.close());
+  await store.replace(await automationPresets("agentos", "tests/fixtures/pack").seed(env.clients));
   const service = automationService(
     env.clients,
     "agentos",
     {
-      ...presets,
+      scheduledRuns: store.list,
       eventTriggers: [
         create(CaseTriggerSchema, {
           eventNamespace: "ops",
@@ -56,7 +58,7 @@ async function setup() {
       },
     }),
   );
-  return { ...env, principal, client, presets };
+  return { ...env, principal, client, store };
 }
 
 it("allows every platform administrator to inspect shared system tasks and gates every mutation", async () => {
@@ -222,7 +224,7 @@ it("filters foreign-workspace pages and denies guessed schedule and execution ID
 });
 
 it("retains stable preset references and operator edits across startup, and protects presets from deletion", async () => {
-  const { clients, client, presets } = await setup();
+  const { clients, client, store } = await setup();
   const before = (await client.listScheduledRunPresets({})).presets;
   expect(before.map((preset) => preset.key)).toEqual(["inspection-v1", "report-v1"]);
   const id = before[0].scheduledRunId;
@@ -241,10 +243,8 @@ it("retains stable preset references and operator edits across startup, and prot
   await expect(client.deleteScheduledRun({ scheduledRunId: id })).rejects.toMatchObject({
     code: Code.FailedPrecondition,
   });
-  const restarted = automationPresets("agentos", "tests/fixtures/pack");
-  await restarted.seed(clients);
-  expect(restarted.scheduledRuns).toEqual(before);
-  await presets.seed(clients);
+  // A restarted worker reserves the same schedules for every replica.
+  await store.replace(await automationPresets("agentos", "tests/fixtures/pack").seed(clients));
   expect((await client.listScheduledRunPresets({})).presets).toEqual(before);
   expect((await client.getScheduledRun({ scheduledRunId: id })).scheduledRun?.config).toMatchObject(
     {

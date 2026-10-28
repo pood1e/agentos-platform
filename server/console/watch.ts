@@ -38,7 +38,7 @@ export async function* watch<Desc extends DescMessage>(
   };
   const unsubscribe = projection.onChange((change) => {
     const roots = options.roots?.();
-    if (!roots || change.roots.some((root) => roots.has(root))) touch();
+    if (!roots || !change.roots.length || change.roots.some((root) => roots.has(root))) touch();
   });
   const release = options.wakes?.(touch);
   const deadline = Date.now() + lifetime;

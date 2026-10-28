@@ -4,7 +4,7 @@
     "shared/browser/**/*.ts",
     "tests/fixtures/mcp-app-view.ts",
     "server/jobs/replay.ts",
-    "server/identity/main.ts",
+    "server/apps/*.ts",
     "scripts/*.{ts,mjs}",
     "tests/proofs/*.ts",
     "charts/agentos/files/*.mjs",

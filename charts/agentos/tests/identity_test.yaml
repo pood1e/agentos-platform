@@ -6,21 +6,21 @@ templates: ['*.yaml']
 tests:
 - it: verifies bearer tokens from the site identity provider and delegates on the API host
   asserts:
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content: {name: AGENTOS_OIDC_ISSUER, value: https://identity.example.test/realms/operations}
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content:
         name: AGENTOS_OIDC_CLIENT_SECRET
         valueFrom: {secretKeyRef: {name: agentos-identity, key: client-secret}}
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content: {name: AGENTOS_API_ORIGIN, value: https://api.agentos.example.test}
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content:
@@ -31,7 +31,7 @@ tests:
 - it: registers additional frontends as delegation return origins
   set:
     identity.returnOrigins: [https://controller.example.test]
-  template: console-deployment.yaml
+  template: api-deployment.yaml
   asserts:
   - contains:
       path: spec.template.spec.containers[0].env
@@ -43,7 +43,7 @@ tests:
   asserts:
   - matchRegex:
       path: data["oauth2-proxy.yaml"]
-      pattern: 'uri: http://agentos-console:8080'
+      pattern: 'uri: http://agentos-api:8080'
   - matchRegex:
       path: data["oauth2-proxy.yaml"]
       pattern: 'claim: access_token\s+prefix: "Bearer "'
@@ -54,17 +54,17 @@ tests:
   set:
     identity: {mode: password, issuer: '', clientId: '', audience: '', writerRole: ''}
   asserts:
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content: {name: AGENTOS_OIDC_ISSUER, value: https://agentos.example.test/identity}
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content:
         name: AGENTOS_OIDC_CLIENT_SECRET
         valueFrom: {secretKeyRef: {name: agentos-identity-keys, key: client-secret}}
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content: {name: AGENTOS_USER_TOKEN_EXCHANGE, value: 'false'}

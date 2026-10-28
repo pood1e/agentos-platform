@@ -62,8 +62,10 @@ export async function configurationClients(
     );
     informer.on("error", (error: unknown) => {
       ready = false;
+      // Stopping the informer aborts its watch.
+      if (closed) return;
       log.error({ err: error, resource: name }, "Configuration watch unavailable");
-      if (!closed && !retry)
+      if (!retry)
         retry = setTimeout(() => {
           retry = undefined;
           void informer.start();

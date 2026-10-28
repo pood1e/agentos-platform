@@ -8,7 +8,7 @@ export function mcpGuardrails(gateway: GatewayConfig, service: string): JsonObje
       {
         methods: { "*": "Full" },
         remote: {
-          backendRef: { name: gateway.name.replace(/-gateway$/, "-console"), port: 9090 },
+          backendRef: { name: gateway.name.replace(/-gateway$/, "-dataplane"), port: 9090 },
           failureMode: "FailClosed",
           allowedRequestHeaders: [actorTokenHeader, "authorization"],
           metadata: {

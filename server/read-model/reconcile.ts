@@ -178,7 +178,6 @@ export function reconciler(
     ]);
     await pool([...tenants], 4, tenant);
     await discoverSessions();
-    projection.reconciled();
   }
 
   const refresh = () => {
@@ -190,14 +189,16 @@ export function reconciler(
 
   return {
     refresh,
-    start() {
+    /** Ticks only while `lead` confirms this replica is the elected reconciler. */
+    start(lead: () => Promise<boolean>) {
       void (async () => {
         while (!lifetime.signal.aborted) {
-          await refresh().catch((error: unknown) => {
-            if (lifetime.signal.aborted || Date.now() - lastLogged < 60_000) return;
-            lastLogged = Date.now();
-            log.error({ err: error }, "kagent reconciliation failed");
-          });
+          if (await lead())
+            await refresh().catch((error: unknown) => {
+              if (lifetime.signal.aborted || Date.now() - lastLogged < 60_000) return;
+              lastLogged = Date.now();
+              log.error({ err: error }, "kagent reconciliation failed");
+            });
           await delay(interval, undefined, { signal: lifetime.signal }).catch(() => {});
         }
       })();

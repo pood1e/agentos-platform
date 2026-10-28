@@ -1,0 +1,1 @@
+{{ include "agentos.platformRole" (dict "root" . "component" "dataplane" "rules" (include "agentos.dataplaneRules" .)) }}

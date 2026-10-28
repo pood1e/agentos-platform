@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyBaseLogger } from "fastify";
-import type { Coordinator } from "../../server/jobs/coordination.js";
-import { coordinationQueue, startCoordination } from "../../server/jobs/coordination.js";
+import {
+  type Coordinator,
+  consumeCoordination,
+  enqueueCoordination,
+} from "../../server/jobs/coordination.js";
+import { jobQueue } from "../../server/jobs/queue.js";
 import type { TaskProjection } from "../../server/read-model/projection.js";
 import { continuations } from "../../server/team-sessions/continuation.js";
 
@@ -13,8 +17,9 @@ export async function startJobs(
 ) {
   const uri = process.env.CHANGE_TEST_DATABASE_URL;
   if (!uri) throw new Error("Coordination integration tests require PostgreSQL");
-  const jobs = await coordinationQueue(uri, randomUUID(), log);
-  const stop = await startCoordination(projection, jobs, processors);
+  const jobs = await jobQueue(uri, randomUUID(), log, undefined, true);
+  enqueueCoordination(projection, jobs, processors);
+  const stop = await consumeCoordination(jobs, processors);
   return async () => {
     await stop();
     await jobs.boss.stop({ graceful: true, timeout: 5_000 });

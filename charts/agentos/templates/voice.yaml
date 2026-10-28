@@ -103,6 +103,6 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: agentos
-              app.kubernetes.io/component: console
+              app.kubernetes.io/component: api
       ports: [{port: 8080, protocol: TCP}]
 {{- end }}

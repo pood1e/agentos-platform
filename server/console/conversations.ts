@@ -13,7 +13,6 @@ import { refreshContexts } from "../read-model/reconcile.js";
 import { awaiting } from "../read-model/state.js";
 import { conversationProgress } from "../read-model/views/conversation-work.js";
 import { notFound, precondition } from "../shared/errors.js";
-import { exclusiveCommands } from "../shared/exclusive.js";
 import { chatTarget } from "./history.js";
 
 export function conversationCommands(
@@ -22,7 +21,6 @@ export function conversationCommands(
   namespace: string,
   entryAgent: string,
   executions: Executions,
-  exclusive = exclusiveCommands(),
 ) {
   /** Conversation state after re-reading every session of its execution tree natively. */
   async function progress(sessionId: string, agentId: string) {
@@ -40,7 +38,7 @@ export function conversationCommands(
 
   return {
     remove: (request: DeleteSessionRequest, identity: ExecutionIdentity) =>
-      exclusive(request.sessionId, async () => {
+      projection.exclusive(request.sessionId, async () => {
         const { session } = await clients.sessions.getSession(
           { sessionId: request.sessionId },
           { timeoutMs: 5_000 },

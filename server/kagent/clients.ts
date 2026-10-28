@@ -10,11 +10,13 @@ import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import type { KagentConfig } from "../shared/config.js";
+import { rpcMetrics } from "../shared/telemetry.js";
 
 export function kagentTransport(config: KagentConfig): Transport {
   return createGrpcTransport({
     baseUrl: config.url,
     interceptors: [
+      rpcMetrics("client"),
       (next) => (request) => {
         if (!request.header.has("X-User-Id")) request.header.set("X-User-Id", config.userId);
         if (config.token) request.header.set("Authorization", `Bearer ${config.token}`);

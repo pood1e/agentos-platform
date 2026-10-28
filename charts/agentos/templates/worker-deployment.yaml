@@ -1,0 +1,1 @@
+{{ include "agentos.platformDeployment" (dict "root" . "component" "worker" "pack" true) }}

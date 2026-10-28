@@ -117,7 +117,7 @@ it("validates discovery with TokenReview on the private h2c endpoint", async () 
   const workloads = workloadIdentity(
     fromJson(WorkloadAuthenticationSchema, {
       controllerSubject: "system:serviceaccount:agentos:kagent",
-      platformSubject: "system:serviceaccount:agentos:console",
+      platformSubjects: ["system:serviceaccount:agentos:dataplane"],
       modelAudience: "models",
       mcpAudience: "tools",
     }),

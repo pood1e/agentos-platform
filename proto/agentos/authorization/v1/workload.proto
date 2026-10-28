@@ -9,7 +9,8 @@ import "kagent/api/v1/common.proto";
 // Exact workload subjects and environment issuers for one deployment.
 message WorkloadAuthentication {
   string controller_subject = 3;
-  string platform_subject = 4;
+  // Platform processes that call the gateway's embedding model with their own identity.
+  repeated string platform_subjects = 4;
   string model_audience = 5;
   string mcp_audience = 6;
   repeated AutomationSource automation_sources = 7;

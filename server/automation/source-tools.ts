@@ -30,11 +30,11 @@ export function scheduledSourceTools(
   clients: KagentClients,
   projection: Pick<TaskProjection, "graphOf" | "fullTask">,
   workspace: string,
-  presets: ScheduledRunPreset[],
+  presets: () => Promise<ScheduledRunPreset[]>,
   allowed: string[],
   dispatchAllowed: string[] = [],
 ) {
-  const available = () => presets.filter((preset) => allowed.includes(preset.key));
+  const available = async () => (await presets()).filter((preset) => allowed.includes(preset.key));
   return createMcpHandler(() => {
     const server = new McpServer({ name: "automation-results", version: "1.0.0" });
     if (dispatchAllowed.length)
@@ -54,7 +54,7 @@ export function scheduledSourceTools(
             options,
           );
           if (
-            !presets.some(
+            !(await presets()).some(
               (preset) =>
                 dispatchAllowed.includes(preset.key) &&
                 preset.scheduledRunId === execution?.scheduledRunId,
@@ -76,7 +76,7 @@ export function scheduledSourceTools(
       },
       async (args, context) => {
         const query = fromJson(ScheduledExecutionQuerySchema, args);
-        const preset = available().find((item) => item.key === query.presetKey);
+        const preset = (await available()).find((item) => item.key === query.presetKey);
         if (!preset) throw new ConnectError("Preset is not authorized", Code.PermissionDenied);
         return result(
           ListScheduledRunExecutionsResponseSchema,
@@ -108,7 +108,7 @@ export function scheduledSourceTools(
             workspace,
             fromJson(GetScheduledRunExecutionResultRequestSchema, args),
             async (id) => {
-              if (!available().some((preset) => preset.scheduledRunId === id))
+              if (!(await available()).some((preset) => preset.scheduledRunId === id))
                 throw new ConnectError("Execution is not authorized", Code.PermissionDenied);
             },
             context.mcpReq.signal,

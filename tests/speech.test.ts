@@ -133,7 +133,6 @@ async function workbench(
       pack: loadPack(),
       speech: speechService(source, voiceCalls(source, worker, "internal-voice")),
     }),
-    ready: () => true,
   });
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
   onTestFinished(async () => {

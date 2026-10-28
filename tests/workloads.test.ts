@@ -38,7 +38,7 @@ it("delegates projected credentials to TokenReview with exact audiences and subj
       status: {
         authenticated: valid,
         audiences: body.spec?.audiences?.includes(audience) ? [audience] : [],
-        user: { username: controller ? trust.controllerSubject : trust.platformSubject },
+        user: { username: controller ? trust.controllerSubject : trust.platformSubjects[1] },
       },
     };
   });
