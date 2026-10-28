@@ -16,6 +16,15 @@ server {
     try_files $uri =404;
   }
 
+  # Solution pack presentation copied from the pack image.
+  location /pack/ {
+    root /usr/share/nginx;
+    add_header Cache-Control "no-cache" always;
+    add_header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; sandbox" always;
+    add_header X-Content-Type-Options nosniff always;
+    try_files $uri =404;
+  }
+
   location / {
     add_header Cache-Control "no-cache" always;
     add_header Content-Security-Policy "frame-src ${AGENTOS_FRAME_SRC}" always;

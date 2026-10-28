@@ -5,7 +5,6 @@ import {
   type ConsoleService,
   WatchConversationResponseSchema,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
-import type { Pack } from "../../gen/agentos/console/v1/pack_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import { isAdministrator } from "../../shared/permissions.js";
 import type { Executions } from "../authorization/executions.js";
@@ -42,7 +41,6 @@ export interface ConsoleDependencies {
   access: BindingView;
   roleDefaults: RoleDefaults;
   replaceTemplate: TemplateWriter;
-  pack: Pack;
   voice?: VoiceConsole;
   executions: Executions;
   entryAgent?: string;
@@ -65,7 +63,6 @@ export function consoleService({
   access,
   roleDefaults,
   replaceTemplate,
-  pack,
   voice = voiceDisabled,
   executions,
   entryAgent = "assistant",
@@ -189,7 +186,6 @@ export function consoleService({
       return messages.respond(request, identity);
     },
     getConfiguration: () => roles.configuration(),
-    getPack: () => ({ pack }),
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
     explainTools: (request) => roles.explain(request.engineer),

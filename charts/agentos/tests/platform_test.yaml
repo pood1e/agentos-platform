@@ -86,13 +86,19 @@ tests:
   - notContains:
       path: spec.template.spec.containers[0].env
       content: {name: OTEL_SDK_DISABLED, value: 'true'}
-- it: copies the solution pack into the processes that read it
+- it: serves the solution pack from the console host
   set:
     pack.image: registry.example.com/pack@sha256:2222222222222222222222222222222222222222222222222222222222222222
   asserts:
+  - template: web-deployment.yaml
+    documentIndex: 0
+    equal: {path: 'spec.template.spec.initContainers[0].image', value: registry.example.com/pack@sha256:2222222222222222222222222222222222222222222222222222222222222222}
+  - template: web-deployment.yaml
+    documentIndex: 0
+    contains:
+      path: spec.template.spec.containers[1].volumeMounts
+      content: {name: pack, mountPath: /usr/share/nginx/pack, readOnly: true}
   - template: api-deployment.yaml
-    equal: {path: 'spec.template.spec.initContainers[0].name', value: pack}
-  - template: dataplane-deployment.yaml
     notExists: {path: spec.template.spec.initContainers}
-  - template: dataplane-deployment.yaml
-    notExists: {path: spec.template.spec.initContainers}
+  - template: web-config.yaml
+    notMatchRegex: {path: 'data["oauth2-proxy.yaml"]', pattern: /pack/}

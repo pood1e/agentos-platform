@@ -73,18 +73,6 @@ npx tsx tests/proofs/keycloak-exchange.ts
 测试覆盖两个用户、只读角色 scope、交换客户端限制、目标 API 读写权限、额外 scope、错误 audience、用户刷新与注销。
 客户端策略来自 `tests/proofs/keycloak-policy.json`。
 
-## NetBox 服务身份桥接
-
-凭据文件使用现有只读服务 Token，连接通过 HTTPS。写权限探测使用测试对象 ID `0`，验证权限校验先于对象查找。
-
-```sh
-PROOF_NETBOX_URL=https://inventory.example.test \
-PROOF_NETBOX_TOKEN_FILE=/run/proof/netbox-reader \
-npx tsx tests/proofs/netbox-bridge.ts
-```
-
-`PROOF_NETBOX_ADDRESS` 用于站点连接 IP，TLS 校验保留。该测试验证服务账号的原生权限上限，用户资源过滤另由方案包接入。
-
 ## 清理
 
 ```sh

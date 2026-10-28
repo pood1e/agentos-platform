@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { clone, create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
@@ -8,16 +7,13 @@ import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { loadPack } from "../server/console/pack.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
 import { bindTasks, consoleClient, environment } from "./harness.js";
 
-const examplePack = fileURLToPath(new URL("fixtures/pack/", import.meta.url));
-
 async function workbench(tasks?: Task[]) {
   const env = await environment(tasks);
-  return { ...env, client: consoleClient(env, { pack: loadPack(examplePack) }) };
+  return { ...env, client: consoleClient(env) };
 }
 
 async function rejection(call: Promise<unknown>) {
@@ -53,15 +49,6 @@ describe("console service", () => {
       await close();
     }
   });
-  it("serves the solution pack presentation", async () => {
-    const { client } = await workbench();
-    const { pack } = await client.getPack({});
-    expect(pack?.title).toBe("示例方案");
-    expect(pack?.roles.map((role) => role.role)).toEqual(["coordinator", "inspection"]);
-    expect(pack?.roles[0]?.rig?.neck).toBe(151);
-    expect(pack?.tools.map((tool) => tool.name)).toContain("NetBox");
-  });
-
   it("keeps native approval pending and rejects direct workbench decisions", async () => {
     const { client, fake, projection, close } = await workbench(pendingApprovalTasks());
     expect(

@@ -1,97 +1,5 @@
 {
   "catalog": {
-    "k8s_get_resources": {
-      "name": "List resources",
-      "description": "List live objects by namespace and resource type."
-    },
-    "k8s_describe_resource": {
-      "name": "Describe a resource",
-      "description": "Read resource state, related objects and events."
-    },
-    "k8s_get_events": {
-      "name": "Read Kubernetes events",
-      "description": "Read events in the selected namespace."
-    },
-    "k8s_get_pod_logs": {
-      "name": "Read pod logs",
-      "description": "Read container logs from a selected pod."
-    },
-    "k8s_get_resource_yaml": {
-      "name": "Read resource YAML",
-      "description": "Read the complete current YAML of a resource."
-    },
-    "k8s_get_available_api_resources": {
-      "name": "List API resource types",
-      "description": "List Kubernetes resource types supported by the cluster."
-    },
-    "k8s_get_cluster_configuration": {
-      "name": "Read cluster configuration",
-      "description": "Read cluster configuration and connection information."
-    },
-    "k8s_wait": {
-      "name": "Wait for a resource condition",
-      "description": "Wait until a resource meets a condition or the timeout expires."
-    },
-    "k8s_generate_resource": {
-      "name": "Generate resource YAML",
-      "description": "Generate Kubernetes YAML from a description."
-    },
-    "k8s_apply_manifest": {
-      "name": "Apply a manifest",
-      "description": "Create or update cluster resources from YAML."
-    },
-    "k8s_create_resource": {
-      "name": "Create a resource",
-      "description": "Create a resource from the supplied YAML."
-    },
-    "k8s_create_resource_from_url": {
-      "name": "Create resources from a URL",
-      "description": "Fetch YAML from a URL and create its resources."
-    },
-    "k8s_delete_resource": {
-      "name": "Delete a resource",
-      "description": "Delete a selected resource in a namespace."
-    },
-    "k8s_patch_resource": {
-      "name": "Patch a resource",
-      "description": "Update selected resource fields with a patch."
-    },
-    "k8s_patch_status": {
-      "name": "Patch resource status",
-      "description": "Patch the status fields of a resource."
-    },
-    "k8s_scale": {
-      "name": "Scale a deployment",
-      "description": "Change the desired replica count of a deployment."
-    },
-    "k8s_rollout": {
-      "name": "Manage a rollout",
-      "description": "Inspect, pause, restart, resume or undo a workload rollout."
-    },
-    "k8s_execute_command": {
-      "name": "Execute a command in a pod",
-      "description": "Execute a command inside a selected pod."
-    },
-    "k8s_check_service_connectivity": {
-      "name": "Check service connectivity",
-      "description": "Create a temporary probe pod to check service connectivity."
-    },
-    "k8s_annotate_resource": {
-      "name": "Set resource annotations",
-      "description": "Add or update annotations on a resource."
-    },
-    "k8s_label_resource": {
-      "name": "Set resource labels",
-      "description": "Add or update labels on a resource."
-    },
-    "k8s_remove_annotation": {
-      "name": "Remove a resource annotation",
-      "description": "Remove a selected annotation from a resource."
-    },
-    "k8s_remove_label": {
-      "name": "Remove a resource label",
-      "description": "Remove a selected label from a resource."
-    },
     "list_agents": {
       "name": "Discover engineers",
       "description": "Discover engineers, capabilities and readiness."
@@ -247,7 +155,6 @@
   },
   "servers": {
     "kagent-api": "kagent workspaces",
-    "kagent-tool-server": "Kubernetes inspection",
     "team-sessions": "Team collaboration",
     "kagent-collaboration": "Sessions and workspaces"
   }

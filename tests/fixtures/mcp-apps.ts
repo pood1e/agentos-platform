@@ -2,7 +2,6 @@ import { create } from "@bufbuild/protobuf";
 import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { onTestFinished, vi } from "vitest";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { PackSchema } from "../../gen/agentos/console/v1/pack_pb.js";
 import { ExecutionIdentitySchema } from "../../gen/agentos/execution/v1/identity_pb.js";
 import { GovernanceConfigSchema } from "../../gen/agentos/governance/v1/governance_pb.js";
 import { executions } from "../../server/authorization/executions.js";
@@ -60,7 +59,6 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     executions: registry,
     roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
     replaceTemplate: async (value) => env.fake.replaceTemplate(value),
-    pack: create(PackSchema),
   });
   const client = createClient(
     ConsoleService,

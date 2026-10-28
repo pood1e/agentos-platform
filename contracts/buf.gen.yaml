@@ -11,6 +11,7 @@ plugins:
     types:
       - agentos.authorization.v1.ExecutionSource
       - agentos.governance.v1.EnvironmentApi
+      - agentos.console.v1.Pack
       - agentos.console.v1.RoleDefinition
       - agentos.management.v1.SearchKnowledgeRequest
       - agentos.console.v1.SpeechTranscription
