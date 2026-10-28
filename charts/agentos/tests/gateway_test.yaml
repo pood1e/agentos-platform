@@ -26,7 +26,7 @@ tests:
       path: spec.traffic.jwtAuthentication.providers[0].jwks.remote
       value:
         backendRef:
-          name: agentos-console
+          name: agentos-dataplane
           port: 9092
         jwksPath: /keys/actor
   - notExists:

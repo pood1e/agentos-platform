@@ -1,6 +1,7 @@
 import type { JsonObject } from "@bufbuild/protobuf";
 import postgres from "postgres";
 import type { AgentInfo, SessionInfo } from "./agents.js";
+import { commandLocks } from "./commands.js";
 import type { TaskEntry } from "./entry.js";
 import { decodeEntry, encodeEntry, entryRevision } from "./record.js";
 import { createSchema } from "./schema.js";
@@ -13,6 +14,7 @@ export interface Owner {
 }
 
 export interface ProjectionChange {
+  /** Execution trees written in one transaction; empty when every tree may have changed. */
   roots: string[];
   /** Task IDs and `session:<id>` keys written in one transaction. */
   ids: string[];
@@ -22,17 +24,19 @@ const channel = "agentos_read";
 
 /** PostgreSQL task projection for one workspace; summaries live in `summaries.ts`. */
 export async function readStore(uri: string, workspace: string, ca?: string) {
-  const sql = postgres(uri, {
-    max: 8,
+  const options = {
     connect_timeout: 10,
     idle_timeout: 20,
     ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}),
     onnotice: () => {},
-  });
+  };
+  const sql = postgres(uri, { ...options, max: 8 });
+  // Command locks hold their connection while the command runs, apart from projection writes.
+  const locks = postgres(uri, { ...options, max: 8 });
   try {
     await createSchema(sql);
   } catch (error) {
-    await sql.end({ timeout: 1 });
+    await Promise.all([sql.end({ timeout: 1 }), locks.end({ timeout: 1 })]);
     throw error;
   }
   const entries = (rows: { entry: JsonObject }[]) => rows.map((row) => decodeEntry(row.entry));
@@ -132,13 +136,26 @@ export async function readStore(uri: string, workspace: string, ca?: string) {
     write<T>(run: (tx: ReturnType<typeof writer>) => Promise<T>) {
       return sql.begin((tx) => run(writer(tx)));
     },
-    listen(listener: (change: ProjectionChange) => void) {
-      return sql.listen(channel, (payload) => {
-        const change = JSON.parse(payload) as ProjectionChange & { workspace: string };
-        if (change.workspace === workspace) listener(change);
-      });
+    /** Committed changes of this workspace; heartbeats carry no change and prove delivery. */
+    listen(
+      change: (change: ProjectionChange) => void,
+      heartbeat: () => void,
+      listening: () => void,
+    ) {
+      return sql.listen(
+        channel,
+        (payload) => {
+          const message = JSON.parse(payload) as Partial<ProjectionChange> & { workspace: string };
+          if (message.workspace !== workspace) return;
+          if (message.roots) change({ roots: message.roots, ids: message.ids ?? [] });
+          else heartbeat();
+        },
+        listening,
+      );
     },
-    close: () => sql.end({ timeout: 5 }),
+    heartbeat: () => sql`select pg_notify(${channel}, ${JSON.stringify({ workspace })})`,
+    exclusive: commandLocks(locks, workspace),
+    close: () => Promise.all([sql.end({ timeout: 5 }), locks.end({ timeout: 5 })]),
   };
 
   function writer(tx: postgres.TransactionSql) {

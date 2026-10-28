@@ -36,7 +36,7 @@ set +a
 mise exec -- npm run dev
 ```
 
-开发代理将 `AGENTOS_API_TOKEN` 注入 API 请求。本地 API 调试使用 `mise exec -- npm run server`，依赖 PostgreSQL、Kubernetes、OIDC 与原生运行时；配置见 [API Deployment](charts/agentos/templates/console-deployment.yaml)。
+开发代理将 `AGENTOS_API_TOKEN` 注入 API 请求。本地 API 调试使用 `mise exec -- npm run server`，dataplane 与 worker 以 `tsx server/apps/<入口>.ts` 运行，均依赖 PostgreSQL、Kubernetes、OIDC 与原生运行时；配置见 [api Deployment](charts/agentos/templates/api-deployment.yaml) 与同目录的 dataplane、worker 模板。
 
 ## 文档
 

@@ -16,7 +16,7 @@ spec:
     targets:
       - name: automation
         static:
-          host: {{ $name }}-console
+          host: {{ include "agentos.dataplaneService" . }}
           port: 8080
           path: /mcp
           policies: {http: {requestTimeout: 10m}}

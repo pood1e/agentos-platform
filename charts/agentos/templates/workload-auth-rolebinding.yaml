@@ -5,7 +5,7 @@ metadata:
   labels: {{ include "agentos.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "agentos.name" . }}-console
+    name: {{ include "agentos.dataplaneService" . }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io

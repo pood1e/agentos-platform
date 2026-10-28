@@ -29,6 +29,9 @@ export interface Native {
 }
 
 const notified = 100;
+const heartbeat = 5_000;
+/** Without a delivered heartbeat for this long the subscription is renewed and viewers fail over. */
+const silence = 15_000;
 
 export async function taskProjection(options: {
   uri: string;
@@ -40,13 +43,35 @@ export async function taskProjection(options: {
   const { clients, workspace } = options;
   const store = await readStore(options.uri, workspace, options.ca);
   const changes = new EventEmitter().setMaxListeners(0);
-  const subscription = await store.listen((change) => changes.emit("change", change));
   const hooks: ProjectionHook[] = [];
   const details = new LRUCache<string, Task>({
     maxSize: 64 * 1024 * 1024,
     sizeCalculation: (task) => toBinary(TaskSchema, task).byteLength || 1,
   });
-  let reconciled = 0;
+  let subscription: Awaited<ReturnType<typeof store.listen>> | undefined;
+  let subscribing: Promise<void> | undefined;
+  let beats: ReturnType<typeof setInterval> | undefined;
+  let heard = 0;
+
+  /** Changes missed while unsubscribed are unknown, so every viewer reloads. */
+  function subscribe() {
+    subscribing ??= (async () => {
+      await subscription?.unlisten().catch(() => {});
+      subscription = await store.listen(
+        (change) => changes.emit("change", change),
+        () => {
+          heard = Date.now();
+        },
+        () => {
+          heard = Date.now();
+          changes.emit("change", { roots: [], ids: [] } satisfies ProjectionChange);
+        },
+      );
+    })().finally(() => {
+      subscribing = undefined;
+    });
+    return subscribing;
+  }
 
   /** Bindings place sessions in their execution tree when the bound Agent matches. */
   async function owners(contexts: string[], agents: ReadonlyMap<string, string>) {
@@ -191,19 +216,39 @@ export async function taskProjection(options: {
       const root = (await store.entry(taskId))?.root;
       if (root) await store.write((writer) => writer.notify({ roots: [root], ids: [taskId] }));
     },
+    /** Subscribes viewers of this replica to committed changes of every writer. */
+    async listen() {
+      await subscribe();
+      beats = setInterval(() => {
+        if (Date.now() - heard > silence) void subscribe().catch(() => {});
+        void store.heartbeat().catch(() => {});
+      }, heartbeat);
+    },
     onChange(listener: (change: ProjectionChange) => void): () => void {
       changes.on("change", listener);
       return () => {
         changes.off("change", listener);
       };
     },
-    reconciled: (at = Date.now()) => {
-      reconciled = at;
+    /** Change notifications reach this replica, so open views stay current. */
+    healthy: () => Date.now() - heard < silence,
+    exclusive: store.exclusive,
+    /** The database answers within the readiness budget. */
+    async reachable() {
+      const probe = store.sql`select 1`;
+      const timer = setTimeout(() => probe.cancel(), 2_000);
+      try {
+        await probe;
+        return true;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(timer);
+      }
     },
-    /** Native state reached the projection recently; reads stay available meanwhile. */
-    healthy: () => Date.now() - reconciled < 30_000,
     async close() {
-      await subscription.unlisten();
+      clearInterval(beats);
+      await subscription?.unlisten().catch(() => {});
       await store.close();
     },
   };

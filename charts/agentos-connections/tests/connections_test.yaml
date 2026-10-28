@@ -34,7 +34,7 @@ tests:
       of: AccessPlan
   - equal:
       path: spec.platform.actorKeys
-      value: agentos-console
+      value: agentos-dataplane
   - equal:
       path: spec.environments[0].governance
       value: approval

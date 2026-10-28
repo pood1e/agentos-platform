@@ -26,7 +26,6 @@ import { TaskStreams } from "../read-model/streams.js";
 import { conversation, type FullTask } from "../read-model/views/conversation.js";
 import { engineers } from "../read-model/views/engineers.js";
 import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
-import { exclusiveCommands } from "../shared/exclusive.js";
 import { speechService } from "../speech/service.js";
 import type { TaskTagStore } from "../tasks/tags.js";
 import { approvalQueue } from "./approval-queue.js";
@@ -88,8 +87,7 @@ export function consoleService({
   delegationUrl = "",
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const taskTags = taskTagCommands(clients, tags, executions);
-  const exclusive = exclusiveCommands();
-  const cancel = cancellationCommands(projection, clients, executions, exclusive);
+  const cancel = cancellationCommands(projection, clients, executions);
   const messages = messageCommands(
     projection,
     clients,
@@ -97,7 +95,6 @@ export function consoleService({
     executions,
     operations,
     authorizeTools,
-    exclusive,
   );
   const conversations = conversationCommands(
     projection,
@@ -105,7 +102,6 @@ export function consoleService({
     namespace,
     entryAgent,
     executions,
-    exclusive,
   );
   const roles = roleCommands(clients, namespace, access, roleDefaults, replaceTemplate, metadata);
   const withApprovals = approvalReferences(projection, operations, environmentToken);

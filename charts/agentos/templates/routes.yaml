@@ -26,7 +26,7 @@ spec:
   parentRefs: {{ toYaml .Values.route.parentRefs | nindent 4 }}
   hostnames: [{{ $hosts.api | quote }}]
   rules:
-    - backendRefs: [{name: {{ $name }}-console, port: 8080}]
+    - backendRefs: [{name: {{ include "agentos.apiService" . }}, port: 8080}]
     {{- if .Values.automation.enabled }}
     - matches: [{path: {type: Exact, value: /mcp/automation}}]
       backendRefs: [{name: {{ $name }}-gateway, port: 8080}]

@@ -22,7 +22,7 @@ tests:
       value:
       - matches: [{path: {type: Exact, value: /mcp-app-sandbox}}]
         backendRefs: [{name: agentos-web, port: 8081}]
-  - template: console-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: 'spec.template.spec.containers[0].env'
       content: {name: AGENTOS_SANDBOX_ORIGIN, value: 'https://sandbox.agentos.example.test'}

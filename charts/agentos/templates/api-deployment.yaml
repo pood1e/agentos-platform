@@ -1,0 +1,1 @@
+{{ include "agentos.platformDeployment" (dict "root" . "component" "api" "pack" true "env" (include "agentos.apiEnv" .) "mounts" "- {name: model-identity, mountPath: /var/run/agentos-model, readOnly: true}" "volumes" (include "agentos.modelIdentityVolume" .)) }}

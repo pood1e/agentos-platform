@@ -9,9 +9,10 @@ import { registerConsole } from "../server/console/app.js";
 import { loadPack } from "../server/console/pack.js";
 import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
+import { registerHealth } from "../server/shared/health.js";
 import { environment, operator, testBindings } from "./harness.js";
 
-it("serves typed RPC errors and separates liveness from synchronized readiness", async () => {
+it("serves typed RPC errors and separates liveness from subscribed readiness", async () => {
   const env = await environment();
   await env.reconcile.refresh();
   const app = Fastify();
@@ -26,9 +27,9 @@ it("serves typed RPC errors and separates liveness from synchronized readiness",
       replaceTemplate: async (value) => env.fake.replaceTemplate(value),
       pack: loadPack(),
     }),
-    ready: () => env.projection.healthy(),
     packRoot: fileURLToPath(new URL("fixtures/pack/", import.meta.url)),
   });
+  registerHealth(app, () => env.projection.healthy());
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
   const client = createClient(
     ConsoleService,

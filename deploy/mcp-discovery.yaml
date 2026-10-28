@@ -4,16 +4,16 @@
     kind: Deployment
     namespace: "{{ agentos_namespace }}"
     label_selectors:
-      - app.kubernetes.io/component=console
+      - app.kubernetes.io/component=dataplane
       - "app.kubernetes.io/instance={{ app_release_name }}"
   register: application_runtime
 
 - name: Identify the platform tool catalog
   ansible.builtin.set_fact:
-    platform_gateway: "{{ application_runtime.resources[0].metadata.name | regex_replace('-console$', '-gateway') }}"
+    platform_gateway: "{{ application_runtime.resources[0].metadata.name | regex_replace('-dataplane$', '-gateway') }}"
     platform_mcp_revision: >-
       {{ (application_runtime.resources[0].spec.template.spec.containers
-         | selectattr('name', 'equalto', 'console') | first).image | hash('sha256') }}
+         | selectattr('name', 'equalto', 'dataplane') | first).image | hash('sha256') }}
 
 - name: Refresh gateway tools after the application is ready
   kubernetes.core.k8s:

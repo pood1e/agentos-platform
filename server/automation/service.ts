@@ -1,23 +1,29 @@
 import { Code, ConnectError, type HandlerContext, type ServiceImpl } from "@connectrpc/connect";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import type { AutomationService } from "../../gen/agentos/automation/v1/service_pb.js";
+import type {
+  AutomationPresets,
+  AutomationService,
+  ScheduledRunPreset,
+} from "../../gen/agentos/automation/v1/service_pb.js";
 import type { ScheduledRun } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
 import type { TaskProjection } from "../read-model/projection.js";
-import type { automationPresets } from "./presets.js";
 import { scheduledExecutionResult } from "./results.js";
 
 const missing = () => new ConnectError("Automation not found", Code.NotFound);
 
+export interface Presets {
+  eventTriggers: AutomationPresets["eventTriggers"];
+  /** Native schedules of solution presets, as recorded by the worker. */
+  scheduledRuns(): Promise<ScheduledRunPreset[]>;
+}
+
 export function automationService(
   clients: KagentClients,
   workspace: string,
-  presets: Pick<ReturnType<typeof automationPresets>, "eventTriggers" | "scheduledRuns"> = {
-    eventTriggers: [],
-    scheduledRuns: [],
-  },
+  presets: Presets = { eventTriggers: [], scheduledRuns: async () => [] },
   environments: string[] = [],
   ingressEnabled = false,
   projection?: Pick<TaskProjection, "graphOf" | "fullTask">,
@@ -40,9 +46,9 @@ export function automationService(
     return response;
   };
   return {
-    listScheduledRunPresets(_request, context) {
+    async listScheduledRunPresets(_request, context) {
       read(context);
-      return { presets: presets.scheduledRuns };
+      return { presets: await presets.scheduledRuns() };
     },
     async listScheduledRuns(request, context) {
       read(context);
@@ -74,7 +80,11 @@ export function automationService(
     async deleteScheduledRun(request, context) {
       manage(context);
       await get(request.scheduledRunId, context);
-      if (presets.scheduledRuns.some((preset) => preset.scheduledRunId === request.scheduledRunId))
+      if (
+        (await presets.scheduledRuns()).some(
+          (preset) => preset.scheduledRunId === request.scheduledRunId,
+        )
+      )
         throw new ConnectError(
           "Solution schedules can be paused but not deleted",
           Code.FailedPrecondition,

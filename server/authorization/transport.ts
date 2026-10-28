@@ -7,10 +7,13 @@ import {
   McpRequestSchema,
 } from "../../gen/agentgateway/dev/ext_mcp/ext_mcp_pb.js";
 import { ModelAuthorizationSchema } from "../../gen/agentos/authorization/v1/workload_pb.js";
+import { httpMetrics } from "../shared/telemetry.js";
 import { actorTokenHeader } from "./actor.js";
 import type { modelAuthorization } from "./models.js";
 import { tokenRejected } from "./token-errors.js";
 import type { WorkloadIdentity } from "./workloads.js";
+
+const routes = ["/authorize/environment", "/authorize/model", "/authorize/automation"];
 
 /** Native HTTP external authorization on the gateway-only guardrails listener. */
 export function gatewayAuthorization(
@@ -21,12 +24,8 @@ export function gatewayAuthorization(
     log?: Pick<FastifyBaseLogger, "warn" | "error">;
   } = {},
 ): NonNullable<ConnectNodeAdapterOptions["fallback"]> {
-  return async (request, response) => {
-    if (
-      !["/authorize/environment", "/authorize/model", "/authorize/automation"].includes(
-        request.url ?? "",
-      )
-    ) {
+  return httpMetrics(routes, async (request, response) => {
+    if (!routes.includes(request.url ?? "")) {
       response.writeHead(404);
       response.end();
       return;
@@ -98,5 +97,5 @@ export function gatewayAuthorization(
       response.writeHead(status, { "cache-control": "no-store" });
     }
     response.end();
-  };
+  });
 }

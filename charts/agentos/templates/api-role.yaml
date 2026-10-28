@@ -1,0 +1,1 @@
+{{ include "agentos.platformRole" (dict "root" . "component" "api" "rules" (include "agentos.apiRules" .)) }}

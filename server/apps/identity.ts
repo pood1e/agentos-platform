@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import Fastify from "fastify";
+import { registerIdentity } from "../identity/login.js";
+import { identityProvider } from "../identity/provider.js";
+import { artifactStore } from "../identity/store.js";
 import { listenConfig, requiredEnv } from "../shared/config.js";
-import { registerIdentity } from "./login.js";
-import { identityProvider } from "./provider.js";
-import { artifactStore } from "./store.js";
 
 const store = await artifactStore(
   requiredEnv("AGENTOS_IDENTITY_DATABASE_URL"),

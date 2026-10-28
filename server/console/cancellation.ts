@@ -7,14 +7,12 @@ import { refreshContexts } from "../read-model/reconcile.js";
 import { terminal } from "../read-model/state.js";
 import { taskTree } from "../read-model/tree.js";
 import { notFound } from "../shared/errors.js";
-import { exclusiveCommands } from "../shared/exclusive.js";
 import { viewer, visibleGraph } from "./history.js";
 
 export function cancellationCommands(
   projection: TaskProjection,
   clients: KagentClients,
   executions: Executions,
-  exclusive = exclusiveCommands(),
 ) {
   async function treeFor(taskId: string, identity: ExecutionIdentity) {
     const graph = await visibleGraph(projection, viewer(identity), { taskId });
@@ -43,7 +41,7 @@ export function cancellationCommands(
 
   return async (taskId: string, identity: ExecutionIdentity, signal: AbortSignal) => {
     const initial = await treeFor(taskId, identity);
-    return exclusive(initial.root.contextId, async () => {
+    return projection.exclusive(initial.root.contextId, async () => {
       const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
       await refresh(initial, deadline);
       for (;;) {

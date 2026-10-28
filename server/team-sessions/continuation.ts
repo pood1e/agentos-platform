@@ -54,35 +54,40 @@ function continuation(graph: TaskGraph, parent: TaskEntry, childId: string) {
   });
 }
 
+/** Finished delegations whose outcome has not been returned to the waiting parent. */
+export const continuationJobs: Pick<Coordinator, "name" | "select"> = {
+  name: "continuations",
+  select(graph, changed) {
+    const ids = new Set(changed);
+    const parents = graph.relations().causalParents;
+    for (const id of changed) {
+      const parent = parents.get(id);
+      if (parent) ids.add(parent);
+    }
+    return [...ids].flatMap((id) => {
+      const parent = graph.entry(id);
+      if (!parent || !terminal(parent.state) || stoppedOperation(graph, parent)) return [];
+      return waitingDelegations(graph, parent).flatMap((childId) =>
+        continuation(graph, parent, childId)
+          ? [
+              create(CoordinationJobSchema, {
+                taskId: parent.id,
+                work: { case: "childId", value: childId },
+              }),
+            ]
+          : [],
+      );
+    });
+  },
+};
+
 /** Returns nested HITL outcomes using kagent's idempotent message identity. */
 export function continuations(
   projection: Pick<TaskProjection, "graphOf" | "send">,
   authorize?: (parentContext: string, contexts: string[]) => Promise<void>,
 ): Coordinator {
   return {
-    name: "continuations",
-    select(graph, changed) {
-      const ids = new Set(changed);
-      const parents = graph.relations().causalParents;
-      for (const id of changed) {
-        const parent = parents.get(id);
-        if (parent) ids.add(parent);
-      }
-      return [...ids].flatMap((id) => {
-        const parent = graph.entry(id);
-        if (!parent || !terminal(parent.state) || stoppedOperation(graph, parent)) return [];
-        return waitingDelegations(graph, parent).flatMap((childId) =>
-          continuation(graph, parent, childId)
-            ? [
-                create(CoordinationJobSchema, {
-                  taskId: parent.id,
-                  work: { case: "childId", value: childId },
-                }),
-              ]
-            : [],
-        );
-      });
-    },
+    ...continuationJobs,
     async run(reference) {
       if (reference.work.case !== "childId") return;
       const childId = reference.work.value;

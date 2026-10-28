@@ -27,7 +27,7 @@
                   matchExpressions:
                     - key: app.kubernetes.io/component
                       operator: In
-                      values: [console, controller]
+                      values: [dataplane, controller]
             ports: [{port: 443, protocol: TCP}]
 
 - name: Restrict native controller access to the control plane
@@ -44,7 +44,9 @@
         ingress:
           - from:
               - podSelector:
-                  matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/component: console}
+                  matchLabels: {app.kubernetes.io/name: agentos}
+                  matchExpressions:
+                    - {key: app.kubernetes.io/component, operator: In, values: [api, dataplane, worker]}
               - podSelector:
                   matchLabels: {agentos.dev/gateway: business}
               - podSelector:

@@ -7,9 +7,7 @@ import { fakeKagent } from "./harness.js";
 
 it("updates pack instructions by native etag while retaining the schedule ID, cycle, enabled state and history", async () => {
   const env = fakeKagent([]);
-  const first = automationPresets("agentos", "tests/fixtures/pack");
-  await first.seed(env.clients);
-  const original = first.scheduledRuns[0];
+  const [original] = await automationPresets("agentos", "tests/fixtures/pack").seed(env.clients);
   if (!original) throw new Error("Missing preset");
   const { scheduledRun } = await env.clients.schedules.getScheduledRun({
     scheduledRunId: original.scheduledRunId,
@@ -35,8 +33,7 @@ it("updates pack instructions by native etag while retaining the schedule ID, cy
   await writeFile(join(directory, "automation.json"), JSON.stringify(pack));
   const updated = automationPresets("agentos", directory);
   await updated.seed(env.clients);
-  await updated.seed(env.clients);
-  expect(updated.scheduledRuns[0]?.scheduledRunId).toBe(scheduledRun.id);
+  expect((await updated.seed(env.clients))[0]?.scheduledRunId).toBe(scheduledRun.id);
   const { scheduledRun: current } = await env.clients.schedules.getScheduledRun({
     scheduledRunId: scheduledRun.id,
   });

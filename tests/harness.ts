@@ -114,6 +114,7 @@ export async function environment(tasks: Task[] = fixtureTasks()) {
     taskProjection({ uri: database(), workspace, clients, executions: store }),
     taskTagStore(database(), workspace),
   ]);
+  await projection.listen();
   const reconcile = reconciler(projection, clients, "agentos", silent, 50);
   return {
     fake,

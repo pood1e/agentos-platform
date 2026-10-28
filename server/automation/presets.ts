@@ -9,9 +9,9 @@ import {
 } from "../../gen/agentos/automation/v1/service_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 
+/** Solution presets from the pack; native schedules are created by the worker's preset job. */
 export function automationPresets(workspace: string, dir?: string) {
   const prefix = `preset/${workspace}/`;
-  const scheduledRuns: ScheduledRunPreset[] = [];
   const path = dir && join(dir, "automation.json");
   const presets =
     path && existsSync(path)
@@ -49,7 +49,7 @@ export function automationPresets(workspace: string, dir?: string) {
     throw new Error("External dispatch requires an existing preset key");
   return {
     eventTriggers: presets.eventTriggers,
-    scheduledRuns,
+    /** Creates or adopts each preset schedule and applies pack-managed instructions. */
     async seed(clients: KagentClients) {
       const references: ScheduledRunPreset[] = [];
       for (const request of presets.scheduledRuns) {
@@ -82,7 +82,7 @@ export function automationPresets(workspace: string, dir?: string) {
           }),
         );
       }
-      scheduledRuns.splice(0, scheduledRuns.length, ...references);
+      return references;
     },
   };
 }

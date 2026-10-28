@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
-import { coordinationQueue } from "./coordination.js";
+import { jobQueue } from "./queue.js";
 
 const uri = process.env.AGENTOS_EXECUTION_DATABASE_URL;
 if (!uri) throw new Error("AGENTOS_EXECUTION_DATABASE_URL is required");
-const jobs = await coordinationQueue(
+const jobs = await jobQueue(
   uri,
   process.env.KAGENT_NAMESPACE ?? "agentos",
-  { error: () => console.error("Coordination queue is unavailable") },
+  { error: () => console.error("Job queue is unavailable") },
   process.env.AGENTOS_EXECUTION_DATABASE_CA
     ? readFileSync(process.env.AGENTOS_EXECUTION_DATABASE_CA, "utf8")
     : undefined,

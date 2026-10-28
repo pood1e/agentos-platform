@@ -1,0 +1,12 @@
+{{- $component := dict "root" . "component" "api" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agentos.apiService" . }}
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "agentos.platformSelector" $component | nindent 4 }}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

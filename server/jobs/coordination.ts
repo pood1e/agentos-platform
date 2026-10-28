@@ -1,12 +1,11 @@
 import { fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
-import type { FastifyBaseLogger } from "fastify";
-import { PgBoss, type Queue } from "pg-boss";
 import {
   type CoordinationJob,
   CoordinationJobSchema,
 } from "../../gen/agentos/execution/v1/coordination_pb.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { TaskProjection } from "../read-model/projection.js";
+import type { JobQueue } from "./queue.js";
 
 export interface Coordinator {
   name: "approvals" | "continuations";
@@ -15,53 +14,15 @@ export interface Coordinator {
   run(reference: CoordinationJob): Promise<number | undefined>;
 }
 
-const policy: Omit<Queue, "name"> = {
-  policy: "stately",
-  retryLimit: 12,
-  retryDelay: 2,
-  retryBackoff: true,
-  retryDelayMax: 300,
-  expireInSeconds: 900,
-  retentionSeconds: 90 * 86400,
-  deleteAfterSeconds: 90 * 86400,
-};
 const key = (reference: CoordinationJob) =>
   `${reference.taskId}:${reference.work.case}:${reference.work.value}`;
 
-export async function coordinationQueue(
-  uri: string,
-  workspace: string,
-  log: Pick<FastifyBaseLogger, "error">,
-  ca?: string,
-) {
-  const connection = new URL(uri);
-  if (ca)
-    for (const option of ["sslmode", "sslcert", "sslkey", "sslrootcert"])
-      connection.searchParams.delete(option);
-  const boss = new PgBoss({
-    connectionString: connection.toString(),
-    schema: "agentos_jobs",
-    max: 5,
-    connectionTimeoutMillis: 10_000,
-    ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}),
-  });
-  boss.on("error", (error) => log.error({ err: error }, "Coordination queue failed"));
-  await boss.start();
-  const queue = (name: string) => `${workspace}.${name}`;
-  const failed = queue("failed");
-  await boss.createQueue(failed, { retentionSeconds: 90 * 86400 });
-  for (const name of ["approvals", "continuations"])
-    await boss.createQueue(queue(name), { ...policy, deadLetter: failed });
-  return { boss, queue, failed };
-}
-
 /** Work is enqueued in the projection transaction that observed it, so no change is lost. */
-export async function startCoordination(
+export function enqueueCoordination(
   projection: Pick<TaskProjection, "hook">,
-  jobs: Awaited<ReturnType<typeof coordinationQueue>>,
-  coordinators: Coordinator[],
+  { boss, queue }: JobQueue,
+  coordinators: Pick<Coordinator, "name" | "select">[],
 ) {
-  const { boss, queue } = jobs;
   projection.hook(async (graph, changed, writer) => {
     const db = {
       executeSql: async (text: string, values: unknown[]) => ({
@@ -79,6 +40,10 @@ export async function startCoordination(
           },
         );
   });
+}
+
+/** Workers process each business key alone and re-read native state before acting. */
+export async function consumeCoordination({ boss, queue }: JobQueue, coordinators: Coordinator[]) {
   const workers: { name: string; id: string }[] = [];
   for (const coordinator of coordinators) {
     const name = queue(coordinator.name);

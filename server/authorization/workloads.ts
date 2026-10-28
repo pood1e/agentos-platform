@@ -31,7 +31,7 @@ export function workloadIdentity(
 ) {
   if (
     !config.controllerSubject ||
-    !config.platformSubject ||
+    !config.platformSubjects.length ||
     !config.modelAudience ||
     !config.mcpAudience
   )
@@ -48,7 +48,7 @@ export function workloadIdentity(
     ],
   });
   const providers = new Map<string, Promise<ReturnType<typeof createRemoteJWKSet>>>();
-  async function kubernetes(headers: IncomingHttpHeaders, audience: string, subject: string) {
+  async function kubernetes(headers: IncomingHttpHeaders, audience: string, subjects: string[]) {
     const { status } = await api.createTokenReview(
       {
         body: {
@@ -62,7 +62,7 @@ export function workloadIdentity(
     if (
       !status?.authenticated ||
       !status.audiences?.includes(audience) ||
-      status.user?.username !== subject
+      !subjects.includes(status.user?.username ?? "")
     )
       throw new ConnectError("Workload identity is invalid", Code.Unauthenticated);
   }
@@ -71,10 +71,10 @@ export function workloadIdentity(
     async controller(headers: IncomingHttpHeaders, method: string) {
       if (!discoveryMethods.has(method))
         throw new ConnectError("Discovery token cannot execute tools", Code.PermissionDenied);
-      await kubernetes(headers, "agentos-mcp-discovery", config.controllerSubject);
+      await kubernetes(headers, "agentos-mcp-discovery", [config.controllerSubject]);
     },
     model: (headers: IncomingHttpHeaders) =>
-      kubernetes(headers, config.modelAudience, config.platformSubject),
+      kubernetes(headers, config.modelAudience, config.platformSubjects),
     async automation(headers: IncomingHttpHeaders) {
       const token = bearer(headers),
         claims = decodeJwt(token);

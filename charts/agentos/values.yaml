@@ -27,14 +27,23 @@ execution:
   databaseCASecret: kagent-postgres-ca
   substrateURL: https://api.ate-system.svc
   actorIssuer: https://idp.ate-system.svc
-console:
+api:
+  replicas: 2
   resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: '1'
-      memory: 768Mi
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: '1', memory: 768Mi}
+dataplane:
+  replicas: 2
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: '1', memory: 512Mi}
+worker:
+  replicas: 1
+  resources:
+    requests: {cpu: 50m, memory: 192Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+telemetry:
+  metrics: {endpoint: '', protocol: grpc}
 speech:
   transcription: {}
   synthesis: {}
@@ -206,7 +215,7 @@ gateway:
         targets:
         - name: team-sessions
           static:
-            host: '{{ include "agentos.name" . }}-console'
+            host: '{{ include "agentos.dataplaneService" . }}'
             port: 8080
             path: /mcp
             policies:

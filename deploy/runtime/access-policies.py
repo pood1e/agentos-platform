@@ -5,7 +5,7 @@ import sys
 
 namespace, release, mode, *additional_spaces = sys.argv[1:]
 controller = f'user:spiffe://cluster.local/ns/{namespace}/sa/kagent-controller'
-console = f'user:system:serviceaccount:{namespace}:{release}-console'
+dataplane = f'user:system:serviceaccount:{namespace}:{release}-dataplane'
 
 
 def invoke(*args, document=None):
@@ -46,6 +46,6 @@ for atespace in [namespace, *additional_spaces]:
         invoke('create', 'atespace', atespace)
     reconcile(['-a', atespace], [
         {'role': 'editor', 'members': [controller]},
-        {'role': 'viewer', 'members': [console]},
+        {'role': 'viewer', 'members': [dataplane]},
     ])
 print(json.dumps({'changed': changed}))

@@ -17,6 +17,7 @@ import { agentKey } from "../read-model/agents.js";
 import { object, text } from "../read-model/decode/messages.js";
 import type { Native } from "../read-model/projection.js";
 import type { KagentConfig } from "../shared/config.js";
+import { rpcMetrics } from "../shared/telemetry.js";
 import type { ExecutionRuntime } from "./runtime.js";
 
 const denied = () =>
@@ -60,7 +61,10 @@ export function registerRuntime(
   project: (tasks: Native[]) => Promise<void> = async () => {},
   log?: Pick<FastifyBaseLogger, "warn">,
 ) {
-  const transport = createGrpcTransport({ baseUrl: config.url });
+  const transport = createGrpcTransport({
+    baseUrl: config.url,
+    interceptors: [rpcMetrics("client")],
+  });
   const tasks = createClient(TaskStoreService, transport),
     memory = createClient(MemoryService, transport);
 

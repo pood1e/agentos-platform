@@ -24,15 +24,14 @@ function protocol(handler: ReturnType<typeof scheduledSourceTools>) {
 it("exposes only read-only result tools and refuses schedules outside the source binding", async () => {
   const env = await environment([]);
   onTestFinished(() => env.close());
-  const presets = automationPresets("agentos", "tests/fixtures/pack");
-  await presets.seed(env.clients);
-  const first = presets.scheduledRuns[0];
+  const presets = await automationPresets("agentos", "tests/fixtures/pack").seed(env.clients);
+  const first = presets[0];
   if (!first) throw new Error("Missing preset");
   const handler = scheduledSourceTools(
     env.clients,
     env.projection,
     "agentos",
-    presets.scheduledRuns,
+    async () => presets,
     [first.key],
   );
   const rpc = protocol(handler);
@@ -60,9 +59,8 @@ import { randomUUID } from "node:crypto";
 it("dispatches only explicitly bound presets without creating a session for skipped occurrences", async () => {
   const env = await environment([]);
   onTestFinished(() => env.close());
-  const presets = automationPresets("agentos", "tests/fixtures/pack");
-  await presets.seed(env.clients);
-  const [allowed, foreign] = presets.scheduledRuns;
+  const presets = await automationPresets("agentos", "tests/fixtures/pack").seed(env.clients);
+  const [allowed, foreign] = presets;
   for (const preset of [allowed, foreign]) {
     const { scheduledRun } = await env.clients.schedules.getScheduledRun({
       scheduledRunId: preset.scheduledRunId,
@@ -79,7 +77,7 @@ it("dispatches only explicitly bound presets without creating a session for skip
       env.clients,
       env.projection,
       "agentos",
-      presets.scheduledRuns,
+      async () => presets,
       [allowed.key],
       [allowed.key],
     ),

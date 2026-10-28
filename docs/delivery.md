@@ -60,10 +60,11 @@ PostgreSQL 使用原生服务容器，npm 与 Go 缓存由 CI 管理。镜像按
 
 ## 后台协调
 
-平台在执行数据库的 `agentos_jobs` schema 使用 pg-boss，队列按工作空间隔离。审批与续接采用 `stately` 策略和稳定业务键，
-调用错误退避重试 12 次后进入 `<namespace>.failed`，记录保留 90 天；外部决定未出使用延迟任务继续等待。
+平台在执行数据库的 `agentos_jobs` schema 使用 pg-boss，队列按工作空间隔离。各进程在投影写入事务内入队，worker 消费并维护队列。
+审批与续接采用 `stately` 策略和稳定业务键，调用错误退避重试 12 次后进入 `<namespace>.failed`，记录保留 90 天；外部决定未出使用延迟任务继续等待。
+worker 每次启动时以 `presets` 单例作业创建方案预置的原生定时任务，并在 `agentos_automation.presets` 记录引用。
 
-排查提供方故障或恢复授权后，在平台容器内先检查死信，再按原生引用重放：
+排查提供方故障或恢复授权后，在 worker 容器内先检查死信，再按原生引用重放：
 
 ```sh
 node build/server/jobs/replay.js
@@ -92,8 +93,27 @@ kagent_telemetry:
 ```
 
 接收端及后端存储由站点提供，可接入 OpenTelemetry Collector 或兼容后端。Agent 的遥测出口由 kagent 原生编译器从配置推导。
+
 消息内容和原始 API 请求体采集默认关闭，分别由原生 `captureContent` 与 `captureRawApiBodies` 控制。
 部署变量应用于 `config.telemetry` 和 `config.runtimeDefaults.telemetry`，更新后由运行时部署流程生效。
+
+平台进程以 OpenTelemetry Node SDK 导出指标，平台 Chart 的 `telemetry.metrics` 配置 OTLP 出口，`protocol` 支持 `grpc` 与 `http/protobuf`，未配置端点时关闭 SDK：
+
+```yaml
+telemetry:
+  metrics:
+    endpoint: https://otlp.example.com/v1/metrics
+    protocol: http/protobuf
+```
+
+| 指标 | 内容 |
+| --- | --- |
+| `http.server.request.duration` | dataplane 的网关外部鉴权，按路由与状态码 |
+| `rpc.server.call.duration` | dataplane 的 ExtMCP、TaskStore 与 Memory 代理，按方法与状态码 |
+| `rpc.client.call.duration` | kagent 请求，按方法与状态码；计数即请求速率 |
+| `process.memory.usage`、`process.cpu.time` | 各进程的内存与 CPU |
+
+`service.name` 为 `agentos-api`、`agentos-dataplane`、`agentos-worker` 与 `agentos-identity`。
 
 ## 方案 Harness
 
@@ -187,6 +207,9 @@ identity:
 后台执行使用用户的离线授权：console 登录后自动跳转平台 API 的 `/delegation/start` 完成授权，其他客户端向用户展示 `GetAccessProfile.delegation_url`。
 RPC 使用官方 Protobuf `NO_SIDE_EFFECTS` 标记声明读取操作；认证用户可管理自己的对话、交互和取消，配置写操作分别要求智能体、Skill、MCP、团队知识、模型或 Harness 的应用角色；角色可组合，目录由发布包 `authorization.json` 提供。目标系统写角色仅决定运维操作上限。实际工具调用独立校验会话与 Agent 权限，见[执行授权](execution-authorization.md)。
 执行授权复用 PostgreSQL 连接及 CA Secret。站点预先创建 `execution.keySecret`（默认 `agentos-execution`），其中 `key` 为 Base64 编码的 32 字节密钥；该 Secret 由站点与数据库一并备份。
+
+平台进程使用同一镜像，副本数与资源由 `api`、`dataplane`、`worker` 分别配置。dataplane 至少两副本并配置 PodDisruptionBudget；worker 可多副本，对账实例由 PostgreSQL 会话锁选出。
+各进程使用独立 ServiceAccount 与最小权限 Role；NetworkPolicy 放行站点网关与 web 访问 api，平台网关、网关控制器与 Substrate 出口访问 dataplane，worker 只发起出站连接。
 
 参考部署从 OCI 安装 collection。版本与源码提交取自已审阅的发布记录，公钥通过站点可信渠道保存：
 
