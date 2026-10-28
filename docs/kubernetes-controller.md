@@ -43,5 +43,3 @@ Informer 断开、计划未就绪、冲突的编译结果、未知工具均拒�
 | `controller/internal/compile` | 工具分级、身份视图、连接与预置编译 |
 | `controller/internal/reconcile` | 真实 API Server 上的中断恢复、资源回收、凭据恢复与用户所有权 |
 | `ci/test-artifacts.py` | 两个 Chart 共用 CRD 的打包、签名和内容校验 |
-
-版本化验证记录见[环境 Chart 验证](../tests/proofs/environment-charts.md)。

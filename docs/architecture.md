@@ -40,7 +40,7 @@ flowchart LR
 | 团队知识 | 原生 MemoryService、Ollama 与 EmbeddingGemma | 共享知识及 768 维向量检索 |
 | 案例自动化 | Temporal 与 NATS JetStream | 在环境侧映射事件、调用指定 Agent、处理超时与人工反馈 |
 
-平台 API 当前以单进程部署。进程拆分与语音统一的目标见[后续架构](../refactor.md)。
+平台 API 以单进程部署。
 运行时补丁与回归范围见 [kagent](../runtime/kagent/README.md)和 [Substrate](../runtime/substrate/README.md)。
 
 ## 状态与一致性

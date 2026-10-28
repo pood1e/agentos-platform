@@ -47,7 +47,6 @@ mise exec -- npm run dev
 | 授权与环境 | [执行授权](docs/execution-authorization.md)、[环境接入](docs/environments.md) |
 | 业务扩展 | [扩展契约](docs/extension.md)、[MCP Apps](docs/mcp-app.md) |
 | 语音 | [听写、朗读与 LiveKit 通话](docs/speech.md) |
-| 后续演进 | [实施计划](plan.md)、[后续架构](refactor.md) |
 
 ## 许可证
 

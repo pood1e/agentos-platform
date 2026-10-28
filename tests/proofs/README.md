@@ -1,6 +1,6 @@
 # 真实组件验证
 
-本目录覆盖原生 microVM、网关、身份提供方和目标 API。验证记录见[身份与授权](authorization.md)、[工作负载身份](workload-identity.md)和[环境 Chart](environment-charts.md)。
+本目录提供原生 microVM、网关、身份提供方和目标 API 的集成验证脚本。
 
 ## 原生运行时与 MCP
 
@@ -61,7 +61,7 @@ npx tsx tests/proofs/native-client.ts
 ## Keycloak Token Exchange
 
 使用实际 Keycloak 管理账号的凭据文件，脚本创建随机命名的独立 realm，采用官方 Admin Client 与 openid-client，结束后删除该 realm。
-初始用户令牌通过测试 realm 的 Direct Access Grant 取得；平台登录采用实施计划中的 Authorization Code + PKCE。
+初始用户令牌通过测试 realm 的 Direct Access Grant 取得；平台登录采用 Authorization Code 与 PKCE，见[执行授权](../../docs/execution-authorization.md#凭证与生命周期)。
 
 ```sh
 PROOF_KEYCLOAK_URL=https://identity.example.test \
