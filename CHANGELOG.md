@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.44.0](https://github.com/pood1e/agentos-platform/compare/v0.43.0...v0.44.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* move runtime capabilities and execution authority to kagent ([#201](https://github.com/pood1e/agentos-platform/issues/201))
+* **voice:** replace stored sessions with API-signed tickets ([#200](https://github.com/pood1e/agentos-platform/issues/200))
+* **auth:** 环境 API 与 MCP Apps 交给原生网关 ([#199](https://github.com/pood1e/agentos-platform/issues/199))
+* **voice:** inject provider credentials through agentgateway ([#198](https://github.com/pood1e/agentos-platform/issues/198))
+* **skills:** use native kagent artifact delivery ([#197](https://github.com/pood1e/agentos-platform/issues/197))
+* **auth:** AccessPlan.platform.actorKeys 改为 actorJWKSBackend，站点需在应用命名空间提供 Service DNS CA ConfigMap。
+* **runtime:** consume canonical kagent tool events ([#195](https://github.com/pood1e/agentos-platform/issues/195))
+* **delivery:** 平台不再发布 collections/platform，站点改用站点发行版的 collection 安装；角色目录改从契约包的 authorization.json 读取。
+
+### Code Refactoring
+
+* **auth:** 将 Actor JWKS 获取交给原生网关 ([#196](https://github.com/pood1e/agentos-platform/issues/196)) ([78534f9](https://github.com/pood1e/agentos-platform/commit/78534f96d856e16db1599866abe7a279dcd6308a)), closes [#191](https://github.com/pood1e/agentos-platform/issues/191)
+* **auth:** 环境 API 与 MCP Apps 交给原生网关 ([#199](https://github.com/pood1e/agentos-platform/issues/199)) ([99367aa](https://github.com/pood1e/agentos-platform/commit/99367aaccff9fb61d5e7edd70f30d0649c6b3fce))
+* **delivery:** 参考部署迁至独立站点发行版 ([#192](https://github.com/pood1e/agentos-platform/issues/192)) ([fffd393](https://github.com/pood1e/agentos-platform/commit/fffd3937b2481bd2c6ee754b5503917e099fa512))
+* move runtime capabilities and execution authority to kagent ([#201](https://github.com/pood1e/agentos-platform/issues/201)) ([02a10f6](https://github.com/pood1e/agentos-platform/commit/02a10f6bc489c9adaf4eecdcfa7de1cc774c8229))
+* **runtime:** consume canonical kagent tool events ([#195](https://github.com/pood1e/agentos-platform/issues/195)) ([464299e](https://github.com/pood1e/agentos-platform/commit/464299e5db21d791a791956675f4db3fc76aeb08))
+* **skills:** use native kagent artifact delivery ([#197](https://github.com/pood1e/agentos-platform/issues/197)) ([1a6fcd0](https://github.com/pood1e/agentos-platform/commit/1a6fcd0a0436840b6daa5d552d9efaa3b2e3588f))
+* **voice:** inject provider credentials through agentgateway ([#198](https://github.com/pood1e/agentos-platform/issues/198)) ([21087c3](https://github.com/pood1e/agentos-platform/commit/21087c3be7409ffe66efea9d5da8ab311effab13))
+* **voice:** replace stored sessions with API-signed tickets ([#200](https://github.com/pood1e/agentos-platform/issues/200)) ([4d2638c](https://github.com/pood1e/agentos-platform/commit/4d2638c0eb8c5b627faa0712ac74b6f9ccd9e027))
+
 ## [0.43.0](https://github.com/pood1e/agentos-platform/compare/v0.42.0...v0.43.0) (2026-10-28)
 
 
