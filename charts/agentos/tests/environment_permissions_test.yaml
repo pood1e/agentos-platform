@@ -60,3 +60,9 @@ tests:
       content:
         matches: [{path: {type: PathPrefix, value: /environments}}]
         backendRefs: [{name: agentos-gateway, port: 8080}]
+- it: allows native browser policies to refine the inherited gateway requirement
+  template: gateway-auth.yaml
+  asserts:
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: "request.path.startsWith\\('/environments/'\\)"

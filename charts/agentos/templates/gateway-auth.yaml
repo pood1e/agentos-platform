@@ -31,6 +31,12 @@ spec:
       policy:
         matchExpressions:
           - >-
+            {{- if .Values.global.agentos.environments }}
+            request.path.startsWith('/environments/') ||
+            {{- end }}
+            {{- if .Values.voice.enabled }}
+            request.path.startsWith('/speech/') ||
+            {{- end }}
             {{- if .Values.execution.sources }}
             request.path == '/mcp/executions' ||
             {{- end }}
