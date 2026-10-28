@@ -89,7 +89,7 @@ async function setup() {
   const store = memoryStore();
   const oauth = client();
   const grants = offlineCredentials(store, oauth, verify);
-  const registry = executions(store, verify, undefined, grants.resolve);
+  const registry = executions(store, verify, grants.resolve);
   const identity = await grants.accept({
     access_token: await accessToken(),
     token_type: "bearer",
@@ -106,12 +106,7 @@ it("keeps background delegation after access-token expiry without elevating the 
   const { store, oauth } = await setup();
   writes = true;
   vi.setSystemTime(Date.now() + 180_000);
-  const restarted = executions(
-    store,
-    verify,
-    undefined,
-    offlineCredentials(store, oauth, verify).resolve,
-  );
+  const restarted = executions(store, verify, offlineCredentials(store, oauth, verify).resolve);
   const execution = await restarted.resolve(session("child"));
   expect(execution.identity.subject).toBe(`${issuer}#alice`);
   expect(execution.write).toBe(false);
@@ -154,7 +149,7 @@ it("delegates with authorization code, PKCE, state and nonce and returns only to
   const store = memoryStore();
   const oauth = client();
   const grants = offlineCredentials(store, oauth, verify);
-  const registry = executions(store, verify, undefined, grants.resolve);
+  const registry = executions(store, verify, grants.resolve);
   const app = Fastify();
   await registerDelegation(app, {
     origin,

@@ -151,6 +151,30 @@ it("supports an explicit machine principal without OIDC and fences it from human
   });
 });
 
+it("revalidates machine grants for existing descendants after a downgrade or source removal", async () => {
+  let current: ReturnType<typeof create<typeof ExecutionIdentitySchema>> | undefined = create(
+    ExecutionIdentitySchema,
+    {
+      subject: "service:execution:registered",
+      write: true,
+      capabilities: [Capability.KNOWLEDGE_MANAGE],
+      credential: { case: "service", value: true },
+    },
+  );
+  const root = session("machine-root"),
+    child = session("machine-child", "engineer");
+  const active = executions(store, verify, undefined, (binding) =>
+    binding.subject === current?.subject ? current : undefined,
+  );
+  await active.bind(root, current);
+  await active.bind(child, current, root);
+  expect((await active.resolve(child)).write).toBe(true);
+  current = { ...current, write: false, capabilities: [] };
+  expect(await active.resolve(child)).toMatchObject({ write: false, capabilities: [] });
+  current = undefined;
+  await expect(active.resolve(child)).rejects.toMatchObject({ code: Code.PermissionDenied });
+});
+
 it("rejects cycles, missing parents and subject changes in the authoritative chain", async () => {
   const alice = await user("alice", true),
     root = session("root"),

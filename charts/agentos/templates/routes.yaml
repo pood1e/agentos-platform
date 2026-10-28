@@ -27,8 +27,8 @@ spec:
   hostnames: [{{ $hosts.api | quote }}]
   rules:
     - backendRefs: [{name: {{ include "agentos.apiService" . }}, port: 8080}]
-    {{- if .Values.automation.enabled }}
-    - matches: [{path: {type: Exact, value: /mcp/automation}}]
+    {{- if .Values.execution.sources }}
+    - matches: [{path: {type: Exact, value: /mcp/executions}}]
       backendRefs: [{name: {{ $name }}-gateway, port: 8080}]
     {{- end }}
 {{- if $hosts.sandbox }}

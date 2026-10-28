@@ -11,7 +11,7 @@ import { fakeKagent, testBindings } from "./harness.js";
 
 it("keeps two concurrent callers separate through the same MCP handler and tool factory", async () => {
   const { fake, clients } = fakeKagent([]);
-  const requestId = "scheduled-run/11111111-1111-4111-8111-111111111111";
+  const requestId = "external-execution/11111111-1111-4111-8111-111111111111";
   const reserved = fake.createSession(
     { namespace: "agentos", name: "inspection" },
     requestId,

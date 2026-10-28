@@ -37,7 +37,6 @@ export default defineConfig({
     proxy: {
       "/agentos.console.v1.ConsoleService": api,
       "/agentos.management.v1.ManagementService": api,
-      "/agentos.automation.v1.AutomationService": api,
       "/pack/": api,
     },
   },

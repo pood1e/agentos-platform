@@ -540,23 +540,6 @@
         }
       }
     },
-    "automation": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "sources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/agentos.authorization.v1.AutomationSource.jsonschema.json"
-          },
-          "maxItems": 32
-        }
-      },
-      "required": ["enabled"]
-    },
     "entryAgent": {
       "type": "string",
       "minLength": 1,
@@ -673,6 +656,13 @@
         "keySecret": {
           "type": "string",
           "minLength": 1
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agentos.authorization.v1.ExecutionSource.jsonschema.json"
+          },
+          "maxItems": 32
         }
       }
     },
@@ -1199,36 +1189,47 @@
         }
       ]
     },
-    "agentos.authorization.v1.AutomationSource.jsonschema.json": {
+    "kagent.api.v1.ResourceReference.jsonschema.json": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "An environment's client-credentials identity; human tokens do not match it.",
-      "patternProperties": {
-        "^(case_agents)$": {
-          "items": {
-            "$ref": "#/$defs/kagent.api.v1.ResourceReference.jsonschema.json"
-          },
-          "type": "array"
+      "properties": {
+        "name": {
+          "default": "",
+          "maxLength": 253,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+          "type": "string"
         },
+        "namespace": {
+          "default": "",
+          "maxLength": 63,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "type": "string"
+        }
+      },
+      "title": "Resource Reference",
+      "type": "object"
+    },
+    "agentos.authorization.v1.ExecutionSource.jsonschema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "A registered client-credentials identity for external execution.",
+      "patternProperties": {
         "^(client_id)$": {
           "default": "",
           "minLength": 1,
           "type": "string"
-        },
-        "^(scheduled_run_dispatch_presets)$": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "^(scheduled_run_presets)$": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         }
       },
       "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/kagent.api.v1.ResourceReference.jsonschema.json"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
         "audience": {
           "default": "",
           "minLength": 1,
@@ -1260,18 +1261,7 @@
           },
           "type": "array"
         },
-        "caseAgents": {
-          "items": {
-            "$ref": "#/$defs/kagent.api.v1.ResourceReference.jsonschema.json"
-          },
-          "type": "array"
-        },
         "clientId": {
-          "default": "",
-          "minLength": 1,
-          "type": "string"
-        },
-        "environment": {
           "default": "",
           "minLength": 1,
           "type": "string"
@@ -1280,18 +1270,6 @@
           "default": "",
           "pattern": "^https://.*",
           "type": "string"
-        },
-        "scheduledRunDispatchPresets": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "scheduledRunPresets": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         },
         "subject": {
           "default": "",
@@ -1303,29 +1281,7 @@
           "type": "boolean"
         }
       },
-      "title": "Automation Source",
-      "type": "object"
-    },
-    "kagent.api.v1.ResourceReference.jsonschema.json": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "default": "",
-          "maxLength": 253,
-          "minLength": 1,
-          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
-          "type": "string"
-        },
-        "namespace": {
-          "default": "",
-          "maxLength": 63,
-          "minLength": 1,
-          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
-          "type": "string"
-        }
-      },
-      "title": "Resource Reference",
+      "title": "Execution Source",
       "type": "object"
     }
   }

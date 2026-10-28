@@ -16,7 +16,7 @@ spec:
       preserveToken: true
       location:
         expression: >-
-          request.path == '/mcp/automation' ? '' :
+          request.path == '/mcp/executions' ? '' :
           ('x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') : '')
       providers:
         - issuer: {{ .Values.execution.actorIssuer | quote }}
@@ -31,8 +31,8 @@ spec:
       policy:
         matchExpressions:
           - >-
-            {{- if .Values.automation.enabled }}
-            request.path == '/mcp/automation' ||
+            {{- if .Values.execution.sources }}
+            request.path == '/mcp/executions' ||
             {{- end }}
             (has(jwt.iss) && jwt.iss == '{{ .Values.execution.actorIssuer }}' && (
               (request.path.startsWith('/v1/') && (jwt.aud == '{{ $trust.modelAudience }}' || '{{ $trust.modelAudience }}' in jwt.aud)) ||
@@ -42,10 +42,10 @@ spec:
              (request.path.startsWith('/mcp/') || request.path.startsWith('/v1/')))
     extAuth:
       conditional:
-        {{- if .Values.automation.enabled }}
-        - condition: "request.path == '/mcp/automation'"
+        {{- if .Values.execution.sources }}
+        - condition: "request.path == '/mcp/executions'"
           policy:
-            {{- include "agentos.automationAuthorization" . | nindent 12 }}
+            {{- include "agentos.executionAuthorization" . | nindent 12 }}
         {{- end }}
         - condition: "request.path.startsWith('/v1/')"
           policy:

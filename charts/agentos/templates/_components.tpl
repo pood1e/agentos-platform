@@ -11,7 +11,6 @@
 - {name: AGENTOS_SANDBOX_ORIGIN, value: {{ . | quote }}}
 {{- end }}
 - {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
-- {name: AGENTOS_EVENT_AUTOMATION_ENABLED, value: {{ .Values.automation.enabled | quote }}}
 - {name: AGENTOS_RELEASE, value: {{ $name }}}
 - {name: AGENTOS_SPEECH_SECRET, value: {{ $name }}-speech}
 {{- if .Values.voice.enabled }}
@@ -69,14 +68,12 @@
 
 {{- define "agentos.dataplaneEnv" -}}
 {{ include "agentos.runtimeEnv" . }}
-- {name: AGENTOS_WORKLOAD_AUTH_CONFIG, value: /etc/agentos/workloads.json}
 {{ include "agentos.knowledgeEnv" . }}
 {{- end -}}
 
 {{- define "agentos.dataplaneMounts" -}}
 - {name: runtime-identity, mountPath: /etc/agentos-runtime, readOnly: true}
 - {name: model-identity, mountPath: /var/run/agentos-model, readOnly: true}
-- {name: tools, mountPath: /etc/agentos, readOnly: true}
 {{- end -}}
 
 {{- define "agentos.dataplaneVolumes" -}}
@@ -93,8 +90,6 @@
             matchLabels: {podcert.ate.dev/canarying: live}
           path: ca.crt
 {{ include "agentos.modelIdentityVolume" . }}
-- name: tools
-  configMap: {name: {{ include "agentos.name" . }}-tools}
 {{- end -}}
 
 {{- define "agentos.dataplaneRules" -}}

@@ -15,13 +15,11 @@ image:
 imagePullSecrets: []
 pack:
   image: ''
-automation:
-  enabled: false
-  sources: []
 kagent:
   endpoint: http://kagent-controller:8083
   userId: agentos
 execution:
+  sources: []
   keySecret: agentos-execution
   databaseSecret: kagent-postgres
   databaseCASecret: kagent-postgres-ca

@@ -6,11 +6,11 @@
 | `controller/internal/compile` | 工具分级、原生资源与预置绑定的纯编译器 |
 | `controller/internal/reconcile` | SSA、所有权、连接条件与中断恢复 |
 | `controller/cmd/{controller,render}` | 控制器与离线展开验证 |
-| `proto/agentos/execution/v1` | 通用执行状态、任务运行与工具调用 |
+| `proto/agentos/execution/v1` | 执行引用与请求、通用执行状态、任务运行与工具调用 |
+| `server/execution` | 外部执行 MCP、来源主体与分页结果 |
 | `proto/agentos/console/v1` | 控制台 RPC：会话、任务、角色、工具、方案包展示（`pack.proto`） |
 | `proto/agentos/management/v1` | 管理 RPC：连接、模型、Harness、Skill、知识 |
 | `proto/agentos/governance/v1` | 环境、可选外部审批协议 |
-| `proto/agentos/automation/v1` | 自动化 RPC、方案预置、案例 MCP 入参、worker 配置与案例事实；定时任务复用 kagent 官方协议 |
 | `proto/agentos/kagent/v1` | kagent 线上格式的补充定义 |
 | `server/apps` | 进程入口：api、dataplane、worker、identity，共享引导与 OpenTelemetry SDK |
 | `server/console` | 控制台服务：Connect RPC、方案包加载与资源、角色模板读写 |
@@ -18,7 +18,6 @@
 | `server/read-model` | kagent 任务的 PostgreSQL 投影：紧凑记录、执行树、写时摘要与 SQL 列表，水位对账、跨副本命令锁与查看时的 A2A 订阅 |
 | `server/read-model/graph.ts`、`server/console/watch.ts` | 单棵执行树的委派关系，按执行树唤醒的订阅、心跳和健康检查 |
 | `server/authorization` | Bearer 令牌校验、离线委派端点、执行身份绑定、凭证持久化、Actor 验证与运行时授权 |
-| `server/automation` | 原生定时任务的工作空间授权、方案预置及其原生引用、只读执行身份绑定 |
 | `server/kagent` | kagent 官方客户端、Harness 与内置工具 |
 | `server/kagent/configuration.ts` | 官方 Kubernetes Informer 配置索引与运行时授权读取 |
 | `server/mcp-apps` | MCP Apps 元数据投影、资源缓存与当前用户的只读工具回调 |
@@ -39,8 +38,7 @@
 | `src/features/chat` | assistant-ui 会话、流式文本、会话历史与删除、紧凑工具图标、工作 Agent 与子 Agent 结果 |
 | `src/features/chat/apps` | MCP Apps 折叠卡片、资源查询与重试、共享宿主接线和主题上下文 |
 | `src/features/shared` | 头像、工具图标、原生确认与外部审批等公共展示 |
-| `src/features/tasks` | 任务标签、停止操作与任务定位 |
-| `src/features/system-tasks` | 管理员共享的系统任务页面：定时任务管理、运行历史、只读执行会话和环境事件入口 |
+| `src/features/tasks` | 任务标签、停止操作、任务定位与原生执行记录 |
 | `src/lib` | RPC 客户端、方案包展示（`pack.ts`）与通用工具 |
 | `src/i18n` | 平台通用文案 |
 | `web` | web 镜像：前端产物与 MCP App 沙箱页的 nginx 配置 |
@@ -64,7 +62,6 @@
 | 扩展路径 | 职责 |
 | --- | --- |
 | `server/platform` | dataplane 的网关授权接线、协作 MCP 与 gRPC 排空，api 的访问上下文与环境 API 中转 |
-| `automation` | 案例自动化 worker（Python）：JetStream 消费、Temporal 案例工作流、人工反馈入口 |
 
 | 校验入口 | 内容 |
 | --- | --- |

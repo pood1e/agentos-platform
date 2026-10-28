@@ -7,13 +7,9 @@ plugins:
     out: gen/python
     include_imports: true
     types:
-      - agentos.automation.v1.CaseRequest
-      - agentos.automation.v1.CaseReference
-      - agentos.automation.v1.AutomationConfig
-      - agentos.automation.v1.CaseSignal
-      - agentos.automation.v1.CaseWorkflowInput
-      - agentos.automation.v1.CaseFeedback
-      - agentos.automation.v1.CaseFact
+      - agentos.execution.v1.RunExecutionRequest
+      - agentos.execution.v1.GetExecutionRequest
+      - agentos.execution.v1.GetExecutionResponse
       - agentos.kagent.v1.InvokeSessionOutput
       - agentos.voice.v1.VoiceService
       - agentos.voice.v1.VoiceEvent

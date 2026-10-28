@@ -98,8 +98,6 @@ tests:
   - template: api-deployment.yaml
     equal: {path: 'spec.template.spec.initContainers[0].name', value: pack}
   - template: worker-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: AGENTOS_PACK_DIR, value: /etc/agentos-pack}
+    notExists: {path: spec.template.spec.initContainers}
   - template: dataplane-deployment.yaml
     notExists: {path: spec.template.spec.initContainers}

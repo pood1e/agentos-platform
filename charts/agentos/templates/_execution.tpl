@@ -21,11 +21,11 @@
   value: {{ $audiences | toJson | quote }}
 {{- end -}}
 
-{{- define "agentos.automationAuthorization" -}}
+{{- define "agentos.executionAuthorization" -}}
 backendRef: {name: {{ include "agentos.dataplaneService" . }}, port: 9090}
 failureMode: FailClosed
 http:
-  path: "'/authorize/automation'"
+  path: "'/authorize/executions'"
   body: "{}"
   allowedRequestHeaders: [authorization]
   allowedResponseHeaders: [authorization]

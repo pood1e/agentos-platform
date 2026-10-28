@@ -11,8 +11,6 @@ const invalidKeys: Record<string, string> = {
   ListTasks: "pagination.invalidPage",
   ListConversations: "pagination.invalidPage",
   StartVoiceSession: "speech.requestRejected",
-  CreateScheduledRun: "automation.invalidConfig",
-  UpdateScheduledRun: "automation.invalidConfig",
 };
 
 /**
@@ -27,10 +25,6 @@ export function consoleErrors(log: FastifyBaseLogger): Interceptor {
       return source;
     if (source.code === Code.InvalidArgument)
       return fail(source.code, invalidKeys[method] ?? "request.invalid", source);
-    if (method.includes("ScheduledRun")) {
-      if (source.code === Code.Aborted) return fail(source.code, "automation.conflict", source);
-      if (source.code === Code.NotFound) return fail(source.code, "automation.notFound", source);
-    }
     if (source.code !== Code.Canceled) log.error({ err: source, method }, "console request failed");
     return new ConnectError("request failed", source.code);
   };

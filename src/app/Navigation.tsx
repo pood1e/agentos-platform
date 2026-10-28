@@ -1,22 +1,11 @@
-import {
-  Blocks,
-  BookOpen,
-  BrainCircuit,
-  Cpu,
-  MessageCircle,
-  Play,
-  Users,
-  Workflow,
-} from "lucide-react";
+import { Blocks, BookOpen, BrainCircuit, Cpu, MessageCircle, Play, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/access";
-import { isAdministrator } from "../../shared/permissions.js";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
-  { path: "/system-tasks", label: "automation.title", icon: Workflow },
   { path: "/engineers", label: "navigation.agents", icon: Users },
   {
     path: "/engineers/knowledge",
@@ -48,10 +37,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
         </NavLink>
       </Button>
     ));
-  const permitted = (item: (typeof settings)[number]) => {
-    if (item.path === "/system-tasks") return isAdministrator(access.data);
-    return !!access.data;
-  };
+  const permitted = () => !!access.data;
   const visibleSettings = settings.filter(permitted);
   return (
     <nav

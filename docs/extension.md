@@ -17,7 +17,6 @@
 | 模型 | agentgateway 原生 `AgentgatewayModel` | 管理页与 `ModelConfig` 同步 | 上游地址、协议与密钥 |
 | 语音 | `speech`（proto `SpeechConfiguration`） | 可选 ASR/TTS 接入、能力查询与聊天控件 | 站点提供模型服务、音色及凭据 |
 | 展示 | `pack.json` 与资源文件（proto `Pack`） | 平台通用文案、通用头像与工具图标 | 标题、角色头像、工具图标与业务文案 |
-| 案例触发 | `CaseTrigger`（proto） | 案例自动化：去重、调用指定 Agent、超时取消与事实发布 | 源事件映射、Agent 简报与事件命名空间 |
 
 ## 对话视图
 
@@ -30,24 +29,27 @@
 站点在平台 Chart 配置 `route.hosts.sandbox`，并在站点 Gateway 上准备对应 DNS 与证书。
 View 使用规范默认 CSP，可显式申请 `data:` 静态资源，数据访问经宿主工具回调。接入与验证见[对话视图](mcp-app.md)。
 
-## 系统任务
+## 外部执行
 
-方案镜像可在 `/pack/automation.json` 提供 `agentos.automation.v1.AutomationPresets`：
+外部调度器、事件服务和持久化工作流通过 `/mcp/executions` 调用普通 Agent 执行。站点在 `execution.sources` 登记 OIDC client credentials 身份及允许启动的 Agent；列表为空时部署不创建该入口。
 
-- `scheduledRuns`：kagent 官方 `CreateScheduledRunRequest`，包含稳定的 `requestId`、目标 `agent` 与 `config`。平台补齐工作空间；调度表达式、时区及超时由上游校验。预置使用 `paused: true`，由任务管理员启用。
-- `scheduledRunPrompts`：按预置 `key` 管理方案说明。平台以原生 etag 更新提示词，保留任务 ID、启停、周期和执行历史；初始创建输入保持不变。
-- `eventTriggers`：既有 `CaseTrigger` 列表，来源环境的 worker 读取同一份定义。`locales.<language>.translation.automation.eventNames.<eventNamespace>` 提供显示名称。
+```yaml
+execution:
+  sources:
+    - issuer: https://identity.example.com/realms/operations
+      audience: agentos-executions
+      clientId: analysis-controller
+      subject: <service-account-user-id>
+      agents: [{namespace: agentos, name: diagnosis}]
+```
 
-平台在启动时通过原生幂等创建接口登记定时任务，后续重启保留用户编辑、启停与删除状态。同一预置 ID 对应固定的初始输入。
-具有任一平台资源管理能力的管理员可读取当前工作空间的共享定义和历史；`agentos-tasks-manage` 可维护定时任务与手动触发。定时执行使用只读服务身份，委派沿用该权限上限。
-事件入口由 Chart 的 `automation.enabled` 控制；入口状态表示平台配置，worker 运行状态由来源环境维护。
+- `run_execution` 接受 `agentos.execution.v1.RunExecutionRequest`：调用方生成请求 UUID，指定授权 Agent 与消息。相同请求的重试复用原生会话和 messageId，输入保持一致。
+- `get_execution` 接受执行引用及分页参数，读取本调用方的原始任务和因果子任务。结果脱敏、分页并限制响应大小，查询不创建会话。
+- `cancel_execution` 撤销执行授权并取消未结束的委派任务。尚未确认接收的请求也可取消，后续重试仍受撤销状态约束。
 
-MCP 接入目录展示供 Agent 调用的工具服务。自动化事件入口使用注解
-`agentos.dev/connection-role: ingress`，由部署配置托管，事件触发状态在系统任务中展示。
+平台校验签名、issuer、audience、`azp`、`sub` 与目标 Agent；后台调用重新读取来源授权，并保留执行树初始权限上限。业务服务管理触发条件、频率、截止时间与业务结果，调度及工作流后端独立交付。
 
-## 环境结果读取与 API
-
-环境的 `automationSources` 可以用 `scheduledRunPresets` 精确授权原生定时执行结果。该身份仅能调用 `list_scheduled_run_executions` 与 `get_scheduled_run_execution_result`，与 `caseAgents`、写权限和能力授权互斥。读取仅包含该次触发的原始任务及因果子任务，排除后续聊天和审批复查；结果脱敏、分页并限制响应大小。业务结果由环境校验并持久化。
+## 环境 API
 
 `EnvironmentConnection.apis` 声明环境服务的 `service`、`readMethods` 和 `writeMethods`。平台 `/environments/{environment}/rpc/{service}/{method}` 只转发白名单中的 unary Connect JSON，按当前用户进行环境令牌交换，保留环境服务的原生错误。写方法要求用户写权限，读写名单互斥。环境服务继续负责资源、业务角色和审批校验。
 
@@ -157,35 +159,3 @@ global:
 ## 运行时图标
 
 Harness 列表、选择器与编辑器共用运行时图标。kagent 沿用仓库内图标，Codex 使用 [OpenAI 开发者站图标](https://developers.openai.com/favicon.svg)，Claude Code 使用[官方文档图标](https://code.claude.com/docs/en/overview)；BYO 和未知运行时使用 Lucide Blocks。工具图标仍优先采用方案包配置。
-
-## 案例自动化
-
-环境侧的案例自动化 worker 从 `AGENTOS_AUTOMATION_CONFIG` 读取 `AutomationConfig`（proto），消费结构化 CloudEvents，
-按其中取自方案包的 `trigger`（`CaseTrigger`）把源事件映射为案例：
-
-```json
-{
-  "agent": {"name": "<agent>"},
-  "eventNamespace": "<namespace>",
-  "source": {
-    "typePrefix": "alert.lifecycle.",
-    "keyField": "alertId",
-    "stateField": "state",
-    "summaryField": "reason",
-    "activeStates": ["firing"],
-    "resolvedStates": ["resolved"]
-  },
-  "brief": "核验并分诊，返回可核验的结论。上下文：${summary}",
-  "timeoutSeconds": 900,
-  "cooldownSeconds": 300
-}
-```
-
-案例键为事件 `source` 与 `keyField` 取值，版本为 JetStream 序号，状态按大小写归一化。`activeStates` 交 `trigger.agent` 选择的工作空间 Agent 处理，同一案例复用原生会话，
-重试以确定性 messageId 幂等；超过 `timeoutSeconds` 取消前台任务并升级。`resolvedStates` 记为来源已恢复，其余状态只登记。
-事实发布为 `<namespace>.cases.updated`、`<namespace>.findings.proposed`、`<namespace>.findings.escalated`与 `<namespace>.feedback.recorded`，源为 `/<namespace>/<environment>`。
-
-worker 以环境提供的 client credentials 令牌调用平台 API 主机的 `/mcp/automation`，平台通过 `automation.enabled` 启用入口。`/feedback` 与 `/metrics`
-只接受配置的 OIDC 签发者与受众、`roleClaim` 中含 `feedbackRole` 的人员令牌，签名密钥经 OpenID Connect 发现获取。
-
-自动化 worker 的 `platform_oauth` 指定令牌端点、客户端 ID 和客户端密钥文件；每次连接读取当前密钥并由 OAuthLib 获取 client credentials 令牌。平台 Chart 的 `automation.sources` 登记该客户端的环境、issuer、audience、clientId 和 subject。案例调用直接使用原生 A2A 并复用确定性 messageId。

@@ -82,20 +82,25 @@ export function workloadIdentity(
     },
     model: (headers: IncomingHttpHeaders) =>
       kubernetes(headers, config.modelAudience, config.platformSubjects),
-    async automation(headers: IncomingHttpHeaders) {
+    async execution(headers: IncomingHttpHeaders) {
       const token = bearer(headers),
         claims = decodeJwt(token);
-      const source = config.automationSources.find(
+      const source = config.executionSources.find(
         (item) =>
-          item.issuer === claims.iss && item.clientId === claims.azp && item.subject === claims.sub,
+          item.issuer === claims.iss &&
+          item.clientId === claims.azp &&
+          item.subject === claims.sub &&
+          (Array.isArray(claims.aud)
+            ? claims.aud.includes(item.audience)
+            : claims.aud === item.audience),
       );
-      if (!source?.environment || !source.audience)
-        throw new ConnectError("Automation source is not registered", Code.PermissionDenied);
+      if (!source?.audience)
+        throw new ConnectError("Execution source is not registered", Code.PermissionDenied);
       let pending = providers.get(source.issuer);
       if (!pending) {
         const issuer = source.issuer;
         if (new URL(issuer).protocol !== "https:")
-          throw new Error("Automation issuer requires HTTPS");
+          throw new Error("Execution issuer requires HTTPS");
         pending = discovery(new URL(issuer), source.clientId)
           .then((client) => {
             const url = client.serverMetadata().jwks_uri;
@@ -116,7 +121,7 @@ export function workloadIdentity(
         requiredClaims: ["iss", "sub", "aud", "exp", "iat", "azp"],
       });
       if (payload.azp !== source.clientId || payload.sub !== source.subject)
-        throw new ConnectError("Automation identity does not match", Code.PermissionDenied);
+        throw new ConnectError("Execution identity does not match", Code.PermissionDenied);
       return source;
     },
   };

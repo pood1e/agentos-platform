@@ -7,7 +7,6 @@ import { platformToolAuthorization } from "../authorization/platform-tools.js";
 import { executionRuntime } from "../authorization/runtime.js";
 import { gatewayAuthorization } from "../authorization/transport.js";
 import { workloadConfiguration, workloadIdentity } from "../authorization/workloads.js";
-import { presetStore } from "../automation/store.js";
 import { approvalJobs } from "../governance/coordinator.js";
 import { enqueueCoordination } from "../jobs/coordination.js";
 import { configurationClients } from "../kagent/configuration.js";
@@ -41,7 +40,6 @@ const { access, operations, environmentToken, metadata, execution } = await exec
 );
 const { projection, jobs } = await projectionServices(config, clients, execution.store, app.log);
 enqueueCoordination(projection, jobs, [continuationJobs, approvalJobs(operations)]);
-const presets = await presetStore(config.database.uri, workspace, config.database.ca);
 const runtime = executionRuntime(
   execution,
   configuration.clients,
@@ -65,7 +63,6 @@ await registerPlatformMcp(
   workloads,
   access,
   knowledgeService(clients, knowledge),
-  presets.list,
 );
 const collaboration = collaborationGuardrails(new Map([[workspace, clients]]), runtime);
 const platform = platformToolAuthorization(runtime, workloads, access);
@@ -121,7 +118,6 @@ closeOnSignal(app, [
   configuration.close,
   access.close,
   execution.close,
-  presets.close,
 ]);
 const { host } = listenConfig();
 await Promise.all([

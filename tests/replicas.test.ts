@@ -58,7 +58,7 @@ it("elects one reconciler and hands over after a lost session or shutdown", asyn
   expect(await first.held()).toBe(true);
   expect(await second.held()).toBe(false);
   expect(await first.held()).toBe(true);
-  await admin`select pg_terminate_backend(pid) from pg_locks
+  await admin`select pg_terminate_backend(pid, 1000) from pg_locks
     where locktype = 'advisory' and granted and objsubid = 1
       and ((classid::int8 << 32) | objid::int8) = hashtextextended(${name}, 0)`;
   // The terminated session lost the lock; its replica reconnects as a standby.

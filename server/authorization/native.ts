@@ -96,12 +96,11 @@ export function registerRuntime(
     sessionId: string,
     context: HandlerContext,
     mode: "read" | "create" | "update" = "read",
-    messageIds: string[] = [],
   ) {
     const { session } = await runtime.authenticatedActor(context.requestHeader);
     if (session.id !== sessionId) throw denied();
     // Signed Actors can read their own store before the initial task establishes admission.
-    if (mode !== "read") await runtime.registry.record(session, mode === "update", messageIds);
+    if (mode !== "read") await runtime.registry.record(session, mode === "update");
     return {
       tenant: agentKey(session.agent),
       options: {
@@ -163,12 +162,7 @@ export function registerRuntime(
     createTask: (r, c) =>
       forward(c, "CreateTask", async () => {
         if (r.task?.contextId !== r.sessionId) throw denied();
-        const { tenant, options } = await taskOptions(
-          r.sessionId,
-          c,
-          "create",
-          r.task.history.map((message) => message.messageId),
-        );
+        const { tenant, options } = await taskOptions(r.sessionId, c, "create");
         return projected(tenant, r.task, await tasks.createTask(r, options));
       }),
     getTask: (r, c) =>

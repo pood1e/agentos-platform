@@ -9,7 +9,6 @@ import {
 import { AgentSchema, AgentService } from "../../gen/kagent/api/v1/agents_pb.js";
 import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelConfigSchema, ModelService } from "../../gen/kagent/api/v1/models_pb.js";
-import { ScheduledRunService } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
@@ -259,6 +258,5 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
       };
     },
   });
-  router.service(ScheduledRunService, fake.schedules.service());
   return router;
 };

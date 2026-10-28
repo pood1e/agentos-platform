@@ -5,7 +5,6 @@ python-verify:
     - node_modules/.bin/buf generate --template contracts/buf.python.gen.yaml
     - ruff check
     - ruff format --check
-    - pytest
 
 .build-python-image:
   extends: .build-image
@@ -13,17 +12,6 @@ python-verify:
   before_script:
     - mkdir -p "$AGENTOS_BUILD_CONTEXT"
     - cp -R "$AGENTOS_DOCKERFILE_DIR/." dist/contracts/*.whl "$AGENTOS_BUILD_CONTEXT/"
-
-build-automation:
-  extends: .build-python-image
-  variables:
-    AGENTOS_BUILD_CONTEXT: .cache/automation-image
-    AGENTOS_DOCKERFILE_DIR: automation
-    AGENTOS_IMAGE_SUFFIX: /automation
-    AGENTOS_BUILD_METADATA: .cache/automation-build-metadata.json
-  artifacts:
-    paths: [.cache/automation-build-metadata.json, .cache/automation-build-metadata.ref]
-    expire_in: 7 days
 
 build-voice:
   extends: .build-python-image
