@@ -23,13 +23,11 @@ class Conversation(llm.LLM):
     def __init__(
         self,
         platform: Platform,
-        session_id: str,
         tts: ConfiguredTTS,
         publish: Callable[[VoiceEvent], Awaitable[None]],
     ):
         super().__init__()
         self.platform = platform
-        self.session_id = session_id
         self.tts = tts
         self.publish = publish
         self.context_id = ""
@@ -41,7 +39,7 @@ class Conversation(llm.LLM):
     async def cancel(self, sending: asyncio.Future[SendVoiceTurnResponse]):
         try:
             sent = await sending
-            await self.platform.cancel_turn(self.session_id, sent.task_id)
+            await self.platform.cancel_turn(sent.task_id)
         except PlatformError as error:
             logger.warning("Voice turn cancellation failed: %s", error.code)
 
@@ -68,17 +66,13 @@ class Turn(llm.LLMStream):
         if not text:
             return
         # The send finishes even when the turn is interrupted, so its task can be cancelled.
-        sending = asyncio.ensure_future(
-            conversation.platform.send_turn(conversation.session_id, self.message_id, text)
-        )
+        sending = asyncio.ensure_future(conversation.platform.send_turn(self.message_id, text))
         try:
             sent = await asyncio.shield(sending)
             if sent.context_id != conversation.context_id:
                 conversation.context_id = sent.context_id
                 await conversation.publish(VoiceEvent(context_id=sent.context_id))
-            while not (
-                result := await conversation.platform.answer(conversation.session_id, sent.task_id)
-            ).done:
+            while not (result := await conversation.platform.answer(sent.task_id)).done:
                 pass
         except asyncio.CancelledError:
             conversation.cancelling = asyncio.create_task(conversation.cancel(sending))

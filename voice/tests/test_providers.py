@@ -9,26 +9,6 @@ from livekit import rtc
 from livekit.agents import stt
 
 
-@pytest.fixture
-async def serve():
-    runners = []
-
-    async def start(path, handler):
-        app = web.Application()
-        app.router.add_route("*", path, handler)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        runners.append(runner)
-        site = web.TCPSite(runner, "127.0.0.1", 0)
-        await site.start()
-        port = runner.addresses[0][1]
-        return f"http://127.0.0.1:{port}"
-
-    yield start
-    for runner in runners:
-        await runner.cleanup()
-
-
 async def test_transcription_drains_native_snapshots_and_opens_the_next_turn(serve, tmp_path):
     token = tmp_path / "token"
     token.write_text("first-worker-token")

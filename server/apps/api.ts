@@ -51,7 +51,6 @@ const speechSettings = speechSettingsStore(
   process.env.AGENTOS_SPEECH_SECRET ?? `${release}-speech`,
 );
 const voice = await voiceFeature(app, {
-  database: config.database,
   kube: config.kube,
   settings: speechSettings.load,
   projection,
@@ -110,11 +109,6 @@ await registerConsole(app, {
   }),
 });
 registerHealth(app, () => configuration.healthy() && access.healthy());
-closeOnSignal(app, [
-  configuration.close,
-  access.close,
-  execution.close,
-  ...(voice ? [voice.close] : []),
-]);
+closeOnSignal(app, [configuration.close, access.close, execution.close]);
 await voice?.listen(listenConfig().host);
 await app.listen(listenConfig());

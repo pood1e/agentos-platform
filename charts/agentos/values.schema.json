@@ -627,6 +627,10 @@
               "type": ["string", "number"]
             }
           }
+        },
+        "sessionSecretRef": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -636,7 +640,8 @@
         "publicURL",
         "secretRef",
         "capacity",
-        "resources"
+        "resources",
+        "sessionSecretRef"
       ],
       "allOf": [
         {

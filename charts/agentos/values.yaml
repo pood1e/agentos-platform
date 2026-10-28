@@ -49,6 +49,7 @@ voice:
   livekitURL: ws://agentos-livekit:80
   publicURL: ''
   secretRef: agentos-voice
+  sessionSecretRef: agentos-voice-sessions
   capacity: 4
   resources:
     requests: {cpu: 250m, memory: 512Mi}
