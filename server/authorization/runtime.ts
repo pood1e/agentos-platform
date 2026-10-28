@@ -160,10 +160,6 @@ export function executionRuntime(
   return {
     ...execution,
     issuer,
-    actorKeys: async () => {
-      await keys.reload();
-      return keys.jwks();
-    },
     actor,
     authenticatedActor,
     resolve,

@@ -10,7 +10,7 @@ ingress_policy(deployment) := policy if {
 
 runtime_peer(peer) if peer.podSelector.matchLabels["agentos.dev/gateway"] == "business"
 
-runtime_peer(peer) if peer.namespaceSelector.matchLabels["kubernetes.io/metadata.name"] in {"ate-system", "agentgateway-system"}
+runtime_peer(peer) if peer.namespaceSelector.matchLabels["kubernetes.io/metadata.name"] == "ate-system"
 
 ingress_peers(deployment) := [peer |
 	some ingress in object.get(ingress_policy(deployment).spec, "ingress", [])

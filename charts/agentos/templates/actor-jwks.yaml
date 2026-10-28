@@ -1,0 +1,8 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ include "agentos.actorJWKSBackend" . }}
+  labels:
+    {{- include "agentos.labels" . | nindent 4 }}
+spec:
+  {{- .Values.execution.actorJWKS | toYaml | nindent 2 }}

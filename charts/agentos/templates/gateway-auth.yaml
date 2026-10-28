@@ -23,8 +23,8 @@ spec:
           audiences: {{ include "agentos.actorAudiences" . }}
           jwks:
             remote:
-              backendRef: {name: {{ include "agentos.actorKeysService" . }}, port: 9092}
-              jwksPath: /keys/actor
+              backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ include "agentos.actorJWKSBackend" . }}}
+              jwksPath: /openid/v1/jwks
           validation: {requiredClaims: [sub, exp, aud]}
     authorization:
       action: Require

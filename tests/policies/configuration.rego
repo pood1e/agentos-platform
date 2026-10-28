@@ -2,25 +2,28 @@ package main
 
 import rego.v1
 
-deny contains "Actor keys require a private HTTP/1.1 listener" if {
-	some service in objects
-	service.kind == "Service"
-	service.metadata.name == dataplane.metadata.name
-	ports := [port | some port in service.spec.ports; port.name == "jwks"; port.port == 9092; object.get(port, "appProtocol", "") != "kubernetes.io/h2c"]
-	count(ports) != 1
+actor_jwks_direct(provider) if {
+	remote := provider.jwks.remote
+	remote.jwksPath == "/openid/v1/jwks"
+	ref := remote.backendRef
+	ref.group == "agentgateway.dev"
+	ref.kind == "AgentgatewayBackend"
+	some backend in objects
+	backend.kind == "AgentgatewayBackend"
+	backend.metadata.name == ref.name
+	backend.spec.static.host != ""
+	backend.spec.static.port > 0
+	tls := backend.spec.policies.tls
+	count(tls.caCertificateRefs) > 0
+	object.get(tls, "insecureSkipVerify", "") == ""
 }
 
-deny contains "Actor keys exclude the agentgateway controller" if {
-	not jwks_controller_peer(ingress_policy(dataplane))
-}
-
-jwks_controller_peer(policy) if {
-	some ingress in policy.spec.ingress
-	some port in ingress.ports
-	port.port == 9092
-	some peer in ingress.from
-	peer.namespaceSelector.matchLabels["kubernetes.io/metadata.name"] == "agentgateway-system"
-	peer.podSelector.matchLabels.agentgateway == "agentgateway"
+deny contains sprintf("%s lacks direct verified Actor JWKS", [policy.metadata.name]) if {
+	some policy in objects
+	policy.kind == "AgentgatewayPolicy"
+	some provider in policy.spec.traffic.jwtAuthentication.providers
+	provider.issuer == api_environment.AGENTOS_ACTOR_ISSUER.value
+	not actor_jwks_direct(provider)
 }
 
 role_of(deployment) := resource if {

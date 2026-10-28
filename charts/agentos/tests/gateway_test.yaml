@@ -38,9 +38,10 @@ tests:
       path: spec.traffic.jwtAuthentication.providers[0].jwks.remote
       value:
         backendRef:
-          name: agentos-dataplane
-          port: 9092
-        jwksPath: /keys/actor
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: agentos-actor-jwks
+        jwksPath: /openid/v1/jwks
   - notExists:
       path: spec.traffic.jwtAuthentication.providers[0].jwks.inline
   - contains:
@@ -49,6 +50,54 @@ tests:
   - contains:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       content: http://agentos-mcp-gateway.agentos.svc.cluster.local:8080
+- it: fetches native Actor keys over verified TLS with site trust
+  template: actor-jwks.yaml
+  asserts:
+  - equal:
+      path: metadata.name
+      value: agentos-actor-jwks
+  - equal:
+      path: spec
+      value:
+        static: {host: idp.ate-system.svc, port: 443}
+        policies:
+          tls:
+            sni: idp.ate-system.svc
+            caCertificateRefs: [{name: substrate-service-dns-ca, kind: ConfigMap}]
+- it: preserves native endpoint and certificate references
+  template: actor-jwks.yaml
+  set:
+    execution.actorJWKS:
+      static: {host: idp.identity.svc, port: 8443}
+      policies:
+        tls:
+          sni: actors.example.com
+          verifySubjectAltNames: [actors.example.com]
+          caCertificateRefs: [{name: actor-service-ca, kind: ConfigMap, key: bundle.pem}]
+  asserts:
+  - equal:
+      path: spec
+      value:
+        static: {host: idp.identity.svc, port: 8443}
+        policies:
+          tls:
+            sni: actors.example.com
+            verifySubjectAltNames: [actors.example.com]
+            caCertificateRefs: [{name: actor-service-ca, kind: ConfigMap, key: bundle.pem}]
+- it: requires an explicit JWKS trust root
+  template: actor-jwks.yaml
+  set:
+    execution.actorJWKS.policies.tls.caCertificateRefs: []
+  asserts:
+  - failedTemplate:
+      errorPattern: 'caCertificateRefs'
+- it: requires JWKS certificate and hostname verification
+  template: actor-jwks.yaml
+  set:
+    execution.actorJWKS.policies.tls.insecureSkipVerify: Hostname
+  asserts:
+  - failedTemplate:
+      errorPattern: 'tls'
 - it: authenticates external executions before MCP initialization and on upstream transport
   set:
     execution.sources:

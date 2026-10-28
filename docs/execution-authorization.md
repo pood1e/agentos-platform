@@ -42,7 +42,7 @@ TaskStore 请求限定到当前会话，原生持久化继续校验 dispatch 与
 私人 Memory 写入限定当前用户、Agent 与启用记忆的 Harness；共享知识写入另需知识管理角色。
 管理 RPC 与 A2A 向控制面开放，运行时出站策略和 NetworkPolicy 限制直连。
 
-模型与 MCP 接入通过 JOSE 验证 Actor。原生 `ate-idp-server` 发布签名公钥，dataplane 使用投射的原生信任根读取 JWKS，并在 HTTP/1.1 端口 9092 的 `/keys/actor` 转发给网关控制器。
+模型与 MCP 接入验证 Actor 签名。agentgateway 通过原生 HTTPS Backend 直接读取 Substrate `/openid/v1/jwks`；`execution.actorJWKS` 使用原生 `AgentgatewayBackend.spec`，TLS 校验 CA 与 SAN。站点在 release 命名空间发布 Service DNS CA ConfigMap，根轮换时更新；默认引用 `substrate-service-dns-ca`。dataplane 自身验证沿用投射的原生信任根。
 网关沿用原生 5 分钟刷新间隔；轮换保留覆盖未到期令牌与缓存窗口的旧公钥。
 Harness 的 `x-substrate-actor-token` 占位头由宿主替换，ModelConfig 占位值只用于 SDK 初始化。
 
