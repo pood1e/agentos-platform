@@ -16,7 +16,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -107,8 +111,23 @@ func (r *Speech) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, er
 	return ctrl.Result{RequeueAfter: time.Minute}, nil
 }
 
+func (r *Speech) credentialRequests(ctx context.Context, object client.Object) []reconcile.Request {
+	if client.ObjectKeyFromObject(object) == r.Settings || object.GetNamespace() != r.Settings.Namespace {
+		return nil
+	}
+	var settings core.Secret
+	if err := r.Get(ctx, r.Settings, &settings); err != nil || string(settings.Data["credentials-secret"]) != object.GetName() {
+		return nil
+	}
+	return []reconcile.Request{{NamespacedName: r.Settings}}
+}
+
 func (r *Speech) SetupWithManager(manager ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(manager).Named("speech").For(&core.Secret{}).
+	return ctrl.NewControllerManagedBy(manager).Named("speech").
+		For(&core.Secret{}, builder.WithPredicates(predicate.NewPredicateFuncs(func(object client.Object) bool {
+			return client.ObjectKeyFromObject(object) == r.Settings
+		}))).
+		Watches(&core.Secret{}, handler.EnqueueRequestsFromMapFunc(r.credentialRequests)).
 		Owns(&agw.AgentgatewayBackend{}).Owns(&agw.AgentgatewayPolicy{}).Owns(&gw.HTTPRoute{}).Complete(r)
 }
 

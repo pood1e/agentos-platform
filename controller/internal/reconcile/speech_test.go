@@ -37,6 +37,15 @@ func testSpeech(t *testing.T, c client.Client, scheme *runtime.Scheme, namespace
 			t.Fatalf("key refresh interval = %v", result.RequeueAfter)
 		}
 	}
+	if requests := r.credentialRequests(ctx, external); len(requests) != 1 || requests[0].NamespacedName != r.Settings {
+		t.Fatalf("credential change requests = %+v", requests)
+	}
+	if requests := r.credentialRequests(ctx, settings); len(requests) != 0 {
+		t.Fatal("settings event mapped twice")
+	}
+	if requests := r.credentialRequests(ctx, &core.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "unrelated"}}); len(requests) != 0 {
+		t.Fatal("unrelated secret triggers speech refresh")
+	}
 	reconcile()
 	backend := &agw.AgentgatewayBackend{}
 	key := client.ObjectKey{Namespace: namespace, Name: "speech-transcription"}
