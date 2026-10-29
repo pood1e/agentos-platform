@@ -32,14 +32,15 @@ package = {
     "repository": {"type": "git", "url": "https://github.com/pood1e/agentos-platform.git"},
     "type": "module",
     "license": "Apache-2.0",
+    "files": ["authorization.json", "buf.lock", "gen", "proto", "third_party"],
     "exports": {
         "./authorization.json": "./authorization.json",
-        "./*": {"types": "./*.d.ts", "default": "./*.js"},
+        "./gen/schema/*": "./gen/schema/*",
+        "./gen/*": {"types": "./gen/*.d.ts", "default": "./gen/*.js"},
+        "./proto/*": "./proto/*",
+        "./third_party/*": "./third_party/*",
     },
-    "dependencies": {
-        name: manifest["dependencies"][name]
-        for name in ("@bufbuild/protobuf", "@connectrpc/connect")
-    },
+    "dependencies": {"@bufbuild/protobuf": manifest["dependencies"]["@bufbuild/protobuf"]},
 }
 (target / "package.json").write_text(json.dumps(package, indent=2) + "\n")
 (root / "dist/contracts").mkdir(parents=True, exist_ok=True)

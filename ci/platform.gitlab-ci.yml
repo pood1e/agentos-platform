@@ -76,6 +76,7 @@ build-contracts:
   needs: []
   script:
     - python ci/contracts.py
+    - python ci/test-contracts.py
     - python ci/test-release.py
   artifacts:
     paths: [dist/contracts/, gen/python/, gen/authorization.json]

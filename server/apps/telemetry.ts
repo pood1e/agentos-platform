@@ -2,6 +2,7 @@ export {};
 
 const endpoint =
   process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+
 const disabled =
   process.env.OTEL_SDK_DISABLED?.trim().toLowerCase() === "true" ||
   process.env.OTEL_METRICS_EXPORTER?.split(",").some(
@@ -9,55 +10,67 @@ const disabled =
   );
 
 if (endpoint && !disabled) {
-  process.env.OTEL_METRICS_EXPORTER ??= "otlp";
-  process.env.OTEL_EXPORTER_OTLP_METRICS_TIMEOUT ??= "1000";
-  process.env.OTEL_TRACES_EXPORTER ??= "none";
-  process.env.OTEL_LOGS_EXPORTER ??= "none";
-
-  let diagnostics = 0;
-  const report = (...values: unknown[]) => {
-    if (diagnostics++ >= 8) return;
-    const message = values
-      .slice(0, 4)
-      .map((value) =>
-        value instanceof Error ? value.message : typeof value === "string" ? value : "",
-      )
-      .join(" ")
-      .slice(0, 512);
-    console.warn("OpenTelemetry:", message);
+  const reported = new Set<"SDK" | "initialization" | "shutdown">();
+  const report = (phase: "SDK" | "initialization" | "shutdown") => {
+    if (reported.has(phase)) return;
+    reported.add(phase);
+    console.warn(
+      `OpenTelemetry ${phase} failed; check OTEL configuration and Collector. Further ${phase} diagnostics are suppressed.`,
+    );
   };
+  const timeout = (value: string | undefined) => {
+    const milliseconds = Number(value);
+    return String(
+      Number.isFinite(milliseconds) && milliseconds > 0 ? Math.min(milliseconds, 1000) : 1000,
+    );
+  };
+  process.env.OTEL_METRICS_EXPORTER ??= "otlp";
+  // Bound the transport as well as the reader: a reader timeout leaves queued HTTP requests alive.
+  process.env.OTEL_EXPORTER_OTLP_METRICS_TIMEOUT = timeout(
+    process.env.OTEL_EXPORTER_OTLP_METRICS_TIMEOUT ?? process.env.OTEL_EXPORTER_OTLP_TIMEOUT,
+  );
+  process.env.OTEL_METRIC_EXPORT_TIMEOUT = timeout(process.env.OTEL_METRIC_EXPORT_TIMEOUT);
+
   let sdk: import("@opentelemetry/sdk-node").NodeSDK | undefined;
-  const stop = () =>
-    void Promise.resolve()
+  const shutdown = () =>
+    Promise.resolve()
       .then(() => sdk?.shutdown())
-      .catch(report);
+      .catch(() => report("shutdown"));
   try {
     const [{ NodeSDK }, { HostMetrics }, { diag, DiagLogLevel }] = await Promise.all([
       import("@opentelemetry/sdk-node"),
       import("@opentelemetry/host-metrics"),
       import("@opentelemetry/api"),
     ]);
-    const configured = process.env.OTEL_LOG_LEVEL;
-    const level = DiagLogLevel[configured?.toUpperCase() as keyof typeof DiagLogLevel];
+    const ignore = () => {};
+    const level = process.env.OTEL_LOG_LEVEL;
+    const logLevel = DiagLogLevel[level?.toUpperCase() as keyof typeof DiagLogLevel];
     diag.setLogger(
-      { error: report, warn: report, info: report, debug: report, verbose: report },
       {
-        logLevel: typeof level === "number" ? level : DiagLogLevel.WARN,
+        error: () => report("SDK"),
+        warn: () => report("SDK"),
+        info: ignore,
+        debug: ignore,
+        verbose: ignore,
+      },
+      {
+        logLevel: typeof logLevel === "number" ? logLevel : DiagLogLevel.WARN,
         suppressOverrideMessage: true,
       },
     );
     // NodeSDK otherwise replaces the bounded diagnostic logger with its console logger.
     delete process.env.OTEL_LOG_LEVEL;
     try {
-      sdk = new NodeSDK();
+      sdk = new NodeSDK({ spanProcessors: [], logRecordProcessors: [] });
     } finally {
-      if (configured !== undefined) process.env.OTEL_LOG_LEVEL = configured;
+      if (level !== undefined) process.env.OTEL_LOG_LEVEL = level;
     }
     sdk.start();
     new HostMetrics({ metricGroups: ["process.cpu", "process.memory"] }).start();
-    for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, stop);
-  } catch (error) {
-    report("initialization failed", error);
-    stop();
+    for (const signal of ["SIGINT", "SIGTERM"] as const)
+      process.once(signal, () => void shutdown());
+  } catch {
+    report("initialization");
+    void shutdown();
   }
 }

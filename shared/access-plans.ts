@@ -15,10 +15,15 @@ export function serverTargets(plans: AccessPlan[], mode: AccessPlanSpec["mode"] 
   const targets = new Map<string, Target>();
   for (const plan of plans) {
     if (plan.spec.mode !== mode) continue;
+    const generation = plan.metadata?.generation;
     if (
-      plan.status?.observedGeneration !== plan.metadata?.generation ||
+      generation === undefined ||
+      plan.status?.observedGeneration !== generation ||
       !plan.status?.conditions?.some(
-        (condition) => condition.type === "Ready" && condition.status === "True",
+        (condition) =>
+          condition.type === "Ready" &&
+          condition.status === "True" &&
+          condition.observedGeneration === generation,
       )
     )
       throw new ConnectError("Authorization plan is not ready", Code.Unavailable);
