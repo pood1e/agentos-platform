@@ -6,7 +6,7 @@ import type { Viewer } from "../read-model/listings.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import { notFound } from "../shared/errors.js";
 
-/** Whose executions a request reads; administrators also read shared service work. */
+/** The requested execution view; native reads retain their own authorization. */
 export function viewer(identity: UserIdentity, systemOnly = false): Viewer {
   return { subject: identity.subject, administrator: isAdministrator(identity), systemOnly };
 }
