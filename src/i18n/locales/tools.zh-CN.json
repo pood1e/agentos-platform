@@ -9,12 +9,8 @@
       "description": "为选定工程师创建独立的任务会话。"
     },
     "invoke_session": {
-      "name": "委派并等待结果",
-      "description": "将目标交给指定会话，等待执行结果。"
-    },
-    "dispatch_session": {
-      "name": "提交后台任务",
-      "description": "提交独立任务，交由工程师在后台处理。"
+      "name": "委派任务",
+      "description": "将目标交给指定会话，等待结果或在后台执行。"
     },
     "list_sessions": {
       "name": "查看协作会话",
@@ -104,10 +100,6 @@
       "name": "检索历史知识",
       "description": "按语义检索相关经验与来源。"
     },
-    "search_knowledge": {
-      "name": "检索团队知识",
-      "description": "直接检索团队共享的历史经验，核对适用条件和来源。"
-    },
     "list_skills": {
       "name": "查看可用技能",
       "description": "列出工程师已绑定的技能及适用范围。"
@@ -151,11 +143,15 @@
     "grep_file": {
       "name": "搜索工作文件",
       "description": "搜索工程师工作区或技能目录中的文件内容。"
+    },
+    "search_memory": {
+      "name": "检索团队知识",
+      "description": "直接检索团队共享的历史经验，核对适用条件和来源。"
     }
   },
   "servers": {
     "kagent-api": "kagent 工作空间",
-    "team-sessions": "团队协作",
+    "team-sessions": "角色起草",
     "kagent-collaboration": "会话与工作空间"
   }
 }

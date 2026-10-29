@@ -1,4 +1,3 @@
-import { TaskRelation } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type AgentInfo, type SessionInfo, systemRoles } from "./agents.js";
 import type { CallEntry } from "./calls.js";
 import type { TaskEntry } from "./entry.js";
@@ -7,10 +6,6 @@ export interface Relations {
   /** Child task per `${taskId}:${callId}` delegation call. */
   targets: Map<string, string>;
   parents: Map<string, string>;
-  /** Native causal relationships, independent of model-produced tool results. */
-  causalParents: Map<string, string>;
-  continuations: Map<string, string[]>;
-  resumed: Set<string>;
   roots: TaskEntry[];
 }
 
@@ -75,7 +70,7 @@ export class TaskGraph {
 
   private resolve(call: CallEntry): string | undefined {
     const ref = call.delegation;
-    if (!ref || ref.kind === "handoff") return undefined;
+    if (!ref) return undefined;
     const target =
       (ref.taskId ? this.entries.get(ref.taskId) : undefined) ??
       (ref.messageId ? this.taskOfMessage(ref.messageId) : undefined);
@@ -87,30 +82,22 @@ export class TaskGraph {
   private build(): Relations {
     const targets = new Map<string, string>();
     const parents = new Map<string, string>();
-    const continuations = new Map<string, string[]>();
-    const resumed = new Set<string>();
     for (const entry of this.entries.values()) {
       const execution = entry.execution;
       if (execution?.parent && this.entries.has(execution.parent.taskId)) {
         parents.set(entry.id, execution.parent.taskId);
-        if (execution.relation === TaskRelation.CONTINUATION) {
-          const id = execution.parent.taskId;
-          continuations.set(id, [...(continuations.get(id) ?? []), entry.id]);
-        }
       }
-      if (execution?.resumedTask) resumed.add(execution.resumedTask.taskId);
       for (const call of entry.calls) {
         const child = this.resolve(call);
         if (child && this.entry(child)?.execution?.parent?.taskId === entry.id)
           targets.set(callKey(entry.id, call.id), child);
       }
     }
-    const causalParents = new Map(parents);
     const roots = [...this.entries.values()].filter((entry) => {
       if (systemRoles.has(this.roleOf(entry.agentId))) return false;
       const parent = this.entry(parents.get(entry.id) ?? "");
       return !parent || systemRoles.has(this.roleOf(parent.agentId));
     });
-    return { targets, parents, causalParents, continuations, resumed, roots };
+    return { targets, parents, roots };
   }
 }

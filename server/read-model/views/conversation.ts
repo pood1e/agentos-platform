@@ -31,15 +31,13 @@ import { taskSummary } from "./task.js";
 
 /** Operations this conversation turn started: its own root or those it delegated to engineers. */
 function operations(graph: TaskGraph, entry: TaskEntry) {
-  const roots = new Set(graph.relations().roots.map((root) => root.id));
-  const delegated = entry.calls.flatMap((call) => {
-    const root = graph.operationRoot(graph.target(entry, call) ?? "");
-    return root && roots.has(root.id) ? [root.id] : [];
-  });
-  return [...new Set(roots.has(entry.id) ? [entry.id, ...delegated] : delegated)].flatMap((id) => {
-    const tree = taskTree(graph, id);
-    return tree ? [taskSummary(graph, tree)] : [];
-  });
+  const { roots, parents } = graph.relations();
+  return roots
+    .filter((root) => root.id === entry.id || parents.get(root.id) === entry.id)
+    .flatMap((root) => {
+      const tree = taskTree(graph, root.id);
+      return tree ? [taskSummary(graph, tree)] : [];
+    });
 }
 
 /** Complete task payloads, from a live stream while running or from kagent once settled. */
@@ -128,7 +126,8 @@ export async function conversation(
     );
   const latest = entries.at(-1);
   if (!contextId || !latest) return create(ConversationSchema, { contextId, ready });
-  const tree = taskTree(graph, latest.parentTaskId || latest.id);
+  const root = graph.entry(latest.execution?.root?.taskId ?? "") ?? latest;
+  const tree = taskTree(graph, root.id);
   const runs = conversationWork(graph, entries);
   const members = [...new Set(runs.map((run) => run.agentId))];
   return create(ConversationSchema, {

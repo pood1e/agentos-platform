@@ -2233,17 +2233,13 @@
           },
           {
             "data": {
-              "name": "dispatch_session",
+              "name": "invoke_session",
               "id": "call_Bico3vzuZll1XIIbgPRUU6jG",
               "args": {
-                "role": "ROLE_USER",
-                "contextId": "01a130de-172e-7c81-83b5-9407668dd87e",
-                "messageId": "341ca5b4-e06d-48f1-af67-27f05d48f7dd",
-                "parts": [
-                  {
-                    "text": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_session 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。"
-                  }
-                ]
+                "session_id": "01a130de-172e-7c81-83b5-9407668dd87e",
+                "message_id": "341ca5b4-e06d-48f1-af67-27f05d48f7dd",
+                "message": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_session 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。",
+                "background": true
               }
             },
             "metadata": {
@@ -2266,30 +2262,13 @@
           {
             "data": {
               "id": "call_Bico3vzuZll1XIIbgPRUU6jG",
-              "name": "dispatch_session",
+              "name": "invoke_session",
               "response": {
                 "output": {
-                  "task": {
-                    "history": [
-                      {
-                        "messageId": "341ca5b4-e06d-48f1-af67-27f05d48f7dd",
-                        "parts": [
-                          {
-                            "text": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_session 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。"
-                          }
-                        ],
-                        "role": "ROLE_USER",
-                        "taskId": "01a130de-59b6-77b2-8e04-21a814d48ec9",
-                        "contextId": "01a130de-172e-7c81-83b5-9407668dd87e",
-                        "extensions": ["https://kagent.dev/extensions/hitl/v1"]
-                      }
-                    ],
-                    "id": "01a130de-59b6-77b2-8e04-21a814d48ec9",
-                    "status": {
-                      "state": "TASK_STATE_SUBMITTED"
-                    },
-                    "contextId": "01a130de-172e-7c81-83b5-9407668dd87e"
-                  }
+                  "session_id": "01a130de-172e-7c81-83b5-9407668dd87e",
+                  "context_id": "01a130de-172e-7c81-83b5-9407668dd87e",
+                  "task_id": "01a130de-59b6-77b2-8e04-21a814d48ec9",
+                  "state": "TASK_STATE_SUBMITTED"
                 }
               }
             },
@@ -2326,7 +2305,7 @@
         "role": "ROLE_USER",
         "parts": [
           {
-            "text": "验证事后异步知识沉淀：只读核验 agentos-lab/approval-rag-smoke 的实际 data.status=verified、data.purpose=approval-rag，已有资源不修改。自主选择可用成员进行核验；核验完成后，为知识成员创建独立会话，用 dispatch_session 将简洁结论、实际来源 Session/Task 和资源路径提交后台入库与语义回查。收到后台 Task 标识就结束主任务，不等待知识成员完成，不查询后台结果。最终只回复两句话：已核验的资源结论，以及后台知识 Task 标识和正在沉淀的状态。全程只读 Kubernetes。"
+            "text": "验证事后异步知识沉淀：只读核验 agentos-lab/approval-rag-smoke 的实际 data.status=verified、data.purpose=approval-rag，已有资源不修改。自主选择可用成员进行核验；核验完成后，为知识成员创建独立会话，用 invoke_session(background=true) 将简洁结论、实际来源 Session/Task 和资源路径提交后台入库与语义回查。收到后台 Task 标识就结束主任务，不等待知识成员完成，不查询后台结果。最终只回复两句话：已核验的资源结论，以及后台知识 Task 标识和正在沉淀的状态。全程只读 Kubernetes。"
           }
         ],
         "extensions": ["https://kagent.dev/extensions/hitl/v1"]
@@ -2929,18 +2908,6 @@
                       "ref": "agentos/team-sessions",
                       "discoveredTools": [
                         {
-                          "name": "create_session",
-                          "description": "Create an independent conversation with a chosen Agent. Generate a fresh random UUID for requestId for each new conversation; reuse that UUID with identical inputs only for retries of that creation. Use the returned session.id with invoke_session. Create conversations only for work you choose to delegate."
-                        },
-                        {
-                          "name": "list_agents",
-                          "description": "Discover available Agents and their capabilities and readiness in the operations namespace."
-                        },
-                        {
-                          "description": "Dispatch independent background work to an existing Session without waiting for completion. Input is an official A2A Message: contextId is the session.id, messageId is a fresh random UUID, role is ROLE_USER, and parts contains the task text. Returns the accepted A2A Task; acceptance does not mean completion. Use for knowledge persistence after the main goal is verified. Use invoke_session when the main result depends on the child's answer, including knowledge retrieval.",
-                          "name": "dispatch_session"
-                        },
-                        {
                           "description": "Discover the operations workspace's MCP servers, exact tool names and descriptions for building an AgentTemplate. Returns the official kagent ListToolServersResponse. Discovery is read-only and does not invoke any discovered tool.",
                           "name": "list_role_tools"
                         },
@@ -3024,6 +2991,14 @@
                         {
                           "description": "Suspend a workspace; running commands and transfers may be interrupted",
                           "name": "suspend_sandbox"
+                        },
+                        {
+                          "name": "create_session",
+                          "description": "Create an independent conversation with a chosen Agent. Generate a fresh random UUID for requestId for each new conversation; reuse that UUID with identical inputs only for retries of that creation. Use the returned session.id with invoke_session. Create conversations only for work you choose to delegate."
+                        },
+                        {
+                          "name": "list_agents",
+                          "description": "Discover available Agents and their capabilities and readiness in the operations namespace."
                         }
                       ],
                       "groupKind": "RemoteMCPServer.api.kagent.dev",

@@ -3,11 +3,13 @@ export {};
 const endpoint =
   process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-if (
-  endpoint &&
-  process.env.OTEL_SDK_DISABLED?.toLowerCase() !== "true" &&
-  process.env.OTEL_METRICS_EXPORTER?.toLowerCase() !== "none"
-) {
+const disabled =
+  process.env.OTEL_SDK_DISABLED?.trim().toLowerCase() === "true" ||
+  process.env.OTEL_METRICS_EXPORTER?.split(",").some(
+    (exporter) => exporter.trim().toLowerCase() === "none",
+  );
+
+if (endpoint && !disabled) {
   const reported = new Set<"SDK" | "initialization" | "shutdown">();
   const report = (phase: "SDK" | "initialization" | "shutdown") => {
     if (reported.has(phase)) return;
@@ -30,7 +32,10 @@ if (
   process.env.OTEL_METRIC_EXPORT_TIMEOUT = timeout(process.env.OTEL_METRIC_EXPORT_TIMEOUT);
 
   let sdk: import("@opentelemetry/sdk-node").NodeSDK | undefined;
-  const shutdown = () => sdk?.shutdown().catch(() => report("shutdown"));
+  const shutdown = () =>
+    Promise.resolve()
+      .then(() => sdk?.shutdown())
+      .catch(() => report("shutdown"));
   try {
     const [{ NodeSDK }, { HostMetrics }, { diag, DiagLogLevel }] = await Promise.all([
       import("@opentelemetry/sdk-node"),
@@ -38,6 +43,8 @@ if (
       import("@opentelemetry/api"),
     ]);
     const ignore = () => {};
+    const level = process.env.OTEL_LOG_LEVEL;
+    const logLevel = DiagLogLevel[level?.toUpperCase() as keyof typeof DiagLogLevel];
     diag.setLogger(
       {
         error: () => report("SDK"),
@@ -46,10 +53,12 @@ if (
         debug: ignore,
         verbose: ignore,
       },
-      DiagLogLevel.WARN,
+      {
+        logLevel: typeof logLevel === "number" ? logLevel : DiagLogLevel.WARN,
+        suppressOverrideMessage: true,
+      },
     );
     // NodeSDK otherwise replaces the bounded diagnostic logger with its console logger.
-    const level = process.env.OTEL_LOG_LEVEL;
     delete process.env.OTEL_LOG_LEVEL;
     try {
       sdk = new NodeSDK({ spanProcessors: [], logRecordProcessors: [] });

@@ -15,9 +15,9 @@ spec:
   - mcp:
       server:
         kind: RemoteMCPServer
-        name: team-sessions
+        name: kagent-collaboration
       tools:
-      - search_knowledge
+      - search_memory
       requireApproval: false
 ---
 apiVersion: api.kagent.dev/v1alpha3

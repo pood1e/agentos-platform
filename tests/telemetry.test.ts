@@ -42,12 +42,17 @@ async function start(settings: Record<string, string | undefined>) {
       "./server/apps/telemetry.ts",
       "--input-type=module",
       "--eval",
-      `import {createServer} from 'node:http';
-       import {metrics} from '@opentelemetry/api';
+      `import {metrics} from '@opentelemetry/api';
+       import {platformApp, closeOnSignal} from './server/apps/platform.ts';
+       import {registerHealth} from './server/shared/health.ts';
        const calls = metrics.getMeter('core').createCounter('core.requests');
-       const server = createServer((req,res) => { calls.add(1); res.end('ready'); });
-       server.listen(0, '127.0.0.1', () => console.log('READY ' + server.address().port));
-       process.once('SIGTERM', () => server.close());`,
+       const app = platformApp();
+       app.log.level = 'silent';
+       registerHealth(app, () => true);
+       app.get('/request', async () => { calls.add(1); return 'ready'; });
+       closeOnSignal(app, []);
+       await app.listen({port: 0, host: '127.0.0.1'});
+       console.log('READY ' + app.server.address().port);`,
     ],
     {
       env: {
@@ -84,12 +89,24 @@ async function start(settings: Record<string, string | undefined>) {
     ),
   ]);
   const request = async () => {
-    for (const path of ["/readyz", "/request"])
+    for (const [path, status] of [
+      ["/healthz", "ok"],
+      ["/readyz", "ready"],
+    ])
       expect(
         await (
-          await fetch(`http://127.0.0.1:${port}${path}`, { signal: AbortSignal.timeout(2000) })
-        ).text(),
-      ).toBe("ready");
+          await fetch(`http://127.0.0.1:${port}${path}`, {
+            signal: AbortSignal.timeout(2000),
+          })
+        ).json(),
+      ).toEqual({ status });
+    expect(
+      await (
+        await fetch(`http://127.0.0.1:${port}/request`, {
+          signal: AbortSignal.timeout(2000),
+        })
+      ).text(),
+    ).toBe("ready");
   };
   await request();
   return {
@@ -119,6 +136,14 @@ it("starts, serves and exits with telemetry unconfigured", async () => {
 it.each([
   { OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "not-an-otlp-url" },
   { OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://127.0.0.1:1/v1/metrics" },
+  {
+    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://127.0.0.1:1",
+    OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: "grpc",
+  },
+  {
+    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "not-an-otlp-url",
+    OTEL_METRICS_EXPORTER: "invalid-exporter".repeat(1000),
+  },
   {
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://127.0.0.1:1/v1/metrics",
     OTEL_METRIC_EXPORT_INTERVAL: "-1",
@@ -205,7 +230,12 @@ it("exports only when enabled and keeps disabled telemetry silent", async () => 
     response.end();
   });
   const settings = { OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: endpoint };
-  for (const disabled of [{ OTEL_SDK_DISABLED: "true" }, { OTEL_METRICS_EXPORTER: "none" }]) {
+  for (const disabled of [
+    { OTEL_SDK_DISABLED: "true" },
+    { OTEL_METRICS_EXPORTER: "none" },
+    { OTEL_METRICS_EXPORTER: "otlp, none" },
+    { OTEL_SDK_DISABLED: " true " },
+  ]) {
     const core = await start({ ...settings, ...disabled });
     await new Promise((resolve) => setTimeout(resolve, 250));
     expect(await core.stop()).toBe("");

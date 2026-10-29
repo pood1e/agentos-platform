@@ -35,24 +35,21 @@ it("rejects arbitrary embedding model names on both role creation and update", a
     systemPrompt: "Inspect services.",
     modelConfig: vector,
   });
-  try {
-    expect(
-      (await commands.configuration()).modelConfigs.map((model) => model.ref?.name),
-    ).not.toContain(vector.name);
-    await expect(commands.createRole(draft)).rejects.toMatchObject({ code: Code.InvalidArgument });
-    draft.modelConfig = create(ResourceReferenceSchema, {
-      namespace: "agentos",
-      name: "default-model-config",
-    });
-    const { role: saved } = await commands.createRole(draft);
-    const updated = clone(RoleDefinitionSchema, saved);
-    updated.modelConfig = vector;
-    await expect(commands.updateRole(updated)).rejects.toMatchObject({
-      code: Code.InvalidArgument,
-    });
-    expect(object(fake.template("service-health").resource?.value?.spec).modelConfig).toMatchObject(
-      { name: "default-model-config" },
-    );
-  } finally {
-  }
+  expect(
+    (await commands.configuration()).modelConfigs.map((model) => model.ref?.name),
+  ).not.toContain(vector.name);
+  await expect(commands.createRole(draft)).rejects.toMatchObject({ code: Code.InvalidArgument });
+  draft.modelConfig = create(ResourceReferenceSchema, {
+    namespace: "agentos",
+    name: "default-model-config",
+  });
+  const { role: saved } = await commands.createRole(draft);
+  const updated = clone(RoleDefinitionSchema, saved);
+  updated.modelConfig = vector;
+  await expect(commands.updateRole(updated)).rejects.toMatchObject({
+    code: Code.InvalidArgument,
+  });
+  expect(object(fake.template("service-health").resource?.value?.spec).modelConfig).toMatchObject({
+    name: "default-model-config",
+  });
 });

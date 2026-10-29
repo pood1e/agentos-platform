@@ -61,7 +61,7 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
   }
   async function withExecution(task: Parameters<typeof ingest>[0], agentId: string) {
     const { execution } = await clients.execution.getTaskExecution({ taskId: task.id }, rpc);
-    if (!execution || execution.task?.sessionId !== task.contextId)
+    if (execution?.task?.taskId !== task.id || execution.task.sessionId !== task.contextId)
       throw new ConnectError("Native task relationship unavailable", Code.FailedPrecondition);
     return ingest(task, agentId, execution);
   }

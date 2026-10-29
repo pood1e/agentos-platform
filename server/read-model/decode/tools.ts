@@ -1,7 +1,9 @@
 import { fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
-import { type Part, SendMessageResponseSchema } from "../../../gen/a2a_pb.js";
+import type { Part } from "../../../gen/a2a_pb.js";
 import {
+  type InvokeSessionInput,
+  InvokeSessionInputSchema,
   type InvokeSessionOutput,
   InvokeSessionOutputSchema,
 } from "../../../gen/kagent/api/v1/collaboration_pb.js";
@@ -58,101 +60,24 @@ export function toolOutcome(response: ToolResponse | undefined): Outcome | undef
   return { kind: outcome.case, value: toJson(ValueSchema, outcome.value) };
 }
 
-/** Tool text results may carry JSON documents; structured values are kept as is. */
-export function structured(value: JsonValue | undefined): JsonValue | undefined {
-  if (typeof value !== "string") return value;
-  try {
-    return JSON.parse(value) as JsonValue;
-  } catch {
-    return value;
-  }
-}
+export type DelegationRef = Pick<InvokeSessionOutput, "sessionId" | "taskId"> &
+  Pick<InvokeSessionInput, "messageId">;
 
-export interface DelegationRef {
-  /** Synchronous invocation, background dispatch or a native agent transfer. */
-  kind: "invoke" | "background" | "handoff";
-  sessionId: string;
-  agentName: string;
-  messageId: string;
-  taskId: string;
-  message?: string;
-  invocation?: InvokeSessionOutput;
-}
-
-function invocation(output: JsonValue | undefined) {
-  const value = structured(output);
-  if (value === undefined || value === null) return undefined;
-  try {
-    return fromJson(InvokeSessionOutputSchema, object(value), lenient);
-  } catch {
-    return undefined;
-  }
-}
-
-/** Accepted background results carry the native Task's context and input identity. */
-function dispatched(args: JsonValue | undefined, output: JsonValue | undefined) {
-  let contextId = text(object(args).session_id),
-    messageId = text(object(args).message_id),
-    taskId = "";
-  try {
-    const response = fromJson(SendMessageResponseSchema, object(structured(output)), lenient);
-    if (response.payload.case === "task") {
-      const task = response.payload.value;
-      taskId = task.id;
-      contextId = task.contextId || contextId;
-      messageId ||= task.history.at(0)?.messageId ?? "";
-    }
-  } catch {}
-  return { contextId, messageId, taskId };
-}
-
+/** Display anchors for native collaboration; TaskExecution establishes ancestry. */
 export function delegationRef(
   event: Pick<ToolEvent, "name" | "args">,
   output?: JsonValue,
 ): DelegationRef | undefined {
-  const args = object(event.args);
-  switch (event.name) {
-    case "invoke_session": {
-      const result = invocation(output);
-      return {
-        kind: "invoke",
-        sessionId: text(args.session_id),
-        agentName: "",
-        messageId: text(args.message_id),
-        taskId: result?.taskId ?? "",
-        message: text(args.message).trim(),
-        invocation: result,
-      };
-    }
-    case "dispatch_session": {
-      const { contextId, messageId, taskId } = dispatched(event.args, output);
-      return {
-        kind: "background",
-        sessionId: contextId,
-        agentName: "",
-        messageId,
-        taskId,
-      };
-    }
-    case "transfer_to_agent":
-      return {
-        kind: "handoff",
-        sessionId: "",
-        agentName: text(args.agent_name),
-        messageId: "",
-        taskId: "",
-      };
-    default: {
-      const result = invocation(output);
-      if (!result?.sessionId && !result?.taskId) return undefined;
-      return {
-        kind: "invoke",
-        sessionId: result.sessionId,
-        agentName: "",
-        messageId: text(args.messageId) || text(args.message_id),
-        taskId: result.taskId,
-        invocation: result,
-      };
-    }
+  if (event.name !== "invoke_session") return undefined;
+  try {
+    const input = fromJson(InvokeSessionInputSchema, object(event.args), lenient);
+    const result = fromJson(InvokeSessionOutputSchema, object(output), lenient);
+    return {
+      sessionId: result.sessionId || input.sessionId || "",
+      messageId: input.messageId,
+      taskId: result.taskId,
+    };
+  } catch {
+    return undefined;
   }
 }

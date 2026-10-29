@@ -8,7 +8,6 @@ import {
   type Part,
   PartSchema,
   Role,
-  SendMessageResponseSchema,
   type Task,
   TaskSchema,
   TaskState,
@@ -100,11 +99,21 @@ async function knowledge(fake: FakeKagent, task: Task) {
   });
   const accepted = fake.accept(message);
   return activity(
-    "dispatch_session",
-    { session_id: session.id, message_id: message.messageId, message: messageText(message) },
+    "invoke_session",
+    {
+      session_id: session.id,
+      message_id: message.messageId,
+      message: messageText(message),
+      background: true,
+    },
     toJson(
-      SendMessageResponseSchema,
-      create(SendMessageResponseSchema, { payload: { case: "task", value: accepted } }),
+      InvokeSessionOutputSchema,
+      create(InvokeSessionOutputSchema, {
+        sessionId: accepted.contextId,
+        contextId: accepted.contextId,
+        taskId: accepted.id,
+        state: accepted.status?.state,
+      }),
     ),
   );
 }
@@ -122,7 +131,7 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
       systemPrompt: "使用只读工具检查工作负载健康，报告证据与来源。",
       tools: [
         { server: "kagent-tool-server", tools: ["k8s_get_resources"], requireApproval: false },
-        { server: "team-sessions", tools: ["search_knowledge"] },
+        { server: "kagent-collaboration", tools: ["search_memory"] },
       ],
     });
     return finish(
