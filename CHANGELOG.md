@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.7](https://github.com/pood1e/agentos-platform/compare/v0.44.6...v0.44.7) (2026-10-29)
+
+
+### Bug Fixes
+
+* **environments:** restore standalone browser routes and catalog discovery ([#220](https://github.com/pood1e/agentos-platform/issues/220)) ([55e0450](https://github.com/pood1e/agentos-platform/commit/55e045093e3d634a5c6f72e95519d58fee8ded1d))
+
 ## [0.44.6](https://github.com/pood1e/agentos-platform/compare/v0.44.5...v0.44.6) (2026-10-29)
 
 
