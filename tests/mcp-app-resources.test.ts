@@ -82,3 +82,24 @@ it("keeps a shared resource load alive when one viewer cancels", async () => {
   expect(await canceled).toMatchObject({ name: "AbortError" });
   expect(read).toHaveBeenCalledOnce();
 });
+
+it("rejects a resource response whose URI differs from the original call metadata", async () => {
+  const env = await setup();
+  const original = env.clients.tools.readMCPAppResource;
+  vi.spyOn(env.clients.tools, "readMCPAppResource").mockImplementation(async (...args) => {
+    const result = await original(...args);
+    const contents = result.result?.value?.contents;
+    if (
+      !Array.isArray(contents) ||
+      !contents[0] ||
+      typeof contents[0] !== "object" ||
+      Array.isArray(contents[0])
+    )
+      throw new Error("App resource fixture missing");
+    contents[0].uri = "ui://other-service/private.html";
+    return result;
+  });
+  await expect(env.client.getAppResource(env.request)).rejects.toMatchObject({
+    code: Code.NotFound,
+  });
+});

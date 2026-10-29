@@ -11,18 +11,16 @@ import type {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Conversation } from "../../gen/agentos/console/v1/conversation_pb.js";
 import type { ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
-import { agentRoles } from "../authorization/agent-role.js";
-import { viewer, visibleGraph } from "../console/history.js";
 import type { BindingView, ToolBindings } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { nativeHeaders } from "../kagent/context.js";
-import { appOnly, appResource, appVisible, type ToolMetadata } from "../kagent/tool-metadata.js";
+import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import type { FullTask } from "../read-model/views/conversation.js";
-import { taskRun } from "../read-model/views/run.js";
 import { notFound, unavailable } from "../shared/errors.js";
-import { callEnvironmentAppTool } from "./client.js";
+import { appAuthorization, appDenied } from "./authorization.js";
+import { callAppTool } from "./client.js";
 import { projectAppViews } from "./projection.js";
 
 interface Dependencies {
@@ -34,12 +32,16 @@ interface Dependencies {
   sandboxOrigin: string;
   gatewayURL: string;
   log?: Pick<FastifyBaseLogger, "info">;
-  invoke?: typeof callEnvironmentAppTool;
+  invoke?: typeof callAppTool;
 }
 
-function resourceResult(value: unknown): JsonObject {
+function resourceResult(value: unknown, uri: string): JsonObject {
   const result = ReadResourceResultSchema.parse(value);
-  if (result.contents.length !== 1 || result.contents[0].mimeType !== RESOURCE_MIME_TYPE)
+  if (
+    result.contents.length !== 1 ||
+    result.contents[0].mimeType !== RESOURCE_MIME_TYPE ||
+    result.contents[0].uri !== uri
+  )
     throw notFound("mcpApp.unavailable");
   const content = result.contents[0];
   const size =
@@ -60,9 +62,15 @@ export function mcpApps({
   sandboxOrigin,
   gatewayURL,
   log,
-  invoke = callEnvironmentAppTool,
+  invoke = callAppTool,
 }: Dependencies) {
-  const agentRole = agentRoles(clients);
+  const { source, authorize } = appAuthorization({
+    clients,
+    projection,
+    namespace,
+    access,
+    metadata,
+  });
   const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
   const resources = new LRUCache<
     string,
@@ -78,44 +86,9 @@ export function mcpApps({
         signal,
         timeoutMs: 15_000,
       });
-      return resourceResult(response.result?.value);
+      return resourceResult(response.result?.value, context.uri ?? "");
     },
   });
-  const denied = () => new ConnectError("MCP App tool access denied", Code.PermissionDenied);
-  async function source(call: ToolCall, selectedPolicy?: ToolBindings) {
-    const policy = selectedPolicy ?? (await access());
-    const name = call.name;
-    const target = policy
-      .catalogs()
-      .toSorted((a, b) => b.service.length - a.service.length)
-      .find((target) => name.startsWith(`${target.service}_`));
-    if (!target) return;
-    const toolServers = await metadata.servers();
-    const server = toolServers.find((server) => server.ref === `${namespace}/${target.server}`);
-    if (!server) return;
-    const tools = await metadata.tools(server);
-    const unprefix = (value: string) =>
-      value.startsWith(`${target.service}_`) ? value.slice(target.service.length + 1) : value;
-    const tool = tools.find((tool) => unprefix(tool.name) === unprefix(name));
-    if (!tool || appOnly(tool)) return;
-    const uri = appResource(tool);
-    return uri ? { target, server, tool, tools, uri, unprefix } : undefined;
-  }
-  async function original(
-    request: GetAppResourceRequest | CallAppToolRequest,
-    identity: UserIdentity,
-  ) {
-    const reference = request.app;
-    if (!reference?.callId) throw notFound("mcpApp.unavailable");
-    const view = await visibleGraph(projection, viewer(identity), { taskId: reference.taskId });
-    const entry = view?.entry(reference.taskId);
-    if (!entry) throw notFound("task.notFound");
-    const run = await taskRun(entry, projection.fullTask);
-    const call = run?.calls.find((call) => call.id === reference.callId);
-    const origin = call && (await source(call));
-    if (!origin) throw notFound("mcpApp.unavailable");
-    return { ...origin, call };
-  }
   async function decorate(calls: ToolCall[], policy: ToolBindings) {
     await Promise.all(
       calls.map(async (call) => {
@@ -129,6 +102,15 @@ export function mcpApps({
     );
   }
   return {
+    async authorize(
+      reference: GetAppResourceRequest["app"],
+      identity: UserIdentity,
+      signal: AbortSignal,
+    ) {
+      if (!sandboxOrigin) throw unavailable();
+      const origin = await authorize(reference, identity, signal);
+      return { server: origin.binding.server, tools: origin.allowedTools };
+    },
     async project(view: Conversation, graph: TaskGraph, fullTask: FullTask) {
       if (!sandboxOrigin) return;
       try {
@@ -147,7 +129,7 @@ export function mcpApps({
     },
     async getResource(request: GetAppResourceRequest, identity: UserIdentity, signal: AbortSignal) {
       if (!sandboxOrigin) throw unavailable();
-      const origin = await original(request, identity);
+      const origin = await authorize(request.app, identity, signal);
       const key = `${origin.server.ref}:${origin.uri}`;
       signal.throwIfAborted();
       // The cache owns the shared fetch; one departing viewer cannot cancel other Apps.
@@ -159,20 +141,11 @@ export function mcpApps({
     },
     async callTool(request: CallAppToolRequest, identity: UserIdentity, signal: AbortSignal) {
       if (!sandboxOrigin) throw unavailable();
-      const origin = await original(request, identity);
+      const origin = await authorize(request.app, identity, signal);
       const tool = origin.tools.find(
         (tool) => origin.unprefix(tool.name) === origin.unprefix(request.name),
       );
-      if (!tool || !appVisible(tool)) throw denied();
-      const entry = await projection.entry(request.app?.taskId ?? "");
-      const { session } = await clients.sessions.getSession(
-        { sessionId: entry?.contextId },
-        { signal, timeoutMs: 5_000 },
-      );
-      if (!session) throw denied();
-      const { engineer } = await agentRole(session);
-      const policy = await access();
-      if (!policy.permitsCall(engineer, [origin.target.service], tool.name, false)) throw denied();
+      if (!tool || !origin.allowedTools.includes(tool.name)) throw appDenied();
       const token = nativeHeaders
         .getStore()
         ?.get("authorization")
@@ -183,19 +156,17 @@ export function mcpApps({
         initiator: identity.subject,
         taskId: request.app?.taskId,
         callId: request.app?.callId,
-        environment: origin.target.environment,
-        service: origin.target.project,
-        tool: origin.unprefix(tool.name),
+        server: origin.binding.server,
+        tool: tool.name,
       };
       try {
         const result = CallToolResultSchema.parse(
           await invoke(
             gatewayURL,
-            origin.target.environment,
-            engineer,
-            origin.target.project,
+            origin.binding.server,
+            origin.reference,
             token,
-            { name: origin.unprefix(tool.name), arguments: request.arguments?.value },
+            { name: tool.name, arguments: request.arguments?.value },
             signal,
           ),
         );

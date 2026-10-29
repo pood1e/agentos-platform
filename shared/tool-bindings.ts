@@ -17,6 +17,23 @@ export class ToolBindings {
     );
   }
 
+  appSources() {
+    return [...this.targets.values()].filter((target) => target.catalog || !target.environment);
+  }
+
+  appBinding(bindings: ToolBinding[], service: string, tools: string[]) {
+    return bindings.find((binding) => {
+      const target = this.targets.get(binding.server);
+      return (
+        target?.service === service &&
+        tools.every(
+          (tool) =>
+            this.selectedTool(binding, tool) && this.decision(target, tool)?.write === false,
+        )
+      );
+    });
+  }
+
   catalogServer(server: ToolServer, servers: ToolServer[]) {
     const target = this.targets.get(server.ref.split("/").at(-1) ?? "");
     if (target?.access === "write") return server;

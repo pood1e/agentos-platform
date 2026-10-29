@@ -91,7 +91,7 @@ export function appScenario(fake: FakeKagent) {
               {
                 mcp: {
                   server: { name: "lab-views-assistant", kind: "RemoteMCPServer" },
-                  tools: ["lab-views_show_topology"],
+                  tools: ["lab-views_show_topology", "lab-views_graph_data"],
                 },
               },
             ],

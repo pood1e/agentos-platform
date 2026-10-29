@@ -117,11 +117,10 @@ it("calls only same-service app-visible read tools as the current viewer and ori
   ).toEqual({ devices: 12 });
   expect(env.invoke).toHaveBeenCalledWith(
     "http://gateway.test:8080",
-    "lab",
-    "assistant",
-    "views",
+    "lab-views-assistant",
+    expect.objectContaining(env.request.app),
     "latest-alice-token",
-    { name: "graph_data", arguments: { focus: "router-1", identity: "admin" } },
+    { name: "lab-views_graph_data", arguments: { focus: "router-1", identity: "admin" } },
     expect.any(AbortSignal),
   );
 });

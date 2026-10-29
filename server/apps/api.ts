@@ -5,6 +5,7 @@ import { consoleService } from "../console/service.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
+import { registerAppAuthorization } from "../mcp-apps/http.js";
 import { mcpApps } from "../mcp-apps/service.js";
 import { workspaceContext } from "../platform/access.js";
 import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
@@ -60,20 +61,22 @@ const gateway = {
   namespace: workspace,
   nativeAuthorityBackend: `${release}-native-authority`,
 };
+const apps = mcpApps({
+  clients,
+  projection,
+  namespace: workspace,
+  access,
+  metadata,
+  sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
+  gatewayURL: gateway.url,
+  log: app.log,
+});
+registerAppAuthorization(app, apps, identity);
 await registerConsole(app, {
   context: workspaceContext(workspace, entryAgent, identity),
   service: consoleService({
     metadata,
-    apps: mcpApps({
-      clients,
-      projection,
-      namespace: workspace,
-      access,
-      metadata,
-      sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
-      gatewayURL: gateway.url,
-      log: app.log,
-    }),
+    apps,
     projection,
     clients,
     namespace: workspace,
