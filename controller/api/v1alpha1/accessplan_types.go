@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
 	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -86,6 +87,12 @@ type PlatformGateway struct {
 	WriterRole              string `json:"writerRole"`
 	ActorJWKSBackend        string `json:"actorJWKSBackend"`
 	ActorIssuer             string `json:"actorIssuer"`
+	// AppAuthorityBackend authorizes viewer callbacks against their source invocation.
+	// +optional
+	AppAuthorityBackend string `json:"appAuthorityBackend,omitempty"`
+	// AppJWTProvider verifies the current viewer independently of Actor identity.
+	// +optional
+	AppJWTProvider *agw.JWTProvider `json:"appJWTProvider,omitempty"`
 }
 
 // AccessPlanSpec is the sole source of tool tiers and identity compilation.

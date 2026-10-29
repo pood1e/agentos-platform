@@ -6,7 +6,7 @@ tests:
 - it: keeps model and MCP Actor audiences separate from Kubernetes discovery
   template: gateway-auth.yaml
   asserts:
-  - lengthEqual: {path: spec.traffic.jwtAuthentication.providers, count: 2}
+  - lengthEqual: {path: spec.traffic.jwtAuthentication.providers, count: 3}
   - contains:
       path: spec.traffic.jwtAuthentication.providers[0].audiences
       content: http://agentos-gateway.agentos.svc.cluster.local:8080

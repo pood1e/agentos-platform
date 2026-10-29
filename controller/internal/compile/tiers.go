@@ -146,6 +146,13 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 		}
 		seen[target.Server] = true
 	}
+	if plan.Spec.Mode == "platform" {
+		resources, err := appViews(plan, result.Targets)
+		if err != nil {
+			return Result{}, err
+		}
+		result.Resources = append(result.Resources, resources...)
+	}
 	return result, nil
 }
 

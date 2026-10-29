@@ -25,6 +25,9 @@ func serverPolicy(plan *platform.AccessPlan, server string, tools []platform.Com
 	expression := agw.CELExpression("jwt.sub == ") + literal(discovery) +
 		" || (has(extauthz.selection) && (!has(extauthz.selection.tools) || mcp.tool.name in extauthz.selection.tools) && (mcp.tool.name in " + literal(read) +
 		" || (has(extauthz.scopes) && " + literal(gateway.WriterRole) + " in extauthz.scopes && mcp.tool.name in " + literal(write) + ")))"
+	if gateway.AppAuthorityBackend != "" && gateway.AppJWTProvider != nil {
+		expression = "request.path == " + literal("/apps/mcp/"+server) + " ? (" + appTools(server, read) + ") : (" + expression + ")"
+	}
 	return &agw.AgentgatewayPolicy{ObjectMeta: metadata(plan.Namespace, server+"-tool-access"), Spec: agw.AgentgatewayPolicySpec{
 		TargetRefs: []agw.LocalPolicyTargetReferenceWithSectionName{{Group: "agentgateway.dev", Kind: "AgentgatewayBackend", Name: gw.ObjectName(server)}},
 		Backend:    &agw.BackendFull{MCP: &agw.BackendMCP{Authorization: authorization(expression)}},

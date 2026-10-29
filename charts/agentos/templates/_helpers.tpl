@@ -44,10 +44,16 @@ capabilities: {drop: [ALL]}
 
 {{- define "agentos.origins" -}}
 {{- $hosts := .Values.route.hosts -}}
+{{- $sandbox := regexReplaceAll ":0*443$" .Values.mcpApps.sandboxOrigin "" -}}
+{{- range concat (list (printf "https://%s" $hosts.console) (printf "https://%s" $hosts.api)) .Values.identity.returnOrigins -}}
+{{- if and $sandbox (eq $sandbox (regexReplaceAll ":0*443$" . "")) -}}
+{{- fail "mcpApps.sandboxOrigin must be an isolated origin" -}}
+{{- end -}}
+{{- end -}}
 {{- dict
   "console" (printf "https://%s" (required "route.hosts.console is required" $hosts.console))
   "api" (printf "https://%s" (required "route.hosts.api is required" $hosts.api))
-  "sandbox" (ternary (printf "https://%s" $hosts.sandbox) "" (ne $hosts.sandbox ""))
+  "sandbox" $sandbox
   | toJson -}}
 {{- end -}}
 

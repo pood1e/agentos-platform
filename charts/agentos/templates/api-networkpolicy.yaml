@@ -23,3 +23,9 @@ spec:
             matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: voice}
       ports: [{port: 9093, protocol: TCP}]
     {{- end }}
+    {{- if .Values.mcpApps.sandboxOrigin }}
+    - from:
+        - podSelector:
+            matchLabels: {agentos.dev/gateway: business}
+      ports: [{port: 8080, protocol: TCP}]
+    {{- end }}

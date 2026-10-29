@@ -57,11 +57,14 @@ voice:
       memory: 2Gi
 identity:
   issuer: ""
+  jwksURL: ""
   clientId: ""
   audience: ""
   writerRole: ""
   secretRef: agentos-identity
   returnOrigins: []
+mcpApps:
+  sandboxOrigin: ""
 route:
   parentRefs: []
   hosts:

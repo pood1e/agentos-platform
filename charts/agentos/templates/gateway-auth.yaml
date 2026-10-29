@@ -18,14 +18,23 @@ spec:
         policy:
           matchExpressions:
             - >-
-              jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
-              (!has(mcp.resource) || mcp.resource.name.startsWith('ui://'))
+              (jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
+               (!has(mcp.resource) || mcp.resource.name.startsWith('ui://')))
+              {{- if .Values.mcpApps.sandboxOrigin }}
+              || (request.path.startsWith('/apps/mcp/') && has(extauthz.selection) &&
+                  has(extauthz.selection.tools) && has(mcp.tool) &&
+                  (mcp.tool.name in extauthz.selection.tools || mcp.tool.target + '_' + mcp.tool.name in extauthz.selection.tools))
+              {{- end }}
   traffic:
     jwtAuthentication:
       mode: Permissive
       preserveToken: true
       location:
         expression: >-
+          {{- if .Values.mcpApps.sandboxOrigin }}
+          request.path.startsWith('/apps/mcp/') ?
+          ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '') :
+          {{- end }}
           'x-substrate-actor-token' in request.headers ? request.headers['x-substrate-actor-token'].replace('Bearer ', '') :
           ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '')
       providers:
@@ -43,11 +52,17 @@ spec:
               backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-kubernetes-jwks}
               jwksPath: /openid/v1/jwks
           validation: {requiredClaims: [sub, exp, aud]}
+        {{- if .Values.mcpApps.sandboxOrigin }}
+        - {{ include "agentos.appJWTProvider" . | nindent 10 | trim }}
+        {{- end }}
     authorization:
       action: Require
       policy:
         matchExpressions:
           - >-
+            {{- if .Values.mcpApps.sandboxOrigin }}
+            (request.path.startsWith('/apps/mcp/') && has(jwt.iss) && jwt.iss == {{ .Values.identity.issuer | toJson }}) ||
+            {{- end }}
             {{- if .Values.global.agentos.environments }}
             request.path.startsWith('/environments/') ||
             {{- end }}

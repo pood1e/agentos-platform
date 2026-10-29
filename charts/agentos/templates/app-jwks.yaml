@@ -1,0 +1,18 @@
+{{- if .Values.mcpApps.sandboxOrigin }}
+{{- $endpoint := urlParse (required "identity.jwksURL is required for MCP Apps" .Values.identity.jwksURL) -}}
+{{- $address := regexFind "^\\[[^]]+\\]|^[^:]+" $endpoint.host | trimAll "[]" -}}
+{{- $port := regexFind ":[0-9]+$" $endpoint.host | trimPrefix ":" -}}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ include "agentos.name" . }}-app-jwks
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+spec:
+  static: {host: {{ $address | quote }}, port: {{ $port | default "443" | int }}}
+  policies:
+    tls:
+      sni: {{ $address | quote }}
+      {{- with .Values.identity.caCertificateRef }}
+      caCertificateRefs: [{name: {{ .name }}, kind: ConfigMap, key: {{ .key }}}]
+      {{- end }}
+{{- end }}

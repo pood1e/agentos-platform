@@ -37,3 +37,90 @@ tests:
   template: routes.yaml
   asserts:
   - failedTemplate: {errorMessage: route.hosts.sandbox must be a separate host}
+- it: supports an externally hosted isolated sandbox
+  set:
+    route.hosts.sandbox: ''
+    mcpApps.sandboxOrigin: https://apps.example.test
+  asserts:
+  - template: routes.yaml
+    hasDocuments: {count: 2}
+  - template: api-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_SANDBOX_ORIGIN, value: 'https://apps.example.test'}
+  - template: access-plan.yaml
+    equal: {path: spec.platform.appAuthorityBackend, value: agentos-app-authority}
+  - template: access-plan.yaml
+    equal: {path: spec.platform.appJWTProvider.audiences, value: [agentos-platform]}
+- it: requires rotating viewer JWKS when Apps are enabled
+  set:
+    identity.jwksURL: ''
+  template: app-jwks.yaml
+  asserts:
+  - failedTemplate: {errorPattern: jwksURL}
+- it: rejects an App sandbox sharing the API origin
+  set:
+    route.hosts.sandbox: ''
+    mcpApps.sandboxOrigin: https://api.agentos.example.test
+  template: web-deployment.yaml
+  asserts:
+  - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
+- it: rejects a hosted sandbox and configured origin mismatch
+  set:
+    mcpApps.sandboxOrigin: https://other.example.test
+  template: routes.yaml
+  asserts:
+  - failedTemplate: {errorMessage: route.hosts.sandbox must match mcpApps.sandboxOrigin}
+- it: keeps ordinary MCP identity configuration unchanged when Apps are disabled
+  set:
+    route.hosts.sandbox: ''
+    mcpApps.sandboxOrigin: ''
+    identity.jwksURL: ''
+  asserts:
+  - template: app-authority.yaml
+    hasDocuments: {count: 0}
+  - template: app-jwks.yaml
+    hasDocuments: {count: 0}
+  - template: access-plan.yaml
+    notExists: {path: spec.platform.appAuthorityBackend}
+  - template: gateway-auth.yaml
+    lengthEqual: {path: spec.traffic.jwtAuthentication.providers, count: 2}
+- it: authenticates viewers before forwarding only native App selection
+  asserts:
+  - template: gateway-auth.yaml
+    matchRegex:
+      path: spec.traffic.jwtAuthentication.location.expression
+      pattern: "^request.path.startsWith\\('/apps/mcp/'\\)"
+  - template: gateway-auth.yaml
+    equal: {path: 'spec.traffic.jwtAuthentication.providers[2].issuer', value: 'https://identity.example.test/realms/operations'}
+  - template: app-jwks.yaml
+    equal: {path: spec.policies.tls.sni, value: identity.example.test}
+  - template: app-authority.yaml
+    equal: {path: spec.static.port, value: 8080}
+- it: preserves an issuer JWKS path query and explicit HTTPS port
+  set:
+    identity.jwksURL: https://identity.example.test:8443/keys?version=2
+  asserts:
+  - template: app-jwks.yaml
+    equal: {path: spec.static.host, value: identity.example.test}
+  - template: app-jwks.yaml
+    equal: {path: spec.static.port, value: 8443}
+  - template: app-jwks.yaml
+    equal: {path: spec.policies.tls.sni, value: identity.example.test}
+  - template: access-plan.yaml
+    equal: {path: spec.platform.appJWTProvider.jwks.remote.jwksPath, value: '/keys?version=2'}
+- it: rejects the API origin with an explicit default TLS port
+  set:
+    route.hosts.sandbox: ''
+    mcpApps.sandboxOrigin: https://api.agentos.example.test:443
+  template: web-deployment.yaml
+  asserts:
+  - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
+- it: rejects a return origin using an equivalent TLS port
+  set:
+    route.hosts.sandbox: ''
+    identity.returnOrigins: ['https://external.example.test:0443']
+    mcpApps.sandboxOrigin: https://external.example.test
+  template: web-deployment.yaml
+  asserts:
+  - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
