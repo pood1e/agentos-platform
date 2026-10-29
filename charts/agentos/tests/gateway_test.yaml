@@ -7,7 +7,7 @@ tests:
   template: gateway-auth.yaml
   asserts:
   - lengthEqual: {path: spec.traffic.jwtAuthentication.providers, count: 3}
-  - notExists: {path: spec.traffic.jwtAuthentication.providers[0].audiences}
+  - notExists: {path: 'spec.traffic.jwtAuthentication.providers[0].audiences'}
   - equal:
       path: spec.traffic.jwtAuthentication.providers[1].audiences
       value: ['http://agentos-gateway.agentos.svc.cluster.local:8080', agentos-mcp-discovery]
