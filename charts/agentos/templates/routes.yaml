@@ -23,10 +23,8 @@ spec:
   hostnames: [{{ $hosts.api | quote }}]
   rules:
     - backendRefs: [{name: {{ include "agentos.apiService" . }}, port: 8080}]
-    {{- if .Values.global.agentos.environments }}
     - matches: [{path: {type: PathPrefix, value: /environments}}]
       backendRefs: [{name: {{ $name }}-gateway, port: 8080}]
-    {{- end }}
 {{- if $hosts.sandbox }}
 {{- if has $hosts.sandbox (list $hosts.console $hosts.api) }}{{ fail "route.hosts.sandbox must be a separate host" }}{{ end }}
 {{- if ne (regexReplaceAll ":0*443$" $.Values.mcpApps.sandboxOrigin "") (printf "https://%s" $hosts.sandbox) }}{{ fail "route.hosts.sandbox must match mcpApps.sandboxOrigin" }}{{ end }}

@@ -63,9 +63,10 @@ spec:
             {{- if .Values.mcpApps.sandboxOrigin }}
             (request.path.startsWith('/apps/mcp/') && has(jwt.iss) && jwt.iss == {{ .Values.identity.issuer | toJson }}) ||
             {{- end }}
-            {{- if .Values.global.agentos.environments }}
             request.path.startsWith('/environments/') ||
-            {{- end }}
+            (request.method == 'POST' && request.path.matches('^/mcp/[a-z][a-z0-9-]*$') &&
+             has(jwt.iss) && jwt.iss == {{ .Values.identity.issuer | toJson }} &&
+             has(jwt.azp) && jwt.azp == 'agentos-catalog') ||
             {{- if .Values.voice.enabled }}
             request.path.startsWith('/speech/') ||
             {{- end }}

@@ -45,12 +45,16 @@ tests:
       value: []
 - it: forwards browser environment RPC through the native gateway
   template: web-config.yaml
+  set:
+    global.agentos.environments: []
   asserts:
   - matchRegex:
       path: data["oauth2-proxy.yaml"]
       pattern: 'id: environments\s+path: /environments/\s+uri: http://agentos-gateway:8080'
 - it: publishes native environment routes on the API host
   template: routes.yaml
+  set:
+    global.agentos.environments: []
   documentSelector:
     path: metadata.name
     value: agentos-api
@@ -62,7 +66,20 @@ tests:
         backendRefs: [{name: agentos-gateway, port: 8080}]
 - it: allows native browser policies to refine the inherited gateway requirement
   template: gateway-auth.yaml
+  set:
+    global.agentos.environments: []
   asserts:
   - matchRegex:
       path: spec.traffic.authorization.policy.matchExpressions[0]
       pattern: "request.path.startsWith\\('/environments/'\\)"
+- it: allows catalog discovery only on base MCP routes
+  template: gateway-auth.yaml
+  set:
+    global.agentos.environments: []
+  asserts:
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: "request.method == 'POST' && request.path.matches\\('\\^/mcp/\\[a-z\\]\\[a-z0-9-\\]\\*\\$'\\)"
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: "jwt.azp == 'agentos-catalog'"

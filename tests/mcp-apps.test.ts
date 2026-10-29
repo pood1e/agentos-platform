@@ -129,6 +129,18 @@ it("reports discovery outages separately from empty tool sets and permits recove
   expect(discover).toHaveBeenCalledTimes(2);
 });
 
+it("keeps actor-only servers without querying their unavailable global metadata", async () => {
+  const env = await setup();
+  const discover = vi.spyOn(env.clients.tools, "listMCPAppTools");
+  const server = create(ToolServerSchema, {
+    ref: "agentos/lab-views-assistant",
+    groupKind: "RemoteMCPServer.api.kagent.dev",
+    discoveredTools: [],
+  });
+  expect(await env.metadata.modelServers([server])).toEqual([server]);
+  expect(discover).not.toHaveBeenCalled();
+});
+
 it("calls only same-service app-visible read tools as the current viewer and original Agent identity", async () => {
   const env = await setup();
   expect(
