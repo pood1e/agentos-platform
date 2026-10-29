@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.8](https://github.com/pood1e/agentos-platform/compare/v0.44.7...v0.44.8) (2026-10-29)
+
+
+### Bug Fixes
+
+* **gateway:** admit standalone environment API and Actor MCP routes ([#222](https://github.com/pood1e/agentos-platform/issues/222)) ([6c05894](https://github.com/pood1e/agentos-platform/commit/6c058944ca22984eac03309814bc014c5fd449a7))
+
 ## [0.44.7](https://github.com/pood1e/agentos-platform/compare/v0.44.6...v0.44.7) (2026-10-29)
 
 
