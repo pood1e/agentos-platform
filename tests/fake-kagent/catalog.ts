@@ -23,13 +23,14 @@ export const toolServers = (): ToolServer[] => [
     "k8s_get_resource_yaml",
   ]),
   server("remediation-tools", ["k8s_apply_manifest"]),
-  server("team-sessions", [
+  server("team-sessions", ["list_role_tools", "prepare_role"]),
+  server("kagent-collaboration", [
     "list_agents",
     "create_session",
-    "dispatch_session",
-    "search_knowledge",
+    "list_sessions",
+    "invoke_session",
+    "search_memory",
   ]),
-  server("kagent-collaboration", ["list_sessions", "invoke_session"]),
   server("grafana-mcp", ["grafana_query_loki"]),
 ];
 
@@ -40,7 +41,13 @@ const roles: Record<
   coordinator: [
     "Coordinates the operation",
     "Plan and delegate.",
-    [{ server: "team-sessions", tools: ["list_agents", "create_session"], approve: false }],
+    [
+      {
+        server: "kagent-collaboration",
+        tools: ["list_agents", "create_session"],
+        approve: false,
+      },
+    ],
   ],
   inspection: [
     "Checks cluster health",

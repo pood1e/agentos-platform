@@ -9,13 +9,12 @@ import { intentKey, taskSources, text, timeline } from "./decode/messages.js";
 import {
   type DelegationRef,
   delegationRef,
-  structured,
   type ToolEvent,
   toolEvent,
   toolEventId,
   toolOutcome,
 } from "./decode/tools.js";
-import { taskActivity, terminal } from "./state.js";
+import { terminal } from "./state.js";
 
 export type Approval = "pending" | "approved" | "rejected" | "abandoned";
 
@@ -37,7 +36,6 @@ export interface CallEntry {
   startedAt?: number;
   endedAt?: number;
   delegation?: DelegationRef;
-  returned: boolean;
 }
 
 function drafts(task: Task): Draft[] {
@@ -62,7 +60,6 @@ function drafts(task: Task): Draft[] {
       const id = toolEventId(event, source.key, index);
       const previous = calls.get(id);
       const name = event.name || previous?.name || "";
-      if (name === "adk_request_confirmation") continue;
       const call = previous ?? { id, name, intent: "", responses: [] };
       const at = timeline(part.metadata) ?? source.at;
       if (event.kind === "function_call") {
@@ -80,18 +77,10 @@ function drafts(task: Task): Draft[] {
   return [...calls.values()];
 }
 
-// ADK answers an approval-gated call with a confirmation error before the human decision.
-const effectiveResponses = (call: Draft, approval?: Approval) =>
-  approval === "approved"
-    ? call.responses.length > 1
-      ? call.responses.slice(1)
-      : call.responses.filter((response) => toolOutcome(response)?.kind === "output")
-    : call.responses;
-
 function resolve(call: Draft, task: Task, approval?: Approval) {
-  const last = effectiveResponses(call, approval).at(-1);
+  const last = call.responses.at(-1);
   const outcome = last === undefined ? undefined : toolOutcome(last);
-  const delegation = delegationRef(call, outcome?.kind === "output" ? outcome.value : undefined);
+  const delegation = delegationRef(call, outcome?.value);
   let state: ActivityState;
   if (approval === "pending") state = ActivityState.AWAITING_APPROVAL;
   else if (approval === "rejected") state = ActivityState.REJECTED;
@@ -100,7 +89,6 @@ function resolve(call: Draft, task: Task, approval?: Approval) {
     state = terminal(task.status?.state) ? ActivityState.UNOBSERVED : ActivityState.WORKING;
   else if (outcome.kind === "pending") state = ActivityState.AWAITING_INPUT;
   else if (outcome.kind === "error") state = ActivityState.FAILED;
-  else if (delegation?.invocation) state = taskActivity(delegation.invocation.state);
   else state = ActivityState.SUCCEEDED;
   return { state, outcome, delegation };
 }
@@ -116,7 +104,6 @@ export function callEntries(task: Task, approvals: Map<string, Approval>): CallE
       startedAt: call.startedAt,
       endedAt: call.endedAt,
       delegation,
-      returned: call.responses.length > 0,
     };
   });
 }
@@ -143,7 +130,7 @@ export function toolCalls(
       startedAt: stamp(call.startedAt),
       endedAt: stamp(call.endedAt),
       args: value(call.args),
-      output: value(outcome ? structured(outcome.value) : undefined),
+      output: value(outcome?.value),
     });
   });
 }

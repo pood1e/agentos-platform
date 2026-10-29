@@ -9,12 +9,8 @@
       "description": "Create an independent task session for a selected engineer."
     },
     "invoke_session": {
-      "name": "Delegate and await results",
-      "description": "Delegate a goal to a session and await its result."
-    },
-    "dispatch_session": {
-      "name": "Dispatch background work",
-      "description": "Dispatch independent work for an engineer to handle in the background."
+      "name": "Delegate work",
+      "description": "Delegate a goal to a session, synchronously or in the background."
     },
     "list_sessions": {
       "name": "List collaboration sessions",
@@ -104,10 +100,6 @@
       "name": "Retrieve knowledge",
       "description": "Retrieve relevant experience and sources with semantic search."
     },
-    "search_knowledge": {
-      "name": "Search team knowledge",
-      "description": "Search shared team experience and check applicability and sources."
-    },
     "list_skills": {
       "name": "List available skills",
       "description": "List the engineer’s attached skills and their scope."
@@ -151,11 +143,15 @@
     "grep_file": {
       "name": "Search workspace files",
       "description": "Search file contents in the engineer's workspace or skills directory."
+    },
+    "search_memory": {
+      "name": "Search team knowledge",
+      "description": "Search shared team experience and check applicability and sources."
     }
   },
   "servers": {
     "kagent-api": "kagent workspaces",
-    "team-sessions": "Team collaboration",
+    "team-sessions": "Role drafting",
     "kagent-collaboration": "Sessions and workspaces"
   }
 }

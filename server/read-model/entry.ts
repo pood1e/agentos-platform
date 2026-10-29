@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { toBinary } from "@bufbuild/protobuf";
 import { Role, type Task, TaskSchema, TaskState } from "../../gen/a2a_pb.js";
 import type { Interaction } from "../../gen/agentos/console/v1/task_pb.js";
-import { type TaskExecution, TaskRelation } from "../../gen/kagent/api/v1/execution_pb.js";
+import type { TaskExecution } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type CallEntry, callEntries } from "./calls.js";
 import { isHitlResponse } from "./decode/hitl.js";
 import { createdMillis, messageText, statusMillis, timeline } from "./decode/messages.js";
@@ -31,8 +31,6 @@ export interface TaskEntry {
   calls: CallEntry[];
   interactions: Interaction[];
   execution?: TaskExecution;
-  parentTaskId: string;
-  resumedTaskId: string;
   decision?: Decision;
 }
 
@@ -69,9 +67,6 @@ export function ingest(task: Task, agentId: string, execution?: TaskExecution): 
     calls,
     interactions: interactions(task, agentId, calls),
     execution,
-    parentTaskId:
-      execution?.relation === TaskRelation.CONTINUATION ? (execution.parent?.taskId ?? "") : "",
-    resumedTaskId: execution?.resumedTask?.taskId ?? "",
     decision: latestDecision(task),
   };
 }

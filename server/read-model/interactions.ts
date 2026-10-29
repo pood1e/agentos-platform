@@ -122,7 +122,7 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
                 multiple,
               }))
             : [],
-        explanation: call?.intent || (/FunctionResponse|ToolConfirmation/.test(hint) ? "" : hint),
+        explanation: call?.intent || hint,
         state: request.canceled
           ? ActivityState.CANCELED
           : !request.response

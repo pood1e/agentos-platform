@@ -5,10 +5,10 @@ remediation-tools:
   readOnly: []
   write: [k8s_apply_manifest]
 team-sessions:
-  readOnly: [list_agents, create_session, dispatch_session, list_role_tools, prepare_role, search_knowledge]
+  readOnly: [list_role_tools, prepare_role]
   write: []
 kagent-collaboration:
-  readOnly: [list_sessions, invoke_session]
+  readOnly: [list_agents, create_session, list_sessions, invoke_session, search_memory]
   write: []
 grafana-mcp:
   readOnly: [grafana_query_loki]

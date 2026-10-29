@@ -55,8 +55,8 @@ describe("localized user interface", () => {
     expect(keys("en")).toEqual(keys("zh"));
   });
   it("uses localized names and descriptions without changing native tool identifiers", async () => {
-    expect(toolText("invoke_session")).toMatchObject({ name: "委派并等待结果" });
-    expect(toolText("mcp__kagent-collaboration__invoke_session").name).toBe("委派并等待结果");
+    expect(toolText("invoke_session")).toMatchObject({ name: "委派任务" });
+    expect(toolText("mcp__kagent-collaboration__invoke_session").name).toBe("委派任务");
     expect(toolText("functions.ask_user").name).toBe("询问用户");
     expect(toolText("env-real_kubernetes_resources_list").name).toBe(
       "env-real_kubernetes_resources_list",
@@ -72,13 +72,13 @@ describe("localized user interface", () => {
     );
     expect(toolText("env-sim-keycloak_keycloak_user_role_assign").name).toBe("授予环境角色");
     expect(toolText("grafana.query_loki").name).toBe("查询日志");
-    expect(toolServerLabel("agentos/team-sessions")).toBe("团队协作");
+    expect(toolServerLabel("agentos/team-sessions")).toBe("角色起草");
     expect(toolText("unknown_internal_name")).toEqual({
       name: "unknown_internal_name",
       description: "",
     });
     await i18n.changeLanguage("en");
-    expect(toolText("invoke_session")).toMatchObject({ name: "Delegate and await results" });
+    expect(toolText("invoke_session")).toMatchObject({ name: "Delegate work" });
     expect(toolText("env-sim_grafana_query_sql").name).toBe("Query SQL data");
     expect(toolText("env-sim-zammad_add_ticket_note").name).toBe("Add ticket note");
     expect(toolText("env-sim-keycloak_keycloak_identity_get").name).toBe("Get current identity");
