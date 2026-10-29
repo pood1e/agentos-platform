@@ -1,8 +1,10 @@
+import { create } from "@bufbuild/protobuf";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createMcpHandler, fromJsonSchema, McpServer } from "@modelcontextprotocol/server";
 import Fastify from "fastify";
 import { expect, it, onTestFinished } from "vitest";
-import { callEnvironmentAppTool } from "../server/mcp-apps/client.js";
+import { AppReferenceSchema } from "../gen/agentos/mcp/v1/app_pb.js";
+import { callAppTool } from "../server/mcp-apps/client.js";
 
 it("calls the native gateway App view with the current viewer's bearer", async () => {
   const received: { path: string; bearer: string | undefined }[] = [];
@@ -29,7 +31,7 @@ it("calls the native gateway App view with the current viewer's bearer", async (
   const gateway = Fastify();
   gateway.route({
     method: ["GET", "POST", "DELETE"],
-    url: "/environments/lab/mcp/assistant/views",
+    url: "/apps/mcp/lab-views-assistant",
     handler: async (request, reply) => {
       received.push({ path: request.url, bearer: request.headers.authorization });
       reply.hijack();
@@ -38,11 +40,10 @@ it("calls the native gateway App view with the current viewer's bearer", async (
   });
   onTestFinished(() => gateway.close());
   const address = await gateway.listen({ host: "127.0.0.1", port: 0 });
-  const result = await callEnvironmentAppTool(
+  const result = await callAppTool(
     address,
-    "lab",
-    "assistant",
-    "views",
+    "lab-views-assistant",
+    create(AppReferenceSchema, { taskId: "task", callId: "call" }),
     "current-viewer-token",
     { name: "graph_data", arguments: { focus: "router-1" } },
     new AbortController().signal,
@@ -52,7 +53,7 @@ it("calls the native gateway App view with the current viewer's bearer", async (
   expect(
     received.every(
       (request) =>
-        request.path === "/environments/lab/mcp/assistant/views" &&
+        request.path === "/apps/mcp/lab-views-assistant" &&
         request.bearer === "Bearer current-viewer-token",
     ),
   ).toBe(true);
@@ -74,11 +75,10 @@ it("rejects gateway redirects before leaking the viewer's credential", async () 
     await destination.close();
   });
   await expect(
-    callEnvironmentAppTool(
+    callAppTool(
       address,
-      "lab",
-      "assistant",
-      "views",
+      "lab-views-assistant",
+      create(AppReferenceSchema, { taskId: "task", callId: "call" }),
       "viewer-token",
       { name: "graph_data" },
       new AbortController().signal,

@@ -1,4 +1,6 @@
+import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { roleDefinition } from "../console/role-template.js";
 import type { KagentClients } from "../kagent/clients.js";
@@ -9,7 +11,17 @@ export function agentRoles(clients: KagentClients) {
   return async (session: Session) => {
     const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
     if (!agent) throw new ConnectError("Execution Agent is unavailable", Code.PermissionDenied);
-    const reference = object(object(object(agent.resource?.value?.spec).template).ref);
+    const source = object(object(agent.resource?.value?.spec).template);
+    if (source.inline !== undefined) {
+      const template = create(AgentTemplateSchema, {
+        ref: agent.ref,
+        resource: {
+          value: { metadata: object(agent.resource?.value?.metadata), spec: object(source.inline) },
+        },
+      });
+      return { engineer: agent.ref?.name ?? "", role: roleDefinition(template), agent };
+    }
+    const reference = object(source.ref);
     const { agentTemplate } = await clients.templates.getAgentTemplate(
       {
         ref: { namespace: session.agent?.namespace, name: text(reference.name) },

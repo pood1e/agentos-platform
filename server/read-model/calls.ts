@@ -41,6 +41,16 @@ export interface CallEntry {
 function drafts(task: Task): Draft[] {
   const calls = new Map<string, Draft>();
   const sources = taskSources(task);
+  const untrusted = new Set(
+    sources
+      .filter((source) => !source.narration)
+      .flatMap((source) =>
+        source.parts.flatMap((part, index) => {
+          const event = toolEvent(part);
+          return event ? [toolEventId(event, source.key, index)] : [];
+        }),
+      ),
+  );
   const interruptions = new Set(
     task.history
       .filter((message) => hitlPayload(message))
@@ -48,7 +58,7 @@ function drafts(task: Task): Draft[] {
   );
   let narration = "";
   for (const source of sources) {
-    if (interruptions.has(source.key)) continue;
+    if (!source.narration || interruptions.has(source.key)) continue;
     for (const [index, part] of source.parts.entries()) {
       if (part.content.case === "text") {
         if (source.narration) narration += part.content.value;
@@ -58,6 +68,8 @@ function drafts(task: Task): Draft[] {
       if (!event) continue;
       // Events without an ID stay separate; a tool name cannot identify concurrent calls.
       const id = toolEventId(event, source.key, index);
+      // A caller-supplied event cannot create or overwrite an execution record.
+      if (untrusted.has(id)) continue;
       const previous = calls.get(id);
       const name = event.name || previous?.name || "";
       const call = previous ?? { id, name, intent: "", responses: [] };

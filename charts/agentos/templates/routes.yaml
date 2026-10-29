@@ -29,6 +29,7 @@ spec:
     {{- end }}
 {{- if $hosts.sandbox }}
 {{- if has $hosts.sandbox (list $hosts.console $hosts.api) }}{{ fail "route.hosts.sandbox must be a separate host" }}{{ end }}
+{{- if ne (regexReplaceAll ":0*443$" $.Values.mcpApps.sandboxOrigin "") (printf "https://%s" $hosts.sandbox) }}{{ fail "route.hosts.sandbox must match mcpApps.sandboxOrigin" }}{{ end }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

@@ -1,0 +1,11 @@
+{{- if .Values.mcpApps.sandboxOrigin }}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: {{ include "agentos.name" . }}-app-authority
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+spec:
+  static: {host: {{ include "agentos.apiService" . }}, port: 8080}
+  policies:
+    http: {version: HTTP1, requestTimeout: 15s}
+{{- end }}

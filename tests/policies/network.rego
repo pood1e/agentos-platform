@@ -23,8 +23,10 @@ deny contains sprintf("%s lacks an ingress policy", [workload.metadata.name]) if
 }
 
 deny contains "only the dataplane admits gateways and Agent runtimes" if {
-	some peer in ingress_peers(api)
+	some ingress in object.get(ingress_policy(api).spec, "ingress", [])
+	some peer in ingress.from
 	runtime_peer(peer)
+	not app_authority_ingress(ingress, peer)
 }
 
 deny contains "the dataplane admits console or external clients" if {
@@ -48,4 +50,18 @@ platform_peer(policy, component) if {
 	expression.key == "app.kubernetes.io/component"
 	expression.operator == "In"
 	component in expression.values
+}
+
+app_authority_ingress(ingress, peer) if {
+	peer == {"podSelector": {"matchLabels": {"agentos.dev/gateway": "business"}}}
+	ingress.ports == [{"port": 8080, "protocol": "TCP"}]
+	some plan in objects
+	plan.kind == "AccessPlan"
+	plan.spec.platform.appJWTProvider.issuer != ""
+	object.get(plan.metadata, "namespace", "") == object.get(api.metadata, "namespace", "")
+	some backend in objects
+	backend.kind == "AgentgatewayBackend"
+	backend.metadata.name == plan.spec.platform.appAuthorityBackend
+	object.get(backend.metadata, "namespace", "") == object.get(api.metadata, "namespace", "")
+	backend.spec.static == {"host": api.metadata.name, "port": 8080}
 }

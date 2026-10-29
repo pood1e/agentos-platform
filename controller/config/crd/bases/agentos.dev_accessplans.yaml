@@ -4762,6 +4762,197 @@ spec:
                     type: string
                   actorJWKSBackend:
                     type: string
+                  appAuthorityBackend:
+                    description: AppAuthorityBackend authorizes viewer callbacks against
+                      their source invocation.
+                    type: string
+                  appJWTProvider:
+                    description: AppJWTProvider verifies the current viewer independently
+                      of Actor identity.
+                    properties:
+                      audiences:
+                        description: |-
+                          Allowed audiences that are allowed
+                          access. This corresponds to the `aud` claim
+                          ([RFC 7519 §4.1.3](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3)).
+                          If unset, any audience is allowed.
+                        items:
+                          type: string
+                        maxItems: 64
+                        minItems: 1
+                        type: array
+                      issuer:
+                        description: |-
+                          IdP that issued the JWT. This corresponds to the
+                          `iss` claim ([RFC 7519 §4.1.1](https://tools.ietf.org/html/rfc7519#section-4.1.1)).
+                        maxLength: 256
+                        minLength: 1
+                        type: string
+                      jwks:
+                        description: |-
+                          JSON Web Key Set used to validate the signature of the
+                          JWT.
+                        properties:
+                          inline:
+                            description: |-
+                              Inline JSON Web Key Set used to validate the
+                              signature of the JWT.
+                            maxLength: 65536
+                            minLength: 2
+                            type: string
+                          remote:
+                            description: |-
+                              How to reach the JSON Web Key Set from a remote
+                              address.
+                            properties:
+                              backendRef:
+                                description: |-
+                                  `backendRef` selects a backend for this policy.
+                                  Mutually exclusive with `url`.
+                                properties:
+                                  group:
+                                    default: ""
+                                    description: |-
+                                      Group is the group of the referent. For example, "gateway.networking.k8s.io".
+                                      When unspecified or empty string, core API group is inferred.
+                                    maxLength: 253
+                                    pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                  kind:
+                                    default: Service
+                                    description: |-
+                                      Kind is the Kubernetes resource kind of the referent. For example
+                                      "Service".
+
+                                      Defaults to "Service" when not specified.
+
+                                      ExternalName services can refer to CNAME DNS records that may live
+                                      outside of the cluster and as such are difficult to reason about in
+                                      terms of conformance. They also may not be safe to forward to (see
+                                      CVE-2021-25740 for more information). Implementations SHOULD NOT
+                                      support ExternalName Services.
+
+                                      Support: Core (Services with a type other than ExternalName)
+
+                                      Support: Implementation-specific (Services with type ExternalName)
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                    type: string
+                                  name:
+                                    description: Name is the name of the referent.
+                                    maxLength: 253
+                                    minLength: 1
+                                    type: string
+                                  namespace:
+                                    description: |-
+                                      Namespace is the namespace of the backend. When unspecified, the local
+                                      namespace is inferred.
+
+                                      Note that when a namespace different than the local namespace is specified,
+                                      a ReferenceGrant object is required in the referent namespace to allow that
+                                      namespace's owner to accept the reference. See the ReferenceGrant
+                                      documentation for details.
+
+                                      Support: Core
+                                    maxLength: 63
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                  port:
+                                    description: |-
+                                      Port specifies the destination port number to use for this resource.
+                                      Port is required when the referent is a Kubernetes Service. In this
+                                      case, the port number is the service port number, not the target port.
+                                      For other resources, destination port might be derived from the referent
+                                      resource or this field.
+                                    format: int32
+                                    maximum: 65535
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - name
+                                type: object
+                                x-kubernetes-validations:
+                                - message: Must have port for Service reference
+                                  rule: '(size(self.group) == 0 && self.kind == ''Service'')
+                                    ? has(self.port) : true'
+                              cacheDuration:
+                                description: |-
+                                  How long a fetched `jwks` document is used before it is re-fetched from the IdP.
+                                  Defaults to `5m`.
+                                maxLength: 32
+                                pattern: ^([0-9]{1,5}(h|m|s|ms)){1,4}$
+                                type: string
+                                x-kubernetes-validations:
+                                - message: cacheDuration must be at least 5m.
+                                  rule: duration(self) >= duration('5m')
+                              jwksPath:
+                                description: |-
+                                  Path to the IdP `jwks` endpoint, relative to the root, commonly
+                                  `".well-known/jwks.json"`.
+                                maxLength: 1024
+                                minLength: 1
+                                type: string
+                              url:
+                                description: |-
+                                  `url` directly specifies the HTTP(S) endpoint for this policy.
+                                  When the scheme is `https`, backend TLS is enabled automatically.
+                                  Mutually exclusive with `backendRef`.
+                                  URLs are opaque; referencing a Kubernetes service hostname like `hello.ns.svc.cluster.local`
+                                  will not apply Service policies or load balancing.
+                                maxLength: 1024
+                                minLength: 1
+                                pattern: ^https?://[^/?#@]+(/[^?#]*)?$
+                                type: string
+                            type: object
+                            x-kubernetes-validations:
+                            - message: jwksPath is required when backendRef is set
+                              rule: 'has(self.backendRef) ? has(self.jwksPath) : true'
+                            - message: jwksPath may not be set when url is set
+                              rule: 'has(self.url) ? !has(self.jwksPath) : true'
+                            - message: exactly one of the fields in [backendRef url]
+                                must be set
+                              rule: (has(self.backendRef)?1:0)+(has(self.url)?1:0)
+                                == 1
+                        type: object
+                        x-kubernetes-validations:
+                        - message: exactly one of the fields in [remote inline] must
+                            be set
+                          rule: (has(self.remote)?1:0)+(has(self.inline)?1:0) == 1
+                      validation:
+                        description: |-
+                          Additional JWT claim presence requirements. Defaults to requiring `exp`.
+                          Issuer validation always requires `iss`; a non-empty audiences list also
+                          requires `aud`, regardless of these options. An empty `requiredClaims`
+                          list removes only the additional presence requirements. Expiration is
+                          still checked whenever `exp` is present.
+                        properties:
+                          requiredClaims:
+                            description: |-
+                              Additional claims that must be present in the token payload.
+                              Recognized values: `exp`, `nbf`, `aud`, `sub`.
+                              Defaults to `["exp"]` when omitted. An empty list adds no requirements
+                              beyond `iss`, which is always required, and `aud`, which is required
+                              when a non-empty audiences list is configured. Expiration is still
+                              checked whenever `exp` is present.
+                            items:
+                              description: JWTClaim is a JWT claim whose presence
+                                can be required during validation.
+                              enum:
+                              - aud
+                              - exp
+                              - nbf
+                              - sub
+                              type: string
+                            maxItems: 4
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        type: object
+                    required:
+                    - issuer
+                    - jwks
+                    type: object
                   discoveryServiceAccount:
                     type: string
                   mcpURL:
