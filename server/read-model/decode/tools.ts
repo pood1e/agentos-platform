@@ -19,6 +19,7 @@ export interface ToolEvent {
   kind: "function_call" | "function_response";
   id: string;
   name: string;
+  mcpServer: string;
   args?: JsonValue;
   response?: ToolResponse;
 }
@@ -41,6 +42,7 @@ export function toolEvent(part: Part): ToolEvent | undefined {
       kind,
       id: activity.id,
       name: activity.name,
+      mcpServer: activity.mcpServer,
       args: activity.args && toJson(ValueSchema, activity.args),
       response: activity.response,
     };

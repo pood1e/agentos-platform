@@ -91,6 +91,31 @@ it("projects an App from native metadata and reads only the original call's reso
   ).rejects.toMatchObject({ code: Code.NotFound });
 });
 
+it.each(["lab-views-assistant", "lab-views-assistant-approval"])(
+  "resolves structured MCP activity from %s to the selected engineer connection",
+  async (server) => {
+    const env = await setup();
+    for (const part of env.task.artifacts[0].parts) {
+      if (part.content.case !== "data") continue;
+      const activity = toJson(ValueSchema, part.content.value) as JsonObject;
+      activity.name = "show_topology";
+      activity.mcp_server = server;
+      part.content.value = fromJson(ValueSchema, activity);
+    }
+    env.fake.update(env.task, TaskState.COMPLETED);
+    await expect(env.client.getAppResource(env.request)).resolves.toHaveProperty("result");
+    await env.client.callAppTool({ ...env.request, name: "graph_data" });
+    expect(env.invoke).toHaveBeenCalledWith(
+      "http://gateway.test:8080",
+      "lab-views-assistant",
+      expect.objectContaining(env.request.app),
+      "latest-alice-token",
+      { name: "lab-views_graph_data", arguments: undefined },
+      expect.any(AbortSignal),
+    );
+  },
+);
+
 it("reports discovery outages separately from empty tool sets and permits recovery", async () => {
   const env = await setup();
   const servers = (await env.clients.tools.listToolServers({})).toolServers;
