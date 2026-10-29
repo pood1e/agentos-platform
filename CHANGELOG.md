@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/pood1e/agentos-platform/compare/v0.44.0...v0.44.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **platform:** isolate optional telemetry and enforce contract boundaries ([#203](https://github.com/pood1e/agentos-platform/issues/203)) ([c1876e2](https://github.com/pood1e/agentos-platform/commit/c1876e2fa373ab48cd6ca0bff68778664036b023))
+
 ## [0.44.0](https://github.com/pood1e/agentos-platform/compare/v0.43.0...v0.44.0) (2026-10-28)
 
 
