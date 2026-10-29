@@ -2,10 +2,10 @@ apiVersion: v2
 name: agentos-environment
 description: AgentOS environment gateway and identity routes
 type: application
-version: 0.44.2
-appVersion: 0.44.2
+version: 0.44.3
+appVersion: 0.44.3
 kubeVersion: '>=1.34.0-0'
 dependencies:
   - name: agentos-controller
-    version: 0.44.2
+    version: 0.44.3
     repository: file://../agentos-controller

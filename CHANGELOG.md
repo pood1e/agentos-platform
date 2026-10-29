@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.3](https://github.com/pood1e/agentos-platform/compare/v0.44.2...v0.44.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **mcp-apps:** authorize canonical viewer callbacks ([#209](https://github.com/pood1e/agentos-platform/issues/209)) ([0546233](https://github.com/pood1e/agentos-platform/commit/05462334ca41ea5ff93110f077a7001a3f96f0f6))
+
 ## [0.44.2](https://github.com/pood1e/agentos-platform/compare/v0.44.1...v0.44.2) (2026-10-29)
 
 
