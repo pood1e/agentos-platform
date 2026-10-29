@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.2](https://github.com/pood1e/agentos-platform/compare/v0.44.1...v0.44.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** enforce Claude MCP selections without controller discovery ([#206](https://github.com/pood1e/agentos-platform/issues/206)) ([c1ab088](https://github.com/pood1e/agentos-platform/commit/c1ab088ea0e6bbd7114c7eda879365dfbdce54ec))
+
 ## [0.44.1](https://github.com/pood1e/agentos-platform/compare/v0.44.0...v0.44.1) (2026-10-29)
 
 
