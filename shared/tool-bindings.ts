@@ -21,6 +21,14 @@ export class ToolBindings {
     return [...this.targets.values()].filter((target) => target.catalog || !target.environment);
   }
 
+  serviceForRuntimeServer(name: string) {
+    const matches = [...this.targets.values()].filter((target) => {
+      const native = target.server.replaceAll(".", "_");
+      return name === native || name === `${native}-approval`;
+    });
+    return matches.length === 1 ? matches[0].service : undefined;
+  }
+
   appBinding(bindings: ToolBinding[], service: string, tools: string[]) {
     return bindings.find((binding) => {
       const target = this.targets.get(binding.server);

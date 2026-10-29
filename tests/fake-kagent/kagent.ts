@@ -93,7 +93,7 @@ export class FakeKagent {
         sessionId: session.id,
         initiatorId: session.creator,
         rootSessionId: execution?.root?.sessionId ?? session.id,
-        scopes: [],
+        scopeCeiling: { scopes: [] },
       });
     }
   }

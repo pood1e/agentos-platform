@@ -21,6 +21,7 @@ export type Approval = "pending" | "approved" | "rejected" | "abandoned";
 interface Draft {
   id: string;
   name: string;
+  mcpServer: string;
   intent: string;
   args?: JsonValue;
   responses: ToolResponse[];
@@ -72,7 +73,9 @@ function drafts(task: Task): Draft[] {
       if (untrusted.has(id)) continue;
       const previous = calls.get(id);
       const name = event.name || previous?.name || "";
-      const call = previous ?? { id, name, intent: "", responses: [] };
+      const mcpServer = previous?.mcpServer || event.mcpServer;
+      const call = previous ?? { id, name, mcpServer, intent: "", responses: [] };
+      call.mcpServer = mcpServer;
       const at = timeline(part.metadata) ?? source.at;
       if (event.kind === "function_call") {
         call.args = event.args;
@@ -137,6 +140,7 @@ export function toolCalls(
       taskId: task.id,
       agentId,
       name: call.name,
+      mcpServer: call.mcpServer,
       intent: call.intent,
       state,
       startedAt: stamp(call.startedAt),

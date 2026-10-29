@@ -32,4 +32,5 @@ message ToolCall {
   google.protobuf.Value args = 9;
   google.protobuf.Value output = 10;
   string ui_resource_uri = 11;
+  string mcp_server = 12;
 }

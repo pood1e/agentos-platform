@@ -6,7 +6,11 @@ import {
   ChatMessagePartSchema,
   ConversationSchema,
 } from "../gen/agentos/console/v1/conversation_pb.js";
-import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
+import {
+  ListMCPAppToolsResponseSchema,
+  MCPAppToolSchema,
+  ToolServerSchema,
+} from "../gen/kagent/api/v1/tools_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { TaskGraph } from "../server/read-model/graph.js";
 import { conversation } from "../server/read-model/views/conversation.js";
@@ -23,7 +27,18 @@ it("resolves an App by the exact discovered tool name", async () => {
     return result;
   });
   const view = create(ConversationSchema, {
-    messages: [{ parts: [{ content: { case: "toolCall", value: { id: "app", name } } }] }],
+    messages: [
+      {
+        parts: [
+          {
+            content: {
+              case: "toolCall",
+              value: { id: "app", name: "show__topology.v2", mcpServer: "lab-views" },
+            },
+          },
+        ],
+      },
+    ],
   });
   await env.apps.project(view, new TaskGraph(), env.projection.fullTask);
   const part = view.messages[0].parts[0].content;
@@ -65,6 +80,15 @@ it("discovers independent App services together before either metadata response 
     .mockImplementation(async (request, options) => {
       started.add(request.server?.ref?.name ?? "");
       await released;
+      if (request.server?.ref?.name === "lab-other")
+        return create(ListMCPAppToolsResponseSchema, {
+          tools: [
+            create(MCPAppToolSchema, {
+              name: "lab-other_show_topology",
+              meta: { value: { ui: { resourceUri: "ui://lab-other/topology.html" } } },
+            }),
+          ],
+        });
       return original(request, options);
     });
   const view = create(ConversationSchema, {
@@ -74,7 +98,10 @@ it("discovers independent App services together before either metadata response 
         parts: ["lab-views", "lab-other"].map((service) =>
           create(ChatMessagePartSchema, {
             id: service,
-            content: { case: "toolCall", value: { id: service, name: `${service}_show_topology` } },
+            content: {
+              case: "toolCall",
+              value: { id: service, name: "show_topology", mcpServer: service },
+            },
           }),
         ),
       },
@@ -91,6 +118,10 @@ it("discovers independent App services together before either metadata response 
   const first = view.messages[0].parts[0].content;
   expect(first.case === "toolCall" && first.value.uiResourceUri).toBe(
     "ui://lab-views/topology.html",
+  );
+  const second = view.messages[0].parts[1].content;
+  expect(second.case === "toolCall" && second.value.uiResourceUri).toBe(
+    "ui://lab-other/topology.html",
   );
 });
 

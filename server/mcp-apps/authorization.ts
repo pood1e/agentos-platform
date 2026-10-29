@@ -35,7 +35,11 @@ export function appAuthorization({
     const target = policy
       .appSources()
       .toSorted((a, b) => b.service.length - a.service.length)
-      .find((target) => call.name.startsWith(`${target.service}_`));
+      .find((target) =>
+        call.mcpServer
+          ? target.service === policy.serviceForRuntimeServer(call.mcpServer)
+          : call.name.startsWith(`${target.service}_`),
+      );
     if (!target) return;
     const server = (await metadata.servers()).find(
       (server) => server.ref === `${namespace}/${target.server}`,
