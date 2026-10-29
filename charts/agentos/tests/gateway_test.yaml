@@ -3,19 +3,32 @@ values:
 - ../../../tests/fixtures/chart-values.yaml
 release: {name: agentos, namespace: agentos}
 tests:
-- it: keeps model and MCP Actor audiences separate from Kubernetes discovery
+- it: delegates MCP Actor audience validation to each owned route
   template: gateway-auth.yaml
   asserts:
   - lengthEqual: {path: spec.traffic.jwtAuthentication.providers, count: 3}
-  - contains:
-      path: spec.traffic.jwtAuthentication.providers[0].audiences
-      content: http://agentos-gateway.agentos.svc.cluster.local:8080
-  - contains:
-      path: spec.traffic.jwtAuthentication.providers[0].audiences
-      content: http://agentos-mcp-gateway.agentos.svc.cluster.local:8080
+  - notExists: {path: 'spec.traffic.jwtAuthentication.providers[0].audiences'}
   - equal:
       path: spec.traffic.jwtAuthentication.providers[1].audiences
       value: ['http://agentos-gateway.agentos.svc.cluster.local:8080', agentos-mcp-discovery]
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: "request.path.startsWith\\('/mcp/'\\) && request.path != '/mcp/team-sessions'"
+  - lengthEqual: {path: spec.traffic.extAuth.conditional, count: 2}
+- it: admits public traffic to the standalone environment gateway
+  template: gateway-networkpolicy.yaml
+  set:
+    global.agentos.environments: []
+  asserts:
+  - contains:
+      path: spec.ingress
+      content:
+        from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: traefik}
+        ports: [{port: 8080, protocol: TCP}]
 - it: resolves live model authority directly at native kagent
   template: gateway-auth.yaml
   asserts:

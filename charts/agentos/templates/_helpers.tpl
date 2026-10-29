@@ -19,16 +19,6 @@ readOnlyRootFilesystem: true
 capabilities: {drop: [ALL]}
 {{- end -}}
 
-{{- define "agentos.actorAudiences" -}}
-{{- $audiences := list (printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) (printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace) -}}
-{{- range .Values.global.agentos.environments -}}
-{{- $environment := .name -}}
-{{- range $service, $_ := $.Values.global.agentos.toolsets -}}
-{{- $audiences = append $audiences (printf "http://%s-%s-mcp-gateway.%s.svc.cluster.local:8080" $environment $service $.Release.Namespace) -}}
-{{- end -}}
-{{- end -}}
-{{- $audiences | toJson -}}
-{{- end -}}
 {{- define "agentos.apiService" -}}
 {{- printf "%s-api" (include "agentos.name" .) -}}
 {{- end -}}

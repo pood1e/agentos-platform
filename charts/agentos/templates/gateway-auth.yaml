@@ -25,6 +25,10 @@ spec:
                   has(extauthz.selection.tools) && has(mcp.tool) &&
                   (mcp.tool.name in extauthz.selection.tools || mcp.tool.target + '_' + mcp.tool.name in extauthz.selection.tools))
               {{- end }}
+              || (request.path.startsWith('/mcp/') && has(jwt.iss) && jwt.iss == '{{ .Values.runtime.actorIssuer }}' &&
+                  has(extauthz.selection) && has(mcp.tool) &&
+                  (!has(extauthz.selection.tools) || mcp.tool.name in extauthz.selection.tools ||
+                   mcp.tool.target + '_' + mcp.tool.name in extauthz.selection.tools))
   traffic:
     jwtAuthentication:
       mode: Permissive
@@ -39,7 +43,6 @@ spec:
           ('authorization' in request.headers ? request.headers['authorization'].replace('Bearer ', '') : '')
       providers:
         - issuer: {{ .Values.runtime.actorIssuer | quote }}
-          audiences: {{ include "agentos.actorAudiences" . }}
           jwks:
             remote:
               backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ include "agentos.actorJWKSBackend" . }}}
@@ -72,7 +75,8 @@ spec:
             {{- end }}
             (has(jwt.iss) && jwt.iss == '{{ .Values.runtime.actorIssuer }}' && 'x-substrate-actor-token' in request.headers && (
               (request.path.startsWith('/v1/') && (jwt.aud == '{{ $models }}' || '{{ $models }}' in jwt.aud)) ||
-              (request.path.startsWith('/mcp/') && (jwt.aud == '{{ $mcps }}' || '{{ $mcps }}' in jwt.aud))
+              (request.path == '/mcp/team-sessions' && (jwt.aud == '{{ $mcps }}' || '{{ $mcps }}' in jwt.aud)) ||
+              (request.path.startsWith('/mcp/') && request.path != '/mcp/team-sessions')
             )) ||
             (has(jwt.iss) && jwt.iss == '{{ .Values.runtime.kubernetesIssuer }}' && !('x-substrate-actor-token' in request.headers) && (
               (request.path.startsWith('/mcp/') && jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
@@ -108,13 +112,4 @@ spec:
               allowedRequestHeaders: [x-substrate-actor-token]
               addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
               allowedResponseHeaders: [authorization]
-              responseMetadata: {selection: json(response.body), scopes: "json(response.headers['x-kagent-scopes'])"}
-        - condition: "request.path.startsWith('/mcp/') && request.path != '/mcp/team-sessions' && 'x-substrate-actor-token' in request.headers"
-          policy:
-            backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
-            failureMode: FailClosed
-            http:
-              path: {{ printf "'/authorize/runtime?server=%s%%2F' + request.path.split('/')[2]" .Release.Namespace | quote }}
-              allowedRequestHeaders: [x-substrate-actor-token]
-              addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
               responseMetadata: {selection: json(response.body), scopes: "json(response.headers['x-kagent-scopes'])"}
