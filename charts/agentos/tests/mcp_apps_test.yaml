@@ -97,6 +97,8 @@ tests:
     equal: {path: spec.policies.tls.sni, value: identity.example.test}
   - template: app-authority.yaml
     equal: {path: spec.static.port, value: 8080}
+  - template: app-authority.yaml
+    equal: {path: spec.policies.http, value: {version: HTTP1, requestTimeout: 15s}}
 - it: preserves an issuer JWKS path query and explicit HTTPS port
   set:
     identity.jwksURL: https://identity.example.test:8443/keys?version=2

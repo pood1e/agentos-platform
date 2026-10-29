@@ -55,6 +55,7 @@ export function appAuthorization({
     identity: UserIdentity,
     signal: AbortSignal,
   ) {
+    signal.throwIfAborted();
     if (!reference?.taskId || !reference.callId) throw notFound("mcpApp.unavailable");
     const entry = await projection.entry(reference.taskId);
     if (!entry || entry.subject !== identity.subject) throw notFound("task.notFound");
@@ -85,6 +86,7 @@ export function appAuthorization({
       (tool) =>
         appVisible(tool) && policy.appBinding([binding], origin.target.service, [tool.name]),
     );
+    signal.throwIfAborted();
     return { ...origin, reference, call, binding, allowedTools: tools.map((tool) => tool.name) };
   }
   return { source, authorize };

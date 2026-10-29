@@ -6,4 +6,6 @@ metadata:
   labels: {{ include "agentos.labels" . | nindent 4 }}
 spec:
   static: {host: {{ include "agentos.apiService" . }}, port: 8080}
+  policies:
+    http: {version: HTTP1, requestTimeout: 15s}
 {{- end }}

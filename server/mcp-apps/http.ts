@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { AppReferenceSchema } from "../../gen/agentos/mcp/v1/app_pb.js";
-import { nativeHeaders } from "../kagent/context.js";
+import { nativeHeaders, nativeSignal } from "../kagent/context.js";
 import type { McpApps } from "./service.js";
 
 const validator = createValidator();
@@ -41,9 +41,12 @@ export function registerAppAuthorization(
         );
         if (validator.validate(AppReferenceSchema, reference).kind !== "valid")
           return reply.code(403).send();
-        const principal = await identity(headers);
-        const selection = await nativeHeaders.run(headers, () =>
-          apps.authorize(reference, principal, AbortSignal.timeout(15_000)),
+        const signal = AbortSignal.timeout(10_000);
+        const selection = await nativeSignal.run(signal, () =>
+          nativeHeaders.run(headers, async () => {
+            const principal = await identity(headers);
+            return apps.authorize(reference, principal, signal);
+          }),
         );
         if (selection.server !== server) return reply.code(403).send();
         return { selection: toJson(ToolBindingSchema, create(ToolBindingSchema, selection)) };

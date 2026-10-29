@@ -3,6 +3,7 @@ import type { Interceptor } from "@connectrpc/connect";
 
 /** Verified request credentials stay in request scope, including deferred streams. */
 export const nativeHeaders = new AsyncLocalStorage<Headers>();
+export const nativeSignal = new AsyncLocalStorage<AbortSignal>();
 
 export function credentialHeaders(input: Headers) {
   const headers = new Headers();
@@ -17,7 +18,8 @@ export const nativeCredentials: Interceptor = (next) => (request) => {
   const headers = nativeHeaders.getStore();
   if (headers)
     for (const [name, value] of credentialHeaders(headers)) request.header.set(name, value);
-  return next(request);
+  const signal = nativeSignal.getStore();
+  return next(signal ? { ...request, signal: AbortSignal.any([request.signal, signal]) } : request);
 };
 
 export function nativeStream<T>(source: AsyncIterable<T>, headers: Headers): AsyncIterable<T> {

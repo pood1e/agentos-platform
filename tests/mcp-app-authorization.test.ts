@@ -5,7 +5,7 @@ import Fastify from "fastify";
 import { expect, it, onTestFinished, vi } from "vitest";
 import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
 import { AppReferenceSchema } from "../gen/agentos/mcp/v1/app_pb.js";
-import { nativeHeaders } from "../server/kagent/context.js";
+import { nativeHeaders, nativeSignal } from "../server/kagent/context.js";
 import { registerAppAuthorization } from "../server/mcp-apps/http.js";
 import { object, partTypeKey } from "../server/read-model/decode/messages.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
@@ -250,3 +250,13 @@ it.each([Role.USER, Role.UNSPECIFIED])(
     }
   },
 );
+
+it("propagates the App authorization deadline to every native RPC", async () => {
+  const env = await canonical();
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    nativeSignal.run(controller.signal, () => env.clients.system.getCurrentUser({})),
+  ).rejects.toMatchObject({ code: Code.Canceled });
+  expect(nativeSignal.getStore()).toBeUndefined();
+});
