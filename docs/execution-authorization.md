@@ -43,6 +43,7 @@ agentgateway 通过 `runtime.actorJWKS` 直接读取 Substrate HTTPS JWKS，校�
 kagent 的 `gatewayAudiences` 登记实际模型和 MCP HTTP(S) origins，包含环境服务独立入口；原生运行时受众与网关受众分别校验。
 
 模型授权限定当前 Session revision 中的 ModelConfig；MCP 授权同时满足静态工具分级与 revision 的已选工具。原生 `/authorize/runtime` 回调逐次查询，返回 `no-store`。
+业务 MCP 的独立路由按目标 origin 校验 Actor JWT 受众，并执行各自的原生授权回调；共享网关仅校验签发方与 Actor 身份。
 环境凭据出口将当前发起人的 IdP access token 作为 RFC 8693 `subject_token`，agentgateway 再交换目标资源令牌；Actor JWT 保持来源证明，目标服务只收到目标凭据。
 
 ## 数据归属
