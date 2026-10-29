@@ -69,6 +69,10 @@ export function toolMetadata(clients: KagentClients) {
   ) {
     const result = new Map<string, ToolServer>();
     await pool(servers, 4, async (server) => {
+      if (!server.discoveredTools.length) {
+        result.set(server.ref, server);
+        return;
+      }
       try {
         const visible = new Set(
           await modelTools(
