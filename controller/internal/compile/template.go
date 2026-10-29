@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	"slices"
 )
 
@@ -56,11 +55,11 @@ func Template(object *unstructured.Unstructured, plans []platform.AccessPlan) er
 	}
 	for _, key := range sortedBindingKeys(groups) {
 		binding := groups[key]
-		binding.Server.APIGroup = ptr.To(kagent.GroupVersion.Group)
 		converted, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&kagent.ToolBinding{MCP: binding})
 		if err != nil {
 			return err
 		}
+		unstructured.RemoveNestedField(converted, "mcp", "server", "apiGroup")
 		if err := unstructured.SetNestedField(converted, binding.RequireApproval, "mcp", "requireApproval"); err != nil {
 			return err
 		}
