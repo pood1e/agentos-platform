@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.4](https://github.com/pood1e/agentos-platform/compare/v0.44.3...v0.44.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **console:** scope personal inventory to the native session owner ([#212](https://github.com/pood1e/agentos-platform/issues/212)) ([e1fcd53](https://github.com/pood1e/agentos-platform/commit/e1fcd530a5e26502fa0b8fa58302b313124daa3f))
+
 ## [0.44.3](https://github.com/pood1e/agentos-platform/compare/v0.44.2...v0.44.3) (2026-10-29)
 
 
