@@ -42,7 +42,10 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
           const page = await clients.sessions.listSessions(
             {
               rootSessionId,
-              allCreators: !rootSessionId && options.viewer?.administrator === true,
+              allCreators:
+                !rootSessionId &&
+                options.viewer?.administrator === true &&
+                options.viewer.systemOnly === true,
               page: { limit: 100, pageToken },
             },
             rpc,

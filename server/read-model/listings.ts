@@ -11,7 +11,7 @@ import { conversationProgress } from "./views/conversation-work.js";
 import { pendingApproval, stamp } from "./views/runs.js";
 import { taskSummary } from "./views/task.js";
 
-/** Personal executions, plus service work for administrators. */
+/** Owner-scoped execution views and explicit administrator system inventory. */
 export interface Viewer {
   subject: string;
   administrator: boolean;
