@@ -101,7 +101,7 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:9a7250796241c067a7f9a2b79a13427310485d90b99bcafe06af81c76973d423
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:950d02f468f170d8172a826c8490f81132a9a2ec85f7c969e5513b6587124a7a
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -117,7 +117,7 @@ harnesses:
           name: knowledge-embedding
         ttlDays: 3650
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:9a7250796241c067a7f9a2b79a13427310485d90b99bcafe06af81c76973d423
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:950d02f468f170d8172a826c8490f81132a9a2ec85f7c969e5513b6587124a7a
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -129,7 +129,7 @@ harnesses:
   codex:
     codex: {}
     workload:
-      image: ghcr.io/pood1e/kagent/codex-harness@sha256:863b3b709bd98ae385a58832f05ae2be9c94d56839c08148985040990765056d
+      image: ghcr.io/pood1e/kagent/codex-harness@sha256:9e7ab7b063e84eafcf7c7abd2add07266efaf243e9b5ccd470ea8116a5c4ea14
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -141,7 +141,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: ghcr.io/pood1e/kagent/claude-harness@sha256:53ce77f517a6cc5d4e97406458e78915f65008fce4c608374b932ae5ac4ad5a9
+      image: ghcr.io/pood1e/kagent/claude-harness@sha256:fc37ccdd2e6acf74268752245d1bdef92c060eee74554a3cea0f4fb7c0f6fd4b
     env:
       - name: GOMEMLIMIT
         value: 768MiB
