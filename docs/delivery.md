@@ -92,7 +92,7 @@ telemetry:
 ```
 
 本地或镜像直启使用 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT`，协议为 `grpc` 或 `http/protobuf`。
-`OTEL_SDK_DISABLED=true` / `OTEL_METRICS_EXPORTER=none` 关闭采集；默认导出超时 1 秒，可用 `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 调整毫秒值。
+`OTEL_SDK_DISABLED=true` / `OTEL_METRICS_EXPORTER=none` 关闭采集。平台仅启用指标；导出与传输超时上限为 1 秒，`OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 可指定更短的毫秒值。初始化、SDK 和退出故障各报告一次固定诊断，核心继续服务。
 指标覆盖 HTTP / RPC 时延和进程资源，服务名为 `agentos-api` 与 `agentos-dataplane`。
 
 kagent 使用原生 `TelemetryConfig`，Collector 与遥测存储由站点提供。语音独立可选，见[语音配置](speech.md)。
@@ -131,7 +131,7 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 | `AGENTOS_BUILDKIT_IMAGE`、`AGENTOS_REGISTRY_MIRROR` | BuildKit 摘要与可选 Docker Hub 镜像源 |
 | `COSIGN_PRIVATE_KEY`、`COSIGN_PASSWORD` | 受保护的签名私钥文件与隐藏密码 |
 
-契约包仅包含 proto、生成绑定与 schema；Node 包同时提供 AccessPlan schema 类型和角色目录。消费者通过 Kubernetes 官方客户端读取 `AccessPlan.status` 的工具决策。
+契约包包含 proto、生成绑定、schema 与角色目录。Node 导出路径为 `gen/*`、`gen/schema/*`、`proto/*`、`third_party/*` 和 `authorization.json`，运行时依赖为官方 Protobuf 库。消费者通过 Kubernetes 官方客户端读取 `AccessPlan.status.targets` 的工具决策，同时校验 status 和 `Ready=True` condition 的 `observedGeneration` 与资源代际一致。
 
 契约通过标准包管理器消费：npm 配置项目 scope 注册表与原生令牌，Python 使用项目 PyPI 索引；锁文件固定版本和完整性。
 Chart 与交付校验入口为 `ci/check-charts.sh` 和 `ci/test-artifacts.py`，真实组件验证见 [tests/proofs](../tests/proofs/README.md)。

@@ -112,6 +112,7 @@ jobs:
       - name: Python checks and contracts
         run: |
           python ci/contracts.py
+          python ci/test-contracts.py
           ruff check
           ruff format --check
           python ci/test-release.py
