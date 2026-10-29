@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.5](https://github.com/pood1e/agentos-platform/compare/v0.44.4...v0.44.5) (2026-10-29)
+
+
+### Bug Fixes
+
+* **runtime:** adopt native machine grant renewal ([#216](https://github.com/pood1e/agentos-platform/issues/216)) ([2a25e5c](https://github.com/pood1e/agentos-platform/commit/2a25e5cbf3cc7c29096130bbb1aa30ad7a1455d2))
+
 ## [0.44.4](https://github.com/pood1e/agentos-platform/compare/v0.44.3...v0.44.4) (2026-10-29)
 
 
