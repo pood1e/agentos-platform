@@ -65,13 +65,14 @@ describe("task entries", () => {
     const root = index.entry(ids.approvalRoot);
     const invoke = root?.calls.find((call) => call.name === "invoke_session");
     expect(invoke?.delegation).toMatchObject({
-      kind: "invoke",
       taskId: ids.approved,
     });
-    expect(invoke?.state).toBe(ActivityState.AWAITING_INPUT);
+    expect(invoke?.state).toBe(ActivityState.SUCCEEDED);
     expect(index.entry(ids.approvalContinuation)).toMatchObject({
-      parentTaskId: ids.approvalRoot,
-      resumedTaskId: ids.approved,
+      execution: {
+        parent: { taskId: ids.approvalRoot },
+        resumedTask: { taskId: ids.approved },
+      },
     });
   });
 });
@@ -97,9 +98,7 @@ describe("views", () => {
         ids.approvalFinal,
       ]),
     );
-    expect(index.relations().continuations.get(ids.approvalRoot)).toContain(
-      ids.approvalContinuation,
-    );
+    expect(index.relations().parents.get(ids.approvalContinuation)).toBe(ids.approvalRoot);
     expect(tree.latest.answer).toBe(index.entry(ids.approvalFinal)?.answer);
     expect(tree.latest.answer).not.toBe("");
   });
@@ -109,9 +108,7 @@ describe("views", () => {
     const root = index.entry(ids.dispatchRoot);
     expect(tree?.background.has(ids.background)).toBe(true);
     expect(tree?.background.has(ids.inspection)).toBe(false);
-    expect(
-      root?.calls.find((call) => index.target(root, call) === ids.background)?.delegation?.kind,
-    ).toBe("background");
+    expect(root?.calls.some((call) => index.target(root, call) === ids.background)).toBe(true);
   });
 
   it("keeps engineers that left the namespace as observed participants", () => {

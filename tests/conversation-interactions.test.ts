@@ -36,8 +36,6 @@ it("keeps a delegated approval before a later user message as its state changes"
     calls: [],
     interactions: [],
     userMessages: [{ id: "new-user-message", text: "Another question" }],
-    parentTaskId: "",
-    resumedTaskId: "",
     version: "next-turn",
   });
   const fullTask = async ({ id }: { id: string }) =>

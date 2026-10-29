@@ -13,6 +13,15 @@ async function view(index: ReturnType<typeof fixtureState>) {
 }
 
 describe("conversation worker projection", () => {
+  it("attaches operations by native parentage when no delegation call is available", async () => {
+    const index = fixtureState();
+    const parent = index.entry(ids.chat);
+    if (!parent) throw new Error("Missing conversation fixture");
+    index.upsert({ ...parent, calls: [] });
+    const chat = await view(index);
+    expect(chat.messages[0]?.tasks.map((task) => task.id)).toEqual([ids.chatRoot]);
+  });
+
   it("keeps a completed result through a working continuation and preserves both completed phases", async () => {
     const index = fixtureState();
     const entry = index.entry(ids.chatRoot);
@@ -35,7 +44,6 @@ describe("conversation worker projection", () => {
     const continuation = {
       ...entry,
       id: "continued-worker",
-      parentTaskId: entry.id,
       execution: create(TaskExecutionSchema, {
         root: entry.execution?.root,
         background: entry.execution?.background,

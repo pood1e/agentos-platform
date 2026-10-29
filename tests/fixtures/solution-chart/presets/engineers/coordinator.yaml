@@ -14,12 +14,12 @@ spec:
   - mcp:
       server:
         kind: RemoteMCPServer
-        name: team-sessions
+        name: kagent-collaboration
       tools:
       - list_agents
       - create_session
-      - dispatch_session
-      - search_knowledge
+      - invoke_session
+      - search_memory
       requireApproval: false
 ---
 apiVersion: api.kagent.dev/v1alpha3

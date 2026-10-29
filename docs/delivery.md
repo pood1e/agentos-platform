@@ -94,6 +94,7 @@ telemetry:
 本地或镜像直启使用 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT`，协议为 `grpc` 或 `http/protobuf`。
 `OTEL_SDK_DISABLED=true` / `OTEL_METRICS_EXPORTER=none` 关闭采集；默认导出超时 1 秒，可用 `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT` 调整毫秒值。
 指标覆盖 HTTP / RPC 时延和进程资源，服务名为 `agentos-api` 与 `agentos-dataplane`。
+SDK 诊断遵循 `OTEL_LOG_LEVEL`，单进程最多记录 8 条，每条正文最多 512 字符。核心启动、健康检查与关闭独立于导出状态。
 
 kagent 使用原生 `TelemetryConfig`，Collector 与遥测存储由站点提供。语音独立可选，见[语音配置](speech.md)。
 

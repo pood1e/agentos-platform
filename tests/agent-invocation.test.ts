@@ -1,6 +1,6 @@
 import { create, fromJson } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
-import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
+import { TaskSchema } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { TaskExecutionSchema, TaskRelation } from "../gen/kagent/api/v1/execution_pb.js";
 import { partTypeKey } from "../server/read-model/decode/messages.js";
@@ -25,8 +25,7 @@ const parent = (returned = false) =>
               args: {
                 session_id: "coordinator-context",
                 message_id: "coordinator-input",
-                role: "ROLE_USER",
-                parts: [{ text: "验证方案" }],
+                message: "验证方案",
               },
             },
             metadata: { [partTypeKey]: "function_call" },
@@ -106,14 +105,13 @@ it("does not associate another Agent with the selected session", () => {
   expect(index.graph().target(calling, calling.calls[0])).toBeUndefined();
 });
 
-it("retains native pending input for the existing approval continuation", () => {
+it("keeps invocation completion separate from its child's HITL state", () => {
   const calling = ingest(parent(true), "agentos/assistant");
   expect(calling.calls[0]).toMatchObject({
-    state: ActivityState.AWAITING_INPUT,
+    state: ActivityState.SUCCEEDED,
     delegation: {
       sessionId: "coordinator-context",
       taskId: "coordinator-task",
-      invocation: { state: TaskState.INPUT_REQUIRED },
     },
   });
 });

@@ -9,7 +9,7 @@ import {
 
 export const newRole = () =>
   create(RoleDefinitionSchema, {
-    tools: [{ server: "team-sessions", tools: ["search_knowledge"] }],
+    tools: [{ server: "kagent-collaboration", tools: ["search_memory"] }],
   });
 
 export function editRole(role: RoleDefinition, change: (draft: RoleDefinition) => void) {

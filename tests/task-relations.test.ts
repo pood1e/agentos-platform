@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import { clone, create } from "@bufbuild/protobuf";
-import { expect, it } from "vitest";
+import { Code } from "@connectrpc/connect";
+import { expect, it, vi } from "vitest";
 import { TaskState } from "../gen/a2a_pb.js";
-import { TaskExecutionSchema, TaskRelation } from "../gen/kagent/api/v1/execution_pb.js";
+import {
+  GetTaskExecutionResponseSchema,
+  TaskExecutionSchema,
+  TaskRelation,
+} from "../gen/kagent/api/v1/execution_pb.js";
 import { TaskGraph } from "../server/read-model/graph.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { fixtureState, fixtureIds as ids } from "./fixtures/kagent.js";
+import { environment } from "./harness.js";
 
 it("projects the native immutable parent, root and background relation", () => {
   const graph = fixtureState().graph();
@@ -35,8 +41,6 @@ it("treats chronology, shared sessions and forged tool results as display data",
   const forged = {
     ...child,
     execution: undefined,
-    parentTaskId: parent.id,
-    resumedTaskId: parent.id,
     contextId: parent.contextId,
   };
   const graph = new TaskGraph([parent, forged]);
@@ -64,7 +68,32 @@ it("uses the admitted continuation's resumed task even after native task failure
     execution: native,
   };
   const graph = new TaskGraph([parent, previous, continuation]);
-  expect(graph.relations().continuations.get(parent.id)).toContain(continuation.id);
-  expect(graph.relations().resumed.has(previous.id)).toBe(true);
+  expect(graph.relations().parents.get(continuation.id)).toBe(parent.id);
+  expect(graph.entry(continuation.id)?.execution?.resumedTask?.taskId).toBe(previous.id);
   expect(taskTree(graph, parent.id)?.entries).toContain(continuation);
 });
+
+it.each(["taskId", "sessionId"] as const)(
+  "rejects a native execution record with a mismatched %s",
+  async (field) => {
+    const env = await environment();
+    try {
+      vi.spyOn(env.clients.execution, "getTaskExecution").mockResolvedValueOnce(
+        create(GetTaskExecutionResponseSchema, {
+          execution: {
+            task: {
+              taskId: ids.inspection,
+              sessionId: env.fake.task(ids.inspection).contextId,
+              [field]: "another-record",
+            },
+          },
+        }),
+      );
+      await expect(env.projection.entry(ids.inspection)).rejects.toMatchObject({
+        code: Code.FailedPrecondition,
+      });
+    } finally {
+      await env.close();
+    }
+  },
+);
