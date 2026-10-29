@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.6](https://github.com/pood1e/agentos-platform/compare/v0.44.5...v0.44.6) (2026-10-29)
+
+
+### Bug Fixes
+
+* **controller:** omit API group from local MCP tool references ([8bbb2a5](https://github.com/pood1e/agentos-platform/commit/8bbb2a5b9955fec6b9566c413a352a86c567c1d8))
+
 ## [0.44.5](https://github.com/pood1e/agentos-platform/compare/v0.44.4...v0.44.5) (2026-10-29)
 
 
