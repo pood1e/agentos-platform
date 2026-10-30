@@ -23,10 +23,11 @@ export interface Viewer {
 }
 
 export function listings(
-  load: (sessions: SessionInfo[]) => Promise<TaskGraph>,
+  load: (sessions: SessionInfo[], skipUnreadable?: boolean) => Promise<TaskGraph>,
   inventory: (viewer: Viewer) => Promise<SessionInfo[]>,
 ) {
-  const visible = async (viewer: Viewer) => load(await inventory(viewer));
+  const visible = async (viewer: Viewer) =>
+    load(await inventory(viewer), viewer.systemOnly === true);
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
       const graph = await visible(viewer);

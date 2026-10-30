@@ -1,13 +1,17 @@
 import { clone, create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TaskSchema } from "../gen/a2a_pb.js";
+import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
 import { ListEngineerRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ListSessionsResponseSchema, SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { fixtureIds } from "./fixtures/kagent.js";
-import { environment, operator } from "./harness.js";
+import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
+import { consoleClient, environment, operator } from "./harness.js";
 
 const request = { query: "", pageSize: 100, pageToken: "" };
 const foreignId = "11111111-1111-4111-8111-111111111111";
+const foreignTaskId = "22222222-2222-4222-8222-222222222222";
+const unreadableId = "33333333-3333-4333-8333-333333333333";
 
 async function scopedEnvironment() {
   const env = await environment();
@@ -16,11 +20,23 @@ async function scopedEnvironment() {
   const foreign = clone(SessionSchema, owned[0]);
   foreign.id = foreign.contextId = foreignId;
   foreign.creator = "user:another-creator";
-  if (foreign.authority) foreign.authority.initiatorId = foreign.creator;
+  if (foreign.authority) {
+    foreign.authority.initiatorId = foreign.creator;
+    foreign.authority.rootSessionId = foreignId;
+  }
+  const unreadable = clone(SessionSchema, foreign);
+  unreadable.id = unreadable.contextId = unreadableId;
+  if (unreadable.authority) unreadable.authority.rootSessionId = unreadableId;
+  const task = clone(TaskSchema, env.fake.task(fixtureIds.approvalRoot));
+  task.id = foreignTaskId;
+  task.contextId = foreignId;
+  env.fake.sessions.set(foreignId, foreign);
+  env.fake.tasks.set(task.id, task);
+  env.fake.executions.set(task.id, fixtureExecution(task));
   const listSessions = vi
     .spyOn(env.clients.sessions, "listSessions")
     .mockImplementation(async (input) => {
-      const sessions = input.allCreators ? [...owned, foreign] : owned;
+      const sessions = input.allCreators ? [...owned, foreign, unreadable] : owned;
       const offset = Number(input.page?.pageToken || 0);
       return create(ListSessionsResponseSchema, {
         sessions: sessions.slice(offset, offset + 2),
@@ -29,7 +45,7 @@ async function scopedEnvironment() {
     });
   const list = env.clients.a2a.listTasks.bind(env.clients.a2a);
   const listTasks = vi.spyOn(env.clients.a2a, "listTasks").mockImplementation((input, options) => {
-    if (input.contextId === foreignId) throw new ConnectError("task not found", Code.NotFound);
+    if (input.contextId === unreadableId) throw new ConnectError("task not found", Code.NotFound);
     return list(input, options);
   });
   return { ...env, owned, listSessions, listTasks };
@@ -73,17 +89,32 @@ describe("personal native inventory", () => {
     },
   );
 
-  it("keeps explicit administrator system inventory separate and propagates native denial", async () => {
+  it("lists other creators' tasks and skips an unreadable system session", async () => {
     const env = await scopedEnvironment();
     try {
-      await expect(
-        env.projection.operations(
-          { subject: operator.subject, administrator: true, systemOnly: true },
-          request,
-        ),
-      ).rejects.toMatchObject({ code: Code.NotFound });
+      const result = await consoleClient(env).listTasks({ ...request, systemOnly: true });
+      expect(result.tasks.map((task) => task.id)).toEqual([foreignTaskId]);
+      expect(result.totalSize).toBe(1);
       expect(env.listSessions.mock.calls.every(([input]) => input.allCreators === true)).toBe(true);
-      expect(env.listTasks.mock.calls.map(([input]) => input.contextId)).toEqual([foreignId]);
+      expect(new Set(env.listTasks.mock.calls.map(([input]) => input.contextId))).toEqual(
+        new Set([foreignId, unreadableId]),
+      );
+      const ordinary = create(UserIdentitySchema, { subject: operator.subject });
+      await expect(
+        consoleClient(env, {}, () => ordinary).listTasks({ ...request, systemOnly: true }),
+      ).rejects.toMatchObject({ code: Code.PermissionDenied });
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("propagates system inventory failures other than a missing session", async () => {
+    const env = await scopedEnvironment();
+    env.listTasks.mockRejectedValue(new ConnectError("native history failed", Code.Unavailable));
+    try {
+      await expect(
+        consoleClient(env).listTasks({ ...request, systemOnly: true }),
+      ).rejects.toMatchObject({ code: Code.Unavailable });
     } finally {
       await env.close();
     }
