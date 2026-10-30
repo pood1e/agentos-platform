@@ -9,7 +9,7 @@ import yaml
 
 cache = Path(".cache/chart-check")
 cache.mkdir(parents=True, exist_ok=True)
-KAGENT = "d982c91dd64dfa1004643d58846df68be902b0d2"
+KAGENT = "da1590dfc985941a0e73aaeec08ff3b88bd997ce"
 AGENTGATEWAY = "v1.7.0"
 GATEWAY_API = "v1.6.1"
 CERT_MANAGER = "v1.21.2"

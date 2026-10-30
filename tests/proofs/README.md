@@ -1,6 +1,6 @@
 # 真实组件验证
 
-执行归属、持久凭据、取消传播、网关目标选择与工具发现由 [kagent fork](https://github.com/pood1e/kagent/tree/agentos/1.0.0-alpha17) 的 PostgreSQL、Kubernetes API Server 与真实 agentgateway 集成测试验证。
+执行归属、持久凭据、取消传播、网关目标选择与工具发现由 [kagent fork](https://github.com/pood1e/kagent/tree/main) 的 PostgreSQL、Kubernetes API Server 与真实 agentgateway 集成测试验证。
 原生镜像流水线运行 `grpcserver` 授权回归：官方 MCP SDK 验证已选工具、用户 subject_token 交换、错误受众与同连接撤权；发现凭据通过真实 CRD 与 OAuth2 / TokenRequest 验证。
 平台侧验证请求凭据透传、原生可信引用投影、单次取消、CAS 冲突与错误映射，入口为 `npm test`。
 

@@ -34,7 +34,7 @@ flowchart LR
 | voice worker | 可选 LiveKit Agents 输入、朗读与通话 |
 
 api 与 dataplane 使用独立 ServiceAccount 和 NetworkPolicy。平台业务配置存于 Kubernetes；执行状态、授权上限和加密 OAuth2 凭据存于 kagent PostgreSQL。
-运行时由 [kagent fork](https://github.com/pood1e/kagent/tree/agentos/1.0.0-alpha17) 与 [Substrate fork](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 发布，Chart 固定镜像摘要。
+运行时由 [kagent fork](https://github.com/pood1e/kagent/tree/main) 与 [Substrate fork](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 发布，Chart 固定镜像摘要。
 
 ## 原生执行与投影
 
