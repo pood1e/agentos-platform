@@ -39,6 +39,16 @@
     "noMembers": "没有匹配的团队成员",
     "unassignedRole": "未分配角色"
   },
+  "workflows": {
+    "title": "协作流程",
+    "select": "选择流程",
+    "sync": "同步",
+    "async": "异步",
+    "human": "人工",
+    "system": "系统",
+    "decision": "判定",
+    "fit": "适应画布"
+  },
   "tool": {
     "calls": "工具调用",
     "arguments": "输入参数",

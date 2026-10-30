@@ -76,11 +76,13 @@ Git 来源填写完整 `git.url` 与固定 `git.commit`，S3 来源填写原生�
 | `title` | 顶栏与页面标题 |
 | `roles[]` | `role`、`avatar`，以及可选动画几何 `rig` |
 | `tools[]` | `match` 正则、`name`、`icon` 与暗色模式反色 `monochrome` |
+| `workflows[]` | 协作流程标识、节点、连线和阶段；节点的 `role` 引用 `agentos.dev/role`，`kind` 区分智能体、人工、系统与判定 |
 | `locales` | i18next 资源，如 `translation.role.<role>`、`tools.catalog.<tool>` |
 
 资源使用包内相对路径。展示镜像把 `pack.json` 与资源放在 `/pack`，提供 `cp`，Chart 用 `pack.image` 固定摘要后由 web 的 init 容器复制，console 主机直接提供。
 `pack.json` 对应 proto `Pack`，方案 CI 可用契约包内的 `gen/schema/agentos.console.v1.Pack.jsonschema.bundle.json` 校验。
 Harness 使用平台内置运行时图标，工具优先使用方案图标。
+流程标题、节点标题、阶段标题与连线标签使用 `locales.translation` 的键。`row` 和 `column` 指定位置，连线的 `interaction` 区分同步与异步；团队页使用 `roles` 中的头像呈现智能体。执行状态由方案服务维护并沿用原生任务树。
 
 ## 外部执行
 

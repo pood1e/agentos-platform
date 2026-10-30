@@ -10,12 +10,15 @@ import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import { errorKey } from "../../../shared/errors.js";
 import { useCapability } from "../../lib/access.js";
+import { usePack } from "../../lib/pack.js";
 import { RoleEditor } from "./RoleEditor.js";
 import { Team } from "./Team.js";
+import { Workflows } from "./Workflows.js";
 
 export function EngineersPage() {
   const { t } = useTranslation();
   const editable = useCapability(Capability.AGENTS_MANAGE);
+  const pack = usePack();
   const engineers = useQuery(ConsoleService.method.listEngineers, {}, { refetchInterval: 3_000 });
   const configuration = useQuery(ConsoleService.method.getConfiguration, {});
   const error = configuration.error ?? engineers.error;
@@ -71,6 +74,7 @@ export function EngineersPage() {
         loading={engineers.isPending || (engineers.isError && !engineers.data)}
         onConfigure={configure}
       />
+      <Workflows workflows={pack.workflows} />
       <Sheet open={editor} onOpenChange={setEditor}>
         {editor && configuration.data && (
           <RoleEditor
