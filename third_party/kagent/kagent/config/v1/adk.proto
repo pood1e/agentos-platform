@@ -37,6 +37,24 @@ message ADKAgentConfig {
   string skills_directory = 16;
   repeated ADKAgentConfig sub_agents = 17;
   ADKOutputConfig output = 18;
+  // workflow carries a declarative AgentSystem document for the kagent Go
+  // runtime and BYO images.
+  ADKWorkflowConfig workflow = 19;
+  // isolation applies to a subagent and says how its parent runs it. Unspecified
+  // is shared. The root agent must leave it unspecified.
+  ADKAgentIsolation isolation = 20 [(buf.validate.field).enum.defined_only = true];
+}
+
+// ADKAgentIsolation says how much of the session a subagent shares with its parent.
+enum ADKAgentIsolation {
+  ADK_AGENT_ISOLATION_UNSPECIFIED = 0;
+  // SHARED hands the conversation to the subagent in the parent's session: the
+  // parent transfers control and the subagent answers in the same history.
+  ADK_AGENT_ISOLATION_SHARED = 1;
+  // SESSION calls the subagent as a tool in a new session seeded with a copy of
+  // the parent's state. It never sees the parent's history, parallel calls get
+  // one session each, and it cannot pause for human input.
+  ADK_AGENT_ISOLATION_SESSION = 2;
 }
 
 // ADKModelConfig shares transport settings across a single selected provider.
@@ -274,6 +292,9 @@ message ADKHTTPMCPServerConfig {
   bool require_approval = 4;
   // Forward the incoming A2A bearer token as this server's Authorization header.
   bool token_passthrough = 5;
+  // Name of the RemoteMCPServer the binding selects. Declarative workflows
+  // refer to the server by this name.
+  string name = 6;
 }
 message ADKSSEMCPServerConfig {
   ADKSSEConnectionParams params = 1 [(buf.validate.field).required = true];
@@ -282,6 +303,9 @@ message ADKSSEMCPServerConfig {
   bool require_approval = 4;
   // Forward the incoming A2A bearer token as this server's Authorization header.
   bool token_passthrough = 5;
+  // Name of the RemoteMCPServer the binding selects. Declarative workflows
+  // refer to the server by this name.
+  string name = 6;
 }
 message ADKStdioMCPServerConfig {
   string command = 1;
@@ -352,6 +376,21 @@ message ADKOutputConfig {
   // Canonical JSON bytes retain the exact schema hashed by the compiler.
   bytes json_schema = 1;
   string sha256 = 2;
+}
+
+// ADKWorkflowConfig is an adk.declarative AgentSystem document that the
+// controller validated. A BYO image owns the Go behavior the document names;
+// the kagent Go runtime builds documents that name none.
+message ADKWorkflowConfig {
+  // Canonical JSON bytes retain the exact document hashed by the compiler.
+  bytes document = 1 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 65536
+  }];
+  string sha256 = 2 [(buf.validate.field).string = {pattern: "^[0-9a-f]{64}$"}];
+  // Models the document names, keyed by ModelConfig name. The controller sets
+  // them for the kagent Go runtime.
+  map<string, ADKModelConfig> models = 3;
 }
 message ADKAgentPlugins {
   repeated ADKSkill skills = 1;

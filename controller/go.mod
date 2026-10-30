@@ -90,6 +90,6 @@ replace go.ate.dev/substrate => github.com/kagent-dev/substrate v0.6.0-alpha3
 
 replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agentgateway/api v0.0.0-20261027162624-26f5aebe99a3
 
-replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261029143121-11a7d7cfee2e
+replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261030172244-da1590dfc985
 
 replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261028095952-285b83638e97
