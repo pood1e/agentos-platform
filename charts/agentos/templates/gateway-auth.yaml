@@ -20,6 +20,10 @@ spec:
             - >-
               (jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
                (!has(mcp.resource) || mcp.resource.name.startsWith('ui://')))
+              || (request.path.matches('^/mcp/[a-z][a-z0-9-]*$') &&
+                  has(jwt.iss) && jwt.iss == {{ .Values.identity.issuer | toJson }} &&
+                  has(jwt.azp) && jwt.azp == 'agentos-catalog' &&
+                  (!has(mcp.resource) || mcp.resource.name.startsWith('ui://')))
               {{- if .Values.mcpApps.sandboxOrigin }}
               || (request.path.startsWith('/apps/mcp/') && has(extauthz.selection) &&
                   has(extauthz.selection.tools) && has(mcp.tool) &&
@@ -69,7 +73,9 @@ spec:
             request.path.startsWith('/environments/') ||
             (request.method == 'POST' && request.path.matches('^/mcp/[a-z][a-z0-9-]*$') &&
              has(jwt.iss) && jwt.iss == {{ .Values.identity.issuer | toJson }} &&
-             has(jwt.azp) && jwt.azp == 'agentos-catalog') ||
+             has(jwt.azp) && jwt.azp == 'agentos-catalog' &&
+             (json(request.body).method in ['initialize','notifications/initialized','ping','tools/list'] ||
+              (json(request.body).method == 'resources/read' && json(request.body).params.uri.startsWith('ui://')))) ||
             {{- if .Values.voice.enabled }}
             request.path.startsWith('/speech/') ||
             {{- end }}

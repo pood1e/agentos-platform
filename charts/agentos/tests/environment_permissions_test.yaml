@@ -83,3 +83,12 @@ tests:
   - matchRegex:
       path: spec.traffic.authorization.policy.matchExpressions[0]
       pattern: "jwt.azp == 'agentos-catalog'"
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: "json\\(request.body\\).method in \\['initialize','notifications/initialized','ping','tools/list'\\]"
+  - matchRegex:
+      path: spec.traffic.authorization.policy.matchExpressions[0]
+      pattern: "json\\(request.body\\).method == 'resources/read' && json\\(request.body\\).params.uri.startsWith\\('ui://'\\)"
+  - matchRegex:
+      path: spec.backend.mcp.authorization.policy.matchExpressions[0]
+      pattern: "(?s)request.path.matches\\('\\^/mcp/\\[a-z\\]\\[a-z0-9-\\]\\*\\$'\\).*jwt.iss == \"https://identity.example.test/realms/operations\".*jwt.azp == 'agentos-catalog'.*!has\\(mcp.resource\\).*mcp.resource.name.startsWith\\('ui://'\\)"
