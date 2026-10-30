@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.1](https://github.com/pood1e/agentos-platform/compare/v0.45.0...v0.45.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **console:** preserve system task inventory across missing sessions ([#227](https://github.com/pood1e/agentos-platform/issues/227)) ([b165656](https://github.com/pood1e/agentos-platform/commit/b16565659efdde618b473d93d4c92695b9852fbc))
+
 ## [0.45.0](https://github.com/pood1e/agentos-platform/compare/v0.44.8...v0.45.0) (2026-10-30)
 
 
