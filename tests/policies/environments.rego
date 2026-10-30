@@ -156,9 +156,7 @@ deny contains sprintf("%s lacks native viewer token exchange", [backend.metadata
 	not browser_transport(backend).auth.oauthTokenExchange
 }
 
-browser_transport(backend) := backend.spec.policies if backend.spec.static
-
-browser_transport(backend) := backend.spec.mcp.targets[0].static.policies if backend.spec.mcp
+browser_transport(backend) := backend.spec.policies
 
 deny contains sprintf("%s trusts an unexpected browser environment TLS identity", [backend.metadata.name]) if {
 	some backend in resources
@@ -168,18 +166,12 @@ deny contains sprintf("%s trusts an unexpected browser environment TLS identity"
 	browser_transport(backend).tls.verifySubjectAltNames != [environment.gateway.host]
 }
 
-deny contains sprintf("%s exposes MCP App tools beyond its read-only identity view", [backend.metadata.name]) if {
-	some backend in resources
-	backend.kind == "AgentgatewayBackend"
-	some environment in data.environments
-	backend.metadata.labels["agentos.dev/browser-environment"] == environment.name
-	path := split(backend.spec.mcp.targets[0].static.path, "/")
-	some identity in environment.identities
-	identity.name == path[2]
-	tools := environment.toolsets[path[3]]
-	extra := [tool | identity.services[path[3]] == "manage"; some tool in object.get(tools, "managementReadOnly", [])]
-	expected := sort(array.concat(object.get(tools, "readOnly", []), extra))
-	expression := backend.spec.policies.mcp.authorization.policy.matchExpressions[0]
-	actual := json.unmarshal(trim_prefix(split(expression, " || ")[0], "mcp.tool.name in "))
-	sort(actual) != expected
+deny contains sprintf("%s lacks its native MCP App view", [target.server]) if {
+	some plan in resources
+	plan.kind == "AccessPlan"
+	plan.spec.platform.appJWTProvider
+	some target in plan.status.targets
+	some tool in target.tools
+	not object.get(tool, "write", false)
+	not has_resource("HTTPRoute", sprintf("apps-mcp-%s", [target.server]))
 }

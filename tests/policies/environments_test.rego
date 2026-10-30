@@ -41,3 +41,12 @@ test_service_scoped_origin_requires_a_service if {
 	messages := deny with input as resources
 	"lab-kubernetes-inspection has no service for its scoped MCP origin" in messages
 }
+
+test_readable_environment_target_requires_a_native_app_view if {
+	plan := {"contents": {"kind": "AccessPlan", "spec": {"platform": {"appJWTProvider": {"issuer": "https://identity.test"}}}, "status": {"targets": [{"server": "lab-topology-assistant", "tools": [{"name": "topology_graph"}]}]}}}
+	messages := deny with input as [plan]
+	"lab-topology-assistant lacks its native MCP App view" in messages
+	route := {"contents": {"kind": "HTTPRoute", "metadata": {"name": "apps-mcp-lab-topology-assistant"}}}
+	converged := deny with input as [plan, route]
+	count(converged) == 0
+}

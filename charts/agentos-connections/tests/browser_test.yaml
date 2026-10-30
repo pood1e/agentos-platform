@@ -62,21 +62,20 @@ tests:
   - equal:
       path: spec.policies.tls.verifySubjectAltNames
       value: [env-approval-mcp.example.test]
-- it: gives MCP Apps a read-only native view scoped to the original engineer
-  template: browser-mcp.yaml
-  documentSelector:
-    path: spec.mcp.targets[?(@.static.host == "192.0.2.21")].static.path
-    value: /mcp/remediation/kubernetes
+- it: delegates MCP App views to the native controller with viewer trust
+  template: access-plan.yaml
   asserts:
   - equal:
-      path: spec.mcp.targets[0].static.policies.auth.oauthTokenExchange.clientAuth.clientId
-      value: agentos-remediation
+      path: spec.platform.appAuthorityBackend
+      value: agentos-app-authority
   - equal:
-      path: spec.mcp.targets[0].static.policies.tls.verifySubjectAltNames
-      value: [env-approval-mcp.example.test]
-  - equal:
-      path: spec.policies.mcp.authorization.policy.matchExpressions[0]
-      value: mcp.tool.name in ["events_list","nodes_list","pods_list"] || (has(mcp.resource) && mcp.resource.name.startsWith('ui://'))
+      path: spec.platform.appJWTProvider
+      value:
+        issuer: https://identity.example.test/realms/platform
+        audiences: [agentos]
+        jwks:
+          remote:
+            url: https://identity.example.test/realms/platform/protocol/openid-connect/certs
 - it: rejects overlapping read and write API methods
   set:
     environments:

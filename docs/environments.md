@@ -44,7 +44,7 @@ platform:
   writerRole: agentos-writer
 ```
 
-MCP App 回调保留原始调用与查看者的归属校验，随后携带查看者凭据调用 `/environments/<environment>/mcp/<identity>/<service>`。网关提供该身份的只读 MCP 工具视图；管理身份额外包含管理只读工具。凭据交换、TLS、工具过滤和连接生命周期使用 agentgateway 与官方 MCP SDK。
+MCP App 回调携带查看者凭据访问 `/apps/mcp/<server>`。连接 Chart 将查看者信任交给 AccessPlan，控制器复用原生 MCP 后端生成只读视图，并校验原始调用、当前查看者与工具范围。凭据交换、TLS、工具过滤和连接生命周期使用 agentgateway 与官方 MCP SDK。
 
 ## 连接器契约
 

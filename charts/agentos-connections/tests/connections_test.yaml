@@ -58,3 +58,7 @@ tests:
   - equal:
       path: spec.environments
       value: []
+  - notExists:
+      path: spec.platform.appJWTProvider
+  - notExists:
+      path: spec.platform.appAuthorityBackend
