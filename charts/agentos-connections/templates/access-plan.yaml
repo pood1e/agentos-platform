@@ -14,6 +14,10 @@ spec:
     writerRole: {{ .Values.platform.writerRole | quote }}
     actorJWKSBackend: {{ .Values.platform.release }}-actor-jwks
     actorIssuer: {{ .Values.platform.actorIssuer | quote }}
+    {{- if .Values.environments }}
+    appAuthorityBackend: {{ .Values.platform.release }}-app-authority
+    appJWTProvider: {{ .Values.platform.authentication | toYaml | nindent 6 }}
+    {{- end }}
   environments:{{ if not .Values.environments }} []{{ end }}
     {{- range .Values.environments }}
     - name: {{ .name }}
