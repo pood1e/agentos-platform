@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/pood1e/agentos-platform/compare/v0.44.8...v0.45.0) (2026-10-30)
+
+
+### Features
+
+* **console:** expose engineer execution activity ([#224](https://github.com/pood1e/agentos-platform/issues/224)) ([49b86f8](https://github.com/pood1e/agentos-platform/commit/49b86f800d0f0266b0b19e22ee880a20cf9adb7b))
+
 ## [0.44.8](https://github.com/pood1e/agentos-platform/compare/v0.44.7...v0.44.8) (2026-10-29)
 
 
