@@ -10,6 +10,7 @@ import "agentos/console/v1/speech.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/console/v1/tool.proto";
 import "agentos/execution/v1/state.proto";
+import "agentos/execution/v1/task.proto";
 import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
 import "kagent/api/v1/agents.proto";
@@ -31,6 +32,10 @@ service ConsoleService {
   // Issues a LiveKit token for a dictation, read-aloud or call session.
   rpc StartVoiceSession(StartVoiceSessionRequest) returns (StartVoiceSessionResponse);
   rpc ListEngineers(ListEngineersRequest) returns (ListEngineersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Lists the caller's individual engineer executions, including background work.
+  rpc ListEngineerRuns(ListEngineerRunsRequest) returns (ListEngineerRunsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
@@ -89,6 +94,35 @@ message ListEngineersRequest {}
 
 message ListEngineersResponse {
   repeated Engineer engineers = 1;
+}
+
+message ListEngineerRunsRequest {
+  // Engineer identified by namespace/name.
+  string engineer = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  string page_token = 3 [(buf.validate.field).string.max_len = 2048];
+  // Filters the engineer's own execution state.
+  repeated agentos.execution.v1.ActivityState states = 4 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+}
+
+message ListEngineerRunsResponse {
+  // Calls include names, intent, state and timing.
+  repeated agentos.execution.v1.TaskRun runs = 1;
+  string next_page_token = 2;
 }
 
 message ListTasksRequest {
