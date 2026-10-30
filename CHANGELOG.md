@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.1](https://github.com/pood1e/agentos-platform/compare/v0.47.0...v0.47.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **runtime:** pin parallel workflow history correction ([#239](https://github.com/pood1e/agentos-platform/issues/239)) ([993b431](https://github.com/pood1e/agentos-platform/commit/993b431fc4e2732451ce915a278fb3940ed7645b))
+
 ## [0.47.0](https://github.com/pood1e/agentos-platform/compare/v0.46.1...v0.47.0) (2026-10-30)
 
 
