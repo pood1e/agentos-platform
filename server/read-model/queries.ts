@@ -58,7 +58,8 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
       .filter((value) => value.agent?.namespace === workspace)
       .filter(
         (value) =>
-          !options.viewer?.systemOnly || value.authority?.initiatorId !== options.viewer.subject,
+          !options.viewer?.systemOnly ||
+          (value.authority?.initiatorId || value.creator) !== options.viewer.subject,
       )
       .map(sessionInfo);
   }
@@ -68,29 +69,35 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
       throw new ConnectError("Native task relationship unavailable", Code.FailedPrecondition);
     return ingest(task, agentId, execution);
   }
-  async function load(sessions: SessionInfo[]) {
+  async function load(sessions: SessionInfo[], skipUnreadable = false) {
     const entries: TaskEntry[] = [];
     await pool(sessions, 4, async (known) => {
-      const tasks: Parameters<typeof ingest>[0][] = [];
-      await eachPage(
-        async (pageToken) => {
-          const page = await clients.a2a.listTasks(
-            {
-              tenant: known.agentId,
-              contextId: known.id,
-              pageSize: 100,
-              pageToken,
-              includeArtifacts: true,
-            },
-            rpc,
-          );
-          return { items: page.tasks, token: page.nextPageToken };
-        },
-        (items) => tasks.push(...items.filter((task) => task.contextId === known.id)),
-      );
-      await pool(tasks, 4, async (task) => {
-        entries.push(await withExecution(task, known.agentId));
-      });
+      try {
+        const tasks: Parameters<typeof ingest>[0][] = [];
+        await eachPage(
+          async (pageToken) => {
+            const page = await clients.a2a.listTasks(
+              {
+                tenant: known.agentId,
+                contextId: known.id,
+                pageSize: 100,
+                pageToken,
+                includeArtifacts: true,
+              },
+              rpc,
+            );
+            return { items: page.tasks, token: page.nextPageToken };
+          },
+          (items) => tasks.push(...items.filter((task) => task.contextId === known.id)),
+        );
+        const sessionEntries: TaskEntry[] = [];
+        await pool(tasks, 4, async (task) => {
+          sessionEntries.push(await withExecution(task, known.agentId));
+        });
+        entries.push(...sessionEntries);
+      } catch (error) {
+        if (!skipUnreadable || !missing(error)) throw error;
+      }
     });
     return new TaskGraph(entries, sessions, await agents());
   }
