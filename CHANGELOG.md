@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.1](https://github.com/pood1e/agentos-platform/compare/v0.46.0...v0.46.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **mcp-apps:** publish source-bound environment app views ([#235](https://github.com/pood1e/agentos-platform/issues/235)) ([e651b7a](https://github.com/pood1e/agentos-platform/commit/e651b7a958bb52fadad8ad2b4338db284c81c039))
+
 ## [0.46.0](https://github.com/pood1e/agentos-platform/compare/v0.45.1...v0.46.0) (2026-10-30)
 
 
