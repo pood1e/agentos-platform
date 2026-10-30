@@ -26,7 +26,20 @@
           if (event.source === window.parent && event.origin === consoleOrigin) {
             if (event.data?.method === "ui/notifications/sandbox-resource-ready") {
               const html = event.data.params?.html;
-              if (typeof html === "string") inner.srcdoc = html;
+              if (typeof html === "string") {
+                const domains = Array.isArray(event.data.params?.csp?.resourceDomains)
+                  ? event.data.params.csp.resourceDomains : [];
+                const images = domains.filter((value) => {
+                  try {
+                    const url = new URL(value);
+                    return url.protocol === "https:" && url.href === `${url.origin}/`;
+                  } catch { return false; }
+                });
+                const policy = document.createElement("meta");
+                policy.httpEquiv = "Content-Security-Policy";
+                policy.content = `img-src 'self' data: ${images.join(" ")}`;
+                inner.srcdoc = policy.outerHTML + html;
+              }
             } else inner.contentWindow?.postMessage(event.data, window.location.origin);
           } else if (event.source === inner.contentWindow && event.origin === window.location.origin) {
             window.parent.postMessage(event.data, consoleOrigin);

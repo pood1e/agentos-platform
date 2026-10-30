@@ -65,6 +65,7 @@ identity:
   returnOrigins: []
 mcpApps:
   sandboxOrigin: ""
+  imageOrigins: []
 route:
   parentRefs: []
   hosts:

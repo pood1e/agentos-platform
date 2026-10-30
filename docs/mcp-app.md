@@ -47,7 +47,7 @@ AccessPlan 编译器对目录路由开放模板与元数据，Agent 路由保留
 站点配置 `route.hosts.sandbox`，web 在独立主机名提供 `/mcp-app-sandbox`。
 宿主使用官方 `AppBridge` 与 `PostMessageTransport`，代理页和 iframe 双向校验消息来源。
 视图共用沙箱源及存储，iframe 权限为 `allow-scripts allow-same-origin allow-forms`；CSP 使用规范默认值与控制台 `frame-ancestors`。
-资源可显式申请 `data:` 静态内容，数据访问通过工具回调。
+资源可显式申请 `data:` 静态内容与 HTTPS 图像源；站点在 `mcpApps.imageOrigins` 配置允许的图像源。脚本、连接和其他资源仍受沙箱策略限制，数据访问通过工具回调。
 
 | 宿主能力 | 行为 |
 | --- | --- |
