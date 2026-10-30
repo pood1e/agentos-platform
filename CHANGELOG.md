@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/pood1e/agentos-platform/compare/v0.46.1...v0.47.0) (2026-10-30)
+
+
+### Features
+
+* **runtime:** support managed declarative workflows ([#237](https://github.com/pood1e/agentos-platform/issues/237)) ([cc9e711](https://github.com/pood1e/agentos-platform/commit/cc9e711d139d5602ad90e6ca22b818c8e2ea7b12))
+
 ## [0.46.1](https://github.com/pood1e/agentos-platform/compare/v0.46.0...v0.46.1) (2026-10-30)
 
 
