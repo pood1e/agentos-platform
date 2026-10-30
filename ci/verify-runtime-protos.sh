@@ -11,9 +11,10 @@ fetch() {
   git -C "$sources/$1" checkout --quiet --detach FETCH_HEAD
   test "$(git -C "$sources/$1" rev-parse HEAD)" = "$2"
 }
-fetch kagent a1f9d80ef4ed75d34eb09e57f54db5ee0ccb35ab
+fetch kagent 1dc871bac04f63a18b2d5b8056556ac1dfe96327
 fetch substrate dece7140130772d0ab4ad66fc000f88c2e2687a1
 git ls-files 'third_party/kagent/**/*.proto' | while IFS= read -r proto; do
   cmp "$sources/kagent/proto/${proto#third_party/kagent/}" "$task_root/$proto"
 done
+cmp "$sources/kagent/helm/kagent-crds/templates/api.kagent.dev_harnesses.yaml" "$task_root/third_party/kagent-crds/harnesses.yaml"
 cmp "$sources/substrate/pkg/proto/ateapipb/ateapi.proto" "$task_root/third_party/substrate/ateapi.proto"

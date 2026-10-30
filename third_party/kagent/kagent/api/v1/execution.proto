@@ -135,6 +135,10 @@ message GetTaskExecutionRequest {
 }
 message GetTaskExecutionResponse {
   TaskExecution execution = 1;
+  // Latest task in this task's native continuation chain, in the same Session.
+  TaskReference latest_task = 2;
+  // Native dependencies still await completion or continuation admission.
+  bool continuation_pending = 3;
 }
 message ListTaskExecutionsRequest {
   string root_task_id = 1 [(buf.validate.field).string = {
