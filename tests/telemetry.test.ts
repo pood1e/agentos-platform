@@ -221,7 +221,29 @@ it("bounds shutdown for a hanging gRPC Collector", async () => {
   }
 }, 10000);
 
-it("exports only when enabled and keeps disabled telemetry silent", async () => {
+it.each([
+  { OTEL_SDK_DISABLED: "true" },
+  { OTEL_METRICS_EXPORTER: "none" },
+  { OTEL_METRICS_EXPORTER: "otlp, none" },
+  { OTEL_SDK_DISABLED: " true " },
+])(
+  "keeps disabled telemetry silent: %j",
+  async (disabled) => {
+    let exports = 0;
+    const endpoint = await collector((request, response) => {
+      request.resume();
+      exports++;
+      response.end();
+    });
+    const core = await start({ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: endpoint, ...disabled });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(await core.stop()).toBe("");
+    expect(exports).toBe(0);
+  },
+  10000,
+);
+
+it("exports enabled metrics as protobuf", async () => {
   const requests: { contentType: string; bytes: number }[] = [];
   const endpoint = await collector(async (request, response) => {
     let bytes = 0;
@@ -229,19 +251,7 @@ it("exports only when enabled and keeps disabled telemetry silent", async () => 
     requests.push({ contentType: request.headers["content-type"] ?? "", bytes });
     response.end();
   });
-  const settings = { OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: endpoint };
-  for (const disabled of [
-    { OTEL_SDK_DISABLED: "true" },
-    { OTEL_METRICS_EXPORTER: "none" },
-    { OTEL_METRICS_EXPORTER: "otlp, none" },
-    { OTEL_SDK_DISABLED: " true " },
-  ]) {
-    const core = await start({ ...settings, ...disabled });
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    expect(await core.stop()).toBe("");
-    expect(requests).toEqual([]);
-  }
-  const enabled = await start(settings);
+  const enabled = await start({ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: endpoint });
   await expect.poll(() => requests.length).toBeGreaterThan(0);
   await enabled.stop();
   expect(
