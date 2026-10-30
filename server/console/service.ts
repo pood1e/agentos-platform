@@ -90,6 +90,9 @@ export function consoleService({
       const activity = await projection.agentActivity(viewer(context.values.get(requestIdentity)));
       return { engineers: engineers(await projection.agents(), activity) };
     },
+    async listEngineerRuns(request, context) {
+      return projection.engineerRuns(viewer(context.values.get(requestIdentity)), request);
+    },
     async listTasks(request, context) {
       const identity = context.values.get(requestIdentity);
       if (request.systemOnly && !isAdministrator(identity))

@@ -18,6 +18,9 @@ export const pendingApproval = (entry: TaskEntry) =>
 export const runState = (entry: TaskEntry) =>
   pendingApproval(entry) ? ActivityState.AWAITING_APPROVAL : taskActivity(entry.state);
 
+export const running = (entry: TaskEntry) =>
+  [ActivityState.SUBMITTED, ActivityState.WORKING].includes(runState(entry));
+
 export const runSummary = (entry: TaskEntry, background: boolean): TaskRun =>
   create(TaskRunSchema, {
     taskId: entry.id,

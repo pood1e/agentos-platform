@@ -18,6 +18,8 @@ message TaskRun {
   google.protobuf.Timestamp updated_at = 8;
   string context_id = 9;
   google.protobuf.Timestamp started_at = 10;
+  // Intermediate narration while the task is running.
+  string progress = 11;
 }
 
 message ToolCall {

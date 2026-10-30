@@ -5,24 +5,32 @@ import { type AgentInfo, systemRoles } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { interrupted, terminal } from "../state.js";
-import { pendingApproval } from "./runs.js";
+import { pendingApproval, running } from "./runs.js";
 
 /** An agent's work within one viewer's executions. */
 export interface AgentActivity {
   active: number;
   calls: number;
+  working: boolean;
   approval: boolean;
   interrupted: boolean;
 }
 
-const idle: AgentActivity = { active: 0, calls: 0, approval: false, interrupted: false };
+const idle: AgentActivity = {
+  active: 0,
+  calls: 0,
+  working: false,
+  approval: false,
+  interrupted: false,
+};
 
 function engineerState(agent: AgentInfo | undefined, activity: AgentActivity): ActivityState {
   if (!agent) return ActivityState.UNOBSERVED;
   if (!agent.ready) return ActivityState.UNAVAILABLE;
+  if (activity.working) return ActivityState.WORKING;
   if (activity.approval) return ActivityState.AWAITING_APPROVAL;
   if (activity.interrupted) return ActivityState.AWAITING_INPUT;
-  return activity.active ? ActivityState.WORKING : ActivityState.IDLE;
+  return activity.active ? ActivityState.UNOBSERVED : ActivityState.IDLE;
 }
 
 /** Unknown IDs are agents reported only by the runtime. */
@@ -46,6 +54,7 @@ export function engineer(graph: TaskGraph, id: string, entries: TaskEntry[]): En
   return engineerOf(graph.agent(id), id, {
     active: active.length,
     calls: entries.reduce((count, entry) => count + entry.calls.length, 0),
+    working: active.some(running),
     approval: active.some(pendingApproval),
     interrupted: active.some((entry) => interrupted(entry.state)),
   });
