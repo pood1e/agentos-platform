@@ -88,6 +88,7 @@ spec:
             - {name: NGINX_ENVSUBST_FILTER, value: ^AGENTOS_}
             - {name: AGENTOS_CONSOLE_ORIGIN, value: {{ $origins.console | quote }}}
             - {name: AGENTOS_FRAME_SRC, value: {{ $origins.sandbox | default "'none'" | quote }}}
+            - {name: AGENTOS_MCP_IMAGE_ORIGINS, value: {{ join " " .Values.mcpApps.imageOrigins | quote }}}
           ports: [{name: static, containerPort: 8080}, {name: sandbox, containerPort: 8081}]
           readinessProbe:
             httpGet: {path: /, port: static}

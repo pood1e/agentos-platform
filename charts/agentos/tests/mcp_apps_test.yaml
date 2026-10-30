@@ -11,6 +11,8 @@ tests:
   asserts:
   - hasDocuments: {count: 2}
 - it: exposes only the proxy path on the separate host
+  set:
+    mcpApps.imageOrigins: ['https://icons.example.test']
   asserts:
   - template: routes.yaml
     documentIndex: 2
@@ -31,6 +33,17 @@ tests:
     contains:
       path: 'spec.template.spec.containers[1].env'
       content: {name: AGENTOS_FRAME_SRC, value: 'https://sandbox.agentos.example.test'}
+  - template: web-deployment.yaml
+    documentIndex: 0
+    contains:
+      path: 'spec.template.spec.containers[1].env'
+      content: {name: AGENTOS_MCP_IMAGE_ORIGINS, value: 'https://icons.example.test'}
+- it: rejects image origins with paths or wildcards
+  set:
+    mcpApps.imageOrigins: ['https://*.example.test/path']
+  template: web-deployment.yaml
+  asserts:
+  - failedTemplate: {errorPattern: imageOrigins}
 - it: rejects a sandbox on the console host
   set:
     route.hosts.sandbox: agentos.example.test
