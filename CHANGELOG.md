@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.46.0](https://github.com/pood1e/agentos-platform/compare/v0.45.1...v0.46.0) (2026-10-30)
+
+
+### Features
+
+* **apps:** permit site-approved image origins ([#234](https://github.com/pood1e/agentos-platform/issues/234)) ([285419c](https://github.com/pood1e/agentos-platform/commit/285419c60e8e124e77af43d6dfe12dfc7994e5a7))
+* **pack:** declare collaboration workflows ([#233](https://github.com/pood1e/agentos-platform/issues/233)) ([ad5a5a5](https://github.com/pood1e/agentos-platform/commit/ad5a5a5701c917fb943c70e18292a6ba658b5ed6))
+
+
+### Bug Fixes
+
+* **gateway:** authorize catalog MCP discovery ([#231](https://github.com/pood1e/agentos-platform/issues/231)) ([3d33c3f](https://github.com/pood1e/agentos-platform/commit/3d33c3fb9d91367db9bb18b5985b4ff3869fa5c0))
+
 ## [0.45.1](https://github.com/pood1e/agentos-platform/compare/v0.45.0...v0.45.1) (2026-10-30)
 
 
