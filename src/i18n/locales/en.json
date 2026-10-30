@@ -39,6 +39,16 @@
     "noMembers": "No matching members",
     "unassignedRole": "Unassigned role"
   },
+  "workflows": {
+    "title": "Collaboration workflows",
+    "select": "Select workflow",
+    "sync": "Synchronous",
+    "async": "Asynchronous",
+    "human": "Human",
+    "system": "System",
+    "decision": "Decision",
+    "fit": "Fit to view"
+  },
   "tool": {
     "calls": "Tool calls",
     "arguments": "Arguments",

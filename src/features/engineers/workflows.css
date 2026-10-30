@@ -1,0 +1,111 @@
+.workflow-section {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.workflow-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.workflow-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.workflow-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.workflow-sync::before,
+.workflow-async::before {
+  content: "";
+  width: 22px;
+  border-top: 2px solid currentColor;
+}
+.workflow-async::before {
+  border-top-style: dashed;
+}
+.workflow-graph {
+  height: 610px;
+}
+.workflow-stage {
+  padding: 0 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.workflow-step {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+}
+.workflow-step strong {
+  max-width: 100%;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.workflow-role {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.workflow-artwork {
+  width: 80px;
+  height: 84px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+}
+.workflow-graph .react-flow__edge-text {
+  font-size: 11px;
+  fill: var(--foreground);
+}
+.workflow-graph .react-flow__edge-textbg {
+  fill: var(--background);
+}
+.workflow-graph .react-flow__handle {
+  opacity: 0;
+}
+.workflow-graph .react-flow__edge-path {
+  stroke-width: 1.4;
+}
+.workflow-mobile {
+  display: none;
+}
+@media (max-width: 640px) {
+  .workflow-graph {
+    display: none;
+  }
+  .workflow-mobile {
+    display: grid;
+    gap: 12px;
+    font-size: 13px;
+  }
+  .workflow-mobile h3 {
+    color: var(--muted-foreground);
+    font-weight: 600;
+  }
+  .workflow-mobile ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .workflow-mobile li {
+    display: grid;
+    gap: 3px;
+    padding: 6px 0;
+  }
+  .workflow-mobile small {
+    color: var(--muted-foreground);
+  }
+}

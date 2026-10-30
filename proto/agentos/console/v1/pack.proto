@@ -7,11 +7,82 @@ import "google/protobuf/struct.proto";
 
 // Presentation supplied by a solution pack. Every field is optional and falls back to the platform default.
 message Pack {
+  option (buf.validate.message).cel = {
+    id: "pack.workflows"
+    message: "Workflow IDs must be unique"
+    expression: "this.workflows.all(w, this.workflows.filter(v, v.id == w.id).size() == 1)"
+  };
   string title = 1 [(buf.validate.field).string.max_len = 40];
   repeated RolePresentation roles = 2 [(buf.validate.field).repeated.max_items = 64];
   repeated ToolBrand tools = 3 [(buf.validate.field).repeated.max_items = 64];
   // i18next resources by language code, merged over the platform resources by namespace.
   map<string, google.protobuf.Struct> locales = 4 [(buf.validate.field).map.max_pairs = 8];
+  repeated CollaborationWorkflow workflows = 5 [(buf.validate.field).repeated.max_items = 16];
+}
+
+// A presentation of collaboration, with text keys resolved in Pack.locales.
+message CollaborationWorkflow {
+  option (buf.validate.message).cel = {
+    id: "workflow.nodes"
+    message: "Workflow nodes require unique IDs and positions"
+    expression: "this.nodes.all(n, this.nodes.filter(m, m.id == n.id).size() == 1 && this.nodes.filter(m, m.row == n.row && m.column == n.column).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "workflow.edges"
+    message: "Workflow edges must reference existing nodes"
+    expression: "this.edges.all(e, this.nodes.exists(n, n.id == e.source) && this.nodes.exists(n, n.id == e.target) && this.edges.filter(f, f.source == e.source && f.target == e.target).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "workflow.stages"
+    message: "Workflow stages require unique rows"
+    expression: "this.stages.all(s, this.stages.filter(t, t.row == s.row).size() == 1)"
+  };
+  string id = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$"];
+  string title = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  repeated WorkflowNode nodes = 3 [(buf.validate.field).repeated = {min_items: 1, max_items: 100}];
+  repeated WorkflowEdge edges = 4 [(buf.validate.field).repeated.max_items = 200];
+  repeated WorkflowStage stages = 5 [(buf.validate.field).repeated.max_items = 20];
+}
+
+enum WorkflowNodeKind {
+  WORKFLOW_NODE_KIND_UNSPECIFIED = 0;
+  WORKFLOW_NODE_KIND_AGENT = 1;
+  WORKFLOW_NODE_KIND_HUMAN = 2;
+  WORKFLOW_NODE_KIND_SYSTEM = 3;
+  WORKFLOW_NODE_KIND_DECISION = 4;
+}
+
+message WorkflowNode {
+  option (buf.validate.message).cel = {
+    id: "workflow.agent_role"
+    message: "Agent nodes require a role"
+    expression: "this.kind != 1 || this.role != ''"
+  };
+  string id = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$"];
+  string title = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  // Agent role key from the agentos.dev/role label and Pack.roles.
+  string role = 3 [(buf.validate.field).string.max_len = 63];
+  WorkflowNodeKind kind = 4 [(buf.validate.field).enum = {defined_only: true, not_in: [0]}];
+  uint32 column = 5 [(buf.validate.field).uint32.lte = 32];
+  uint32 row = 6 [(buf.validate.field).uint32.lte = 32];
+}
+
+enum WorkflowInteraction {
+  WORKFLOW_INTERACTION_UNSPECIFIED = 0;
+  WORKFLOW_INTERACTION_SYNC = 1;
+  WORKFLOW_INTERACTION_ASYNC = 2;
+}
+
+message WorkflowEdge {
+  string source = 1 [(buf.validate.field).string.min_len = 1];
+  string target = 2 [(buf.validate.field).string.min_len = 1];
+  string label = 3 [(buf.validate.field).string.max_len = 256];
+  WorkflowInteraction interaction = 4 [(buf.validate.field).enum = {defined_only: true, not_in: [0]}];
+}
+
+message WorkflowStage {
+  string title = 1 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  uint32 row = 2 [(buf.validate.field).uint32.lte = 32];
 }
 
 message RolePresentation {

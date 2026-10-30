@@ -1,16 +1,28 @@
 import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
+import { createValidator } from "@bufbuild/protovalidate";
 import { useQuery } from "@tanstack/react-query";
-import { type Pack, PackSchema } from "../../gen/agentos/console/v1/pack_pb.js";
+import {
+  CollaborationWorkflowSchema,
+  type Pack,
+  PackSchema,
+} from "../../gen/agentos/console/v1/pack_pb.js";
 import i18n from "../i18n/index.js";
 
 const platform = create(PackSchema);
 const applied = new WeakSet<Pack>();
+const validator = createValidator();
 
 export const packAsset = (path: string) => `/pack/${path}`;
 
 /** Reads `pack.json`; tool brands whose pattern does not compile are skipped. */
 export function parsePack(json: JsonValue): Pack {
   const pack = fromJson(PackSchema, json);
+  if (new Set(pack.workflows.map((workflow) => workflow.id)).size !== pack.workflows.length)
+    throw new Error("Workflow IDs must be unique");
+  for (const workflow of pack.workflows) {
+    const result = validator.validate(CollaborationWorkflowSchema, workflow);
+    if (result.kind !== "valid") throw new Error(String(result.error));
+  }
   pack.tools = pack.tools.filter((tool) => {
     try {
       new RegExp(tool.match, "i");
