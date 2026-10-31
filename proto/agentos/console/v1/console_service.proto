@@ -5,6 +5,7 @@ package agentos.console.v1;
 import "agentos/console/v1/access.proto";
 import "agentos/console/v1/conversation.proto";
 import "agentos/console/v1/engineer.proto";
+import "agentos/console/v1/execution.proto";
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/speech.proto";
 import "agentos/console/v1/task.proto";
@@ -149,12 +150,15 @@ message ListTasksRequest {
   string engineer = 5 [(buf.validate.field).string.max_len = 128];
   // Only service-owned executions; requires platform administration access.
   bool system_only = 7;
+  // Includes the page's compact current execution topology.
+  bool include_execution_graph = 8;
 }
 
 message ListTasksResponse {
   repeated TaskSummary tasks = 1;
   string next_page_token = 2;
   int32 total_size = 3;
+  ExecutionGraph execution_graph = 4;
 }
 
 message CancelTaskRequest {

@@ -3,6 +3,7 @@ import { toJson } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { LRUCache } from "lru-cache";
 import { TaskSchema } from "../../gen/a2a_pb.js";
+import type { TaskExecution } from "../../gen/kagent/api/v1/execution_pb.js";
 import { digest } from "../../shared/digest.js";
 import { eachPage, type KagentClients, pool } from "../kagent/clients.js";
 import type { SessionInfo } from "./agents.js";
@@ -19,10 +20,22 @@ const missing = (error: unknown) => error instanceof ConnectError && error.code 
 
 /** Fresh authorized task metadata selects immutable terminal projections for reuse. */
 export function taskRecords(clients: KagentClients) {
-  async function hydrate({ summary, session }: TaskRecord) {
-    const [task, { execution }] = await Promise.all([
+  const lineage = new LRUCache<string, TaskExecution>({ max: 4096 });
+  async function nativeExecution({ summary, session }: TaskRecord, subject: string) {
+    const key = JSON.stringify([subject, session.agentId, session.id, summary.id]);
+    const known = subject ? lineage.get(key) : undefined;
+    if (known) return known;
+    const { execution } = await clients.execution.getTaskExecution({ taskId: summary.id }, rpc);
+    if (execution?.task?.taskId !== summary.id || execution.task.sessionId !== session.id)
+      throw new ConnectError("Native task relationship unavailable", Code.FailedPrecondition);
+    if (subject) lineage.set(key, execution);
+    return execution;
+  }
+  async function hydrate(record: TaskRecord, subject: string) {
+    const { summary, session } = record;
+    const [task, execution] = await Promise.all([
       clients.a2a.getTask({ tenant: session.agentId, id: summary.id }, rpc),
-      clients.execution.getTaskExecution({ taskId: summary.id }, rpc),
+      nativeExecution(record, subject),
     ]);
     if (
       task.id !== summary.id ||
@@ -77,6 +90,23 @@ export function taskRecords(clients: KagentClients) {
       });
       return records;
     },
+    async overview(records: TaskRecord[], subject = "", skipUnreadable = false) {
+      const entries: (TaskEntry | undefined)[] = new Array(records.length);
+      await pool(
+        records.map((record, index) => ({ record, index })),
+        8,
+        async ({ record, index }) => {
+          try {
+            entries[index] = terminal(record.summary.state)
+              ? { ...record.summary, execution: await nativeExecution(record, subject) }
+              : await hydrate(record, subject);
+          } catch (error) {
+            if (!skipUnreadable || !missing(error)) throw error;
+          }
+        },
+      );
+      return entries.filter((entry): entry is TaskEntry => entry !== undefined);
+    },
     async read(records: TaskRecord[], subject = "", skipUnreadable = false) {
       const entries: (TaskEntry | undefined)[] = new Array(records.length);
       await pool(
@@ -94,7 +124,7 @@ export function taskRecords(clients: KagentClients) {
             ]);
             const reusable = subject !== "" && terminal(summary.state);
             const cached = reusable ? completed.get(key) : undefined;
-            const entry = cached ?? (await hydrate(record));
+            const entry = cached ?? (await hydrate(record, subject));
             if (!cached && reusable && terminal(entry.state)) completed.set(key, entry);
             entries[index] = entry;
           } catch (error) {
