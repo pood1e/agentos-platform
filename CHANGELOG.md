@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.3](https://github.com/pood1e/agentos-platform/compare/v0.48.2...v0.48.3) (2026-10-31)
+
+
+### Performance Improvements
+
+* **read-model:** 稳定目录指纹并提升轻量读取吞吐 ([#249](https://github.com/pood1e/agentos-platform/issues/249)) ([7c50758](https://github.com/pood1e/agentos-platform/commit/7c50758786741a0c411b2a4c955ca28dbe465052))
+
 ## [0.48.2](https://github.com/pood1e/agentos-platform/compare/v0.48.1...v0.48.2) (2026-10-31)
 
 
