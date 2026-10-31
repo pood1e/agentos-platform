@@ -76,10 +76,17 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
       throw new ConnectError("Native task relationship unavailable", Code.FailedPrecondition);
     return ingest(task, agentId, execution);
   }
-  async function load(sessions: SessionInfo[], skipUnreadable = false, subject = "") {
+  async function load(
+    sessions: SessionInfo[],
+    skipUnreadable = false,
+    subject = "",
+    overview = false,
+  ) {
     const selected = await records.list(sessions, skipUnreadable);
     return new TaskGraph(
-      await records.read(selected, subject, skipUnreadable),
+      overview
+        ? await records.overview(selected, subject, skipUnreadable)
+        : await records.read(selected, subject, skipUnreadable),
       sessions,
       await agents(),
     );

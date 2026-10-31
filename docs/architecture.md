@@ -54,3 +54,7 @@ Agent 以 `harnessRef` 与可选 `modelConfigRef` 选择运行时；单次原生
 协作 MCP 直接连接 kagent `/mcp`；角色起草使用平台业务 MCP。团队知识通过原生 `MemoryService` 的团队范围和服务端嵌入读写。
 
 环境连接、MCP Apps 与语音分别见[环境接入](environments.md)、[MCP Apps](mcp-app.md)和[语音](speech.md)。执行身份见[执行授权](execution-authorization.md)，源码入口见[代码导航](code-navigation.md)。
+
+## 实时执行总览
+
+`ListTasks.includeExecutionGraph` 将当前页的原生执行关系、Agent 与人工交互元数据一并返回。已结束执行使用经当前用户重新授权的元数据和有界原生关系缓存；会话正文、工具参数与结果由详情读取。总览与明细分别按各自的数据量查询。

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package agentos.console.v1;
+
+import "agentos/console/v1/engineer.proto";
+import "agentos/console/v1/task.proto";
+import "agentos/execution/v1/task.proto";
+
+// Authorized execution metadata for the operations returned on one task page.
+message ExecutionGraph {
+  repeated agentos.execution.v1.TaskRun runs = 1;
+  repeated Engineer participants = 2;
+  repeated Interaction interactions = 3;
+}

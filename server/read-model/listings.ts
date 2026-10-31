@@ -8,6 +8,7 @@ import { type PageRequest, pageOf } from "./page.js";
 import { terminal } from "./state.js";
 import { taskTree } from "./tree.js";
 import { conversationProgress } from "./views/conversation-work.js";
+import { executionGraph } from "./views/execution.js";
 import { pendingApproval, running, stamp } from "./views/runs.js";
 import { taskSummary } from "./views/task.js";
 
@@ -19,11 +20,16 @@ export interface Viewer {
 }
 
 export function listings(
-  load: (sessions: SessionInfo[], skipUnreadable?: boolean, subject?: string) => Promise<TaskGraph>,
+  load: (
+    sessions: SessionInfo[],
+    skipUnreadable?: boolean,
+    subject?: string,
+    overview?: boolean,
+  ) => Promise<TaskGraph>,
   inventory: (viewer: Viewer) => Promise<SessionInfo[]>,
 ) {
-  const visible = async (viewer: Viewer) =>
-    load(await inventory(viewer), viewer.systemOnly === true, viewer.subject);
+  const visible = async (viewer: Viewer, overview = false) =>
+    load(await inventory(viewer), viewer.systemOnly === true, viewer.subject, overview);
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
       const graph = await visible(viewer);
@@ -63,9 +69,13 @@ export function listings(
     },
     async operations(
       viewer: Viewer,
-      request: PageRequest & Partial<Pick<ListTasksRequest, "states" | "engineer">>,
+      request: PageRequest &
+        Partial<Pick<ListTasksRequest, "states" | "engineer" | "includeExecutionGraph">>,
     ) {
-      const graph = await visible(viewer);
+      const graph = await visible(
+        viewer,
+        Boolean(request.includeExecutionGraph && !request.query.trim()),
+      );
       const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
       const engineer = request.engineer ?? "";
       const needle = request.query.trim().toLowerCase();
@@ -87,6 +97,12 @@ export function listings(
         tasks: page.items.map((row) => row.summary),
         totalSize: page.totalSize,
         nextPageToken: page.nextPageToken,
+        executionGraph: request.includeExecutionGraph
+          ? executionGraph(
+              graph,
+              page.items.map((row) => row.id),
+            )
+          : undefined,
       };
     },
     async agentActivity(viewer: Viewer) {
