@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.48.1](https://github.com/pood1e/agentos-platform/compare/v0.48.0...v0.48.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **console:** expose authorized system engineer history ([#245](https://github.com/pood1e/agentos-platform/issues/245)) ([5c50f34](https://github.com/pood1e/agentos-platform/commit/5c50f34bf941b9fc6307aeda54c2c2995f7680c7))
+* **runtime:** pin native workflow recovery build ([#246](https://github.com/pood1e/agentos-platform/issues/246)) ([fef066a](https://github.com/pood1e/agentos-platform/commit/fef066a8949e483e3879325ee4949b312790a203))
+* **runtime:** prepare model-free workflow agents ([#243](https://github.com/pood1e/agentos-platform/issues/243)) ([2abef13](https://github.com/pood1e/agentos-platform/commit/2abef136b97a6a5fb696e89356ecdc3a83cbf004))
+
 ## [0.48.0](https://github.com/pood1e/agentos-platform/compare/v0.47.1...v0.48.0) (2026-10-30)
 
 
