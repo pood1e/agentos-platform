@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/pood1e/agentos-platform/compare/v0.49.0...v0.50.0) (2026-10-31)
+
+
+### Features
+
+* **console:** start selected engineers through native authorization ([#261](https://github.com/pood1e/agentos-platform/issues/261)) ([3c74e0e](https://github.com/pood1e/agentos-platform/commit/3c74e0e1ae567c957a81b4a68b89ca0a5c8de0d8))
+
 ## [0.49.0](https://github.com/pood1e/agentos-platform/compare/v0.48.6...v0.49.0) (2026-10-31)
 
 
