@@ -10,6 +10,7 @@ import {
 } from "../gen/kagent/api/v1/execution_pb.js";
 import { TaskGraph } from "../server/read-model/graph.js";
 import { taskTree } from "../server/read-model/tree.js";
+import { runSummary } from "../server/read-model/views/runs.js";
 import { fixtureState, fixtureIds as ids } from "./fixtures/kagent.js";
 import { environment } from "./harness.js";
 
@@ -31,6 +32,11 @@ it("keeps parented work in its operation without a model tool result", () => {
   const graph = new TaskGraph(entries);
   expect(graph.operationRoot(ids.inspection)?.id).toBe(ids.dispatchRoot);
   expect(graph.relations().targets.size).toBe(0);
+  const child = graph.entry(ids.inspection);
+  assert(child);
+  const run = runSummary(child, false);
+  expect(run.execution?.parent?.taskId).toBe(ids.dispatchRoot);
+  expect(run.execution).toEqual(child.execution);
 });
 
 it("treats chronology, shared sessions and forged tool results as display data", () => {
