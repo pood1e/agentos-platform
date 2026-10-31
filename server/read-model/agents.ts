@@ -6,6 +6,7 @@ import {
   ResourceReferenceSchema,
 } from "../../gen/kagent/api/v1/common_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
+import { isWorkflowTemplate } from "../kagent/templates.js";
 import { millis, object, text } from "./decode/messages.js";
 
 export const systemRoles = new Set(["assistant", "role-builder"]);
@@ -25,6 +26,7 @@ export interface AgentInfo {
   description: string;
   ready: boolean;
   sessionTasks?: boolean;
+  workflow?: boolean;
   reason: string;
   message: string;
 }
@@ -43,9 +45,13 @@ export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTem
   const readiness = conditions.find((condition) => condition.type === "Ready");
   const ready = readiness?.status === "True";
   const blocking = conditions.find((condition) => condition.status === "False") ?? readiness;
+  const workflow = isWorkflowTemplate(
+    template?.spec ?? object(object(object(resource?.spec).template).inline),
+  );
   return {
     id: agentKey(agent.ref),
-    role: text(templateRef.name),
+    role: workflow ? "" : text(templateRef.name),
+    workflow,
     displayName: text(annotations["agentos.dev/display-name"]),
     description: template
       ? text(object(template.spec).description)

@@ -62,6 +62,6 @@ export function engineer(graph: TaskGraph, id: string, entries: TaskEntry[]): En
 
 export function engineers(agents: AgentInfo[], activity: ReadonlyMap<string, AgentActivity>) {
   return agents
-    .filter((agent) => !systemRoles.has(agent.role))
+    .filter((agent) => !agent.workflow && !systemRoles.has(agent.role))
     .map((agent) => engineerOf(agent, agent.id, activity.get(agent.id) ?? idle));
 }

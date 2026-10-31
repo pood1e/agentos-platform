@@ -4,6 +4,7 @@ package agentos.console.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "kagent/api/v1/common.proto";
 
 // Presentation supplied by a solution pack. Every field is optional and falls back to the platform default.
 message Pack {
@@ -42,6 +43,8 @@ message CollaborationWorkflow {
   repeated WorkflowNode nodes = 3 [(buf.validate.field).repeated = {min_items: 1, max_items: 100}];
   repeated WorkflowEdge edges = 4 [(buf.validate.field).repeated.max_items = 200];
   repeated WorkflowStage stages = 5 [(buf.validate.field).repeated.max_items = 20];
+  // Native workflow runtime whose execution history accompanies the diagram.
+  kagent.api.v1.ResourceReference agent = 6;
 }
 
 enum WorkflowNodeKind {

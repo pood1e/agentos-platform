@@ -12,6 +12,7 @@ import { modelPurpose } from "../../shared/model-purpose.js";
 import type { BindingView } from "../governance/bindings.js";
 import { validateAgent } from "../kagent/admission.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { isWorkflowTemplate } from "../kagent/templates.js";
 import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
 import { userResource } from "../management/native.js";
 import { systemRoles } from "../read-model/agents.js";
@@ -60,7 +61,10 @@ export function roleCommands(
           item.ref?.namespace === namespace &&
           modelPurpose(item.resource?.value) === ModelPurpose.LANGUAGE,
       ),
-      templates: templates.agentTemplates.filter((item) => !systemRoles.has(item.ref?.name ?? "")),
+      templates: templates.agentTemplates.filter(
+        (item) =>
+          !systemRoles.has(item.ref?.name ?? "") && !isWorkflowTemplate(item.resource?.value?.spec),
+      ),
       servers: await metadata.modelServers(servers, (server) =>
         policy.catalogServer(server, servers),
       ),
@@ -216,7 +220,8 @@ export function roleCommands(
             if (error instanceof ConnectError && error.code === Code.NotFound) return undefined;
             throw fail(Code.Unavailable, "configuration.unavailable", error);
           });
-    if (!current) throw notFound("configuration.missingRole");
+    if (!current || isWorkflowTemplate(current.resource?.value?.spec))
+      throw notFound("configuration.missingRole");
     if (draft.resourceVersion !== roleDefinition(current).resourceVersion)
       throw conflict("configuration.conflict");
     const role = await checked(draft);
