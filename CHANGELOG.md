@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/pood1e/agentos-platform/compare/v0.50.0...v0.51.0) (2026-10-31)
+
+
+### Features
+
+* **console:** pass current page language to native agent requests ([#263](https://github.com/pood1e/agentos-platform/issues/263)) ([389e341](https://github.com/pood1e/agentos-platform/commit/389e341102f60057c3e228404c784a3357784199))
+
 ## [0.50.0](https://github.com/pood1e/agentos-platform/compare/v0.49.0...v0.50.0) (2026-10-31)
 
 
