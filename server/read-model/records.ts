@@ -36,7 +36,6 @@ export function taskRecords(clients: KagentClients) {
   const completed = new LRUCache<string, TaskEntry>({
     max: 1024,
     maxSize: 32 * 1024 * 1024,
-    ttl: 60_000,
     sizeCalculation: (entry) => serialize(entry).byteLength,
   });
 
@@ -82,7 +81,7 @@ export function taskRecords(clients: KagentClients) {
       const entries: (TaskEntry | undefined)[] = new Array(records.length);
       await pool(
         records.map((record, index) => ({ record, index })),
-        4,
+        8,
         async ({ record, index }) => {
           try {
             const { summary, session } = record;
