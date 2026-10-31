@@ -2,9 +2,16 @@ import { clone, create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
-import { ArtifactSchema, TaskSchema, TaskState, TaskStatusSchema } from "../gen/a2a_pb.js";
+import {
+  ArtifactSchema,
+  ListTasksResponseSchema,
+  TaskSchema,
+  TaskState,
+  TaskStatusSchema,
+} from "../gen/a2a_pb.js";
 import { ListEngineerRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { taskRecords } from "../server/read-model/records.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment, operator } from "./harness.js";
 
@@ -110,6 +117,50 @@ it("loads only the selected active page when history has no state filter", async
     expect(result.runs).toHaveLength(2);
     expect(result.runs.every((run) => run.state === ActivityState.WORKING)).toBe(true);
     expect(env.fake.fetched).toHaveLength(2);
+  } finally {
+    await env.close();
+  }
+});
+
+it("reuses terminal projections across native metadata ordering while invalidating content changes", async () => {
+  const env = await history();
+  const task = env.tasks[0];
+  if (!task) throw new Error("Missing task");
+  task.metadata = { first: 1, second: { left: true, right: false } };
+  try {
+    await env.client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 1 });
+    expect(env.fake.fetched).toHaveLength(1);
+    task.metadata = { second: { right: false, left: true }, first: 1 };
+    await env.client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 1 });
+    expect(env.fake.fetched).toHaveLength(1);
+    task.metadata.first = 2;
+    await env.client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 1 });
+    expect(env.fake.fetched).toHaveLength(2);
+  } finally {
+    await env.close();
+  }
+});
+
+it("bounds lightweight catalog concurrency independently of full-task hydration", async () => {
+  const env = await environment();
+  let active = 0;
+  let peak = 0;
+  vi.spyOn(env.clients.a2a, "listTasks").mockImplementation(async () => {
+    peak = Math.max(peak, ++active);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    active--;
+    return create(ListTasksResponseSchema);
+  });
+  try {
+    await taskRecords(env.clients).list(
+      Array.from({ length: 40 }, (_, index) => ({
+        id: String(index),
+        agentId: "agentos/inspection",
+        name: "",
+      })),
+    );
+    expect(peak).toBe(16);
+    expect(active).toBe(0);
   } finally {
     await env.close();
   }
