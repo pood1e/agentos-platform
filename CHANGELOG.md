@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.2](https://github.com/pood1e/agentos-platform/compare/v0.48.1...v0.48.2) (2026-10-31)
+
+
+### Performance Improvements
+
+* **read-model:** 按目录分页加载智能体记录并复用终态投影 ([#247](https://github.com/pood1e/agentos-platform/issues/247)) ([4977ccd](https://github.com/pood1e/agentos-platform/commit/4977ccde33df68787b425056772701f4a11fde8b))
+
 ## [0.48.1](https://github.com/pood1e/agentos-platform/compare/v0.48.0...v0.48.1) (2026-10-31)
 
 
