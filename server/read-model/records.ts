@@ -1,6 +1,9 @@
 import { serialize } from "node:v8";
+import { toJson } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { LRUCache } from "lru-cache";
+import { TaskSchema } from "../../gen/a2a_pb.js";
+import { digest } from "../../shared/digest.js";
 import { eachPage, type KagentClients, pool } from "../kagent/clients.js";
 import type { SessionInfo } from "./agents.js";
 import { ingest, type TaskEntry } from "./entry.js";
@@ -40,7 +43,7 @@ export function taskRecords(clients: KagentClients) {
   return {
     async list(sessions: SessionInfo[], skipUnreadable = false) {
       const records: TaskRecord[] = [];
-      await pool(sessions, 4, async (session) => {
+      await pool(sessions, 16, async (session) => {
         const selected: TaskRecord[] = [];
         try {
           await eachPage(
@@ -60,8 +63,12 @@ export function taskRecords(clients: KagentClients) {
             },
             (tasks) => {
               for (const task of tasks)
-                if (task.contextId === session.id)
-                  selected.push({ session, summary: ingest(task, session.agentId) });
+                if (task.contextId === session.id) {
+                  const summary = ingest(task, session.agentId);
+                  // Protobuf map ordering is independent of the task's content revision.
+                  summary.version = digest(toJson(TaskSchema, task));
+                  selected.push({ session, summary });
+                }
             },
           );
           records.push(...selected);
