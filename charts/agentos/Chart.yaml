@@ -4,10 +4,10 @@ description: >-
   AgentOS platform on kagent - console, collaboration service, gateway resources
   and team runtime
 type: application
-version: 0.48.4
-appVersion: 0.48.4
+version: 0.48.5
+appVersion: 0.48.5
 kubeVersion: '>=1.34.0-0'
 dependencies:
   - name: agentos-controller
-    version: 0.48.4
+    version: 0.48.5
     repository: file://../agentos-controller

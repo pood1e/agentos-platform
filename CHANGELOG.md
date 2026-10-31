@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.48.5](https://github.com/pood1e/agentos-platform/compare/v0.48.4...v0.48.5) (2026-10-31)
+
+
+### Bug Fixes
+
+* **console:** 允许读取本人及已授权的工程师会话 ([#253](https://github.com/pood1e/agentos-platform/issues/253)) ([9752f08](https://github.com/pood1e/agentos-platform/commit/9752f0886eec89783d9a91e4a6a06b671cd5ef50))
+* **console:** 在执行视图提供原生任务协作关系 ([#255](https://github.com/pood1e/agentos-platform/issues/255)) ([5479b6e](https://github.com/pood1e/agentos-platform/commit/5479b6eeae4982a60c7d42764b82ea99ec160dc5))
+
 ## [0.48.4](https://github.com/pood1e/agentos-platform/compare/v0.48.3...v0.48.4) (2026-10-31)
 
 
