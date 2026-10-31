@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.0](https://github.com/pood1e/agentos-platform/compare/v0.48.6...v0.49.0) (2026-10-31)
+
+
+### Features
+
+* **console:** expose compact authorized execution graphs with task pages ([#257](https://github.com/pood1e/agentos-platform/issues/257)) ([37e39f6](https://github.com/pood1e/agentos-platform/commit/37e39f6d5da7fb790444f91e6405533b2056c4b2))
+
 ## [0.48.6](https://github.com/pood1e/agentos-platform/compare/v0.48.5...v0.48.6) (2026-10-31)
 
 
