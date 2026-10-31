@@ -23,7 +23,13 @@ import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
 import { cancellationCommands } from "./cancellation.js";
 import { conversationTranscript } from "./conversation-transcript.js";
 import { conversationCommands } from "./conversations.js";
-import { chatTarget, conversationTarget, viewer, visibleGraph } from "./history.js";
+import {
+  chatTarget,
+  conversationTarget,
+  executionTarget,
+  viewer,
+  visibleGraph,
+} from "./history.js";
 import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
@@ -161,7 +167,8 @@ export function consoleService({
     },
     async sendMessage(request, context) {
       const identity = context.values.get(requestIdentity);
-      chatTarget(namespace, entryAgent, request.agent, identity);
+      if (request.contextId) chatTarget(namespace, entryAgent, request.agent, identity);
+      else executionTarget(namespace, request.agent, identity);
       if (!(await clients.execution.getDelegationCredentialStatus({})).renewable)
         throw precondition("delegation.required");
       return messages.send(request, identity);
