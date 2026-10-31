@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.4](https://github.com/pood1e/agentos-platform/compare/v0.48.3...v0.48.4) (2026-10-31)
+
+
+### Performance Improvements
+
+* **read-model:** 按原生版本复用终态投影并改善冷读取 ([#251](https://github.com/pood1e/agentos-platform/issues/251)) ([79be09c](https://github.com/pood1e/agentos-platform/commit/79be09c794be6c97462b1b51a7b20b5e6217d2c6))
+
 ## [0.48.3](https://github.com/pood1e/agentos-platform/compare/v0.48.2...v0.48.3) (2026-10-31)
 
 
