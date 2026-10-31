@@ -23,7 +23,7 @@ import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
 import { cancellationCommands } from "./cancellation.js";
 import { conversationTranscript } from "./conversation-transcript.js";
 import { conversationCommands } from "./conversations.js";
-import { chatTarget, systemConversation, viewer, visibleGraph } from "./history.js";
+import { chatTarget, conversationTarget, viewer, visibleGraph } from "./history.js";
 import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
@@ -114,10 +114,8 @@ export function consoleService({
       conversations.remove(request, context.values.get(requestIdentity)),
     async *watchConversation(request, context) {
       const identity = context.values.get(requestIdentity);
-      const reader = viewer(
-        identity,
-        systemConversation(namespace, entryAgent, request.agent, identity, request.contextId),
-      );
+      conversationTarget(namespace, entryAgent, request.agent, identity, request.contextId);
+      const reader = viewer(identity);
       let touch = () => {};
       const streams = new TaskStreams(clients, context.signal, () => touch());
       const fullTask: FullTask = async (entry) =>
