@@ -14,10 +14,18 @@ export function credentialHeaders(input: Headers) {
   return headers;
 }
 
+/** Presentation preferences travel separately from credentials and caller identity. */
+export function nativeRequestHeaders(input: Headers) {
+  const headers = credentialHeaders(input);
+  const language = input.get("accept-language");
+  if (language) headers.set("accept-language", language);
+  return headers;
+}
+
 export const nativeCredentials: Interceptor = (next) => (request) => {
   const headers = nativeHeaders.getStore();
   if (headers)
-    for (const [name, value] of credentialHeaders(headers)) request.header.set(name, value);
+    for (const [name, value] of nativeRequestHeaders(headers)) request.header.set(name, value);
   const signal = nativeSignal.getStore();
   return next(signal ? { ...request, signal: AbortSignal.any([request.signal, signal]) } : request);
 };

@@ -5,7 +5,13 @@ import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js"
 import { SystemService } from "../gen/kagent/api/v1/system_pb.js";
 import { userIdentity } from "../server/authorization/identity.js";
 import { kagentClients } from "../server/kagent/clients.js";
-import { credentialHeaders, nativeHeaders, nativeStream } from "../server/kagent/context.js";
+import {
+  credentialHeaders,
+  nativeCredentials,
+  nativeHeaders,
+  nativeRequestHeaders,
+  nativeStream,
+} from "../server/kagent/context.js";
 import { accessProfile, workspaceContext } from "../server/platform/access.js";
 import { capabilityRole } from "../shared/permissions.js";
 
@@ -136,4 +142,44 @@ it("isolates concurrent deferred streams and their finalizers in native request 
   await Promise.all([a.return?.(), b.return?.()]);
   expect(observed.sort()).toEqual(["Bearer alice", "Bearer bob"]);
   expect(nativeHeaders.getStore()).toBeUndefined();
+});
+
+it("forwards request language separately from credentials and isolates concurrent calls", async () => {
+  const received: Array<{ language: string | null; user: string | null }> = [];
+  const client = kagentClients(
+    createRouterTransport(
+      (router) =>
+        router.service(SystemService, {
+          getCurrentUser(_request, context) {
+            received.push({
+              language: context.requestHeader.get("accept-language"),
+              user: context.requestHeader.get("x-user-id"),
+            });
+            return { principalId: "reader" };
+          },
+        }),
+      { transport: { interceptors: [nativeCredentials] } },
+    ),
+  );
+  await Promise.all(
+    ["en", "zh-CN"].map((language) =>
+      nativeHeaders.run(
+        nativeRequestHeaders(
+          new Headers({
+            authorization: "Bearer reader",
+            "Accept-Language": language,
+            "x-user-id": "forged",
+          }),
+        ),
+        () => client.system.getCurrentUser({}),
+      ),
+    ),
+  );
+  expect(received.map((value) => value.language).sort()).toEqual(["en", "zh-CN"]);
+  expect(received.every((value) => value.user === null)).toBe(true);
+  expect(credentialHeaders(new Headers({ "Accept-Language": "en" })).has("accept-language")).toBe(
+    false,
+  );
+  await client.system.getCurrentUser({});
+  expect(received.at(-1)?.language).toBeNull();
 });
