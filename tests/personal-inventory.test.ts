@@ -1,9 +1,10 @@
 import { clone, create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TaskSchema } from "../gen/a2a_pb.js";
+import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
 import { ListEngineerRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
+import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { ListSessionsResponseSchema, SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment, operator } from "./harness.js";
@@ -27,6 +28,9 @@ async function scopedEnvironment() {
   const unreadable = clone(SessionSchema, foreign);
   unreadable.id = unreadable.contextId = unreadableId;
   if (unreadable.authority) unreadable.authority.rootSessionId = unreadableId;
+  const outside = clone(SessionSchema, foreign);
+  outside.id = outside.contextId = "44444444-4444-4444-8444-444444444444";
+  if (outside.agent) outside.agent.namespace = "other-workspace";
   const task = clone(TaskSchema, env.fake.task(fixtureIds.approvalRoot));
   task.id = foreignTaskId;
   task.contextId = foreignId;
@@ -36,7 +40,7 @@ async function scopedEnvironment() {
   const listSessions = vi
     .spyOn(env.clients.sessions, "listSessions")
     .mockImplementation(async (input) => {
-      const sessions = input.allCreators ? [...owned, foreign, unreadable] : owned;
+      const sessions = input.allCreators ? [...owned, foreign, unreadable, outside] : owned;
       const offset = Number(input.page?.pageToken || 0);
       return create(ListSessionsResponseSchema, {
         sessions: sessions.slice(offset, offset + 2),
@@ -48,7 +52,7 @@ async function scopedEnvironment() {
     if (input.contextId === unreadableId) throw new ConnectError("task not found", Code.NotFound);
     return list(input, options);
   });
-  return { ...env, owned, listSessions, listTasks };
+  return { ...env, owned, foreign, listSessions, listTasks };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -103,6 +107,61 @@ describe("personal native inventory", () => {
       await expect(
         consoleClient(env, {}, () => ordinary).listTasks({ ...request, systemOnly: true }),
       ).rejects.toMatchObject({ code: Code.PermissionDenied });
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("uses the same authorized system scope for engineer activity and paginated work records", async () => {
+    const env = await scopedEnvironment();
+    const task = clone(TaskSchema, env.fake.task(foreignTaskId));
+    task.id = "55555555-5555-4555-8555-555555555555";
+    if (task.status) task.status.state = TaskState.WORKING;
+    env.fake.tasks.set(task.id, task);
+    env.fake.executions.set(task.id, fixtureExecution(task));
+    const engineer = `${env.foreign.agent?.namespace}/${env.foreign.agent?.name}`;
+    const client = consoleClient(env);
+    try {
+      const response = await client.listEngineerRuns({ engineer, systemOnly: true, pageSize: 1 });
+      expect(response.runs).toHaveLength(1);
+      expect(response.nextPageToken).not.toBe("");
+      const next = await client.listEngineerRuns({
+        engineer,
+        systemOnly: true,
+        pageSize: 1,
+        pageToken: response.nextPageToken,
+      });
+      expect(new Set([...response.runs, ...next.runs].map((run) => run.taskId))).toEqual(
+        new Set([foreignTaskId, task.id]),
+      );
+      expect(next.nextPageToken).toBe("");
+      const working = await client.listEngineerRuns({
+        engineer,
+        systemOnly: true,
+        states: [ActivityState.WORKING],
+      });
+      expect(working.runs.map((run) => run.taskId)).toEqual([task.id]);
+      const team = await client.listEngineers({ systemOnly: true });
+      expect(team.engineers.find((member) => member.id === engineer)).toMatchObject({
+        state: ActivityState.WORKING,
+        activeTasks: 1,
+      });
+      await expect(
+        client.listEngineerRuns({ engineer, pageToken: response.nextPageToken }),
+      ).rejects.toMatchObject({ code: Code.InvalidArgument });
+      expect(
+        env.listTasks.mock.calls.some(
+          ([input]) => input.contextId === "44444444-4444-4444-8444-444444444444",
+        ),
+      ).toBe(false);
+      const ordinary = consoleClient(env, {}, () =>
+        create(UserIdentitySchema, { subject: operator.subject }),
+      );
+      for (const read of [
+        () => ordinary.listEngineerRuns({ engineer, systemOnly: true }),
+        () => ordinary.listEngineers({ systemOnly: true }),
+      ])
+        await expect(read()).rejects.toMatchObject({ code: Code.PermissionDenied });
     } finally {
       await env.close();
     }

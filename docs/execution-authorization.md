@@ -49,4 +49,5 @@ kagent 的 `gatewayAudiences` 登记实际模型和 MCP HTTP(S) origins，包含
 ## 数据归属
 
 Session、任务、消息、历史与订阅的归属由 kagent 授权过滤。平台 read model 仅投影已经授权的原生结果；浏览器缓存按工作空间与主体分区。
+智能体活动、工作记录与业务指标共享个人或系统执行范围。管理员通过 `system_only` 查询当前工作空间内其他发起人的已授权执行；个人范围维持当前主体的会话归属。分页游标同时绑定主体、智能体、状态和执行范围。
 私人记忆由原生执行身份限定，团队知识使用明确的 `teamNamespace`。会话列表可按原生根 Session 限定；语音凭据仅访问绑定 Session 与对应 Agent。
