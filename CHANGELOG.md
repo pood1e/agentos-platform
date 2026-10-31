@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.6](https://github.com/pood1e/agentos-platform/compare/v0.48.5...v0.48.6) (2026-10-31)
+
+
+### Bug Fixes
+
+* **console:** separate workflow runtimes from team roles ([7ff212d](https://github.com/pood1e/agentos-platform/commit/7ff212d5e46fee4a3fc8a27a0209e1b261f7ee25))
+
 ## [0.48.5](https://github.com/pood1e/agentos-platform/compare/v0.48.4...v0.48.5) (2026-10-31)
 
 
