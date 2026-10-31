@@ -28,6 +28,7 @@ export const runSummary = (entry: TaskEntry, background: boolean): TaskRun =>
     contextId: entry.contextId,
     state: runState(entry),
     background,
+    execution: entry.execution,
     startedAt: stamp(entry.createdAt),
     updatedAt: stamp(entry.statusAt),
   });

@@ -44,6 +44,7 @@ export async function taskRun(
     agentId: entry.agentId,
     contextId: entry.contextId,
     state: runState(entry),
+    execution: entry.execution,
     prompt: entry.prompt,
     output: entry.answer,
     calls: toolCalls(task, entry.agentId, approvals(task)),

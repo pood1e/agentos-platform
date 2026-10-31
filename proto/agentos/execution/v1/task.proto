@@ -5,6 +5,7 @@ package agentos.execution.v1;
 import "agentos/execution/v1/state.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "kagent/api/v1/execution.proto";
 
 // One native A2A task executed by an Agent.
 message TaskRun {
@@ -20,6 +21,8 @@ message TaskRun {
   google.protobuf.Timestamp started_at = 10;
   // Intermediate narration while the task is running.
   string progress = 11;
+  // Immutable native lineage for execution views.
+  kagent.api.v1.TaskExecution execution = 12;
 }
 
 message ToolCall {
