@@ -36,7 +36,7 @@ func TestReconciliation(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
 	environment := &envtest.Environment{CRDDirectoryPaths: []string{
 		filepath.Join(root, "controller/config/crd/bases"), filepath.Join(root, ".cache/chart-check/agentgateway-crds-v1.7.0.yaml"),
-		filepath.Join(root, ".cache/chart-check/kagent-crds-1dc871bac04f63a18b2d5b8056556ac1dfe96327.yaml"), filepath.Join(root, ".cache/chart-check/gateway-crds-v1.6.1.yaml"),
+		filepath.Join(root, ".cache/chart-check/kagent-crds-a6d3fa6b49b061124d970e549021345ed53253bb.yaml"), filepath.Join(root, ".cache/chart-check/gateway-crds-v1.6.1.yaml"),
 	}, ErrorIfCRDPathMissing: true}
 	config, err := environment.Start()
 	if err != nil {
@@ -124,6 +124,7 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal("user ownership not recorded")
 		}
 	})
+	t.Run("workflow preset removes the former model and tools", func(t *testing.T) { testWorkflowPreset(t, c, scheme, ns.Name) })
 	t.Run("browser routes use native JWT, exchange and TLS contracts", func(t *testing.T) { testBrowserRoutes(t, c, ns.Name) })
 	t.Run("speech publishes service account verification keys from the API", func(t *testing.T) {
 		api, err := kubernetes.NewForConfig(config)
