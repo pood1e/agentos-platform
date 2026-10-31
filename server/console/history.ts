@@ -27,7 +27,12 @@ export async function visibleGraph(
   const owner = id.taskId
     ? await projection.entry(id.taskId)
     : await projection.session(id.contextId ?? "");
-  if (!owner?.root || !owner.subject || (reader.systemOnly && owner.subject === reader.subject))
+  if (
+    !owner?.root ||
+    !owner.subject ||
+    (!reader.administrator && owner.subject !== reader.subject) ||
+    (reader.systemOnly && owner.subject === reader.subject)
+  )
     return undefined;
   return projection.graph([owner.root]);
 }
@@ -47,15 +52,15 @@ export function chatTarget(
   if (!chatAgent(namespace, entry, ref, identity)) throw notFound("chat.invalidConversation");
 }
 
-/** Other workspace agents expose only shared service sessions, read by administrators. */
-export function systemConversation(
+/** Existing engineer sessions are read-only views, with ownership checked by visibleGraph. */
+export function conversationTarget(
   namespace: string,
   entry: string,
   ref: AgentRef,
   identity: UserIdentity,
   contextId: string,
 ) {
-  if (chatAgent(namespace, entry, ref, identity)) return false;
-  if (ref?.namespace === namespace && contextId && isAdministrator(identity)) return true;
+  if (chatAgent(namespace, entry, ref, identity)) return;
+  if (ref?.namespace === namespace && contextId) return;
   throw notFound("chat.invalidConversation");
 }

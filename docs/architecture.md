@@ -44,6 +44,8 @@ API 将请求的 Bearer 凭据传给 kagent。kagent 返回规范主体、能力
 
 任务列表先读取原生授权的轻量目录，智能体工作记录按 Agent 过滤并在分页后加载详情。终态投影使用按主体、会话和原生元数据版本隔离的 LRU 缓存，容量为 32 MiB、1024 项，保留 60 秒；每次查询重新读取原生可见目录，活动任务实时加载。后台状态沿原生执行关系解析，复用任务内容读取与关系读取的独立边界。
 
+工程师会话通过 `WatchConversation` 提供只读执行快照，供协作图与执行详情消费。个人账号读取本人发起的会话，管理员可读取原生授权允许的其他发起方会话；发送入口沿用聊天角色准入。
+
 Agent 以 `harnessRef` 与可选 `modelConfigRef` 选择运行时；单次原生 CAS 更新同时切换两者，共享 AgentTemplate 维护可复用行为。实际内置工具、兼容性与依赖就绪状态由原生编译结果提供。
 
 `standard` Harness 执行 `AgentTemplate.workflowFrom` 引用的声明式工作流。文档中的 `template:model` 与 `template:tools` 分别使用模板模型及已授权 MCP 绑定；CEL、并行分析与工具调用由原生运行时编排。工作流与指令通过方案 Preset 中同命名空间的 ConfigMap 发布。
