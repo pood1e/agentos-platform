@@ -43,6 +43,16 @@ const chatAgent = (namespace: string, entry: string, ref: AgentRef, identity: Us
   ref?.namespace === namespace &&
   (ref.name === entry || (ref.name === "role-builder" && can(identity, Capability.AGENTS_MANAGE)));
 
+/** A new execution uses the native Session's resource authorization and owner. */
+export function executionTarget(namespace: string, ref: AgentRef, identity: UserIdentity) {
+  if (
+    ref?.namespace !== namespace ||
+    !ref.name ||
+    (ref.name === "role-builder" && !can(identity, Capability.AGENTS_MANAGE))
+  )
+    throw notFound("chat.invalidConversation");
+}
+
 export function chatTarget(
   namespace: string,
   entry: string,
