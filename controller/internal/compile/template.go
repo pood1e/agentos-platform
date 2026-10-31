@@ -49,6 +49,9 @@ func Template(object *unstructured.Unstructured, plans []platform.AccessPlan) er
 			}
 		}
 	}
+	if len(groups) == 0 {
+		return nil
+	}
 	tools, _, err := unstructured.NestedSlice(object.Object, "spec", "tools")
 	if err != nil {
 		return err

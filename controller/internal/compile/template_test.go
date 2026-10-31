@@ -73,3 +73,21 @@ func TestTemplatePreservesDeclarativeWorkflowSource(t *testing.T) {
 		t.Fatalf("workflow source was lost: %+v", native.Spec.WorkflowFrom)
 	}
 }
+
+func TestTemplatePreservesWorkflowWithoutToolBindings(t *testing.T) {
+	object := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "api.kagent.dev/v1alpha3",
+		"kind":       "AgentTemplate",
+		"metadata":   map[string]any{"name": "graph", "namespace": "agentos"},
+		"spec": map[string]any{
+			"workflowFrom": map[string]any{"name": "graph", "key": "workflow.yaml"},
+		},
+	}}
+	want := object.DeepCopy()
+	if err := Template(object, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(object.Object, want.Object) {
+		t.Fatalf("unbound workflow changed: got %v, want %v", object.Object, want.Object)
+	}
+}
