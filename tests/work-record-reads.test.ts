@@ -237,3 +237,53 @@ it("inherits background lineage across agents without fetching ancestor task con
     await env.close();
   }
 });
+
+it("reuses unchanged terminal projections after an idle interval and rechecks visibility", async () => {
+  const env = await history();
+  const clock = vi.spyOn(performance, "now").mockReturnValue(1000);
+  try {
+    const request = { engineer: "agentos/inspection", pageSize: 2 };
+    await env.client.listEngineerRuns(request);
+    expect(env.fake.fetched).toHaveLength(2);
+    clock.mockReturnValue(121_000);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await env.client.listEngineerRuns(request);
+    expect(env.fake.fetched).toHaveLength(2);
+    vi.spyOn(env.clients.a2a, "listTasks").mockRejectedValue(
+      new ConnectError("read revoked", Code.PermissionDenied),
+    );
+    await expect(env.client.listEngineerRuns(request)).rejects.toMatchObject({
+      code: Code.PermissionDenied,
+    });
+  } finally {
+    clock.mockRestore();
+    await env.close();
+  }
+});
+
+it("bounds cold full-task hydration independently of catalog concurrency", async () => {
+  const env = await history();
+  const getTask = env.clients.a2a.getTask;
+  let active = 0;
+  let peak = 0;
+  vi.spyOn(env.clients.a2a, "getTask").mockImplementation(async (request, options) => {
+    peak = Math.max(peak, ++active);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return await getTask(request, options);
+    } finally {
+      active--;
+    }
+  });
+  try {
+    const result = await env.client.listEngineerRuns({
+      engineer: "agentos/inspection",
+      pageSize: 20,
+    });
+    expect(result.runs).toHaveLength(20);
+    expect(peak).toBe(8);
+    expect(active).toBe(0);
+  } finally {
+    await env.close();
+  }
+});
