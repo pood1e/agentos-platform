@@ -1,12 +1,11 @@
 import { clone, create } from "@bufbuild/protobuf";
-import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
+import type { ServiceImpl } from "@connectrpc/connect";
 import { AccessProfileSchema } from "../../gen/agentos/console/v1/access_pb.js";
 import {
   type ConsoleService,
   WatchConversationResponseSchema,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
-import { isAdministrator } from "../../shared/permissions.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
@@ -86,17 +85,20 @@ export function consoleService({
       profile.delegationUrl = delegationUrl;
       return { profile };
     },
-    async listEngineers(_request, context) {
-      const activity = await projection.agentActivity(viewer(context.values.get(requestIdentity)));
+    async listEngineers(request, context) {
+      const activity = await projection.agentActivity(
+        viewer(context.values.get(requestIdentity), request.systemOnly),
+      );
       return { engineers: engineers(await projection.agents(), activity) };
     },
     async listEngineerRuns(request, context) {
-      return projection.engineerRuns(viewer(context.values.get(requestIdentity)), request);
+      return projection.engineerRuns(
+        viewer(context.values.get(requestIdentity), request.systemOnly),
+        request,
+      );
     },
     async listTasks(request, context) {
       const identity = context.values.get(requestIdentity);
-      if (request.systemOnly && !isAdministrator(identity))
-        throw new ConnectError("Permission denied", Code.PermissionDenied);
       return projection.operations(viewer(identity, request.systemOnly), request);
     },
     async cancelTask({ taskId }, context) {

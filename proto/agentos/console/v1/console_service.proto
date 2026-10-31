@@ -90,7 +90,10 @@ message CallAppToolResponse {
   .kagent.api.v1.StructuredObject result = 1;
 }
 
-message ListEngineersRequest {}
+message ListEngineersRequest {
+  // Activity from other authorized initiators; requires platform administration access.
+  bool system_only = 1;
+}
 
 message ListEngineersResponse {
   repeated Engineer engineers = 1;
@@ -117,6 +120,8 @@ message ListEngineerRunsRequest {
       }
     }
   }];
+  // Runs from other authorized initiators; requires platform administration access.
+  bool system_only = 5;
 }
 
 message ListEngineerRunsResponse {

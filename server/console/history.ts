@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
@@ -8,7 +9,10 @@ import { notFound } from "../shared/errors.js";
 
 /** The requested execution view; native reads retain their own authorization. */
 export function viewer(identity: UserIdentity, systemOnly = false): Viewer {
-  return { subject: identity.subject, administrator: isAdministrator(identity), systemOnly };
+  const administrator = isAdministrator(identity);
+  if (systemOnly && !administrator)
+    throw new ConnectError("Permission denied", Code.PermissionDenied);
+  return { subject: identity.subject, administrator, systemOnly };
 }
 
 /**

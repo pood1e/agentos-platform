@@ -101,7 +101,7 @@ export function listings(
         .filter((entry) => !states.length || states.includes(runState(entry)))
         .map((entry) => ({ id: entry.id, time: entry.statusAt ?? entry.createdAt ?? 0, entry }))
         .sort((a, b) => b.time - a.time || a.id.localeCompare(b.id));
-      const scope = `engineer-runs:${JSON.stringify([viewer.subject, request.engineer, states])}`;
+      const scope = `engineer-runs:${JSON.stringify([viewer.subject, request.engineer, states, viewer.systemOnly === true])}`;
       const page = pageOf(rows, { ...request, query: "" }, scope, (row) => row);
       const trees = new Map<string, ReturnType<typeof taskTree>>();
       return {
