@@ -124,7 +124,9 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
     listSessions(request) {
       const { items, token } = page(
         [...fake.sessions.values()].filter(
-          (s) => !request.rootSessionId || s.authority?.rootSessionId === request.rootSessionId,
+          (s) =>
+            (!request.rootSessionId || s.authority?.rootSessionId === request.rootSessionId) &&
+            (!request.agent || agentKey(s.agent) === agentKey(request.agent)),
         ),
         request.page?.pageToken ?? "",
         request.page?.limit || 100,

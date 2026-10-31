@@ -4,13 +4,39 @@ import { expect, it } from "vitest";
 import { ArtifactSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ListEngineerRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { listings } from "../server/read-model/listings.js";
+import { engineerRunListings } from "../server/read-model/engineer-runs.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { engineer } from "../server/read-model/views/engineers.js";
 import { taskSummary } from "../server/read-model/views/task.js";
 import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 import { toolPart } from "./fixtures/ordered-chat.js";
 import { consoleClient, environment, operator } from "./harness.js";
+
+function workListing(index: ReturnType<typeof fixtureState>) {
+  return engineerRunListings({
+    list: async (_viewer, engineerId) =>
+      index
+        .graph()
+        .agentEntries(engineerId)
+        .flatMap((entry) => {
+          const session = index.graph().session(entry.contextId);
+          return session ? [{ summary: entry, session }] : [];
+        }),
+    read: async (_viewer, records) => records.map((record) => record.summary),
+    background: async (entries) => {
+      const graph = index.graph();
+      return new Map(
+        entries.map((entry) => {
+          const root = graph.operationRoot(entry.id);
+          return [
+            entry.id,
+            root ? (taskTree(graph, root.id)?.background.has(entry.id) ?? false) : false,
+          ];
+        }),
+      );
+    },
+  });
+}
 
 it("projects the engineer's exact working runs, including background work and current actions", async () => {
   const index = fixtureState();
@@ -37,10 +63,7 @@ it("projects the engineer's exact working runs, including background work and cu
   const tree = taskTree(graph, ids.dispatchRoot);
   if (!tree) throw new Error("Missing operation");
   expect(taskSummary(graph, tree).state).toBe(ActivityState.SUCCEEDED);
-  const query = listings(
-    async () => index.graph(),
-    async () => [],
-  );
+  const query = workListing(index);
   const response = await query.engineerRuns(
     { subject: operator.subject, administrator: false },
     create(ListEngineerRunsRequestSchema, {
@@ -85,10 +108,7 @@ it("binds engineer-run cursors to the owner, engineer and state filters", async 
     interactions: [],
     statusAt: 100,
   });
-  const query = listings(
-    async () => index.graph(),
-    async () => [],
-  );
+  const query = workListing(index);
   const viewer = { subject: operator.subject, administrator: false };
   const request = create(ListEngineerRunsRequestSchema, {
     engineer: original.agentId,

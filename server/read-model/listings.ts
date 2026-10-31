@@ -1,9 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { TaskState } from "../../gen/a2a_pb.js";
-import type {
-  ListEngineerRunsRequest,
-  ListTasksRequest,
-} from "../../gen/agentos/console/v1/console_service_pb.js";
+import type { ListTasksRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
 import type { SessionInfo } from "./agents.js";
 import type { TaskGraph } from "./graph.js";
@@ -11,8 +8,7 @@ import { type PageRequest, pageOf } from "./page.js";
 import { terminal } from "./state.js";
 import { taskTree } from "./tree.js";
 import { conversationProgress } from "./views/conversation-work.js";
-import { engineerRun } from "./views/run.js";
-import { pendingApproval, running, runState, stamp } from "./views/runs.js";
+import { pendingApproval, running, stamp } from "./views/runs.js";
 import { taskSummary } from "./views/task.js";
 
 /** Owner-scoped execution views and explicit administrator system inventory. */
@@ -23,11 +19,11 @@ export interface Viewer {
 }
 
 export function listings(
-  load: (sessions: SessionInfo[], skipUnreadable?: boolean) => Promise<TaskGraph>,
+  load: (sessions: SessionInfo[], skipUnreadable?: boolean, subject?: string) => Promise<TaskGraph>,
   inventory: (viewer: Viewer) => Promise<SessionInfo[]>,
 ) {
   const visible = async (viewer: Viewer) =>
-    load(await inventory(viewer), viewer.systemOnly === true);
+    load(await inventory(viewer), viewer.systemOnly === true, viewer.subject);
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
       const graph = await visible(viewer);
@@ -90,29 +86,6 @@ export function listings(
       return {
         tasks: page.items.map((row) => row.summary),
         totalSize: page.totalSize,
-        nextPageToken: page.nextPageToken,
-      };
-    },
-    async engineerRuns(viewer: Viewer, request: ListEngineerRunsRequest) {
-      const graph = await visible(viewer);
-      const states = [...new Set(request.states)].sort((a, b) => a - b);
-      const rows = graph
-        .agentEntries(request.engineer)
-        .filter((entry) => !states.length || states.includes(runState(entry)))
-        .map((entry) => ({ id: entry.id, time: entry.statusAt ?? entry.createdAt ?? 0, entry }))
-        .sort((a, b) => b.time - a.time || a.id.localeCompare(b.id));
-      const scope = `engineer-runs:${JSON.stringify([viewer.subject, request.engineer, states, viewer.systemOnly === true])}`;
-      const page = pageOf(rows, { ...request, query: "" }, scope, (row) => row);
-      const trees = new Map<string, ReturnType<typeof taskTree>>();
-      return {
-        runs: page.items.map(({ entry }) => {
-          const root = graph.operationRoot(entry.id);
-          if (root && !trees.has(root.id)) trees.set(root.id, taskTree(graph, root.id));
-          const background = root
-            ? (trees.get(root.id)?.background.has(entry.id) ?? false)
-            : (entry.execution?.background ?? false);
-          return engineerRun(entry, background);
-        }),
         nextPageToken: page.nextPageToken,
       };
     },
