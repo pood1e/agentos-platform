@@ -6,7 +6,7 @@ import { AccessProfileSchema } from "../../gen/agentos/console/v1/access_pb.js";
 import { can } from "../../shared/permissions.js";
 import type { userIdentity } from "../authorization/identity.js";
 import { requiredCapability } from "../authorization/permissions.js";
-import { credentialHeaders, nativeHeaders, nativeStream } from "../kagent/context.js";
+import { nativeHeaders, nativeRequestHeaders, nativeStream } from "../kagent/context.js";
 
 export const accessProfile = createContextKey(create(AccessProfileSchema));
 export const requestIdentity = createContextKey(create(UserIdentitySchema));
@@ -27,7 +27,7 @@ export function workspaceContext(
   identity: ReturnType<typeof userIdentity>,
 ): Interceptor {
   return (next) => async (request) => {
-    const headers = credentialHeaders(request.header);
+    const headers = nativeRequestHeaders(request.header);
     const principal = await nativeHeaders.run(headers, () => identity(headers));
     if (
       request.method.idempotency !== MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS &&
