@@ -11,6 +11,7 @@ import { AgentSchema, AgentService } from "../../gen/kagent/api/v1/agents_pb.js"
 import { ExecutionService } from "../../gen/kagent/api/v1/execution_pb.js";
 import { HarnessSchema, HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelConfigSchema, ModelService } from "../../gen/kagent/api/v1/models_pb.js";
+import { RuntimeState } from "../../gen/kagent/api/v1/runtime_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
@@ -20,6 +21,7 @@ import { millis, object } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
 import { appHTML, appService, appTools, appUri } from "./apps.js";
 import type { FakeKagent } from "./kagent.js";
+import { taskCatalogRoutes } from "./task-catalog.js";
 
 const page = <T>(items: T[], token: string, size: number) => {
   const offset = Number(token || "0");
@@ -40,6 +42,7 @@ function asHarness(value: import("@bufbuild/protobuf").JsonObject) {
 
 /** Official kagent and A2A services backed by the fake runtime. */
 export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
+  taskCatalogRoutes(fake, router);
   router.service(SystemService, {
     getCurrentUser: () => ({ principalId: "user:operator", claims: { roles: [] } }),
   });
@@ -141,12 +144,14 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
       )
         throw new ConnectError("Session credential denied", Code.PermissionDenied);
       const session = fake.sessions.get(request.sessionId);
-      if (!session) throw new ConnectError("session not found", Code.NotFound);
+      if (!session || session.state === RuntimeState.DELETED)
+        throw new ConnectError("session not found", Code.NotFound);
       return { session };
     },
     deleteSession(request) {
       const session = fake.sessions.get(request.sessionId);
-      if (!session) throw new ConnectError("session not found", Code.NotFound);
+      if (!session || session.state === RuntimeState.DELETED)
+        throw new ConnectError("session not found", Code.NotFound);
       fake.sessions.delete(session.id);
       for (const task of fake.tasks.values())
         if (task.contextId === session.id) fake.tasks.delete(task.id);

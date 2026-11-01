@@ -23,10 +23,11 @@ export async function visibleGraph(
   projection: Pick<TaskQueries, "entry" | "session" | "graph">,
   reader: Viewer,
   id: { taskId?: string; contextId?: string },
+  signal?: AbortSignal,
 ) {
   const owner = id.taskId
-    ? await projection.entry(id.taskId)
-    : await projection.session(id.contextId ?? "");
+    ? await projection.entry(id.taskId, signal)
+    : await projection.session(id.contextId ?? "", signal);
   if (
     !owner?.root ||
     !owner.subject ||
@@ -34,7 +35,7 @@ export async function visibleGraph(
     (reader.systemOnly && owner.subject === reader.subject)
   )
     return undefined;
-  return projection.graph([owner.root]);
+  return projection.graph("contextId" in owner ? owner.contextId : owner.id, signal);
 }
 
 type AgentRef = Pick<ResourceReference, "namespace" | "name"> | undefined;

@@ -1,104 +1,62 @@
 import { EventEmitter } from "node:events";
+import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { Message } from "../../gen/a2a_pb.js";
-import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
+import {
+  TaskCatalogScopeSchema,
+  TaskCatalogView,
+} from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { eachPage, type KagentClients } from "../kagent/clients.js";
 import { acceptMessage } from "../kagent/send.js";
-import { agentInfo, agentKey, agentRef, type SessionInfo, sessionInfo } from "./agents.js";
-import { runBackground } from "./background.js";
+import { agentInfo, agentKey, sessionInfo } from "./agents.js";
+import { type CatalogRows, catalogGraph } from "./catalog-entries.js";
 import { hitlExtension } from "./decode/hitl.js";
-import { engineerRunListings } from "./engineer-runs.js";
 import { ingest } from "./entry.js";
-import { TaskGraph } from "./graph.js";
-import { listings, type Viewer } from "./listings.js";
-import { type TaskReadView, taskRecords } from "./records.js";
+import { listings } from "./listings.js";
 
 const rpc = { timeoutMs: 10_000 };
 const missing = (error: unknown) => error instanceof ConnectError && error.code === Code.NotFound;
 
-/** Native Sessions, A2A tasks and trusted execution relationships form one read model. */
+/** Native catalog reads and exact A2A task access share the caller's authority. */
 export function taskQueries({ workspace, clients }: { workspace: string; clients: KagentClients }) {
   const changes = new EventEmitter().setMaxListeners(0);
-  const records = taskRecords(clients);
-  async function agents() {
+  async function agents(signal?: AbortSignal) {
     const [{ agents }, { agentTemplates }] = await Promise.all([
-      clients.agents.listAgents({ namespace: workspace }, rpc),
-      clients.templates.listAgentTemplates({ namespace: workspace }, rpc),
+      clients.agents.listAgents({ namespace: workspace }, { ...rpc, signal }),
+      clients.templates.listAgentTemplates({ namespace: workspace }, { ...rpc, signal }),
     ]);
     const templates = new Map(agentTemplates.map((value) => [agentKey(value.ref), value]));
     return agents.map((value) => agentInfo(value, templates));
   }
-  async function session(id: string) {
+  async function session(id: string, signal?: AbortSignal) {
     try {
-      const { session } = await clients.sessions.getSession({ sessionId: id }, rpc);
+      const { session } = await clients.sessions.getSession({ sessionId: id }, { ...rpc, signal });
       return session?.agent?.namespace === workspace ? sessionInfo(session) : undefined;
     } catch (error) {
       if (missing(error)) return undefined;
       throw error;
     }
   }
-  async function inventory(options: { roots?: string[]; viewer?: Viewer; agent?: string } = {}) {
-    if (options.agent && agentRef(options.agent).namespace !== workspace) return [];
-    const sessions: Session[] = [];
-    const rootIds = options.roots?.length ? options.roots : [""];
-    for (const rootSessionId of rootIds)
-      await eachPage(
-        async (pageToken) => {
-          const page = await clients.sessions.listSessions(
-            {
-              rootSessionId,
-              agent: options.agent ? agentRef(options.agent) : undefined,
-              allCreators:
-                !rootSessionId &&
-                options.viewer?.administrator === true &&
-                options.viewer.systemOnly === true,
-              page: { limit: 100, pageToken },
-            },
-            rpc,
-          );
-          return { items: page.sessions, token: page.page?.nextPageToken ?? "" };
-        },
-        (items) => sessions.push(...items),
-      );
-    return sessions
-      .filter((value) => value.agent?.namespace === workspace)
-      .filter((value) => !options.agent || agentKey(value.agent) === options.agent)
-      .filter(
-        (value) =>
-          !options.viewer?.systemOnly ||
-          (value.authority?.initiatorId || value.creator) !== options.viewer.subject,
-      )
-      .map(sessionInfo);
-  }
-  async function withExecution(task: Parameters<typeof ingest>[0], agentId: string) {
-    const { execution } = await clients.execution.getTaskExecution({ taskId: task.id }, rpc);
+  async function withExecution(
+    task: Parameters<typeof ingest>[0],
+    agentId: string,
+    signal?: AbortSignal,
+  ) {
+    const { execution } = await clients.execution.getTaskExecution(
+      { taskId: task.id },
+      { ...rpc, signal },
+    );
     if (execution?.task?.taskId !== task.id || execution.task.sessionId !== task.contextId)
       throw new ConnectError("Native task relationship unavailable", Code.FailedPrecondition);
     return ingest(task, agentId, execution);
   }
-  async function load(
-    sessions: SessionInfo[],
-    skipUnreadable = false,
-    subject = "",
-    view: TaskReadView = "full",
-  ) {
-    const entries = records
-      .list(sessions, skipUnreadable)
-      .then((selected) =>
-        view === "full"
-          ? records.read(selected, subject, skipUnreadable)
-          : records.overview(selected, subject, skipUnreadable, view === "conversation"),
-      );
-    const [tasks, members] = await Promise.all([entries, agents()]);
-    return new TaskGraph(tasks, sessions, members);
-  }
-  async function entry(id: string) {
+  async function entry(id: string, signal?: AbortSignal) {
     try {
-      const task = await clients.a2a.getTask({ id }, rpc);
-      const known = await session(task.contextId);
+      const task = await clients.a2a.getTask({ id }, { ...rpc, signal });
+      const known = await session(task.contextId, signal);
       return known
         ? {
-            ...(await withExecution(task, known.agentId)),
+            ...(await withExecution(task, known.agentId, signal)),
             root: known.root,
             subject: known.subject,
           }
@@ -108,16 +66,36 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
       throw error;
     }
   }
-  const graph = async (roots: string[]) => load(await inventory({ roots }));
+  async function graph(anchor: string, signal?: AbortSignal) {
+    const read = async () => {
+      const rows: CatalogRows = { tasks: [], sessions: [] };
+      const sessions = new Map<string, CatalogRows["sessions"][number]>();
+      await eachPage(
+        async (pageToken) => {
+          const result = await clients.catalog.listTaskRecords(
+            {
+              scope: create(TaskCatalogScopeSchema, {
+                namespace: workspace,
+                visibility: { case: "sessionTreeAnchor", value: anchor },
+              }),
+              page: { limit: 100, pageToken },
+              view: TaskCatalogView.DETAILS,
+            },
+            { ...rpc, signal },
+          );
+          for (const session of result.sessions) sessions.set(session.id, session);
+          return { items: result.tasks, token: result.page?.nextPageToken ?? "" };
+        },
+        (items) => rows.tasks.push(...items),
+      );
+      rows.sessions = [...sessions.values()];
+      return rows;
+    };
+    const [rows, members] = await Promise.all([read(), agents(signal)]);
+    return catalogGraph(workspace, rows, members);
+  }
   return {
-    ...listings(load, async (viewer) => inventory({ viewer })),
-    ...engineerRunListings({
-      list: async (viewer, agent) =>
-        records.list(await inventory({ viewer, agent }), viewer.systemOnly === true),
-      read: (viewer, selected) =>
-        records.read(selected, viewer.subject, viewer.systemOnly === true),
-      background: runBackground(clients, session, agents),
-    }),
+    ...listings({ workspace, clients, agents }),
     agents,
     session,
     entry,
@@ -125,9 +103,11 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
     async agent(id: string) {
       return (await agents()).find((value) => value.id === id);
     },
-    async graphOf(id: { taskId?: string; contextId?: string }) {
-      const value = id.taskId ? await entry(id.taskId) : await session(id.contextId ?? "");
-      return value ? graph([value.root]) : undefined;
+    async graphOf(id: { taskId?: string; contextId?: string }, signal?: AbortSignal) {
+      const value = id.taskId
+        ? await entry(id.taskId, signal)
+        : await session(id.contextId ?? "", signal);
+      return value ? graph("contextId" in value ? value.contextId : value.id, signal) : undefined;
     },
     async fullTask(value: { id: string; agentId: string }) {
       try {

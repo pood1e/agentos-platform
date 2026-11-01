@@ -138,9 +138,14 @@ export function consoleService({
         WatchConversationResponseSchema,
         context.signal,
         async () => {
-          let graph = new TaskGraph([], [], await projection.agents());
+          let graph: TaskGraph;
           if (request.contextId) {
-            const tree = await visibleGraph(projection, reader, { contextId: request.contextId });
+            const tree = await visibleGraph(
+              projection,
+              reader,
+              { contextId: request.contextId },
+              context.signal,
+            );
             if (tree?.session(request.contextId)?.agentId !== agentKey(request.agent))
               throw notFound("chat.invalidConversation");
             streams.follow(tree.all());
@@ -153,7 +158,7 @@ export function consoleService({
               tree.sessions(),
               tree.agents(),
             );
-          }
+          } else graph = new TaskGraph([], [], await projection.agents(context.signal));
           const view = await conversation(graph, request.agent, request.contextId, fullTask);
           await apps?.project(view, graph, fullTask);
           view.operate =

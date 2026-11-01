@@ -7,7 +7,7 @@ import { viewer, visibleGraph } from "./history.js";
 /** One native cancellation persists the fence and propagates through delegated work. */
 export function cancellationCommands(projection: TaskQueries, clients: KagentClients) {
   return async (taskId: string, identity: UserIdentity, signal: AbortSignal) => {
-    const graph = await visibleGraph(projection, viewer(identity), { taskId });
+    const graph = await visibleGraph(projection, viewer(identity), { taskId }, signal);
     const root = graph?.operationRoot(taskId);
     if (!root) throw notFound("task.notFound");
     await clients.a2a.cancelTask(

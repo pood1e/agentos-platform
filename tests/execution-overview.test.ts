@@ -34,16 +34,16 @@ it("returns the page's native topology without archived transcript hydration", a
     expect(
       result.executionGraph?.runs.every((run) => !run.output && !run.progress && !run.calls.length),
     ).toBe(true);
-    expect(env.fake.fetched).toHaveLength(1);
+    expect(env.fake.fetched).toHaveLength(0);
     const reads = lineage.mock.calls.length;
     await client.listTasks({
       includeExecutionGraph: true,
       states: [ActivityState.WORKING],
       pageSize: 100,
     });
-    expect(env.fake.fetched).toHaveLength(2);
+    expect(env.fake.fetched).toHaveLength(0);
     expect(lineage).toHaveBeenCalledTimes(reads);
-    vi.spyOn(env.clients.sessions, "listSessions").mockRejectedValue(
+    vi.spyOn(env.clients.catalog, "listTaskGroups").mockRejectedValue(
       new ConnectError("revoked", Code.PermissionDenied),
     );
     await expect(client.listTasks({ includeExecutionGraph: true })).rejects.toMatchObject({

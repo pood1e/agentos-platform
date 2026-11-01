@@ -58,6 +58,7 @@ export class FakeKagent {
   readonly received: Message[] = [];
   readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
   readonly fetched: string[] = [];
+  readonly catalogReads: { method: string; returned: number }[] = [];
   private requests = new Map<string, string>();
   private updates = new EventEmitter().setMaxListeners(0);
   private clock = 0;
