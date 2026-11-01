@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.2](https://github.com/pood1e/agentos-platform/compare/v0.51.1...v0.51.2) (2026-11-01)
+
+
+### Performance Improvements
+
+* **console:** query the authorized native task catalog ([bd43641](https://github.com/pood1e/agentos-platform/commit/bd43641532cbdb612373cf32695ef62b01b3a890))
+
 ## [0.51.1](https://github.com/pood1e/agentos-platform/compare/v0.51.0...v0.51.1) (2026-11-01)
 
 
