@@ -1,6 +1,5 @@
 """Verify release identity, stable development versions and immutable publication."""
 
-import io
 import json
 import os
 import subprocess
@@ -79,22 +78,26 @@ class VersionsTest(unittest.TestCase):
 
     def test_release_tag_is_checked_against_the_github_revision(self):
         os.environ.update(CI_COMMIT_TAG="v0.26.5", CI_COMMIT_REF_PROTECTED="true")
-        with patch(
-            "versions.urllib.request.urlopen",
-            return_value=io.BytesIO(json.dumps({"sha": self.revision}).encode()),
-        ) as request:
+        with (
+            patch("versions.git", return_value=self.revision),
+            patch(
+                "versions.subprocess.check_output",
+                return_value=f"{'0' * 40}\trefs/tags/v0.26.5\n"
+                f"{self.revision}\trefs/tags/v0.26.5^{{}}\n",
+            ) as remote,
+        ):
             release = versions()
             self.assertEqual(release.semver, "0.26.5")
             self.assertEqual(release.python, "0.26.5")
-            self.assertEqual(
-                request.call_args.args[0].full_url,
-                "https://api.github.com/repos/pood1e/agentos-platform/commits/v0.26.5",
+            self.assertIn(
+                "https://github.com/pood1e/agentos-platform.git", remote.call_args.args[0]
             )
-            self.assertEqual(request.call_args.kwargs["timeout"], 60)
+            self.assertEqual(remote.call_args.kwargs["timeout"], 60)
         with (
+            patch("versions.git", return_value=self.revision),
             patch(
-                "versions.urllib.request.urlopen",
-                return_value=io.BytesIO(json.dumps({"sha": "0" * 40}).encode()),
+                "versions.subprocess.check_output",
+                return_value=f"{'0' * 40}\trefs/tags/v0.26.5\n",
             ),
             self.assertRaisesRegex(ValueError, "tag revisions"),
         ):
