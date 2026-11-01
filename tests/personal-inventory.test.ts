@@ -5,7 +5,8 @@ import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
 import { ListEngineerRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { ListSessionsResponseSchema, SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
+import { RuntimeState } from "../gen/kagent/api/v1/runtime_pb.js";
+import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment, operator } from "./harness.js";
 
@@ -37,22 +38,14 @@ async function scopedEnvironment() {
   env.fake.sessions.set(foreignId, foreign);
   env.fake.tasks.set(task.id, task);
   env.fake.executions.set(task.id, fixtureExecution(task));
-  const listSessions = vi
-    .spyOn(env.clients.sessions, "listSessions")
-    .mockImplementation(async (input) => {
-      const sessions = input.allCreators ? [...owned, foreign, unreadable, outside] : owned;
-      const offset = Number(input.page?.pageToken || 0);
-      return create(ListSessionsResponseSchema, {
-        sessions: sessions.slice(offset, offset + 2),
-        page: { nextPageToken: offset + 2 < sessions.length ? String(offset + 2) : "" },
-      });
-    });
-  const list = env.clients.a2a.listTasks.bind(env.clients.a2a);
-  const listTasks = vi.spyOn(env.clients.a2a, "listTasks").mockImplementation((input, options) => {
-    if (input.contextId === unreadableId) throw new ConnectError("task not found", Code.NotFound);
-    return list(input, options);
-  });
-  return { ...env, owned, foreign, listSessions, listTasks };
+  unreadable.state = RuntimeState.DELETED;
+  env.fake.sessions.set(unreadable.id, unreadable);
+  env.fake.sessions.set(outside.id, outside);
+  const listSessions = vi.spyOn(env.clients.sessions, "listSessions");
+  const listTasks = vi.spyOn(env.clients.a2a, "listTasks");
+  const groups = vi.spyOn(env.clients.catalog, "listTaskGroups");
+  const conversations = vi.spyOn(env.clients.catalog, "listSessionActivity");
+  return { ...env, owned, foreign, listSessions, listTasks, groups, conversations };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -80,13 +73,16 @@ describe("personal native inventory", () => {
         expect(work.runs.length).toBeGreaterThan(0);
         expect(work.runs.every((run) => run.agentId === "agentos/inspection")).toBe(true);
         expect((await env.projection.engineers(reader)).length).toBeGreaterThan(0);
-        expect(env.listSessions.mock.calls.length).toBeGreaterThan(3);
-        expect(env.listSessions.mock.calls.every(([input]) => input.allCreators === false)).toBe(
-          true,
-        );
-        const loaded = new Set(env.listTasks.mock.calls.map(([input]) => input.contextId));
-        expect(loaded).toEqual(new Set(env.owned.map((session) => session.id)));
-        expect(loaded.has(foreignId)).toBe(false);
+        expect(env.listSessions).not.toHaveBeenCalled();
+        expect(env.listTasks).not.toHaveBeenCalled();
+        expect(
+          env.groups.mock.calls.every(([input]) => input.scope?.visibility?.case === "owned"),
+        ).toBe(true);
+        expect(
+          env.conversations.mock.calls.every(
+            ([input]) => input.scope?.visibility?.case === "owned",
+          ),
+        ).toBe(true);
       } finally {
         await env.close();
       }
@@ -99,10 +95,9 @@ describe("personal native inventory", () => {
       const result = await consoleClient(env).listTasks({ ...request, systemOnly: true });
       expect(result.tasks.map((task) => task.id)).toEqual([foreignTaskId]);
       expect(result.totalSize).toBe(1);
-      expect(env.listSessions.mock.calls.every(([input]) => input.allCreators === true)).toBe(true);
-      expect(new Set(env.listTasks.mock.calls.map(([input]) => input.contextId))).toEqual(
-        new Set([foreignId, unreadableId]),
-      );
+      expect(env.listSessions).not.toHaveBeenCalled();
+      expect(env.listTasks).not.toHaveBeenCalled();
+      expect(env.groups.mock.calls[0]?.[0].scope?.visibility?.case).toBe("otherInitiators");
       const ordinary = create(UserIdentitySchema, { subject: operator.subject });
       await expect(
         consoleClient(env, {}, () => ordinary).listTasks({ ...request, systemOnly: true }),
@@ -169,7 +164,7 @@ describe("personal native inventory", () => {
 
   it("propagates system inventory failures other than a missing session", async () => {
     const env = await scopedEnvironment();
-    env.listTasks.mockRejectedValue(new ConnectError("native history failed", Code.Unavailable));
+    env.groups.mockRejectedValue(new ConnectError("native history failed", Code.Unavailable));
     try {
       await expect(
         consoleClient(env).listTasks({ ...request, systemOnly: true }),
@@ -183,7 +178,7 @@ describe("personal native inventory", () => {
     "preserves real owned-history failure code %s",
     async (code) => {
       const env = await scopedEnvironment();
-      env.listTasks.mockRejectedValue(new ConnectError("native history failed", code));
+      env.conversations.mockRejectedValue(new ConnectError("native history failed", code));
       try {
         await expect(
           env.projection.conversations(

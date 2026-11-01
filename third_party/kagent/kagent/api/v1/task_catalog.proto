@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package kagent.api.v1;
+
+import "a2a.proto";
+import "buf/validate/validate.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/api/v1/execution.proto";
+import "kagent/api/v1/sessions.proto";
+
+option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
+
+// TaskCatalogService queries the published native task projection.
+service TaskCatalogService {
+  rpc ListTaskGroups(ListTaskGroupsRequest) returns (ListTaskGroupsResponse);
+  rpc ListTaskRecords(ListTaskRecordsRequest) returns (ListTaskRecordsResponse);
+  rpc ListSessionActivity(ListSessionActivityRequest) returns (ListSessionActivityResponse);
+  rpc ListAgentActivity(ListAgentActivityRequest) returns (ListAgentActivityResponse);
+}
+
+message TaskCatalogScope {
+  string namespace = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+  }];
+  oneof visibility {
+    option (buf.validate.oneof).required = true;
+    google.protobuf.Empty owned = 2;
+    // Requires an unbound all-creators read grant.
+    google.protobuf.Empty other_initiators = 3;
+    // Authorizes this live Session before selecting its visible authority tree.
+    string session_tree_anchor = 4 [(buf.validate.field).string.uuid = true];
+  }
+}
+
+// Entries are OR predicates; fields within an entry are AND predicates.
+message TaskActivityFilter {
+  option (buf.validate.message).cel = {
+    id: "task_activity_filter.present"
+    message: "a state or approval predicate is required"
+    expression: "has(this.state) || has(this.pending_tool_approval)"
+  };
+  optional lf.a2a.v1.TaskState state = 1 [(buf.validate.field).enum.defined_only = true];
+  optional bool pending_tool_approval = 2;
+}
+
+message TaskActivity {
+  // Absent for an empty conversation; explicit UNSPECIFIED is an observed task.
+  optional lf.a2a.v1.TaskState state = 1;
+  bool pending_tool_approval = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+enum TaskCatalogView {
+  TASK_CATALOG_VIEW_UNSPECIFIED = 0;
+  // Identity, status, creation time and indexed initial prompt.
+  TASK_CATALOG_VIEW_SUMMARY = 1;
+  // Adds canonical payloads for nonterminal tasks.
+  TASK_CATALOG_VIEW_ACTIVE_DETAILS = 2;
+  TASK_CATALOG_VIEW_DETAILS = 3;
+}
+
+message CatalogTask {
+  lf.a2a.v1.Task task = 1;
+  TaskExecution execution = 2;
+  string initial_prompt = 3;
+  bool pending_tool_approval = 4;
+  // Task-record background relative to the requested boundary Agents.
+  bool background = 5;
+}
+
+message TaskGroup {
+  // A display anchor in the authorized forest; native lineage remains unchanged.
+  TaskReference root = 1;
+  TaskReference initiator = 2;
+  TaskActivity activity = 3;
+}
+
+message ListTaskGroupsRequest {
+  TaskCatalogScope scope = 1 [(buf.validate.field).required = true];
+  PageRequest page = 2;
+  string query = 3 [(buf.validate.field).string.max_len = 200];
+  repeated TaskActivityFilter activities = 4 [(buf.validate.field).repeated.max_items = 16];
+  ResourceReference agent = 5;
+  // These Agent identities affect anchor selection, independently of access.
+  repeated ResourceReference boundary_agents = 6 [(buf.validate.field).repeated.max_items = 128];
+  TaskCatalogView view = 7 [(buf.validate.field).enum.defined_only = true];
+}
+
+message ListTaskGroupsResponse {
+  repeated TaskGroup groups = 1;
+  repeated CatalogTask tasks = 2;
+  repeated Session sessions = 3;
+  int32 total_size = 4;
+  PageResponse page = 5;
+}
+
+message ListTaskRecordsRequest {
+  TaskCatalogScope scope = 1 [(buf.validate.field).required = true];
+  PageRequest page = 2;
+  ResourceReference agent = 3;
+  repeated TaskActivityFilter activities = 4 [(buf.validate.field).repeated.max_items = 16];
+  TaskCatalogView view = 5 [(buf.validate.field).enum.defined_only = true];
+  repeated ResourceReference boundary_agents = 6 [(buf.validate.field).repeated.max_items = 128];
+}
+
+message ListTaskRecordsResponse {
+  repeated CatalogTask tasks = 1;
+  // Includes the authorized anchor even when its conversation is empty.
+  repeated Session sessions = 2;
+  int32 total_size = 3;
+  PageResponse page = 4;
+}
+
+message SessionActivity {
+  Session session = 1;
+  TaskActivity activity = 2;
+}
+
+message ListSessionActivityRequest {
+  TaskCatalogScope scope = 1 [(buf.validate.field).required = true];
+  ResourceReference agent = 2 [(buf.validate.field).required = true];
+  PageRequest page = 3;
+  string query = 4 [(buf.validate.field).string.max_len = 200];
+}
+
+message ListSessionActivityResponse {
+  repeated SessionActivity sessions = 1;
+  int32 total_size = 2;
+  PageResponse page = 3;
+}
+
+message AgentActivity {
+  ResourceReference agent = 1;
+  uint32 active_tasks = 2;
+  uint64 tool_calls = 3;
+  bool working = 4;
+  bool pending_tool_approval = 5;
+  bool interrupted = 6;
+}
+
+message ListAgentActivityRequest {
+  TaskCatalogScope scope = 1 [(buf.validate.field).required = true];
+}
+
+message ListAgentActivityResponse {
+  repeated AgentActivity agents = 1;
+}

@@ -1,72 +1,78 @@
 import { create } from "@bufbuild/protobuf";
-import { TaskState } from "../../gen/a2a_pb.js";
-import type { ListTasksRequest } from "../../gen/agentos/console/v1/console_service_pb.js";
+import { Code, ConnectError } from "@connectrpc/connect";
+import type {
+  ListEngineerRunsRequest,
+  ListTasksRequest,
+} from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
-import type { SessionInfo } from "./agents.js";
-import type { TaskGraph } from "./graph.js";
-import { type PageRequest, pageOf } from "./page.js";
-import type { TaskReadView } from "./records.js";
-import { terminal } from "./state.js";
-import { taskTree } from "./tree.js";
-import { conversationProgress } from "./views/conversation-work.js";
+import { ExecutionGraphSchema } from "../../gen/agentos/console/v1/execution_pb.js";
+import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
+import { TaskCatalogView } from "../../gen/kagent/api/v1/task_catalog_pb.js";
+import { shortTitle } from "../../shared/title.js";
+import type { KagentClients } from "../kagent/clients.js";
+import { type AgentInfo, agentKey, agentRef, systemRoles } from "./agents.js";
+import { catalogGraph } from "./catalog-entries.js";
+import { activityFilters, catalogScope, catalogState, type Viewer } from "./catalog-state.js";
+import { millis } from "./decode/messages.js";
+import type { PageRequest } from "./page.js";
 import { engineers } from "./views/engineers.js";
 import { executionGraph } from "./views/execution.js";
-import { pendingApproval, running, stamp } from "./views/runs.js";
-import { taskSummary } from "./views/task.js";
+import { engineerRun } from "./views/run.js";
+import { stamp } from "./views/runs.js";
 
-/** Owner-scoped execution views and explicit administrator system inventory. */
-export interface Viewer {
-  subject: string;
-  administrator: boolean;
-  systemOnly?: boolean;
-}
+export type { Viewer } from "./catalog-state.js";
 
-export function listings(
-  load: (
-    sessions: SessionInfo[],
-    skipUnreadable?: boolean,
-    subject?: string,
-    view?: TaskReadView,
-  ) => Promise<TaskGraph>,
-  inventory: (viewer: Viewer) => Promise<SessionInfo[]>,
-) {
-  const visible = async (viewer: Viewer, view: TaskReadView = "full") =>
-    load(await inventory(viewer), viewer.systemOnly === true, viewer.subject, view);
+const rpc = { timeoutMs: 10_000 };
+const page = (request: Pick<PageRequest, "pageSize" | "pageToken">) => ({
+  limit: request.pageSize || 12,
+  pageToken: request.pageToken,
+});
+const boundaries = (agents: AgentInfo[]) =>
+  agents
+    .filter((agent) => systemRoles.has(agent.role))
+    .map((agent) => agent.id)
+    .sort()
+    .map(agentRef);
+const count = (value: number | bigint) => {
+  if (value < 0 || value > 2_147_483_647)
+    throw new ConnectError("Native activity count exceeds the console range", Code.OutOfRange);
+  return Number(value);
+};
+
+/** Queries the authorized native catalog before projecting console display types. */
+export function listings({
+  workspace,
+  clients,
+  agents,
+}: {
+  workspace: string;
+  clients: KagentClients;
+  agents(): Promise<AgentInfo[]>;
+}) {
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
-      const graph = await visible(viewer, request.query.trim() ? "full" : "conversation");
-      const needle = request.query.trim().toLowerCase();
-      const rows = graph
-        .sessions()
-        .filter((session) => session.agentId === agentId)
-        .filter((session) =>
-          [session.name, ...graph.contextEntries(session.id).map((entry) => entry.prompt)]
-            .join(" ")
-            .toLowerCase()
-            .includes(needle),
-        )
-        .map((session) => {
-          const progress = conversationProgress(graph, session.id);
-          return {
-            id: session.id,
-            time: Math.max(session.updatedAt ?? 0, progress.updatedAt),
-            title: session.name,
-            state: progress.state,
-          };
-        })
-        .sort((a, b) => b.time - a.time || a.id.localeCompare(b.id));
-      const page = pageOf(rows, request, `conversations:${agentId}`, (row) => row);
+      const result = await clients.catalog.listSessionActivity(
+        {
+          scope: catalogScope(workspace, viewer),
+          agent: agentRef(agentId),
+          page: page(request),
+          query: request.query,
+        },
+        rpc,
+      );
       return {
-        conversations: page.items.map((row) =>
-          create(ConversationSummarySchema, {
-            contextId: row.id,
-            title: row.title,
-            state: row.state,
-            updatedAt: stamp(row.time || undefined),
-          }),
-        ),
-        totalSize: page.totalSize,
-        nextPageToken: page.nextPageToken,
+        conversations: result.sessions.map(({ session, activity }) => {
+          if (!session?.id || agentKey(session.agent) !== agentId)
+            throw new ConnectError("Native conversation unavailable", Code.FailedPrecondition);
+          return create(ConversationSummarySchema, {
+            contextId: session.id,
+            title: session.name,
+            state: catalogState(activity, true),
+            updatedAt: stamp(millis(activity?.updatedAt) || undefined),
+          });
+        }),
+        totalSize: result.totalSize,
+        nextPageToken: result.page?.nextPageToken ?? "",
       };
     },
     async operations(
@@ -74,59 +80,124 @@ export function listings(
       request: PageRequest &
         Partial<Pick<ListTasksRequest, "states" | "engineer" | "includeExecutionGraph">>,
     ) {
-      const graph = await visible(
-        viewer,
-        request.includeExecutionGraph && !request.query.trim() ? "overview" : "full",
+      const scope = catalogScope(workspace, viewer);
+      const activities = activityFilters(request.states ?? []);
+      const selectedAgent = request.engineer ? agentRef(request.engineer) : undefined;
+      const empty = () => ({
+        tasks: [],
+        totalSize: 0,
+        nextPageToken: "",
+        executionGraph: request.includeExecutionGraph ? create(ExecutionGraphSchema) : undefined,
+      });
+      if (
+        (request.states?.length && !activities.length) ||
+        (selectedAgent &&
+          (selectedAgent.namespace !== workspace || agentKey(selectedAgent) !== request.engineer))
+      )
+        return empty();
+      const members = await agents();
+      const result = await clients.catalog.listTaskGroups(
+        {
+          scope,
+          page: page(request),
+          query: request.query,
+          activities,
+          agent: selectedAgent,
+          boundaryAgents: boundaries(members),
+          view: !request.includeExecutionGraph
+            ? TaskCatalogView.SUMMARY
+            : request.query.trim()
+              ? TaskCatalogView.DETAILS
+              : TaskCatalogView.ACTIVE_DETAILS,
+        },
+        rpc,
       );
-      const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
-      const engineer = request.engineer ?? "";
-      const needle = request.query.trim().toLowerCase();
-      const rows = graph
-        .relations()
-        .roots.flatMap((root) => {
-          const tree = taskTree(graph, root.id);
-          if (!tree || (engineer && !tree.entries.some((entry) => entry.agentId === engineer)))
-            return [];
-          const summary = taskSummary(graph, tree);
-          if (states.length && !states.includes(summary.state)) return [];
-          if (![summary.prompt, root.id].join(" ").toLowerCase().includes(needle)) return [];
-          return [{ id: root.id, time: tree.updatedAt ?? 0, summary }];
-        })
-        .sort((a, b) => b.time - a.time || a.id.localeCompare(b.id));
-      const scope = `tasks:${JSON.stringify([states, engineer, viewer.systemOnly === true])}`;
-      const page = pageOf(rows, request, scope, (row) => row);
+      const graph = catalogGraph(workspace, result, members);
+      const tasks = result.groups.map(({ root, initiator, activity }) => {
+        const entry = root && graph.entry(root.taskId);
+        const startedBy = initiator && graph.entry(initiator.taskId);
+        if (
+          !entry ||
+          entry.contextId !== root?.sessionId ||
+          (initiator &&
+            (startedBy?.contextId !== initiator.sessionId ||
+              entry.execution?.parent?.taskId !== initiator.taskId ||
+              entry.execution.parent.sessionId !== initiator.sessionId))
+        )
+          throw new ConnectError("Native task group unavailable", Code.FailedPrecondition);
+        const prompt = startedBy?.prompt || entry.prompt;
+        return create(TaskSummarySchema, {
+          id: entry.id,
+          title: shortTitle(prompt) || entry.id,
+          prompt,
+          state: catalogState(activity),
+          updatedAt: stamp(millis(activity?.updatedAt)),
+          conversationContextId: startedBy?.contextId ?? "",
+          agent: agentRef(entry.agentId),
+          contextId: entry.contextId,
+        });
+      });
       return {
-        tasks: page.items.map((row) => row.summary),
-        totalSize: page.totalSize,
-        nextPageToken: page.nextPageToken,
+        tasks,
+        totalSize: result.totalSize,
+        nextPageToken: result.page?.nextPageToken ?? "",
         executionGraph: request.includeExecutionGraph
           ? executionGraph(
               graph,
-              page.items.map((row) => row.id),
+              tasks.map((task) => task.id),
             )
           : undefined,
       };
     },
     async engineers(viewer: Viewer) {
-      const graph = await visible(viewer);
-      const activity = new Map(
-        graph.agents().map((agent) => {
-          const entries = graph.agentEntries(agent.id);
-          return [
-            agent.id,
+      const [members, result] = await Promise.all([
+        agents(),
+        clients.catalog.listAgentActivity({ scope: catalogScope(workspace, viewer) }, rpc),
+      ]);
+      return engineers(
+        members,
+        new Map(
+          result.agents.map((activity) => [
+            agentKey(activity.agent),
             {
-              active: entries.filter((entry) => !terminal(entry.state)).length,
-              calls: entries.reduce((total, entry) => total + entry.calls.length, 0),
-              working: entries.some(running),
-              approval: entries.some((entry) => !terminal(entry.state) && pendingApproval(entry)),
-              interrupted: entries.some((entry) =>
-                [TaskState.INPUT_REQUIRED, TaskState.AUTH_REQUIRED].includes(entry.state),
-              ),
+              active: count(activity.activeTasks),
+              calls: count(activity.toolCalls),
+              working: activity.working,
+              approval: activity.pendingToolApproval,
+              interrupted: activity.interrupted,
             },
-          ];
-        }),
+          ]),
+        ),
       );
-      return engineers(graph.agents(), activity);
+    },
+    async engineerRuns(viewer: Viewer, request: ListEngineerRunsRequest) {
+      const scope = catalogScope(workspace, viewer);
+      const ref = agentRef(request.engineer);
+      const activities = activityFilters(request.states);
+      if (ref.namespace !== workspace || !ref.name || (request.states.length && !activities.length))
+        return { runs: [], nextPageToken: "" };
+      const members = await agents();
+      const result = await clients.catalog.listTaskRecords(
+        {
+          scope,
+          agent: ref,
+          page: page(request),
+          activities,
+          boundaryAgents: boundaries(members),
+          view: TaskCatalogView.DETAILS,
+        },
+        rpc,
+      );
+      const graph = catalogGraph(workspace, result, members);
+      return {
+        runs: result.tasks.map((row) => {
+          const entry = row.task && graph.entry(row.task.id);
+          if (!entry || entry.agentId !== request.engineer)
+            throw new ConnectError("Native engineer record unavailable", Code.FailedPrecondition);
+          return engineerRun(entry, row.background);
+        }),
+        nextPageToken: result.page?.nextPageToken ?? "",
+      };
     },
   };
 }

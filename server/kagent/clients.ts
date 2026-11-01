@@ -8,6 +8,7 @@ import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelService } from "../../gen/kagent/api/v1/models_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
+import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import type { KagentConfig } from "../shared/config.js";
@@ -23,6 +24,7 @@ export function kagentTransport(config: KagentConfig): Transport {
 
 export function kagentClients(transport: Transport) {
   return {
+    catalog: createClient(TaskCatalogService, transport),
     execution: createClient(ExecutionService, transport),
     system: createClient(SystemService, transport),
     memory: createClient(MemoryService, transport),
