@@ -26,10 +26,10 @@ variables:
   extends: .agentos-ci
   variables:
     NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
+    NPM_CONFIG_REGISTRY: https://registry.npmmirror.com
+    NPM_CONFIG_AUDIT: "false"
   cache:
-    key:
-      files: [package-lock.json]
-      prefix: npm
+    key: npm-content-addressed-v1
     paths: [.npm/]
   before_script:
     - mkdir -p .cache
