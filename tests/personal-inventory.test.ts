@@ -79,7 +79,7 @@ describe("personal native inventory", () => {
         );
         expect(work.runs.length).toBeGreaterThan(0);
         expect(work.runs.every((run) => run.agentId === "agentos/inspection")).toBe(true);
-        expect((await env.projection.agentActivity(reader)).size).toBeGreaterThan(0);
+        expect((await env.projection.engineers(reader)).length).toBeGreaterThan(0);
         expect(env.listSessions.mock.calls.length).toBeGreaterThan(3);
         expect(env.listSessions.mock.calls.every(([input]) => input.allCreators === false)).toBe(
           true,

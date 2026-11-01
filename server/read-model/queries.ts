@@ -11,7 +11,7 @@ import { engineerRunListings } from "./engineer-runs.js";
 import { ingest } from "./entry.js";
 import { TaskGraph } from "./graph.js";
 import { listings, type Viewer } from "./listings.js";
-import { taskRecords } from "./records.js";
+import { type TaskReadView, taskRecords } from "./records.js";
 
 const rpc = { timeoutMs: 10_000 };
 const missing = (error: unknown) => error instanceof ConnectError && error.code === Code.NotFound;
@@ -80,16 +80,17 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
     sessions: SessionInfo[],
     skipUnreadable = false,
     subject = "",
-    overview = false,
+    view: TaskReadView = "full",
   ) {
-    const selected = await records.list(sessions, skipUnreadable);
-    return new TaskGraph(
-      overview
-        ? await records.overview(selected, subject, skipUnreadable)
-        : await records.read(selected, subject, skipUnreadable),
-      sessions,
-      await agents(),
-    );
+    const entries = records
+      .list(sessions, skipUnreadable)
+      .then((selected) =>
+        view === "full"
+          ? records.read(selected, subject, skipUnreadable)
+          : records.overview(selected, subject, skipUnreadable, view === "conversation"),
+      );
+    const [tasks, members] = await Promise.all([entries, agents()]);
+    return new TaskGraph(tasks, sessions, members);
   }
   async function entry(id: string) {
     try {

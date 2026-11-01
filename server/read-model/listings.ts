@@ -5,9 +5,11 @@ import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversa
 import type { SessionInfo } from "./agents.js";
 import type { TaskGraph } from "./graph.js";
 import { type PageRequest, pageOf } from "./page.js";
+import type { TaskReadView } from "./records.js";
 import { terminal } from "./state.js";
 import { taskTree } from "./tree.js";
 import { conversationProgress } from "./views/conversation-work.js";
+import { engineers } from "./views/engineers.js";
 import { executionGraph } from "./views/execution.js";
 import { pendingApproval, running, stamp } from "./views/runs.js";
 import { taskSummary } from "./views/task.js";
@@ -24,15 +26,15 @@ export function listings(
     sessions: SessionInfo[],
     skipUnreadable?: boolean,
     subject?: string,
-    overview?: boolean,
+    view?: TaskReadView,
   ) => Promise<TaskGraph>,
   inventory: (viewer: Viewer) => Promise<SessionInfo[]>,
 ) {
-  const visible = async (viewer: Viewer, overview = false) =>
-    load(await inventory(viewer), viewer.systemOnly === true, viewer.subject, overview);
+  const visible = async (viewer: Viewer, view: TaskReadView = "full") =>
+    load(await inventory(viewer), viewer.systemOnly === true, viewer.subject, view);
   return {
     async conversations(viewer: Viewer, agentId: string, request: PageRequest) {
-      const graph = await visible(viewer);
+      const graph = await visible(viewer, request.query.trim() ? "full" : "conversation");
       const needle = request.query.trim().toLowerCase();
       const rows = graph
         .sessions()
@@ -74,7 +76,7 @@ export function listings(
     ) {
       const graph = await visible(
         viewer,
-        Boolean(request.includeExecutionGraph && !request.query.trim()),
+        request.includeExecutionGraph && !request.query.trim() ? "overview" : "full",
       );
       const states = [...new Set(request.states ?? [])].sort((a, b) => a - b);
       const engineer = request.engineer ?? "";
@@ -105,9 +107,9 @@ export function listings(
           : undefined,
       };
     },
-    async agentActivity(viewer: Viewer) {
+    async engineers(viewer: Viewer) {
       const graph = await visible(viewer);
-      return new Map(
+      const activity = new Map(
         graph.agents().map((agent) => {
           const entries = graph.agentEntries(agent.id);
           return [
@@ -124,6 +126,7 @@ export function listings(
           ];
         }),
       );
+      return engineers(graph.agents(), activity);
     },
   };
 }

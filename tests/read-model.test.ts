@@ -176,11 +176,7 @@ describe("listings", () => {
   });
 
   it("lists engineers without system helpers", async () => {
-    const { engineers } = await import("../server/read-model/views/engineers.js");
-    const roles = engineers(
-      await env.projection.agents(),
-      await env.projection.agentActivity(reader),
-    ).map((item) => item.role);
+    const roles = (await env.projection.engineers(reader)).map((item) => item.role);
     expect(roles).not.toContain("assistant");
     expect(roles).not.toContain("role-builder");
     expect(roles).toEqual(expect.arrayContaining(["coordinator", "inspection", "remediation"]));
