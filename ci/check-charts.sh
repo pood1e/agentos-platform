@@ -24,9 +24,9 @@ for name in platform alternate solution direct-only; do
   if [ "$name" = alternate ]; then namespace=operations; fi
   .cache/chart-check/render -namespace="$namespace" < ".cache/chart-check/$name.yaml" > ".cache/chart-check/$name-expanded.yaml"
   mv ".cache/chart-check/$name-expanded.yaml" ".cache/chart-check/$name.yaml"
-  kubeconform -strict -summary -kubernetes-version 1.37.1 \
-    -schema-location "$KUBERNETES_SCHEMA_LOCATION" \
+  kubeconform -strict -summary -cache .cache/kubeconform -kubernetes-version 1.37.1 \
     -schema-location '.cache/chart-check/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+    -schema-location "$KUBERNETES_SCHEMA_LOCATION" \
     ".cache/chart-check/$name.yaml"
   case "$name" in
     solution) set -- --data tests/fixtures/solution-chart/values.yaml ;;

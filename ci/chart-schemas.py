@@ -1,5 +1,6 @@
 """Prepare kubeconform schemas from the pinned upstream CRD distributions."""
 
+import hashlib
 import json
 import subprocess
 import urllib.request
@@ -15,12 +16,17 @@ GATEWAY_API = "v1.6.1"
 CERT_MANAGER = "v1.21.2"
 
 
-def download(name, version, url):
+def download(name, version, url, checksum, accept="application/vnd.github.raw+json"):
     path = cache / f"{name}-{version}.yaml"
     if not path.exists():
-        request = urllib.request.Request(url, headers={"Accept": "application/vnd.github.raw+json"})
+        request = urllib.request.Request(url, headers={"Accept": accept})
         with urllib.request.urlopen(request, timeout=60) as response:
-            path.write_bytes(response.read())
+            data = response.read()
+        if hashlib.sha256(data).hexdigest() != checksum:
+            raise ValueError(f"{name} checksum differs from the pinned upstream artifact")
+        path.write_bytes(data)
+    if hashlib.sha256(path.read_bytes()).hexdigest() != checksum:
+        raise ValueError(f"{name} cached checksum differs from the pinned upstream artifact")
     return path.read_text()
 
 
@@ -59,16 +65,21 @@ sources = [
         "traefik-crds",
         "3.7.13",
         "https://api.github.com/repos/traefik/traefik/contents/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml?ref=v3.7.13",
+        "1d5e8558803804562238b0d4a57174aadd6d87c36e3c4c55199ebcc356a9406c",
     ),
     download(
         "gateway-crds",
         GATEWAY_API,
-        f"https://github.com/kubernetes-sigs/gateway-api/releases/download/{GATEWAY_API}/standard-install.yaml",
+        "https://api.github.com/repos/kubernetes-sigs/gateway-api/releases/assets/479238882",
+        "24d931f22abd8e40c973264319ead7cfa09d0fb7716b7ab1ee2ff174cb063a73",
+        "application/octet-stream",
     ),
     download(
         "cert-manager-crds",
         CERT_MANAGER,
-        f"https://github.com/cert-manager/cert-manager/releases/download/{CERT_MANAGER}/cert-manager.crds.yaml",
+        "https://api.github.com/repos/cert-manager/cert-manager/releases/assets/556636674",
+        "262fef78478492cd35b73a1b227106b7802f9c056361d1f561d04b32d751337f",
+        "application/octet-stream",
     ),
 ]
 for resource in yaml.safe_load_all("\n---\n".join(sources)):
