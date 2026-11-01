@@ -68,7 +68,7 @@ it("reads complete paginated authority trees through catalog pages and rejects r
     );
   }
   expect((await env.projection.graphOf({ contextId: source.contextId }))?.all()).toHaveLength(205);
-  expect(env.fake.catalogReads).toHaveLength(3);
+  expect(env.fake.catalogReads).toHaveLength(18);
   expect(env.fake.listed).toEqual([]);
   expect(env.fake.fetched).toEqual([]);
   const original = env.clients.catalog.listTaskRecords.bind(env.clients.catalog);
@@ -78,6 +78,21 @@ it("reads complete paginated authority trees through catalog pages and rejects r
     return response;
   });
   await expect(env.projection.graph(source.contextId)).rejects.toThrow();
+});
+
+it("reduces the detail page when a native response exceeds the transport limit", async () => {
+  const env = await environment();
+  const contextId = env.fake.task(ids.inspection).contextId;
+  const original = env.clients.catalog.listTaskRecords.bind(env.clients.catalog);
+  const limits: number[] = [];
+  vi.spyOn(env.clients.catalog, "listTaskRecords").mockImplementation(async (request, options) => {
+    const limit = request.page?.limit ?? 0;
+    limits.push(limit);
+    if (limit > 3) throw new ConnectError("response too large", Code.ResourceExhausted);
+    return original(request, options);
+  });
+  expect((await env.projection.graph(contextId)).all().length).toBeGreaterThan(0);
+  expect(limits.slice(0, 3)).toEqual([12, 6, 3]);
 });
 
 it("propagates unavailable or denied catalog reads without resurrecting a stale tree", async () => {

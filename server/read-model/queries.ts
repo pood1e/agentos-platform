@@ -15,6 +15,7 @@ import { ingest } from "./entry.js";
 import { listings } from "./listings.js";
 
 const rpc = { timeoutMs: 10_000 };
+const graphPageSize = 12;
 const missing = (error: unknown) => error instanceof ConnectError && error.code === Code.NotFound;
 
 /** Native catalog reads and exact A2A task access share the caller's authority. */
@@ -72,19 +73,32 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
       const sessions = new Map<string, CatalogRows["sessions"][number]>();
       await eachPage(
         async (pageToken) => {
-          const result = await clients.catalog.listTaskRecords(
-            {
-              scope: create(TaskCatalogScopeSchema, {
-                namespace: workspace,
-                visibility: { case: "sessionTreeAnchor", value: anchor },
-              }),
-              page: { limit: 100, pageToken },
-              view: TaskCatalogView.DETAILS,
-            },
-            { ...rpc, signal },
-          );
-          for (const session of result.sessions) sessions.set(session.id, session);
-          return { items: result.tasks, token: result.page?.nextPageToken ?? "" };
+          let limit = graphPageSize;
+          for (;;) {
+            try {
+              const result = await clients.catalog.listTaskRecords(
+                {
+                  scope: create(TaskCatalogScopeSchema, {
+                    namespace: workspace,
+                    visibility: { case: "sessionTreeAnchor", value: anchor },
+                  }),
+                  page: { limit, pageToken },
+                  view: TaskCatalogView.DETAILS,
+                },
+                { ...rpc, signal },
+              );
+              for (const session of result.sessions) sessions.set(session.id, session);
+              return { items: result.tasks, token: result.page?.nextPageToken ?? "" };
+            } catch (error) {
+              if (
+                !(error instanceof ConnectError) ||
+                error.code !== Code.ResourceExhausted ||
+                limit === 1
+              )
+                throw error;
+              limit = Math.max(1, Math.floor(limit / 2));
+            }
+          }
         },
         (items) => rows.tasks.push(...items),
       );
