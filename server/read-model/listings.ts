@@ -104,11 +104,9 @@ export function listings({
           activities,
           agent: selectedAgent,
           boundaryAgents: boundaries(members),
-          view: !request.includeExecutionGraph
-            ? TaskCatalogView.SUMMARY
-            : request.query.trim()
-              ? TaskCatalogView.DETAILS
-              : TaskCatalogView.ACTIVE_DETAILS,
+          view: request.includeExecutionGraph
+            ? TaskCatalogView.ACTIVE_DETAILS
+            : TaskCatalogView.SUMMARY,
         },
         rpc,
       );

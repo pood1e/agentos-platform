@@ -3,6 +3,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { TaskCatalogView } from "../gen/kagent/api/v1/task_catalog_pb.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment } from "./harness.js";
 
@@ -69,6 +70,17 @@ it("scopes execution graph metadata to the returned operation page", async () =>
     }
     const regular = await client.listTasks({ pageSize: 1 });
     expect(regular.executionGraph).toBeUndefined();
+  } finally {
+    await env.close();
+  }
+});
+
+it("keeps searched execution pages compact", async () => {
+  const env = await environment();
+  try {
+    const catalog = vi.spyOn(env.clients.catalog, "listTaskGroups");
+    await consoleClient(env).listTasks({ includeExecutionGraph: true, query: "inspection" });
+    expect(catalog.mock.calls.at(-1)?.[0]?.view).toBe(TaskCatalogView.ACTIVE_DETAILS);
   } finally {
     await env.close();
   }
