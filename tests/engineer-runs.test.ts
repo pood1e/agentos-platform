@@ -1,8 +1,9 @@
 import { clone, create } from "@bufbuild/protobuf";
 import { Code } from "@connectrpc/connect";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { ArtifactSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { TaskCatalogView } from "../gen/kagent/api/v1/task_catalog_pb.js";
 import { engineer } from "../server/read-model/views/engineers.js";
 import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 import { toolPart } from "./fixtures/ordered-chat.js";
@@ -37,6 +38,27 @@ it("exposes an authenticated read-only engineer run API", async () => {
     await expect(client.listEngineerRuns({ engineer: "" })).rejects.toMatchObject({
       code: Code.InvalidArgument,
     });
+  } finally {
+    await env.close();
+  }
+});
+
+it("reads compact terminal records while preserving active details", async () => {
+  const env = await environment();
+  try {
+    const client = consoleClient(env);
+    const catalog = vi.spyOn(env.clients.catalog, "listTaskRecords");
+    const summary = await client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 100 });
+    expect(catalog.mock.calls.at(-1)?.[0]).toMatchObject({
+      view: TaskCatalogView.ACTIVE_DETAILS,
+      page: { limit: 100 },
+    });
+    expect(summary.runs.length).toBeGreaterThan(0);
+    expect(
+      summary.runs.filter((run) => run.state === ActivityState.SUCCEEDED).every(
+        (run) => !run.calls.length && !run.output,
+      ),
+    ).toBe(true);
   } finally {
     await env.close();
   }
@@ -99,7 +121,8 @@ it("returns changing native run progress and tool activity through the console A
     expect(history.runs.find((item) => item.taskId === work.id)).toMatchObject({
       state: ActivityState.SUCCEEDED,
       progress: "",
-      output: "Metrics are healthy",
+      output: "",
+      calls: [],
     });
   } finally {
     await env.close();

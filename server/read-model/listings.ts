@@ -184,7 +184,7 @@ export function listings({
           page: page(request),
           activities,
           boundaryAgents: boundaries(members),
-          view: TaskCatalogView.DETAILS,
+          view: TaskCatalogView.ACTIVE_DETAILS,
         },
         rpc,
       );
