@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 . ci/kubernetes-schemas.sh
-mkdir -p .cache/chart-check
+mkdir -p .cache/chart-check .cache/kubeconform
 go -C controller build -o ../.cache/chart-check/render ./cmd/render
 for chart in agentos-environment agentos-connections; do
   values="charts/$chart/tests/values.json"

@@ -18,6 +18,8 @@ on:
 permissions:
   contents: read
   pull-requests: read
+env:
+  GITHUB_TOKEN: ${{ github.token }}
 concurrency:
   group: verify-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

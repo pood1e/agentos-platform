@@ -2,10 +2,11 @@
 
 import hashlib
 import json
+import os
 import subprocess
-import urllib.request
 from pathlib import Path
 
+import requests
 import yaml
 
 cache = Path(".cache/chart-check")
@@ -19,9 +20,12 @@ CERT_MANAGER = "v1.21.2"
 def download(name, version, url, checksum, accept="application/vnd.github.raw+json"):
     path = cache / f"{name}-{version}.yaml"
     if not path.exists():
-        request = urllib.request.Request(url, headers={"Accept": accept})
-        with urllib.request.urlopen(request, timeout=60) as response:
-            data = response.read()
+        headers = {"Accept": accept}
+        if token := os.environ.get("GITHUB_TOKEN"):
+            headers["Authorization"] = f"Bearer {token}"
+        response = requests.get(url, headers=headers, timeout=60)
+        response.raise_for_status()
+        data = response.content
         if hashlib.sha256(data).hexdigest() != checksum:
             raise ValueError(f"{name} checksum differs from the pinned upstream artifact")
         path.write_bytes(data)
