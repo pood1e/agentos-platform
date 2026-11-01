@@ -1,12 +1,9 @@
 """Prepare kubeconform schemas from the pinned upstream CRD distributions."""
 
-import hashlib
 import json
-import os
 import subprocess
 from pathlib import Path
 
-import requests
 import yaml
 
 cache = Path(".cache/chart-check")
@@ -17,20 +14,23 @@ GATEWAY_API = "v1.6.1"
 CERT_MANAGER = "v1.21.2"
 
 
-def download(name, version, url, checksum, accept="application/vnd.github.raw+json"):
+def module_crds(name, module, version, pattern):
     path = cache / f"{name}-{version}.yaml"
     if not path.exists():
-        headers = {"Accept": accept}
-        if token := os.environ.get("GITHUB_TOKEN"):
-            headers["Authorization"] = f"Bearer {token}"
-        response = requests.get(url, headers=headers, timeout=60)
-        response.raise_for_status()
-        data = response.content
-        if hashlib.sha256(data).hexdigest() != checksum:
-            raise ValueError(f"{name} checksum differs from the pinned upstream artifact")
-        path.write_bytes(data)
-    if hashlib.sha256(path.read_bytes()).hexdigest() != checksum:
-        raise ValueError(f"{name} cached checksum differs from the pinned upstream artifact")
+        metadata = json.loads(
+            subprocess.check_output(
+                ["go", "mod", "download", "-json", f"{module}@{version}"], text=True
+            )
+        )
+        files = sorted(Path(metadata["Dir"]).glob(pattern))
+        if not files:
+            raise ValueError(f"{name} CRDs are absent from the pinned module")
+        documents = [
+            resource
+            for resource in yaml.safe_load_all("\n---\n".join(file.read_text() for file in files))
+            if resource and resource.get("kind") == "CustomResourceDefinition"
+        ]
+        path.write_text(yaml.safe_dump_all(documents, sort_keys=False))
     return path.read_text()
 
 
@@ -65,25 +65,20 @@ sources = [
         "oci://ghcr.io/agentgateway/charts/agentgateway-crds",
         AGENTGATEWAY,
     ),
-    download(
+    module_crds(
         "traefik-crds",
-        "3.7.13",
-        "https://api.github.com/repos/traefik/traefik/contents/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml?ref=v3.7.13",
-        "1d5e8558803804562238b0d4a57174aadd6d87c36e3c4c55199ebcc356a9406c",
+        "github.com/traefik/traefik/v3",
+        "v3.7.13",
+        "docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml",
     ),
-    download(
-        "gateway-crds",
-        GATEWAY_API,
-        "https://api.github.com/repos/kubernetes-sigs/gateway-api/releases/assets/479238882",
-        "24d931f22abd8e40c973264319ead7cfa09d0fb7716b7ab1ee2ff174cb063a73",
-        "application/octet-stream",
+    module_crds(
+        "gateway-crds", "sigs.k8s.io/gateway-api", GATEWAY_API, "config/crd/standard/*.yaml"
     ),
-    download(
+    module_crds(
         "cert-manager-crds",
+        "github.com/cert-manager/cert-manager",
         CERT_MANAGER,
-        "https://api.github.com/repos/cert-manager/cert-manager/releases/assets/556636674",
-        "262fef78478492cd35b73a1b227106b7802f9c056361d1f561d04b32d751337f",
-        "application/octet-stream",
+        "deploy/crds/*.yaml",
     ),
 ]
 for resource in yaml.safe_load_all("\n---\n".join(sources)):
