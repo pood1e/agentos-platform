@@ -126,7 +126,7 @@ message ListEngineerRunsRequest {
 }
 
 message ListEngineerRunsResponse {
-  // Calls include names, intent, state and timing.
+  // Active runs include call names, intent, state and timing.
   repeated agentos.execution.v1.TaskRun runs = 1;
   string next_page_token = 2;
 }
