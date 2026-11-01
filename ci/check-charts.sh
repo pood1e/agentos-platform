@@ -1,10 +1,11 @@
 #!/bin/sh
 set -eu
+. ci/kubernetes-schemas.sh
 ci/generate-controller.sh
 git diff --exit-code -- controller/api controller/config/crd/bases
 helm dependency build charts/agentos --skip-refresh
 helm dependency build charts/agentos-environment --skip-refresh
-mkdir -p .cache/chart-check
+mkdir -p .cache/chart-check .cache/kubeconform
 go -C controller build -o ../.cache/chart-check/render ./cmd/render
 python ci/chart-schemas.py
 python ci/chart-fixtures.py
@@ -23,9 +24,9 @@ for name in platform alternate solution direct-only; do
   if [ "$name" = alternate ]; then namespace=operations; fi
   .cache/chart-check/render -namespace="$namespace" < ".cache/chart-check/$name.yaml" > ".cache/chart-check/$name-expanded.yaml"
   mv ".cache/chart-check/$name-expanded.yaml" ".cache/chart-check/$name.yaml"
-  kubeconform -strict -summary -kubernetes-version 1.37.1 \
-    -schema-location default \
+  kubeconform -strict -summary -cache .cache/kubeconform -kubernetes-version 1.37.1 \
     -schema-location '.cache/chart-check/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+    -schema-location "$KUBERNETES_SCHEMA_LOCATION" \
     ".cache/chart-check/$name.yaml"
   case "$name" in
     solution) set -- --data tests/fixtures/solution-chart/values.yaml ;;

@@ -14,6 +14,7 @@ variables:
   variables:
     GOENV: "off"
     GOTOOLCHAIN: local
+    GOPROXY: https://goproxy.cn
     GOMODCACHE: $CI_PROJECT_DIR/.cache/go-mod
     GOCACHE: $CI_PROJECT_DIR/.cache/go-build
     GOLANGCI_LINT_CACHE: $CI_PROJECT_DIR/.cache/golangci-lint

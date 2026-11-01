@@ -2,7 +2,6 @@
 
 import json
 import subprocess
-import urllib.request
 from pathlib import Path
 
 import yaml
@@ -15,11 +14,23 @@ GATEWAY_API = "v1.6.1"
 CERT_MANAGER = "v1.21.2"
 
 
-def download(name, version, url):
+def module_crds(name, module, version, pattern):
     path = cache / f"{name}-{version}.yaml"
     if not path.exists():
-        with urllib.request.urlopen(url, timeout=60) as response:
-            path.write_bytes(response.read())
+        metadata = json.loads(
+            subprocess.check_output(
+                ["go", "mod", "download", "-json", f"{module}@{version}"], text=True
+            )
+        )
+        files = sorted(Path(metadata["Dir"]).glob(pattern))
+        if not files:
+            raise ValueError(f"{name} CRDs are absent from the pinned module")
+        documents = [
+            resource
+            for resource in yaml.safe_load_all("\n---\n".join(file.read_text() for file in files))
+            if resource and resource.get("kind") == "CustomResourceDefinition"
+        ]
+        path.write_text(yaml.safe_dump_all(documents, sort_keys=False))
     return path.read_text()
 
 
@@ -42,50 +53,32 @@ def chart(name, reference, version):
     return path.read_text()
 
 
-native = cache / f"kagent-crds-{KAGENT}.yaml"
-if not native.exists():
-    native.write_text(
-        "\n---\n".join(
-            download(
-                f"kagent-{kind}",
-                KAGENT,
-                f"https://raw.githubusercontent.com/pood1e/kagent/{KAGENT}/helm/kagent-crds/templates/api.kagent.dev_{kind}.yaml",
-            )
-            for kind in (
-                "agents",
-                "agenttemplates",
-                "egresspolicies",
-                "harnesses",
-                "modelconfigs",
-                "modelproviderconfigs",
-                "remotemcpservers",
-                "sandboxtemplates",
-            )
-        )
-    )
-
 sources = [
     *[path.read_text() for path in Path("controller/config/crd/bases").glob("*.yaml")],
-    native.read_text(),
+    chart(
+        "kagent-crds",
+        "oci://ghcr.io/pood1e/kagent/helm/kagent-crds",
+        f"0.0.0-main.g{KAGENT}",
+    ),
     chart(
         "agentgateway-crds",
-        "oci://cr.agentgateway.dev/charts/agentgateway-crds",
+        "oci://ghcr.io/agentgateway/charts/agentgateway-crds",
         AGENTGATEWAY,
     ),
-    download(
+    module_crds(
         "traefik-crds",
-        "3.7.13",
-        "https://raw.githubusercontent.com/traefik/traefik/v3.7.13/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml",
+        "github.com/traefik/traefik/v3",
+        "v3.7.13",
+        "docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml",
     ),
-    download(
-        "gateway-crds",
-        GATEWAY_API,
-        f"https://github.com/kubernetes-sigs/gateway-api/releases/download/{GATEWAY_API}/standard-install.yaml",
+    module_crds(
+        "gateway-crds", "sigs.k8s.io/gateway-api", GATEWAY_API, "config/crd/standard/*.yaml"
     ),
-    download(
+    module_crds(
         "cert-manager-crds",
+        "github.com/cert-manager/cert-manager",
         CERT_MANAGER,
-        f"https://github.com/cert-manager/cert-manager/releases/download/{CERT_MANAGER}/cert-manager.crds.yaml",
+        "deploy/crds/*.yaml",
     ),
 ]
 for resource in yaml.safe_load_all("\n---\n".join(sources)):
