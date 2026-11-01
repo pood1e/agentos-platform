@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,14 +34,13 @@ def versions():
         manifest = json.loads(Path(".github/.release-please-manifest.json").read_text())
         if manifest["."] != current:
             raise ValueError("Release manifest and package version differ")
-        reference = git(
-            "ls-remote",
-            "https://github.com/pood1e/agentos-platform.git",
-            f"refs/tags/{tag}",
-            f"refs/tags/{tag}^{{}}",
+        request = urllib.request.Request(
+            f"https://api.github.com/repos/pood1e/agentos-platform/commits/{tag}",
+            headers={"Accept": "application/vnd.github+json"},
         )
-        refs = dict(line.split()[::-1] for line in reference.splitlines())
-        if refs.get(f"refs/tags/{tag}^{{}}", refs.get(f"refs/tags/{tag}")) != revision:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            github_revision = json.load(response)["sha"]
+        if github_revision != revision:
             raise ValueError("GitHub and GitLab release tag revisions differ")
         return Versions(revision, current, current)
     released = json.loads(Path(".github/.release-please-manifest.json").read_text())["."]

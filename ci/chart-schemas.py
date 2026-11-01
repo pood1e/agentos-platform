@@ -42,31 +42,13 @@ def chart(name, reference, version):
     return path.read_text()
 
 
-native = cache / f"kagent-crds-{KAGENT}.yaml"
-if not native.exists():
-    native.write_text(
-        "\n---\n".join(
-            download(
-                f"kagent-{kind}",
-                KAGENT,
-                f"https://raw.githubusercontent.com/pood1e/kagent/{KAGENT}/helm/kagent-crds/templates/api.kagent.dev_{kind}.yaml",
-            )
-            for kind in (
-                "agents",
-                "agenttemplates",
-                "egresspolicies",
-                "harnesses",
-                "modelconfigs",
-                "modelproviderconfigs",
-                "remotemcpservers",
-                "sandboxtemplates",
-            )
-        )
-    )
-
 sources = [
     *[path.read_text() for path in Path("controller/config/crd/bases").glob("*.yaml")],
-    native.read_text(),
+    chart(
+        "kagent-crds",
+        "oci://ghcr.io/pood1e/kagent/helm/kagent-crds",
+        f"0.0.0-main.g{KAGENT}",
+    ),
     chart(
         "agentgateway-crds",
         "oci://cr.agentgateway.dev/charts/agentgateway-crds",
