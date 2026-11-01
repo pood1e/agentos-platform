@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.5](https://github.com/pood1e/agentos-platform/compare/v0.51.4...v0.51.5) (2026-11-01)
+
+
+### Bug Fixes
+
+* remove release API rate limit and speed CI dependencies ([d072d0f](https://github.com/pood1e/agentos-platform/commit/d072d0f1767b83d211de3278a2bd5af913de8403))
+
 ## [0.51.4](https://github.com/pood1e/agentos-platform/compare/v0.51.3...v0.51.4) (2026-11-01)
 
 
