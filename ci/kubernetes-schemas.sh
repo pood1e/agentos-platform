@@ -1,0 +1,1 @@
+KUBERNETES_SCHEMA_LOCATION='https://cdn.jsdelivr.net/gh/yannh/kubernetes-json-schema@e0c72a1bc5f409d1685c0e1323460c8a98cd7459/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json'

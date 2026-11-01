@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+. ci/kubernetes-schemas.sh
 ci/generate-controller.sh
 git diff --exit-code -- controller/api controller/config/crd/bases
 helm dependency build charts/agentos --skip-refresh
@@ -24,7 +25,7 @@ for name in platform alternate solution direct-only; do
   .cache/chart-check/render -namespace="$namespace" < ".cache/chart-check/$name.yaml" > ".cache/chart-check/$name-expanded.yaml"
   mv ".cache/chart-check/$name-expanded.yaml" ".cache/chart-check/$name.yaml"
   kubeconform -strict -summary -kubernetes-version 1.37.1 \
-    -schema-location default \
+    -schema-location "$KUBERNETES_SCHEMA_LOCATION" \
     -schema-location '.cache/chart-check/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
     ".cache/chart-check/$name.yaml"
   case "$name" in

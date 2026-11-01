@@ -18,7 +18,8 @@ CERT_MANAGER = "v1.21.2"
 def download(name, version, url):
     path = cache / f"{name}-{version}.yaml"
     if not path.exists():
-        with urllib.request.urlopen(url, timeout=60) as response:
+        request = urllib.request.Request(url, headers={"Accept": "application/vnd.github.raw+json"})
+        with urllib.request.urlopen(request, timeout=60) as response:
             path.write_bytes(response.read())
     return path.read_text()
 
@@ -51,13 +52,13 @@ sources = [
     ),
     chart(
         "agentgateway-crds",
-        "oci://cr.agentgateway.dev/charts/agentgateway-crds",
+        "oci://ghcr.io/agentgateway/charts/agentgateway-crds",
         AGENTGATEWAY,
     ),
     download(
         "traefik-crds",
         "3.7.13",
-        "https://raw.githubusercontent.com/traefik/traefik/v3.7.13/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml",
+        "https://api.github.com/repos/traefik/traefik/contents/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml?ref=v3.7.13",
     ),
     download(
         "gateway-crds",

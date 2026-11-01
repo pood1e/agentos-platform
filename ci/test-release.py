@@ -91,12 +91,14 @@ class VersionsTest(unittest.TestCase):
                 "https://api.github.com/repos/pood1e/agentos-platform/commits/v0.26.5",
             )
             self.assertEqual(request.call_args.kwargs["timeout"], 60)
-        with patch(
-            "versions.urllib.request.urlopen",
-            return_value=io.BytesIO(json.dumps({"sha": "0" * 40}).encode()),
+        with (
+            patch(
+                "versions.urllib.request.urlopen",
+                return_value=io.BytesIO(json.dumps({"sha": "0" * 40}).encode()),
+            ),
+            self.assertRaisesRegex(ValueError, "tag revisions"),
         ):
-            with self.assertRaisesRegex(ValueError, "tag revisions"):
-                versions()
+            versions()
 
 
 if __name__ == "__main__":
