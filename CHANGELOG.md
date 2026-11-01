@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.3](https://github.com/pood1e/agentos-platform/compare/v0.51.2...v0.51.3) (2026-11-01)
+
+
+### Bug Fixes
+
+* **ci:** use verified upstream schema distribution sources ([0925080](https://github.com/pood1e/agentos-platform/commit/09250802d7f5e46ab6ffe58eafec0ad4962cea23))
+
 ## [0.51.2](https://github.com/pood1e/agentos-platform/compare/v0.51.1...v0.51.2) (2026-11-01)
 
 
