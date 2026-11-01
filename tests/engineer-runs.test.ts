@@ -48,16 +48,19 @@ it("reads compact terminal records while preserving active details", async () =>
   try {
     const client = consoleClient(env);
     const catalog = vi.spyOn(env.clients.catalog, "listTaskRecords");
-    const summary = await client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 100 });
+    const summary = await client.listEngineerRuns({
+      engineer: "agentos/inspection",
+      pageSize: 100,
+    });
     expect(catalog.mock.calls.at(-1)?.[0]).toMatchObject({
       view: TaskCatalogView.ACTIVE_DETAILS,
       page: { limit: 100 },
     });
     expect(summary.runs.length).toBeGreaterThan(0);
     expect(
-      summary.runs.filter((run) => run.state === ActivityState.SUCCEEDED).every(
-        (run) => !run.calls.length && !run.output,
-      ),
+      summary.runs
+        .filter((run) => run.state === ActivityState.SUCCEEDED)
+        .every((run) => !run.calls.length && !run.output),
     ).toBe(true);
   } finally {
     await env.close();
