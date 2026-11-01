@@ -8,6 +8,7 @@ import {
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
+import { nativeSignal } from "../kagent/context.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { McpApps } from "../mcp-apps/service.js";
 import { accessProfile, requestIdentity } from "../platform/access.js";
@@ -17,7 +18,6 @@ import { TaskGraph } from "../read-model/graph.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import { TaskStreams } from "../read-model/streams.js";
 import { conversation, type FullTask } from "../read-model/views/conversation.js";
-import { engineers } from "../read-model/views/engineers.js";
 import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
 import { cancellationCommands } from "./cancellation.js";
@@ -92,20 +92,25 @@ export function consoleService({
       return { profile };
     },
     async listEngineers(request, context) {
-      const activity = await projection.agentActivity(
-        viewer(context.values.get(requestIdentity), request.systemOnly),
-      );
-      return { engineers: engineers(await projection.agents(), activity) };
+      return nativeSignal.run(context.signal, async () => ({
+        engineers: await projection.engineers(
+          viewer(context.values.get(requestIdentity), request.systemOnly),
+        ),
+      }));
     },
     async listEngineerRuns(request, context) {
-      return projection.engineerRuns(
-        viewer(context.values.get(requestIdentity), request.systemOnly),
-        request,
+      return nativeSignal.run(context.signal, () =>
+        projection.engineerRuns(
+          viewer(context.values.get(requestIdentity), request.systemOnly),
+          request,
+        ),
       );
     },
     async listTasks(request, context) {
       const identity = context.values.get(requestIdentity);
-      return projection.operations(viewer(identity, request.systemOnly), request);
+      return nativeSignal.run(context.signal, () =>
+        projection.operations(viewer(identity, request.systemOnly), request),
+      );
     },
     async cancelTask({ taskId }, context) {
       await cancel(taskId, context.values.get(requestIdentity), context.signal);
@@ -114,7 +119,9 @@ export function consoleService({
     async listConversations(request, context) {
       const identity = context.values.get(requestIdentity);
       chatTarget(namespace, entryAgent, request.agent, identity);
-      return projection.conversations(viewer(identity), agentKey(request.agent), request);
+      return nativeSignal.run(context.signal, () =>
+        projection.conversations(viewer(identity), agentKey(request.agent), request),
+      );
     },
     deleteSession: (request, context) =>
       conversations.remove(request, context.values.get(requestIdentity)),
