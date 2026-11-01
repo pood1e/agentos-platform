@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.51.4](https://github.com/pood1e/agentos-platform/compare/v0.51.3...v0.51.4) (2026-11-01)
+
+
+### Bug Fixes
+
+* **console:** bound historical catalog detail reads ([#274](https://github.com/pood1e/agentos-platform/issues/274)) ([d0e1d02](https://github.com/pood1e/agentos-platform/commit/d0e1d0292eba6c7ea7301b2288d37ae75183739a))
+* **console:** keep historical engineer listings compact ([#272](https://github.com/pood1e/agentos-platform/issues/272)) ([8547248](https://github.com/pood1e/agentos-platform/commit/8547248ce13f035394a2a73085f883f4bbcc0e09))
+
 ## [0.51.3](https://github.com/pood1e/agentos-platform/compare/v0.51.2...v0.51.3) (2026-11-01)
 
 
