@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1](https://github.com/pood1e/agentos-platform/compare/v0.51.0...v0.51.1) (2026-11-01)
+
+
+### Performance Improvements
+
+* **console:** 精简只读列表读取并传播查询取消 ([#265](https://github.com/pood1e/agentos-platform/issues/265)) ([7b93b65](https://github.com/pood1e/agentos-platform/commit/7b93b653621d1ac8f4aa2ba994462bb6fc2956e8))
+
 ## [0.51.0](https://github.com/pood1e/agentos-platform/compare/v0.50.0...v0.51.0) (2026-10-31)
 
 
