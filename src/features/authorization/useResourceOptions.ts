@@ -22,25 +22,27 @@ export function useResourceOptions(
   selected: AuthorizationResource,
 ) {
   const { t } = useTranslation();
-  const { workspace, subject, entryAgent } = profile;
+  const { subject, entryAgent } = profile;
+  const workspace = profile.workspace?.namespace ?? "";
+  const workspaceUID = profile.workspace?.uid;
   const agents = useQuery({
-    queryKey: ["authorization-catalog", subject, workspace, "agents"],
+    queryKey: ["authorization-catalog", subject, workspaceUID, "agents"],
     queryFn: ({ signal }) => consoleClient.listAgents({}, { signal }),
     enabled: kind === AuthorizationScopeKind.AGENT,
   });
   const templates = useQuery({
-    queryKey: ["authorization-catalog", subject, workspace, "templates"],
+    queryKey: ["authorization-catalog", subject, workspaceUID, "templates"],
     queryFn: ({ signal }) => consoleClient.getConfiguration({}, { signal }),
     enabled: kind === AuthorizationScopeKind.AGENT_TEMPLATE,
   });
   const sessions = useQuery({
-    queryKey: ["authorization-catalog", subject, workspace, "sessions", entryAgent?.name],
+    queryKey: ["authorization-catalog", subject, workspaceUID, "sessions", entryAgent?.name],
     queryFn: ({ signal }) =>
       consoleClient.listConversations({ agent: entryAgent, pageSize: 100 }, { signal }),
     enabled: kind === AuthorizationScopeKind.SESSION && !!entryAgent?.name,
   });
   const tasks = useQuery({
-    queryKey: ["authorization-catalog", subject, workspace, "tasks"],
+    queryKey: ["authorization-catalog", subject, workspaceUID, "tasks"],
     queryFn: ({ signal }) => consoleClient.listTasks({ pageSize: 100 }, { signal }),
     enabled: kind === AuthorizationScopeKind.TASK,
   });

@@ -31,14 +31,16 @@ export function WorkflowsPage() {
   const editable = useCapability(Capability.AGENTS_MANAGE);
   const [search, setSearch] = useState("");
   const list = useQuery({
-    queryKey: ["workflows", "list", access?.workspace, access?.subject],
+    queryKey: ["workflows", "list", access?.workspace?.uid, access?.subject],
     queryFn: () => managementClient.listWorkflows({}),
     refetchInterval: 10_000,
   });
   const accessible =
     useAgentAccess(
       (list.data?.agents ?? [])
-        .filter((agent) => agent.ref?.namespace === access?.workspace && !!agent.ref?.name)
+        .filter(
+          (agent) => agent.ref?.namespace === access?.workspace?.namespace && !!agent.ref?.name,
+        )
         .map((agent) => agent.ref?.name ?? ""),
     ).data ?? [];
   const visible = (list.data?.agents ?? []).filter((agent) =>
@@ -97,7 +99,7 @@ export function WorkflowsPage() {
                               value: {
                                 kind: AuthorizationScopeKind.AGENT,
                                 ref: {
-                                  namespace: access?.workspace ?? "",
+                                  namespace: access?.workspace?.namespace ?? "",
                                   name: agent.ref?.name ?? "",
                                 },
                               },

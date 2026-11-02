@@ -9,6 +9,7 @@ import { mcpApps } from "../../server/mcp-apps/service.js";
 import { workspaceContext } from "../../server/platform/access.js";
 import { appScenario } from "../fake-kagent/apps.js";
 import { environment, testBindings } from "../harness.js";
+import { allowWorkspace } from "../workspace-member.js";
 
 export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.example") {
   const env = await environment([]);
@@ -60,7 +61,11 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
           },
         ],
       },
-      router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] },
+      router: {
+        interceptors: [
+          workspaceContext("assistant", async () => caller, allowWorkspace("agentos")),
+        ],
+      },
     }),
   );
   const request = {

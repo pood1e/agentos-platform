@@ -18,6 +18,7 @@ import { initialDocument } from "../src/features/workflows/document.js";
 import { newWorkflow, updateSpec } from "../src/features/workflows/draft.js";
 import { consoleClient, publishTargets } from "./harness.js";
 import { managementEnvironment } from "./management-harness.js";
+import { allowWorkspace } from "./workspace-member.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
 beforeEach(async () => {
@@ -216,8 +217,10 @@ it("enforces workspace and administration gates before workflow source writes", 
     createRouterTransport((router) => router.service(ManagementService, env.service), {
       router: {
         interceptors: [
-          workspaceContext("agentos", "assistant", async () =>
-            create(UserIdentitySchema, { subject: "reader" }),
+          workspaceContext(
+            "assistant",
+            async () => create(UserIdentitySchema, { subject: "reader" }),
+            allowWorkspace("agentos"),
           ),
           createValidateInterceptor(),
         ],

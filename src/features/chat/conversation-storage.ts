@@ -1,7 +1,7 @@
 import type { AccessProfile } from "../../../gen/agentos/console/v1/access_pb.js";
 
 const key = (profile: Pick<AccessProfile, "workspace" | "subject">) =>
-  `agentos-conversation:${JSON.stringify([profile.workspace, profile.subject])}`;
+  `agentos-conversation:${JSON.stringify([profile.workspace?.uid, profile.subject])}`;
 
 export const lastConversation = (profile: AccessProfile) =>
   localStorage.getItem(key(profile)) ?? "";

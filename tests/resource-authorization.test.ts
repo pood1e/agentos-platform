@@ -26,6 +26,7 @@ import { kagentClients } from "../server/kagent/clients.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { environment, testBindings } from "./harness.js";
+import { allowWorkspace } from "./workspace-member.js";
 
 function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>) {
   const native = kagentClients(
@@ -33,7 +34,7 @@ function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>
   );
   const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
   const service = authorizationService(native.authorization);
-  const context = workspaceContext("team", "assistant", async () => principal);
+  const context = workspaceContext("assistant", async () => principal, allowWorkspace("team"));
   const client = createClient(
     AuthorizationService,
     createRouterTransport((router) => router.service(AuthorizationService, service), {

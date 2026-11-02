@@ -2,6 +2,7 @@ import { Code, ConnectError, createClient, createRouterTransport } from "@connec
 import { expect, it, vi } from "vitest";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
+import { AuthorizationService } from "../gen/kagent/api/v1/authorization_pb.js";
 import { SystemService } from "../gen/kagent/api/v1/system_pb.js";
 import { userIdentity } from "../server/authorization/identity.js";
 import { kagentClients } from "../server/kagent/clients.js";
@@ -12,13 +13,14 @@ import {
   nativeRequestHeaders,
   nativeStream,
 } from "../server/kagent/context.js";
-import { accessProfile, workspaceContext } from "../server/platform/access.js";
+import { accessProfile, memberWorkspace, workspaceContext } from "../server/platform/access.js";
 import { capabilityRole } from "../shared/permissions.js";
 
 function setup() {
   const received: Headers[] = [];
+  const memberships: Headers[] = [];
   const native = kagentClients(
-    createRouterTransport((router) =>
+    createRouterTransport((router) => {
       router.service(SystemService, {
         getCurrentUser(_request, context) {
           received.push(new Headers(context.requestHeader));
@@ -29,12 +31,38 @@ function setup() {
               : token === "Bearer administrator"
                 ? [capabilityRole(Capability.AGENTS_MANAGE)]
                 : [];
-          if (!["Bearer reader", "Bearer writer", "Bearer administrator"].includes(token ?? ""))
+          if (
+            ![
+              "Bearer reader",
+              "Bearer reader-no-member",
+              "Bearer reader-wrong-workspace",
+              "Bearer writer",
+              "Bearer administrator",
+            ].includes(token ?? "")
+          )
             throw new ConnectError("Native authentication failed", Code.Unauthenticated);
           return { principalId: "oidc:canonical-principal", claims: { roles } };
         },
-      }),
-    ),
+      });
+      router.service(AuthorizationService, {
+        listWorkspaces(request, context) {
+          memberships.push(new Headers(context.requestHeader));
+          const token = context.requestHeader.get("authorization");
+          if (token === "Bearer reader-no-member") return { workspaces: [] };
+          return {
+            workspaces: [
+              {
+                namespace:
+                  token === "Bearer reader-wrong-workspace"
+                    ? "other"
+                    : (request.workspace?.namespace ?? ""),
+                uid: "workspace-1",
+              },
+            ],
+          };
+        },
+      });
+    }),
   );
   const send = vi.fn(() => ({}));
   const update = vi.fn(() => ({}));
@@ -50,13 +78,17 @@ function setup() {
       {
         router: {
           interceptors: [
-            workspaceContext("workspace", "assistant", userIdentity(native, "writer")),
+            workspaceContext(
+              "assistant",
+              userIdentity(native, "writer"),
+              memberWorkspace(native.authorization, "workspace"),
+            ),
           ],
         },
       },
     ),
   );
-  return { client, received, send, update };
+  return { client, received, memberships, send, update };
 }
 
 it("uses the native canonical principal and forwards only native credential headers", async () => {
@@ -69,19 +101,40 @@ it("uses the native canonical principal and forwards only native credential head
   };
   const { profile } = await env.client.getAccessProfile({}, { headers: header });
   expect(profile).toMatchObject({
-    workspace: "workspace",
+    workspace: { namespace: "workspace", uid: "workspace-1" },
     subject: "oidc:canonical-principal",
     write: false,
     capabilities: [],
   });
   for (const key of ["x-auth-request-groups", "x-user-id", "x-forwarded-access-token"])
     expect(env.received[0]?.has(key)).toBe(false);
+  expect(env.memberships[0]?.get("authorization")).toBe("Bearer reader");
+  for (const key of ["x-auth-request-groups", "x-user-id", "x-forwarded-access-token"])
+    expect(env.memberships[0]?.has(key)).toBe(false);
   await env.client.sendMessage({}, { headers: header });
   await expect(env.client.updateRole({}, { headers: header })).rejects.toMatchObject({
     code: Code.PermissionDenied,
   });
   expect(env.send).toHaveBeenCalledOnce();
   expect(env.update).not.toHaveBeenCalled();
+});
+
+it("denies a non-member before serving workspace data", async () => {
+  const { client, send } = setup();
+  await expect(
+    client.getAccessProfile({}, { headers: { authorization: "Bearer reader-no-member" } }),
+  ).rejects.toMatchObject({ code: Code.PermissionDenied });
+  await expect(
+    client.sendMessage({}, { headers: { authorization: "Bearer reader-no-member" } }),
+  ).rejects.toMatchObject({ code: Code.PermissionDenied });
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("fails closed when native returns a different workspace", async () => {
+  const { client } = setup();
+  await expect(
+    client.getAccessProfile({}, { headers: { authorization: "Bearer reader-wrong-workspace" } }),
+  ).rejects.toMatchObject({ code: Code.Unavailable });
 });
 
 it("preserves native authentication rejection including missing or forwarded-only tokens", async () => {

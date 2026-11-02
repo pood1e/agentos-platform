@@ -39,7 +39,7 @@ export function ChatPage() {
   const paging = usePaging();
   const access = useAccess();
   const name = access.data?.entryAgent?.name ?? "assistant";
-  const agent = { namespace: access.data?.workspace ?? "", name };
+  const agent = { namespace: access.data?.workspace?.namespace ?? "", name };
   const sessionScope = contextId
     ? create(AuthorizationResourceSchema, { resource: { case: "sessionId", value: contextId } })
     : undefined;
@@ -110,7 +110,7 @@ export function ChatPage() {
         )}
         <VoiceCallContext value={calling}>
           <ConversationRuntime
-            key={`${access.data?.workspace}:${access.data?.subject}:${name}:${contextId}`}
+            key={`${access.data?.workspace?.uid}:${access.data?.subject}:${name}:${contextId}`}
             chat={chat}
           >
             <ThreadPrimitive.Root

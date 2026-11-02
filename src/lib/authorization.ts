@@ -26,16 +26,16 @@ export function authorizationScopeKind(scope: AuthorizationResource) {
 
 export function useResourceAccess(scope: AuthorizationResource | undefined) {
   const profile = useAccess().data;
-  const workspace = profile?.workspace ?? "";
+  const workspace = profile?.workspace;
   const subject = profile?.subject ?? "";
   const permissions = [Permission.ACCESS_READ, Permission.ACCESS_MANAGE];
   if (scope?.resource.case === "sessionId" || scope?.resource.case === "task")
     permissions.push(Permission.SESSION_SHARE);
   return useQuery({
-    queryKey: ["resource-authorization", subject, workspace, "permissions", scope],
+    queryKey: ["resource-authorization", subject, workspace?.uid, "permissions", scope],
     queryFn: async ({ signal }) => {
       const result = await authorizationClient.checkPermissions(
-        { workspace: { namespace: workspace }, checks: [{ resource: scope, permissions }] },
+        { workspace, checks: [{ resource: scope, permissions }] },
         { signal, timeoutMs: 10_000 },
       );
       return result.resources[0];
@@ -48,25 +48,25 @@ export function useResourceAccess(scope: AuthorizationResource | undefined) {
 
 export function useAgentAccess(names: string[]) {
   const profile = useAccess().data;
-  const workspace = profile?.workspace ?? "";
+  const workspace = profile?.workspace;
   const subject = profile?.subject ?? "";
   const uniqueNames = [...new Set(names.filter(Boolean))].sort();
   return useQuery({
-    queryKey: ["resource-authorization", subject, workspace, "agent-access", uniqueNames],
+    queryKey: ["resource-authorization", subject, workspace?.uid, "agent-access", uniqueNames],
     queryFn: async ({ signal }) => {
       const allowed: string[] = [];
       for (let offset = 0; offset < uniqueNames.length; offset += 50) {
         const batch = uniqueNames.slice(offset, offset + 50);
         const { resources } = await authorizationClient.checkPermissions(
           {
-            workspace: { namespace: workspace },
+            workspace,
             checks: batch.map((name) => ({
               resource: create(AuthorizationResourceSchema, {
                 resource: {
                   case: "kubernetes",
                   value: {
                     kind: AuthorizationScopeKind.AGENT,
-                    ref: { namespace: workspace, name },
+                    ref: { namespace: workspace?.namespace ?? "", name },
                   },
                 },
               }),

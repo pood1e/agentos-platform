@@ -9,12 +9,13 @@ import { consoleService } from "../server/console/service.js";
 import { workspaceContext } from "../server/platform/access.js";
 import { registerHealth } from "../server/shared/health.js";
 import { environment, operator, testBindings } from "./harness.js";
+import { allowWorkspace } from "./workspace-member.js";
 
 it("serves typed RPC errors and separates liveness from subscribed readiness", async () => {
   const env = await environment();
   const app = Fastify();
   await registerConsole(app, {
-    context: workspaceContext("agentos", "assistant", async () => operator),
+    context: workspaceContext("assistant", async () => operator, allowWorkspace("agentos")),
     service: consoleService({
       ...env,
       namespace: "agentos",

@@ -49,7 +49,7 @@ export function WorkflowEditor({ initial, isNew }: { initial: Workflow; isNew: b
     staleTime: Infinity,
   });
   const configuration = useQuery({
-    queryKey: ["workflows", "configuration", access?.workspace, access?.subject],
+    queryKey: ["workflows", "configuration", access?.workspace?.uid, access?.subject],
     queryFn: () => consoleClient.getConfiguration({}),
   });
   const parsed = useMemo(() => {

@@ -3,10 +3,11 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "agentos/authorization/v1/permission.proto";
+import "kagent/api/v1/authorization.proto";
 import "kagent/api/v1/common.proto";
 
 message AccessProfile {
-  string workspace = 1;
+  reserved 1;
   string subject = 2;
   reserved 3, 4;
   reserved "operate", "manage";
@@ -17,6 +18,7 @@ message AccessProfile {
   bool delegated = 8;
   // Browser address that obtains the offline grant; `return_to` names a registered front end.
   string delegation_url = 9;
+  kagent.api.v1.WorkspaceAuthorizationReference workspace = 10;
 }
 
 message GetAccessProfileRequest {}

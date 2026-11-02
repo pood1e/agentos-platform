@@ -21,7 +21,7 @@ function RoleBuilder({ onDraft }: { onDraft: (draft: RoleDefinition) => void }) 
   const [contextId, setContext] = useState("");
   const access = useAccess();
   const chat = useChat(
-    { namespace: access.data?.workspace ?? "", name: "role-builder" },
+    { namespace: access.data?.workspace?.namespace ?? "", name: "role-builder" },
     contextId,
     setContext,
   );

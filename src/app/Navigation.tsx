@@ -41,9 +41,9 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const access = useAccess();
   const authorization = useResourceAccess(
-    access.data
+    access.data?.workspace
       ? create(AuthorizationResourceSchema, {
-          resource: { case: "workspace", value: { namespace: access.data.workspace } },
+          resource: { case: "workspace", value: access.data.workspace },
         })
       : undefined,
   );

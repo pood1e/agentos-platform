@@ -9,7 +9,7 @@ import { managementService } from "../management/service.js";
 import { workflowDocuments } from "../management/workflows/documents.js";
 import { registerAppAuthorization } from "../mcp-apps/http.js";
 import { mcpApps } from "../mcp-apps/service.js";
-import { workspaceContext } from "../platform/access.js";
+import { memberWorkspace, workspaceContext } from "../platform/access.js";
 import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
 import { voiceFeature } from "../voice/feature.js";
@@ -76,7 +76,11 @@ const apps = mcpApps({
 registerAppAuthorization(app, apps, identity);
 await registerConsole(app, {
   authorization: authorizationService(clients.authorization),
-  context: workspaceContext(workspace, entryAgent, identity),
+  context: workspaceContext(
+    entryAgent,
+    identity,
+    memberWorkspace(clients.authorization, workspace),
+  ),
   service: consoleService({
     metadata,
     apps,

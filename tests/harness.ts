@@ -19,6 +19,7 @@ import { allCapabilities } from "../shared/permissions.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
 import { fixtureAgents, fixtureSessions, fixtureTasks } from "./fixtures/kagent.js";
+import { allowWorkspace } from "./workspace-member.js";
 
 /** The console user that recorded fixtures belong to. */
 export const operator = create(UserIdentitySchema, {
@@ -90,7 +91,7 @@ export function consoleClient(
     createRouterTransport((router) => router.service(ConsoleService, service), {
       router: {
         interceptors: [
-          workspaceContext("agentos", "assistant", async () => identity()),
+          workspaceContext("assistant", async () => identity(), allowWorkspace("agentos")),
           createValidateInterceptor(),
         ],
       },

@@ -9,7 +9,7 @@ import { managementClient } from "../../lib/console.js";
 export function useMCPServices() {
   const access = useAccess().data;
   return useQuery({
-    queryKey: ["management", "mcp-services", access?.workspace, access?.subject],
+    queryKey: ["management", "mcp-services", access?.workspace?.uid, access?.subject],
     queryFn: async () => {
       const connections: Connection[] = [];
       let pageToken = "";
