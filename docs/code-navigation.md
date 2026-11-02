@@ -17,7 +17,7 @@
 | --- | --- |
 | `server/apps` | api、dataplane 与可选遥测入口 |
 | `server/kagent` | 原生客户端、请求凭据上下文、编译准入 |
-| `server/authorization` | 原生身份投影、应用能力、委托授权入口与业务 MCP 发现认证 |
+| `server/authorization` | 原生身份投影、资源授权 RPC 接线、应用能力、委托授权入口与业务 MCP 发现认证 |
 | `server/console` | 控制台 RPC、原生发送 / HITL / 取消与角色管理 |
 | `server/read-model` | 原生分页、可信执行树投影、历史与订阅 |
 | `server/management` | 原生资源 CRUD、模型 / MCP 连接与运行配置 |
@@ -38,6 +38,7 @@
 | `src/{app,components,features}` | 控制台、聊天、Agent 团队与管理页 |
 | `src/features/workflows` | 独立工作流入口、AgentSystem 画布 / YAML 编辑、发布状态与执行历史 |
 | `src/features/agents` | 通用 Agent 目录、模板编辑、模型选择、工具绑定与方案业务全景 |
+| `src/features/authorization` | 原生角色目录、工作空间及单资源的直接绑定管理 |
 | `src/{lib,i18n}`、`shared` | RPC、展示文案与平台内部共享代码 |
 | `web` | nginx、oauth2-proxy 与 MCP App 沙箱 |
 | `charts/agentos*` | 平台、控制器、环境网关与连接 Chart |

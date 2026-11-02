@@ -1,0 +1,179 @@
+import { create } from "@bufbuild/protobuf";
+import {
+  Code,
+  ConnectError,
+  createClient,
+  createRouterTransport,
+  type HandlerContext,
+  type ServiceImpl,
+} from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-node";
+import Fastify from "fastify";
+import { expect, it, vi } from "vitest";
+import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
+import {
+  AccessRole,
+  AuthorizationService,
+  type GrantRoleRequest,
+  GrantRoleRequestSchema,
+  WorkspaceAuthorizationReferenceSchema,
+} from "../gen/kagent/api/v1/authorization_pb.js";
+import { authorizationService } from "../server/authorization/service.js";
+import { registerConsole } from "../server/console/app.js";
+import { consoleService } from "../server/console/service.js";
+import { kagentClients } from "../server/kagent/clients.js";
+import { workspaceContext } from "../server/platform/access.js";
+import { allCapabilities } from "../shared/permissions.js";
+import { environment, testBindings } from "./harness.js";
+
+function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>) {
+  const native = kagentClients(
+    createRouterTransport((router) => router.service(AuthorizationService, implementation)),
+  );
+  const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
+  const service = authorizationService(native.authorization, "team");
+  const context = workspaceContext("team", "assistant", async () => principal);
+  const client = createClient(
+    AuthorizationService,
+    createRouterTransport((router) => router.service(AuthorizationService, service), {
+      router: { interceptors: [context] },
+    }),
+  );
+  return { principal, service, context, client };
+}
+
+const grantRequest = () =>
+  create(GrantRoleRequestSchema, {
+    requestId: crypto.randomUUID(),
+    workspace: { namespace: "team" },
+    binding: {
+      role: AccessRole.WORKSPACE_MEMBER,
+      scope: { resource: { case: "workspace", value: { namespace: "team" } } },
+      subject: { subject: { case: "principalId", value: "oidc:bob" } },
+    },
+  });
+
+it("delegates access decisions to native authorization with actual credentials", async () => {
+  const received: Headers[] = [];
+  const grant = vi.fn((_request: GrantRoleRequest, context: HandlerContext) => {
+    received.push(new Headers(context.requestHeader));
+    return {};
+  });
+  const { client, principal } = setup({ grantRole: grant });
+  const headers = {
+    authorization: "Bearer current",
+    "x-user-id": "forged-admin",
+    "x-auth-request-groups": "admins",
+    "x-forwarded-access-token": "forged",
+  };
+  await client.grantRole(grantRequest(), { headers });
+  expect(principal.capabilities).toEqual([]);
+  expect(grant).toHaveBeenCalledOnce();
+  expect(received[0]?.get("authorization")).toBe("Bearer current");
+  for (const name of ["x-user-id", "x-auth-request-groups", "x-forwarded-access-token"])
+    expect(received[0]?.has(name)).toBe(false);
+  principal.capabilities = allCapabilities;
+  grant.mockImplementationOnce(() => {
+    throw new ConnectError("Native role denied", Code.PermissionDenied);
+  });
+  await expect(client.grantRole(grantRequest(), { headers })).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
+});
+
+it("pins every scoped native RPC to the active workspace", async () => {
+  const read = vi.fn(() => ({}));
+  const write = vi.fn(() => ({}));
+  const { client } = setup({
+    checkPermissions: read,
+    listRoleBindings: read,
+    grantRole: write,
+    revokeRole: write,
+  });
+  for (const workspace of [
+    undefined,
+    create(WorkspaceAuthorizationReferenceSchema, { namespace: "other" }),
+  ]) {
+    const grant = grantRequest();
+    grant.workspace = workspace;
+    for (const call of [
+      () => client.checkPermissions({ workspace }),
+      () => client.listRoleBindings({ workspace }),
+      () => client.grantRole(grant),
+      () => client.revokeRole({ requestId: grant.requestId, binding: grant.binding, workspace }),
+    ])
+      await expect(call()).rejects.toMatchObject({ code: Code.PermissionDenied });
+  }
+  expect(read).not.toHaveBeenCalled();
+  expect(write).not.toHaveBeenCalled();
+});
+
+it("propagates cancellation through the native authorization call", async () => {
+  let started: () => void = () => {};
+  const pending = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let canceled: () => void = () => {};
+  const cancellation = new Promise<void>((resolve) => {
+    canceled = resolve;
+  });
+  const { client } = setup({
+    checkPermissions: (_request, context) =>
+      new Promise((resolve) => {
+        context.signal.addEventListener(
+          "abort",
+          () => {
+            canceled();
+            resolve({});
+          },
+          { once: true },
+        );
+        started();
+      }),
+  });
+  const controller = new AbortController();
+  const request = client.checkPermissions(
+    { workspace: { namespace: "team" } },
+    { signal: controller.signal },
+  );
+  await pending;
+  controller.abort();
+  await expect(request).rejects.toMatchObject({ code: Code.Canceled });
+  await cancellation;
+});
+
+it("registers the native contract on HTTP and validates requests before upstream mutations", async () => {
+  const env = await environment();
+  const upstream = vi.fn(() => ({}));
+  const proxy = setup({
+    listAccessRoles: () => ({ roles: [{ role: AccessRole.WORKSPACE_MEMBER }] }),
+    grantRole: upstream,
+  });
+  const app = Fastify();
+  await registerConsole(app, {
+    context: proxy.context,
+    authorization: proxy.service,
+    service: consoleService({
+      ...env,
+      namespace: "team",
+      access: testBindings(env.fake),
+      roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
+    }),
+  });
+  const url = await app.listen({ host: "127.0.0.1", port: 0 });
+  const client = createClient(
+    AuthorizationService,
+    createConnectTransport({ baseUrl: url, httpVersion: "1.1" }),
+  );
+  try {
+    const result = await client.listAccessRoles({});
+    expect(result.roles[0]?.role).toBe(AccessRole.WORKSPACE_MEMBER);
+    await expect(client.grantRole({})).rejects.toMatchObject({ code: Code.InvalidArgument });
+    expect(upstream).not.toHaveBeenCalled();
+    await client.grantRole(grantRequest());
+    expect(upstream).toHaveBeenCalledOnce();
+  } finally {
+    await app.close();
+    await env.close();
+  }
+});

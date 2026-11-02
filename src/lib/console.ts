@@ -2,6 +2,7 @@ import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
+import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
 
 import i18n from "../i18n/index.js";
 
@@ -18,3 +19,5 @@ export const transport = createConnectTransport({
 export const consoleClient = createClient(ConsoleService, transport);
 
 export const managementClient = createClient(ManagementService, transport);
+
+export const authorizationClient = createClient(AuthorizationService, transport);

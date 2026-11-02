@@ -3,6 +3,7 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { A2AService } from "../../gen/a2a_pb.js";
 import { AgentTemplateService } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentService } from "../../gen/kagent/api/v1/agents_pb.js";
+import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
 import { ExecutionService } from "../../gen/kagent/api/v1/execution_pb.js";
 import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelService } from "../../gen/kagent/api/v1/models_pb.js";
@@ -25,6 +26,7 @@ export function kagentTransport(config: KagentConfig): Transport {
 
 export function kagentClients(transport: Transport) {
   return {
+    authorization: createClient(AuthorizationService, transport),
     workflows: createClient(WorkflowService, transport),
     catalog: createClient(TaskCatalogService, transport),
     execution: createClient(ExecutionService, transport),

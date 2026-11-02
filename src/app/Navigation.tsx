@@ -1,3 +1,4 @@
+import { create } from "@bufbuild/protobuf";
 import {
   Blocks,
   BookOpen,
@@ -6,12 +7,18 @@ import {
   GitBranch,
   MessageCircle,
   Play,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/lib/access";
+import { useResourceAccess } from "@/lib/authorization";
+import {
+  AuthorizationResourceSchema,
+  Permission,
+} from "../../gen/kagent/api/v1/authorization_pb.js";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
@@ -33,6 +40,13 @@ const settings = [
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const access = useAccess();
+  const authorization = useResourceAccess(
+    access.data
+      ? create(AuthorizationResourceSchema, {
+          resource: { case: "workspace", value: { namespace: access.data.workspace } },
+        })
+      : undefined,
+  );
   const links = (items: typeof settings) =>
     items.map(({ path, label, icon: Icon }) => (
       <Button
@@ -48,7 +62,13 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       </Button>
     ));
   const permitted = () => !!access.data;
-  const visibleSettings = settings.filter(permitted);
+  const visibleSettings = [
+    ...settings,
+    ...(authorization.isSuccess &&
+    authorization.data?.allowedActions.includes(Permission.ACCESS_READ)
+      ? [{ path: "/authorization", label: "authorization.title", icon: ShieldCheck }]
+      : []),
+  ].filter(permitted);
   return (
     <nav
       aria-label={t("navigation.main")}
