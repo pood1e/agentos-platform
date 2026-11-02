@@ -18,10 +18,10 @@ beforeEach(async () => {
 });
 afterEach(async () => env.close());
 
-async function assign(engineer: string, harness: string, model?: string) {
-  const { agent, agentTemplate } = await client.getEngineerRuntime({ ref: ref(engineer) });
-  return client.setEngineerRuntime({
-    engineer: ref(engineer),
+async function assign(agentName: string, harness: string, model?: string) {
+  const { agent, agentTemplate } = await client.getAgentRuntime({ ref: ref(agentName) });
+  return client.setAgentRuntime({
+    agent: ref(agentName),
     harness: ref(harness),
     generation: BigInt(String(object(agent?.resource?.value?.metadata).generation)),
     expectedUid: text(object(agent?.resource?.value?.metadata).uid),
@@ -33,7 +33,7 @@ async function assign(engineer: string, harness: string, model?: string) {
 }
 
 describe("native Harness configuration", () => {
-  it("changes one engineer while preserving its shared template and existing sessions", async () => {
+  it("changes one Agent while preserving its shared template and existing sessions", async () => {
     const original = await env.store.get("agents", "inspection");
     const secondMetadata: JsonObject = { ...object(original.metadata), name: "inspection-two" };
     delete secondMetadata.resourceVersion;
@@ -59,10 +59,10 @@ describe("native Harness configuration", () => {
     expect([...env.fake.sessions.values()]).toEqual(sessions);
   });
 
-  it("rejects stale and cross-workspace assignments without overwriting the engineer", async () => {
+  it("rejects stale and cross-workspace assignments without overwriting the Agent", async () => {
     const original = await env.store.get("agents", "inspection");
     const request = {
-      engineer: ref("inspection"),
+      agent: ref("inspection"),
       harness: ref("codex"),
       generation: BigInt(String(object(original.metadata).generation)),
       expectedUid: text(object(original.metadata).uid),
@@ -71,18 +71,18 @@ describe("native Harness configuration", () => {
         object(env.fake.template("inspection").resource?.value?.metadata).resourceVersion,
       ),
     };
-    await client.setEngineerRuntime(request);
+    await client.setAgentRuntime(request);
     await expect(
-      client.setEngineerRuntime({ ...request, harness: ref("standard") }),
+      client.setAgentRuntime({ ...request, harness: ref("standard") }),
     ).rejects.toMatchObject({ code: Code.Aborted });
     await expect(
-      client.setEngineerRuntime({
+      client.setAgentRuntime({
         ...request,
-        engineer: { ...ref("inspection"), namespace: "other" },
+        agent: { ...ref("inspection"), namespace: "other" },
       }),
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
     await expect(
-      client.setEngineerRuntime({
+      client.setAgentRuntime({
         ...request,
         harness: { ...ref("codex"), namespace: "other" },
         generation: BigInt(
@@ -212,8 +212,8 @@ describe("native Harness configuration", () => {
         resourceVersion: text(object(current.metadata).resourceVersion),
       }),
     ).rejects.toThrow("harness.presetProtected");
-    await expect(client.getEngineerRuntime({ ref: ref("assistant") })).rejects.toThrow(
-      "harness.invalidEngineer",
+    await expect(client.getAgentRuntime({ ref: ref("assistant") })).rejects.toThrow(
+      "harness.invalidAgent",
     );
   });
 });

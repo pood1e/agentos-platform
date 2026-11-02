@@ -18,7 +18,7 @@ def names(directory):
         {
             "test": {
                 "systemTemplates": names("charts/agentos/presets/system"),
-                "solutionTemplates": names("tests/fixtures/solution-chart/presets/engineers"),
+                "solutionTemplates": names("tests/fixtures/solution-chart/presets/agents"),
             }
         },
         indent=2,

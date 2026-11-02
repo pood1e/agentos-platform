@@ -19,7 +19,7 @@ export function agentRoles(clients: KagentClients) {
           value: { metadata: object(agent.resource?.value?.metadata), spec: object(source.inline) },
         },
       });
-      return { engineer: agent.ref?.name ?? "", role: roleDefinition(template), agent };
+      return { identity: agent.ref?.name ?? "", role: roleDefinition(template), agent };
     }
     const reference = object(source.ref);
     const { agentTemplate } = await clients.templates.getAgentTemplate(
@@ -30,6 +30,6 @@ export function agentRoles(clients: KagentClients) {
     );
     if (!agentTemplate)
       throw new ConnectError("Execution template is unavailable", Code.PermissionDenied);
-    return { engineer: agentInfo(agent).role, role: roleDefinition(agentTemplate), agent };
+    return { identity: agentInfo(agent).templateName, role: roleDefinition(agentTemplate), agent };
   };
 }

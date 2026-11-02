@@ -25,7 +25,7 @@ func Template(object *unstructured.Unstructured, plans []platform.AccessPlan) er
 			return fmt.Errorf("access plan %s is not ready", plan.Name)
 		}
 		for _, target := range plan.Status.Targets {
-			if target.Engineer != object.GetName() || target.Environment == "" {
+			if target.Identity != object.GetName() || target.Environment == "" {
 				continue
 			}
 			for _, tool := range target.Tools {

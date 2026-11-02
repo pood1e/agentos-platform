@@ -3,7 +3,7 @@ import { Bot, GitBranch, Settings, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { WorkflowNodeKind } from "../../../gen/agentos/console/v1/pack_pb.js";
 import { Avatar } from "../shared/Avatar.js";
-import { roleLabel } from "../shared/engineers.js";
+import { roleLabel } from "../shared/agents.js";
 import { type FlowStage, type FlowStep, workflowStepHeight } from "./workflow-graph.js";
 
 export function WorkflowStep({ data }: NodeProps<FlowStep>) {

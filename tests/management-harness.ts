@@ -1,10 +1,11 @@
 import { createServer } from "node:http";
-import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
+import { CoreV1Api, CustomObjectsApi, KubeConfig } from "@kubernetes/client-node";
 import { resourceStore } from "../server/management/resources.js";
 import { managementService } from "../server/management/service.js";
+import { workflowDocuments } from "../server/management/workflows/documents.js";
 import { speechSettingsStore } from "../server/voice/settings.js";
 import { kubernetesRequest } from "./fake-kagent/kubernetes.js";
-import { fakeKagent } from "./harness.js";
+import { fakeKagent, testBindings } from "./harness.js";
 
 export async function managementEnvironment() {
   const env = fakeKagent();
@@ -27,6 +28,12 @@ export async function managementEnvironment() {
   });
   const store = resourceStore(config, "agentos", "agentos-skills", env.clients);
   const dependencies = {
+    access: testBindings(env.fake),
+    documents: workflowDocuments(
+      config.makeApiClient(CoreV1Api),
+      config.makeApiClient(CustomObjectsApi),
+      "agentos",
+    ),
     speech: speechSettingsStore(config.makeApiClient(CoreV1Api), "agentos", "agentos-speech"),
     store,
     clients: env.clients,

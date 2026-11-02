@@ -3,8 +3,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { WorkflowInteraction } from "../gen/agentos/console/v1/pack_pb.js";
-import { Workflows } from "../src/features/engineers/Workflows.js";
-import { workflowGraph } from "../src/features/engineers/workflow-graph.js";
+import { Workflows } from "../src/features/agents/Workflows.js";
+import { workflowGraph } from "../src/features/agents/workflow-graph.js";
 import i18n from "../src/i18n/index.js";
 import { applyPackLocales, parsePack } from "../src/lib/pack.js";
 

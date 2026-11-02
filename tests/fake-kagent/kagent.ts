@@ -46,6 +46,10 @@ const textPart = (value: string) => ({ content: { case: "text" as const, value }
 export class FakeKagent {
   readonly agents: Agent[];
   readonly sessions = new Map<string, Session>();
+  readonly workflowDefinitions = new Map<
+    string,
+    { document: Uint8Array; preparedRevision: string; sha256: string }
+  >();
   readonly executions = new Map<string, TaskExecution>();
   readonly sessionParents = new Map<string, string>();
   readonly credentials = new Map<string, string>();
@@ -76,6 +80,7 @@ export class FakeKagent {
     this.lifetime = new AbortController();
     this.requests.clear();
     this.sessions.clear();
+    this.workflowDefinitions.clear();
     this.tasks.clear();
     this.executions.clear();
     for (const session of fixtures.sessions) {
@@ -157,6 +162,24 @@ export class FakeKagent {
       initiatorId: session.creator,
     });
     this.sessions.set(session.id, session);
+    const value = this.agents.find((item) => agentKey(item.ref) === agentKey(agent))?.resource
+      ?.value;
+    const spec = object(value?.spec);
+    const templateName = object(object(spec.template).ref).name;
+    const template =
+      typeof templateName === "string"
+        ? this.templates.get(templateName)?.resource?.value?.spec
+        : object(object(spec.template).inline);
+    const source = object(object(template).workflowFrom);
+    if (typeof source.name === "string" && typeof source.key === "string") {
+      const document = object(this.resources.get("configmaps", source.name).data)[source.key];
+      if (typeof document === "string")
+        this.workflowDefinitions.set(session.id, {
+          document: new TextEncoder().encode(document),
+          preparedRevision: "workflow-test-revision",
+          sha256: "test-digest",
+        });
+    }
     return session;
   }
 

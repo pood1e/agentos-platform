@@ -6,6 +6,7 @@ import {
   TaskCatalogScopeSchema,
   TaskCatalogView,
 } from "../../gen/kagent/api/v1/task_catalog_pb.js";
+import { listNativeAgents, listNativeTemplates } from "../kagent/catalog.js";
 import { eachPage, type KagentClients } from "../kagent/clients.js";
 import { acceptMessage } from "../kagent/send.js";
 import { agentInfo, agentKey, sessionInfo } from "./agents.js";
@@ -22,12 +23,12 @@ const missing = (error: unknown) => error instanceof ConnectError && error.code 
 export function taskQueries({ workspace, clients }: { workspace: string; clients: KagentClients }) {
   const changes = new EventEmitter().setMaxListeners(0);
   async function agents(signal?: AbortSignal) {
-    const [{ agents }, { agentTemplates }] = await Promise.all([
-      clients.agents.listAgents({ namespace: workspace }, { ...rpc, signal }),
-      clients.templates.listAgentTemplates({ namespace: workspace }, { ...rpc, signal }),
+    const [agents, templates] = await Promise.all([
+      listNativeAgents(clients, workspace, { ...rpc, signal }),
+      listNativeTemplates(clients, workspace, { ...rpc, signal }),
     ]);
-    const templates = new Map(agentTemplates.map((value) => [agentKey(value.ref), value]));
-    return agents.map((value) => agentInfo(value, templates));
+    const byName = new Map(templates.map((value) => [agentKey(value.ref), value]));
+    return agents.map((value) => agentInfo(value, byName));
   }
   async function session(id: string, signal?: AbortSignal) {
     try {

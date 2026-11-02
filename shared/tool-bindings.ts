@@ -65,15 +65,21 @@ export class ToolBindings {
           (target) =>
             target.service === service &&
             target.environment === environment &&
-            (identity === "catalog" ? target.catalog : target.engineer === identity),
+            (identity === "catalog" ? target.catalog : target.identity === identity),
         ),
       )
     );
   }
 
-  usable(engineer: string, server: string) {
+  usable(identity: string, server: string) {
     const target = this.targets.get(server);
-    return Boolean(target && !target.catalog && (!target.engineer || target.engineer === engineer));
+    return Boolean(
+      target &&
+        !target.catalog &&
+        (target.environment
+          ? target.identity === identity
+          : !target.identity || target.identity === identity),
+    );
   }
 
   private decision(target: Target | undefined, tool: string) {
@@ -100,9 +106,9 @@ export class ToolBindings {
     );
   }
 
-  permitsCall(engineer: string, services: string[], tool: string, write: boolean) {
+  permitsCall(identity: string, services: string[], tool: string, write: boolean) {
     return [...this.targets.values()].some((target) => {
-      if (target.catalog || target.engineer !== engineer || !services.includes(target.service))
+      if (target.catalog || target.identity !== identity || !services.includes(target.service))
         return false;
       const decision = this.decision(target, tool);
       return Boolean(decision && (!decision.write || write));
@@ -132,8 +138,8 @@ export class ToolBindings {
     });
   }
 
-  permitsTool(engineer: string, server: string, tool: string, write: boolean) {
-    if (!this.usable(engineer, server)) return false;
+  permitsTool(identity: string, server: string, tool: string, write: boolean) {
+    if (!this.usable(identity, server)) return false;
     const decision = this.decision(this.targets.get(server), tool);
     return Boolean(decision && (!decision.write || write));
   }
@@ -142,9 +148,9 @@ export class ToolBindings {
     return this.decision(this.targets.get(server), tool)?.requireApproval ?? true;
   }
 
-  requirements(engineer: string) {
+  requirements(identity: string) {
     return [...this.targets.values()].flatMap((target) => {
-      if (!this.usable(engineer, target.server)) return [];
+      if (!this.usable(identity, target.server)) return [];
       return (target.tools ?? []).map((decision) =>
         create(ToolRequirementSchema, {
           server: target.server,
@@ -155,7 +161,7 @@ export class ToolBindings {
     });
   }
 
-  bindings(engineer: string, bindings: ToolBinding[], mode: "validate" | "normalize") {
+  bindings(identity: string, bindings: ToolBinding[], mode: "validate" | "normalize") {
     const strict = mode === "validate";
     const groups = new Map<string, ToolBinding>();
     for (const binding of bindings) {
@@ -165,14 +171,14 @@ export class ToolBindings {
           ? [...this.targets.values()].find(
               (candidate) =>
                 candidate.service === source.service &&
-                candidate.engineer === engineer &&
+                candidate.identity === identity &&
                 this.decision(candidate, name),
             )
           : source;
         const decision = this.decision(target, name);
         if (
           !source ||
-          !this.usable(engineer, binding.server) ||
+          !this.usable(identity, binding.server) ||
           !target ||
           !decision ||
           name !== this.qualifiedName(target, decision.name)

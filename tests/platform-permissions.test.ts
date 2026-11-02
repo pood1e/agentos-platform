@@ -20,7 +20,7 @@ it("enforces each resource permission independently at every public mutation", a
         respondInteraction: () => ({}),
       });
       router.service(ManagementService, {
-        setEngineerRuntime: () => ({}),
+        setAgentRuntime: () => ({}),
         saveSkill: () => ({}),
         deleteSkill: () => ({}),
         saveConnection: () => ({}),
@@ -42,7 +42,7 @@ it("enforces each resource permission independently at every public mutation", a
   const mutations: [Capability, () => Promise<unknown>][] = [
     [Capability.AGENTS_MANAGE, () => agents.createRole({})],
     [Capability.AGENTS_MANAGE, () => agents.updateRole({})],
-    [Capability.AGENTS_MANAGE, () => resources.setEngineerRuntime({})],
+    [Capability.AGENTS_MANAGE, () => resources.setAgentRuntime({})],
     [Capability.SKILLS_MANAGE, () => resources.saveSkill({})],
     [Capability.SKILLS_MANAGE, () => resources.deleteSkill({})],
     [

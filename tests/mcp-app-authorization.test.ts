@@ -34,7 +34,7 @@ async function canonical() {
   return { ...env, binding: spec.tools[0].mcp };
 }
 
-it("authorizes canonical bindings without an Environment or an engineer-named connection", async () => {
+it("authorizes canonical bindings without an Environment or an Agent-named connection", async () => {
   const env = await canonical();
   await expect(env.client.getAppResource(env.request)).resolves.toHaveProperty("result");
   await expect(

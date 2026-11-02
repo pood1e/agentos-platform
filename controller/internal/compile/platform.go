@@ -14,7 +14,7 @@ import (
 
 func platformView(plan *platform.AccessPlan, environment platform.Environment, target platform.CompiledTarget, allowed []string, path string) []client.Object {
 	gateway := plan.Spec.Platform
-	identity := target.Engineer
+	identity := target.Identity
 	if target.Catalog {
 		identity = "catalog"
 	}
@@ -40,7 +40,7 @@ func platformView(plan *platform.AccessPlan, environment platform.Environment, t
 		objects = append(objects, jwks, oauth)
 		policy.Spec.Traffic = &agw.Traffic{JWTAuthentication: &agw.JWTAuthentication{Mode: "Strict", PreserveToken: true, Providers: []agw.JWTProvider{provider}}, Authorization: authorization("has(jwt.azp) && jwt.azp == 'agentos-catalog' && request.method == 'POST' && (json(request.body).method in ['initialize','notifications/initialized','ping','tools/list'] || (json(request.body).method == 'resources/read' && json(request.body).params.uri.startsWith('ui://')))")}
 	} else {
-		backend.Labels["agentos.dev/engineer"], backend.Labels["agentos.dev/tool-access"] = target.Engineer, target.Access
+		backend.Labels["agentos.dev/identity"], backend.Labels["agentos.dev/tool-access"] = target.Identity, target.Access
 		remote.Spec.ActorJWT = &kagent.ActorJWT{Audiences: []string{origin}}
 		required := ""
 		if target.Access == "write" {
@@ -71,7 +71,7 @@ func RuntimeAuthorization(backend, namespace, server, scope string, subject bool
 }
 
 func catalogPolicy(plan *platform.AccessPlan, target platform.CompiledTarget, tools []string) *agw.AgentgatewayPolicy {
-	policy := routePolicy(plan.Namespace, target.Service+"-engineer-auth", "mcp-"+target.Service)
+	policy := routePolicy(plan.Namespace, target.Service+"-identity-auth", "mcp-"+target.Service)
 	policy.Spec.Backend = &agw.BackendFull{MCP: &agw.BackendMCP{Authorization: toolAuthorization(tools, true)}}
 	return policy
 }

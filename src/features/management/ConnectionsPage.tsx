@@ -20,8 +20,8 @@ import {
 } from "../../../gen/agentos/management/v1/management_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
+import { roleLabel } from "../shared/agents.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
-import { roleLabel } from "../shared/engineers.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 
 import {

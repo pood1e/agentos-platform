@@ -57,7 +57,7 @@ Git 来源填写完整 `git.url` 与固定 `git.commit`，S3 来源填写原生�
 业务角色模板通过平台共享模板生成 Preset，`agentos.presetSkill` 可引用 Skill 目录：
 
 ```yaml
-{{ include "agentos.presets" (dict "root" . "files" (.Files.Glob "presets/engineers/*.yaml")) }}
+{{ include "agentos.presets" (dict "root" . "files" (.Files.Glob "presets/agents/*.yaml")) }}
 ```
 
 示例见[方案 Chart](../tests/fixtures/solution-chart)。未修改预置随方案升级更新，用户编辑后保留，详见[控制器](kubernetes-controller.md)。

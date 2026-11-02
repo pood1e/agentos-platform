@@ -4,7 +4,7 @@ import { InteractionSchema } from "../../../gen/agentos/console/v1/task_pb.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { taskTree } from "../tree.js";
-import { engineer } from "./engineers.js";
+import { agentSummary } from "./agents.js";
 import { runSummary } from "./runs.js";
 
 export function executionGraph(graph: TaskGraph, roots: readonly string[]) {
@@ -19,7 +19,7 @@ export function executionGraph(graph: TaskGraph, roots: readonly string[]) {
   return create(ExecutionGraphSchema, {
     runs: selected.map((entry) => runSummary(entry, background.has(entry.id))),
     participants: [...new Set(selected.map((entry) => entry.agentId))].map((id) =>
-      engineer(
+      agentSummary(
         graph,
         id,
         selected.filter((entry) => entry.agentId === id),

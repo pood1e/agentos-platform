@@ -58,7 +58,7 @@
   verbs: [get, create, update, delete]
 - apiGroups: ['']
   resources: [configmaps]
-  verbs: [get, create, update, patch]
+  verbs: [get, list, create, update, patch, delete]
 {{- end -}}
 
 {{- define "agentos.dataplaneEnv" -}}

@@ -30,13 +30,38 @@ export const router = createBrowserRouter([
         }),
       },
       {
-        path: "engineers",
+        path: "workflows",
+        lazy: async () => ({
+          Component: (await import("../features/workflows/WorkflowsPage.js")).WorkflowsPage,
+        }),
+      },
+      {
+        path: "workflows/new",
+        lazy: async () => {
+          const { WorkflowPage } = await import("../features/workflows/WorkflowPage.js");
+          return { element: <WorkflowPage isNew /> };
+        },
+      },
+      {
+        path: "workflows/:name/edit",
+        lazy: async () => ({
+          Component: (await import("../features/workflows/WorkflowPage.js")).WorkflowPage,
+        }),
+      },
+      {
+        path: "workflows/:name/history",
+        lazy: async () => ({
+          Component: (await import("../features/workflows/WorkflowHistory.js")).WorkflowHistory,
+        }),
+      },
+      {
+        path: "agents",
         element: <AdvancedLayout />,
         children: [
           {
             index: true,
             lazy: async () => ({
-              Component: (await import("../features/engineers/EngineersPage.js")).EngineersPage,
+              Component: (await import("../features/agents/AgentsPage.js")).AgentsPage,
             }),
           },
           {

@@ -10,6 +10,7 @@ import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
+import { WorkflowService } from "../../gen/kagent/api/v1/workflows_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import type { KagentConfig } from "../shared/config.js";
 import { rpcMetrics } from "../shared/telemetry.js";
@@ -24,6 +25,7 @@ export function kagentTransport(config: KagentConfig): Transport {
 
 export function kagentClients(transport: Transport) {
   return {
+    workflows: createClient(WorkflowService, transport),
     catalog: createClient(TaskCatalogService, transport),
     execution: createClient(ExecutionService, transport),
     system: createClient(SystemService, transport),

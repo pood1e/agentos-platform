@@ -4,6 +4,7 @@ package agentos.management.v1;
 
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/speech.proto";
+import "agentos/management/v1/workflow.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "kagent/api/v1/agent_templates.proto";
@@ -12,9 +13,29 @@ import "kagent/api/v1/common.proto";
 import "kagent/api/v1/harnesses.proto";
 import "kagent/api/v1/models.proto";
 import "kagent/api/v1/tools.proto";
+import "kagent/api/v1/workflows.proto";
 import "kagent/runtime/v1/memory.proto";
 
 service ManagementService {
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc GetWorkflowSchema(kagent.api.v1.GetWorkflowSchemaRequest) returns (kagent.api.v1.GetWorkflowSchemaResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc GetSessionWorkflow(kagent.api.v1.GetSessionWorkflowRequest) returns (kagent.api.v1.GetSessionWorkflowResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetWorkflow(GetWorkflowRequest) returns (GetWorkflowResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ValidateWorkflow(ValidateWorkflowRequest) returns (ValidateWorkflowResponse);
+  rpc PublishWorkflow(PublishWorkflowRequest) returns (PublishWorkflowResponse);
+  rpc SaveWorkflowLayout(SaveWorkflowLayoutRequest) returns (SaveWorkflowLayoutResponse);
   rpc GetSchemas(GetSchemasRequest) returns (GetSchemasResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -48,10 +69,10 @@ service ManagementService {
   rpc SaveHarness(SaveHarnessRequest) returns (kagent.api.v1.CreateHarnessResponse);
   rpc DeleteHarness(DeleteHarnessRequest) returns (kagent.api.v1.DeleteHarnessResponse);
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
-  rpc GetEngineerRuntime(kagent.api.v1.GetAgentRequest) returns (GetEngineerRuntimeResponse) {
+  rpc GetAgentRuntime(kagent.api.v1.GetAgentRequest) returns (GetAgentRuntimeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc SetEngineerRuntime(SetEngineerRuntimeRequest) returns (SetEngineerRuntimeResponse);
+  rpc SetAgentRuntime(SetAgentRuntimeRequest) returns (SetAgentRuntimeResponse);
 }
 
 enum ConnectionKind {
@@ -82,7 +103,7 @@ message Connection {
 }
 
 message MCPCredentialBinding {
-  string engineer = 1;
+  string identity = 1;
   kagent.api.v1.ToolServer server = 2;
 }
 
@@ -122,13 +143,13 @@ message DeleteHarnessRequest {
   string resource_version = 2 [(buf.validate.field).string.min_len = 1];
 }
 
-message GetEngineerRuntimeResponse {
+message GetAgentRuntimeResponse {
   kagent.api.v1.Agent agent = 1;
   kagent.api.v1.AgentTemplate agent_template = 2;
 }
 
-message SetEngineerRuntimeRequest {
-  kagent.api.v1.ResourceReference engineer = 1 [(buf.validate.field).required = true];
+message SetAgentRuntimeRequest {
+  kagent.api.v1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   kagent.api.v1.ResourceReference harness = 2 [(buf.validate.field).required = true];
   reserved 3;
   reserved "resource_version";
@@ -139,7 +160,7 @@ message SetEngineerRuntimeRequest {
   optional string template_resource_version = 7 [(buf.validate.field).string.min_len = 1];
 }
 
-message SetEngineerRuntimeResponse {
+message SetAgentRuntimeResponse {
   kagent.api.v1.Agent agent = 1;
   kagent.api.v1.AgentTemplate agent_template = 2;
 }
@@ -187,7 +208,7 @@ message SkillItem {
   string resource_version = 3;
   repeated string used_by = 4;
 }
-// Persisted catalog uses the same Skill definition that an engineer binds.
+// Persisted catalog uses the same Skill definition that an Agent binds.
 message SkillCatalog {
   repeated SkillItem items = 1;
 }

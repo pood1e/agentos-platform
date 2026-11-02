@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
-import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
+import type { ToolBinding } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { ToolRequirement } from "../../../gen/agentos/console/v1/tool_pb.js";
 import type { BuiltinToolCatalog } from "../../../gen/kagent/api/v1/agents_pb.js";
 import type { ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
@@ -26,24 +26,28 @@ import { Failure } from "../management/ResourcePage.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { toolServerLabel, toolText } from "../shared/tool-label.js";
 import { serverName, serviceServers, toolRequirements } from "./mcp-services.js";
-import { hasTool, toggleTool } from "./role-draft.js";
+import { hasTool, toggleTool } from "./tool-bindings.js";
 import { useMCPServices } from "./use-mcp-services.js";
 
-export function RoleTools({
-  role,
+export function ToolBindingsEditor({
+  identity,
+  bindings,
   builtinCatalog,
   servers: toolServers,
   requirements,
   onChange,
+  disabled = false,
 }: {
-  role: RoleDefinition;
+  identity: string;
+  bindings: ToolBinding[];
+  disabled?: boolean;
   builtinCatalog?: BuiltinToolCatalog;
   servers: ToolServer[];
   requirements?: ToolRequirement[];
-  onChange: (role: RoleDefinition) => void;
+  onChange: (bindings: ToolBinding[]) => void;
 }) {
   const { t } = useTranslation();
-  const editable = useCapability(Capability.AGENTS_MANAGE);
+  const editable = useCapability(Capability.AGENTS_MANAGE) && !disabled;
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string[]>();
   const catalog = useMCPServices();
@@ -54,7 +58,7 @@ export function RoleTools({
   const access = toolRequirements(requirements);
   const sources = [
     ...services.flatMap((service) => {
-      const profiles = serviceServers(role.name, service, !!connectionEnvironment(service));
+      const profiles = serviceServers(identity, service, !!connectionEnvironment(service));
       return profiles.length
         ? [
             {
@@ -88,7 +92,7 @@ export function RoleTools({
       })),
   ];
   const selectedServers = sources.filter((server) =>
-    server.discoveredTools.some((tool) => hasTool(role, tool.server, tool.name)),
+    server.discoveredTools.some((tool) => hasTool(bindings, tool.server, tool.name)),
   );
   const defaultExpanded = (selectedServers.length ? selectedServers : sources.slice(0, 1)).map(
     (server) => server.id,
@@ -136,24 +140,17 @@ export function RoleTools({
         onValueChange={setExpanded}
         className="rounded-lg border px-3"
       >
-        {(!query || !!builtins.length) && (
+        {builtinCatalog && (!query || !!builtins.length) && (
           <AccordionItem value="builtin" data-testid="builtin-tools">
             <AccordionTrigger className="gap-3 text-xs">
               <ToolIcon name="kagent" className="size-7" />
               <span className="min-w-0 flex-1 text-left">{t("configuration.builtinTools")}</span>
               <span className="text-[11px] font-normal text-muted-foreground">
-                {builtinCatalog
-                  ? t("configuration.toolCount", { count: builtinTools.length })
-                  : t("configuration.awaitingToolObservation")}
+                {t("configuration.toolCount", { count: builtinTools.length })}
               </span>
             </AccordionTrigger>
             <AccordionContent className="space-y-3">
-              {!builtinCatalog && (
-                <p className="text-xs text-muted-foreground">
-                  {t("configuration.awaitingToolObservation")}
-                </p>
-              )}
-              {builtinCatalog && !builtinTools.length && (
+              {!builtinTools.length && (
                 <p className="text-xs text-muted-foreground">{t("configuration.noTools")}</p>
               )}
               {builtins.map((tool) => (
@@ -173,7 +170,7 @@ export function RoleTools({
         )}
         {servers.map((server) => {
           const selected = server.discoveredTools.filter((tool) =>
-            hasTool(role, tool.server, tool.name),
+            hasTool(bindings, tool.server, tool.name),
           ).length;
           return (
             <AccordionItem key={server.id} value={server.id}>
@@ -209,11 +206,11 @@ export function RoleTools({
                         className="mt-1"
                         aria-label={tool.label.name}
                         disabled={!editable || decision === undefined}
-                        checked={hasTool(role, tool.server, tool.name)}
+                        checked={hasTool(bindings, tool.server, tool.name)}
                         onCheckedChange={(checked) =>
                           onChange(
                             toggleTool(
-                              role,
+                              bindings,
                               decision === true,
                               tool.server,
                               tool.name,

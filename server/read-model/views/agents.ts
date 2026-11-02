@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
-import { type Engineer, EngineerSchema } from "../../../gen/agentos/console/v1/engineer_pb.js";
+import { type AgentSummary, AgentSummarySchema } from "../../../gen/agentos/console/v1/agent_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import { type AgentInfo, systemRoles } from "../agents.js";
+import { type AgentInfo, agentRef } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { interrupted, terminal } from "../state.js";
@@ -24,7 +24,7 @@ const idle: AgentActivity = {
   interrupted: false,
 };
 
-function engineerState(agent: AgentInfo | undefined, activity: AgentActivity): ActivityState {
+function agentState(agent: AgentInfo | undefined, activity: AgentActivity): ActivityState {
   if (!agent) return ActivityState.UNOBSERVED;
   if (!agent.ready) return ActivityState.UNAVAILABLE;
   if (activity.working) return ActivityState.WORKING;
@@ -34,13 +34,19 @@ function engineerState(agent: AgentInfo | undefined, activity: AgentActivity): A
 }
 
 /** Unknown IDs are agents reported only by the runtime. */
-function engineerOf(agent: AgentInfo | undefined, id: string, activity: AgentActivity): Engineer {
-  return create(EngineerSchema, {
+function summaryOf(
+  agent: AgentInfo | undefined,
+  id: string,
+  activity: AgentActivity,
+): AgentSummary {
+  return create(AgentSummarySchema, {
     id,
     name: agent?.displayName || (agent ? "" : (id.split("/").at(-1) ?? id)),
-    role: agent?.role ?? "",
+    template: agent?.templateName
+      ? agentRef(`${id.split("/")[0]}/${agent.templateName}`)
+      : undefined,
     description: agent?.description ?? "",
-    state: engineerState(agent, activity),
+    state: agentState(agent, activity),
     unavailableReason: agent?.reason ?? "",
     unavailableMessage: agent?.message ?? "",
     activeTasks: activity.active,
@@ -48,10 +54,10 @@ function engineerOf(agent: AgentInfo | undefined, id: string, activity: AgentAct
   });
 }
 
-/** Engineer view over the given tasks of one execution tree. */
-export function engineer(graph: TaskGraph, id: string, entries: TaskEntry[]): Engineer {
+/** AgentSummary view over the given tasks of one execution tree. */
+export function agentSummary(graph: TaskGraph, id: string, entries: TaskEntry[]): AgentSummary {
   const active = entries.filter((entry) => !terminal(entry.state));
-  return engineerOf(graph.agent(id), id, {
+  return summaryOf(graph.agent(id), id, {
     active: active.length,
     calls: entries.reduce((count, entry) => count + entry.calls.length, 0),
     working: active.some(running),
@@ -60,8 +66,6 @@ export function engineer(graph: TaskGraph, id: string, entries: TaskEntry[]): En
   });
 }
 
-export function engineers(agents: AgentInfo[], activity: ReadonlyMap<string, AgentActivity>) {
-  return agents
-    .filter((agent) => !agent.workflow && !systemRoles.has(agent.role))
-    .map((agent) => engineerOf(agent, agent.id, activity.get(agent.id) ?? idle));
+export function agentSummaries(agents: AgentInfo[], activity: ReadonlyMap<string, AgentActivity>) {
+  return agents.map((agent) => summaryOf(agent, agent.id, activity.get(agent.id) ?? idle));
 }

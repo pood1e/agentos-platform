@@ -11,29 +11,29 @@ import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js"
 import { errorKey } from "../../../shared/errors.js";
 import { useCapability } from "../../lib/access.js";
 import { usePack } from "../../lib/pack.js";
+import { AgentDirectory } from "./AgentDirectory.js";
 import { RoleEditor } from "./RoleEditor.js";
-import { Team } from "./Team.js";
 import { Workflows } from "./Workflows.js";
 
-export function EngineersPage() {
+export function AgentsPage() {
   const { t } = useTranslation();
   const editable = useCapability(Capability.AGENTS_MANAGE);
   const pack = usePack();
-  const engineers = useQuery(ConsoleService.method.listEngineers, {}, { refetchInterval: 3_000 });
+  const agents = useQuery(ConsoleService.method.listAgents, {}, { refetchInterval: 3_000 });
   const configuration = useQuery(ConsoleService.method.getConfiguration, {});
-  const error = configuration.error ?? engineers.error;
+  const error = configuration.error ?? agents.error;
   const [editor, setEditor] = useState(false);
   const [selected, setSelected] = useState<RoleDefinition>();
-  const [selectedEngineer, setSelectedEngineer] = useState<string>();
+  const [selectedAgentId, setSelectedAgentId] = useState<string>();
   const opener = useRef<HTMLButtonElement>(null);
   const configure = (
     role: RoleDefinition | undefined,
     trigger: HTMLButtonElement,
-    engineer?: string,
+    agentId?: string,
   ) => {
     opener.current = trigger;
     setSelected(role);
-    setSelectedEngineer(engineer);
+    setSelectedAgentId(agentId);
     setEditor(true);
   };
   return (
@@ -60,18 +60,18 @@ export function EngineersPage() {
               variant="ghost"
               size="icon-sm"
               aria-label={t("configuration.refresh")}
-              onClick={() => void Promise.all([configuration.refetch(), engineers.refetch()])}
+              onClick={() => void Promise.all([configuration.refetch(), agents.refetch()])}
             >
               <RefreshCw />
             </Button>
           </AlertDescription>
         </Alert>
       )}
-      <Team
-        engineers={engineers.data?.engineers ?? []}
+      <AgentDirectory
+        agents={agents.data?.agents ?? []}
         roles={configuration.data?.roles ?? []}
-        tools={configuration.data?.engineerTools ?? []}
-        loading={engineers.isPending || (engineers.isError && !engineers.data)}
+        tools={configuration.data?.agentTools ?? []}
+        loading={agents.isPending || (agents.isError && !agents.data)}
         onConfigure={configure}
       />
       <Workflows workflows={pack.workflows} />
@@ -80,17 +80,17 @@ export function EngineersPage() {
           <RoleEditor
             key={selected?.name ?? "new"}
             role={selected}
-            engineer={selectedEngineer}
+            agentId={selectedAgentId}
             configuration={configuration.data}
             onReturnFocus={() => opener.current?.focus()}
             onRuntimeApplied={() => {
               void configuration.refetch();
-              void engineers.refetch();
+              void agents.refetch();
             }}
             onSaved={() => {
               setEditor(false);
               void configuration.refetch();
-              void engineers.refetch();
+              void agents.refetch();
             }}
           />
         )}

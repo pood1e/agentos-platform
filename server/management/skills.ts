@@ -6,6 +6,7 @@ import {
   SkillCatalogSchema,
 } from "../../gen/agentos/management/v1/management_pb.js";
 import { roleDefinition, skillSource } from "../console/role-template.js";
+import { listNativeTemplates } from "../kagent/catalog.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { type PageRequest, pageOf } from "../read-model/page.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
@@ -17,9 +18,9 @@ export function skillCommands(store: ResourceStore, clients: KagentClients, name
     return { ...state, catalog: fromJsonString(SkillCatalogSchema, state.value) };
   }
   async function list(request: PageRequest) {
-    const [{ catalog, version }, { agentTemplates }] = await Promise.all([
+    const [{ catalog, version }, agentTemplates] = await Promise.all([
       read(),
-      clients.templates.listAgentTemplates({ namespace }),
+      listNativeTemplates(clients, namespace),
     ]);
     const roles = agentTemplates.map(roleDefinition);
     const query = request.query.trim().toLowerCase();

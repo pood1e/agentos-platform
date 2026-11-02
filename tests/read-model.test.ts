@@ -4,9 +4,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Role, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
+import { AgentSchema } from "../gen/kagent/api/v1/agents_pb.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskTree } from "../server/read-model/tree.js";
-import { engineer } from "../server/read-model/views/engineers.js";
+import { agentSummary } from "../server/read-model/views/agents.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { taskSummary } from "../server/read-model/views/task.js";
 import { fixtureGraph, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
@@ -111,10 +113,10 @@ describe("views", () => {
     expect(root?.calls.some((call) => index.target(root, call) === ids.background)).toBe(true);
   });
 
-  it("keeps engineers that left the namespace as observed participants", () => {
+  it("keeps Agents that left the namespace as observed participants", () => {
     const entries = taskTree(index, ids.chatRoot)?.entries ?? [];
     expect(
-      engineer(
+      agentSummary(
         index,
         "agentos/service-health",
         entries.filter((entry) => entry.agentId === "agentos/service-health"),
@@ -175,11 +177,11 @@ describe("listings", () => {
     ).toEqual([ids.dispatchRoot]);
   });
 
-  it("lists engineers without system helpers", async () => {
-    const roles = (await env.projection.engineers(reader)).map((item) => item.role);
-    expect(roles).not.toContain("assistant");
-    expect(roles).not.toContain("role-builder");
-    expect(roles).toEqual(expect.arrayContaining(["coordinator", "inspection", "remediation"]));
+  it("lists all native visible Agent identities independently of business roles", async () => {
+    const agents = await env.projection.agentSummaries(reader);
+    expect(agents.map((agent) => agent.id).sort()).toEqual(
+      env.fake.agents.map((agent) => `${agent.ref?.namespace}/${agent.ref?.name}`).sort(),
+    );
   });
 
   it("lists conversations by kind", async () => {
@@ -204,4 +206,35 @@ describe("listings", () => {
       ids.inspection,
     );
   });
+});
+
+it("reads every native Agent and template page for the generic directory", async () => {
+  const env = await environment();
+  try {
+    for (let index = 0; index < 105; index++) {
+      const name = `worker-${index.toString().padStart(3, "0")}`;
+      const template = `template-${index.toString().padStart(3, "0")}`;
+      env.fake.templates.set(
+        template,
+        create(AgentTemplateSchema, {
+          ref: { namespace: "agentos", name: template },
+          resource: { value: { spec: { description: `Template ${index}` } } },
+        }),
+      );
+      env.fake.agents.push(
+        create(AgentSchema, {
+          ref: { namespace: "agentos", name },
+          resource: { value: { spec: { template: { ref: { name: template } } } } },
+        }),
+      );
+    }
+    const agents = await env.projection.agents();
+    expect(agents).toHaveLength(env.fake.agents.length);
+    expect(agents.find((agent) => agent.id === "agentos/worker-104")).toMatchObject({
+      templateName: "template-104",
+      description: "Template 104",
+    });
+  } finally {
+    await env.close();
+  }
 });

@@ -3,6 +3,7 @@ import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
+import { agentRef } from "../server/read-model/agents.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { runSummary } from "../server/read-model/views/runs.js";
@@ -26,7 +27,7 @@ it("filters the operation state and participating member together, including pau
         await list({
           ...page,
           states: [ActivityState.AWAITING_APPROVAL],
-          engineer: "agentos/remediation",
+          agent: agentRef("agentos/remediation"),
         })
       ).tasks,
     ).toEqual(pending.tasks);
@@ -35,7 +36,7 @@ it("filters the operation state and participating member together, including pau
         await list({
           ...page,
           states: [ActivityState.AWAITING_APPROVAL],
-          engineer: "agentos/inspection",
+          agent: agentRef("agentos/inspection"),
         })
       ).totalSize,
     ).toBe(0);
@@ -63,7 +64,7 @@ it("binds cursors to normalized states and members", async () => {
     await expect(list({ ...request, states: [ActivityState.SUCCEEDED] })).rejects.toThrow(
       "pagination.invalidPage",
     );
-    await expect(list({ ...request, engineer: "agentos/remediation" })).rejects.toThrow(
+    await expect(list({ ...request, agent: agentRef("agentos/remediation") })).rejects.toThrow(
       "pagination.invalidPage",
     );
     await expect(list({ ...request, states: [] })).rejects.toThrow("pagination.invalidPage");

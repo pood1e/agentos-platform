@@ -4,32 +4,32 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
-import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ManagementService } from "../../../gen/agentos/management/v1/management_pb.js";
 import type { AgentTemplate } from "../../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { Agent } from "../../../gen/kagent/api/v1/agents_pb.js";
+import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
 import { useCapability } from "../../lib/access.js";
-import { RoleModel } from "../engineers/RoleModel.js";
+import { ModelConfigSelect } from "../agents/ModelConfigSelect.js";
 import { runtimeName } from "../shared/HarnessIcon.js";
 import { object } from "./connection-schema.js";
 import { HarnessPicker } from "./HarnessPicker.js";
 import { Failure } from "./ResourcePage.js";
 import { languageModels, runtimeModel } from "./runtime-models.js";
 
-export function EngineerRuntime({
+export function AgentRuntime({
   agent,
   harnesses,
   models,
-  role,
+  defaultModel,
   onApplied,
   active,
 }: {
   agent: Agent;
   harnesses: Harness[];
   models: ModelConfig[];
-  role: RoleDefinition;
+  defaultModel?: ResourceReference;
   onApplied: (template?: AgentTemplate) => void;
   active: boolean;
 }) {
@@ -40,9 +40,7 @@ export function EngineerRuntime({
   const [selected, setSelected] = useState(() => currentName(agent));
   const [selectedModel, setSelectedModel] = useState(
     String(
-      object(object(agent.resource?.value?.spec).modelConfigRef).name ??
-        role.modelConfig?.name ??
-        "",
+      object(object(agent.resource?.value?.spec).modelConfigRef).name ?? defaultModel?.name ?? "",
     ),
   );
   const precondition = (agent: Agent) => ({
@@ -51,11 +49,11 @@ export function EngineerRuntime({
   });
   const [version, setVersion] = useState(() => precondition(agent));
   const runtime = useQuery(
-    ManagementService.method.getEngineerRuntime,
+    ManagementService.method.getAgentRuntime,
     { ref: agent.ref },
     { refetchInterval: 3_000, enabled: active },
   );
-  const apply = useMutation(ManagementService.method.setEngineerRuntime);
+  const apply = useMutation(ManagementService.method.setAgentRuntime);
   const current = runtime.data?.agent ?? agent;
   const chosen = harnesses.find((item) => item.ref?.name === selected);
   const model = models.find((item) => item.ref?.name === selectedModel);
@@ -80,10 +78,13 @@ export function EngineerRuntime({
     try {
       const result = await apply.mutateAsync({
         ...version,
-        engineer: current.ref,
+        agent: current.ref,
         harness: chosen?.ref,
         modelConfig: model?.ref,
-        templateResourceVersion: role.resourceVersion || undefined,
+        templateResourceVersion:
+          String(
+            object(runtime.data?.agentTemplate?.resource?.value?.metadata).resourceVersion ?? "",
+          ) || undefined,
       });
       if (result.agent) setVersion(precondition(result.agent));
       await runtime.refetch();
@@ -93,7 +94,7 @@ export function EngineerRuntime({
     }
   }
   return (
-    <div className="space-y-5 p-4 sm:p-6" data-testid="engineer-runtime">
+    <div className="space-y-5 p-4 sm:p-6" data-testid="agent-runtime">
       <HarnessPicker
         harnesses={harnesses}
         value={selected}
@@ -104,11 +105,11 @@ export function EngineerRuntime({
         }}
         disabled={apply.isPending || !editable}
       />
-      <RoleModel
-        role={{ ...role, modelConfig: model?.ref }}
+      <ModelConfigSelect
+        value={model?.ref}
         models={models}
         onChange={(next) => {
-          setSelectedModel(next.modelConfig?.name ?? "");
+          setSelectedModel(next?.name ?? "");
           apply.reset();
         }}
         disabled={apply.isPending || !editable}

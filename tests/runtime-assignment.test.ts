@@ -47,9 +47,9 @@ beforeEach(async () => {
 afterEach(async () => env.close());
 
 async function request(harness: string, model: string) {
-  const { agent, agentTemplate } = await client.getEngineerRuntime({ ref: ref("diagnosis") });
+  const { agent, agentTemplate } = await client.getAgentRuntime({ ref: ref("diagnosis") });
   return {
-    engineer: ref("diagnosis"),
+    agent: ref("diagnosis"),
     harness: ref(harness),
     modelConfig: ref(model),
     generation: BigInt(String(object(agent?.resource?.value?.metadata).generation)),
@@ -69,7 +69,7 @@ describe("joint Harness and model configuration", () => {
       ["codex", "responses-model"],
       ["claude", "messages-model"],
     ]) {
-      const result = await client.setEngineerRuntime(await request(harness, model));
+      const result = await client.setAgentRuntime(await request(harness, model));
       expect(object(result.agent?.resource?.value?.spec).harnessRef).toEqual({ name: harness });
       expect(object(result.agent?.resource?.value?.spec).modelConfigRef).toEqual({ name: model });
       expect(object(result.agentTemplate?.resource?.value?.spec).systemPrompt).toBe(prompt);
@@ -83,9 +83,9 @@ describe("joint Harness and model configuration", () => {
     const changed = structuredClone(template);
     object(changed.resource?.value?.spec).systemPrompt = "Concurrent prompt edit";
     env.fake.replaceTemplate(changed);
-    await expect(client.setEngineerRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
+    await expect(client.setAgentRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
     await expect(
-      client.setEngineerRuntime({
+      client.setAgentRuntime({
         ...(await request("claude", "messages-model")),
         modelConfig: { name: "messages-model", namespace: "other" },
       }),
@@ -99,7 +99,7 @@ describe("joint Harness and model configuration", () => {
     });
   });
 
-  it("restores the previous model if saving the engineer fails", async () => {
+  it("restores the previous model if saving the Agent fails", async () => {
     const original = structuredClone(object(env.fake.template("diagnosis").resource?.value?.spec));
     const save = env.store.save.bind(env.store);
     vi.spyOn(env.store, "save").mockImplementation(async (kind, value, create) => {
@@ -107,7 +107,7 @@ describe("joint Harness and model configuration", () => {
       return save(kind, value, create);
     });
     await expect(
-      client.setEngineerRuntime(await request("claude", "messages-model")),
+      client.setAgentRuntime(await request("claude", "messages-model")),
     ).rejects.toMatchObject({ code: Code.Unavailable });
     expect(object(env.fake.template("diagnosis").resource?.value?.spec)).toEqual(original);
     expect(object((await env.store.get("agents", "diagnosis")).spec).harnessRef).toEqual({
@@ -127,7 +127,7 @@ describe("joint Harness and model configuration", () => {
       return save(kind, value, create);
     });
     await expect(
-      client.setEngineerRuntime(await request("claude", "messages-model")),
+      client.setAgentRuntime(await request("claude", "messages-model")),
     ).rejects.toMatchObject({ code: Code.Unavailable });
     expect(object(env.fake.template("diagnosis").resource?.value?.spec)).toMatchObject({
       modelConfig: { name: "default-model-config" },
@@ -135,12 +135,12 @@ describe("joint Harness and model configuration", () => {
     });
   });
 
-  it("keeps shared template defaults and other engineers unchanged", async () => {
+  it("keeps shared template defaults and other Agents unchanged", async () => {
     const previous = structuredClone(env.fake.template("diagnosis"));
     const sibling = await env.store.get("agents", "diagnosis");
     sibling.metadata = { ...object(sibling.metadata), name: "diagnosis-peer" };
     await env.store.save("agents", sibling, true);
-    await client.setEngineerRuntime(await request("claude", "messages-model"));
+    await client.setAgentRuntime(await request("claude", "messages-model"));
     expect(env.fake.template("diagnosis")).toEqual(previous);
     expect(object((await env.store.get("agents", "diagnosis-peer")).spec).harnessRef).toEqual({
       name: "standard",

@@ -3,10 +3,11 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
-import { ListEngineerRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
+import { ListAgentRunsRequestSchema } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { RuntimeState } from "../gen/kagent/api/v1/runtime_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
+import { agentRef } from "../server/read-model/agents.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment, operator } from "./harness.js";
 
@@ -66,13 +67,16 @@ describe("personal native inventory", () => {
           fixtureIds.chatContext,
         ]);
         expect((await env.projection.operations(reader, request)).tasks.length).toBeGreaterThan(0);
-        const work = await env.projection.engineerRuns(
+        const work = await env.projection.agentRuns(
           reader,
-          create(ListEngineerRunsRequestSchema, { engineer: "agentos/inspection", pageSize: 100 }),
+          create(ListAgentRunsRequestSchema, {
+            agent: { namespace: "agentos", name: "inspection" },
+            pageSize: 100,
+          }),
         );
         expect(work.runs.length).toBeGreaterThan(0);
         expect(work.runs.every((run) => run.agentId === "agentos/inspection")).toBe(true);
-        expect((await env.projection.engineers(reader)).length).toBeGreaterThan(0);
+        expect((await env.projection.agentSummaries(reader)).length).toBeGreaterThan(0);
         expect(env.listSessions).not.toHaveBeenCalled();
         expect(env.listTasks).not.toHaveBeenCalled();
         expect(
@@ -107,21 +111,25 @@ describe("personal native inventory", () => {
     }
   });
 
-  it("uses the same authorized system scope for engineer activity and paginated work records", async () => {
+  it("uses the same authorized system scope for Agent activity and paginated work records", async () => {
     const env = await scopedEnvironment();
     const task = clone(TaskSchema, env.fake.task(foreignTaskId));
     task.id = "55555555-5555-4555-8555-555555555555";
     if (task.status) task.status.state = TaskState.WORKING;
     env.fake.tasks.set(task.id, task);
     env.fake.executions.set(task.id, fixtureExecution(task));
-    const engineer = `${env.foreign.agent?.namespace}/${env.foreign.agent?.name}`;
+    const agentId = `${env.foreign.agent?.namespace}/${env.foreign.agent?.name}`;
     const client = consoleClient(env);
     try {
-      const response = await client.listEngineerRuns({ engineer, systemOnly: true, pageSize: 1 });
+      const response = await client.listAgentRuns({
+        agent: agentRef(agentId),
+        systemOnly: true,
+        pageSize: 1,
+      });
       expect(response.runs).toHaveLength(1);
       expect(response.nextPageToken).not.toBe("");
-      const next = await client.listEngineerRuns({
-        engineer,
+      const next = await client.listAgentRuns({
+        agent: agentRef(agentId),
         systemOnly: true,
         pageSize: 1,
         pageToken: response.nextPageToken,
@@ -130,19 +138,19 @@ describe("personal native inventory", () => {
         new Set([foreignTaskId, task.id]),
       );
       expect(next.nextPageToken).toBe("");
-      const working = await client.listEngineerRuns({
-        engineer,
+      const working = await client.listAgentRuns({
+        agent: agentRef(agentId),
         systemOnly: true,
         states: [ActivityState.WORKING],
       });
       expect(working.runs.map((run) => run.taskId)).toEqual([task.id]);
-      const team = await client.listEngineers({ systemOnly: true });
-      expect(team.engineers.find((member) => member.id === engineer)).toMatchObject({
+      const team = await client.listAgents({ systemOnly: true });
+      expect(team.agents.find((member) => member.id === agentId)).toMatchObject({
         state: ActivityState.WORKING,
         activeTasks: 1,
       });
       await expect(
-        client.listEngineerRuns({ engineer, pageToken: response.nextPageToken }),
+        client.listAgentRuns({ agent: agentRef(agentId), pageToken: response.nextPageToken }),
       ).rejects.toMatchObject({ code: Code.InvalidArgument });
       expect(
         env.listTasks.mock.calls.some(
@@ -153,8 +161,8 @@ describe("personal native inventory", () => {
         create(UserIdentitySchema, { subject: operator.subject }),
       );
       for (const read of [
-        () => ordinary.listEngineerRuns({ engineer, systemOnly: true }),
-        () => ordinary.listEngineers({ systemOnly: true }),
+        () => ordinary.listAgentRuns({ agent: agentRef(agentId), systemOnly: true }),
+        () => ordinary.listAgents({ systemOnly: true }),
       ])
         await expect(read()).rejects.toMatchObject({ code: Code.PermissionDenied });
     } finally {

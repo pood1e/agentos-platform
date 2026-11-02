@@ -91,16 +91,16 @@ export function consoleService({
       profile.delegationUrl = delegationUrl;
       return { profile };
     },
-    async listEngineers(request, context) {
+    async listAgents(request, context) {
       return nativeSignal.run(context.signal, async () => ({
-        engineers: await projection.engineers(
+        agents: await projection.agentSummaries(
           viewer(context.values.get(requestIdentity), request.systemOnly),
         ),
       }));
     },
-    async listEngineerRuns(request, context) {
+    async listAgentRuns(request, context) {
       return nativeSignal.run(context.signal, () =>
-        projection.engineerRuns(
+        projection.agentRuns(
           viewer(context.values.get(requestIdentity), request.systemOnly),
           request,
         ),
@@ -193,6 +193,6 @@ export function consoleService({
     getConfiguration: () => roles.configuration(),
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
-    explainTools: (request) => roles.explain(request.engineer),
+    explainTools: (request) => roles.explain(request.identity),
   };
 }

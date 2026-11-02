@@ -118,12 +118,12 @@ async function knowledge(fake: FakeKagent, task: Task) {
   );
 }
 
-/** Deterministic role behavior; every result is delivered through the native A2A protocol. */
+/** Deterministic Agent behavior; every result is delivered through the native A2A protocol. */
 export async function execute(fake: FakeKagent, task: Task, message: Message) {
   if (fake.tasks.get(task.id) !== task || task.status?.state === TaskState.CANCELED) return;
-  const role = fake.sessions.get(task.contextId)?.agent?.name;
+  const agentName = fake.sessions.get(task.contextId)?.agent?.name;
   const text = messageText(message);
-  if (role === "role-builder") {
+  if (agentName === "role-builder") {
     const draft = create(RoleDefinitionSchema, {
       name: "readonly-helper",
       displayName: "巡检助手",
@@ -137,7 +137,7 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
     return finish(
       fake,
       task,
-      "工程师草稿已准备。",
+      "智能体草稿已准备。",
       activity(
         "prepare_role",
         toJson(RoleDefinitionSchema, draft),
@@ -146,7 +146,7 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
     );
   }
   if (
-    role === "assistant" &&
+    agentName === "assistant" &&
     /configmap/i.test(text) &&
     !message.messageId.startsWith("kagent-continuation-")
   ) {
@@ -170,14 +170,14 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
       ),
     );
   }
-  if (role === "coordinator" && message.messageId.startsWith("kagent-continuation-"))
+  if (agentName === "coordinator" && message.messageId.startsWith("kagent-continuation-"))
     return finish(
       fake,
       task,
       "用户决定已处理，执行结果已核验；知识正在后台沉淀。",
       await knowledge(fake, task),
     );
-  if (role === "knowledge")
+  if (agentName === "knowledge")
     return finish(fake, task, "知识已保存并回查来源。", [
       ...activity("save_memory", { content: text }, { saved: true }),
       ...activity("load_memory", { query: task.id }, { source: task.id }),
