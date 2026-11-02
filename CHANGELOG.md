@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.8](https://github.com/pood1e/agentos-platform/compare/v0.51.7...v0.51.8) (2026-11-02)
+
+
+### Bug Fixes
+
+* **console:** resolve App metadata from source servers ([#281](https://github.com/pood1e/agentos-platform/issues/281)) ([b83e2d8](https://github.com/pood1e/agentos-platform/commit/b83e2d834b0357634d1cf9efbfb98d5130fce617))
+
 ## [0.51.7](https://github.com/pood1e/agentos-platform/compare/v0.51.6...v0.51.7) (2026-11-02)
 
 
