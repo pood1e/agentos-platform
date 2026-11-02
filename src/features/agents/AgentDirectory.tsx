@@ -1,6 +1,8 @@
-import { Search } from "lucide-react";
+import { create } from "@bufbuild/protobuf";
+import { Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +19,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { AgentSummary, AgentTools } from "../../../gen/agentos/console/v1/agent_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
-import { useCapability } from "../../lib/access.js";
+import {
+  AuthorizationResourceSchema,
+  AuthorizationScopeKind,
+} from "../../../gen/kagent/api/v1/authorization_pb.js";
+import { useAccess, useCapability } from "../../lib/access.js";
+import { useAgentAccess } from "../../lib/authorization.js";
+import { authorizationHref } from "../authorization/resource-location.js";
 import { Avatar } from "../shared/Avatar.js";
 import { agentDescription, agentName, roleLabel } from "../shared/agents.js";
 import { posture } from "../status/activity.js";
@@ -39,6 +47,11 @@ export function AgentDirectory({
 }) {
   const { t } = useTranslation();
   const editable = useCapability(Capability.AGENTS_MANAGE);
+  const workspace = useAccess().data?.workspace ?? "";
+  const names = agents
+    .filter((agent) => agent.id.startsWith(`${workspace}/`))
+    .map((agent) => agent.id.slice(workspace.length + 1));
+  const accessible = useAgentAccess(names).data ?? [];
   const [search, setSearch] = useState("");
   const [templateFilter, setTemplateFilter] = useState("*");
   const templates = new Map<string, number>();
@@ -173,16 +186,41 @@ export function AgentDirectory({
                         (builtinCatalog?.tools.length ?? 0),
                     })}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!definition}
-                    onClick={(event) => {
-                      if (definition) onConfigure(definition, event.currentTarget, agent.id);
-                    }}
-                  >
-                    {t(editable ? "configuration.configure" : "management.view")}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {accessible.includes(agent.id.slice(workspace.length + 1)) && (
+                      <Button asChild variant="ghost" size="sm">
+                        <Link
+                          to={authorizationHref(
+                            create(AuthorizationResourceSchema, {
+                              resource: {
+                                case: "kubernetes",
+                                value: {
+                                  kind: AuthorizationScopeKind.AGENT,
+                                  ref: {
+                                    namespace: workspace,
+                                    name: agent.id.slice(workspace.length + 1),
+                                  },
+                                },
+                              },
+                            }),
+                          )}
+                        >
+                          <ShieldCheck />
+                          {t("authorization.title")}
+                        </Link>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!definition}
+                      onClick={(event) => {
+                        if (definition) onConfigure(definition, event.currentTarget, agent.id);
+                      }}
+                    >
+                      {t(editable ? "configuration.configure" : "management.view")}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

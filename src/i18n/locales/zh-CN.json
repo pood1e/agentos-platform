@@ -382,7 +382,16 @@
   },
   "authorization": {
     "title": "资源授权",
+    "pageHint": "先选择资源，再查看或调整直接授权。",
+    "chooseResource": "选择资源",
+    "chooseResourceHint": "工作空间默认显示；其他资源可从列表选择。",
     "scope": "作用域",
+    "resource": "资源",
+    "selectResource": "选择一个资源",
+    "currentResource": "当前资源",
+    "openById": "按资源 ID 查找",
+    "pickFromList": "从列表选择",
+    "noResourceOptions": "暂无可选资源。也可从资源页面进入，或按 ID 查找。",
     "openScope": "查看授权",
     "sessionId": "Session ID",
     "taskId": "Task ID",
@@ -393,19 +402,29 @@
     "principalId": "规范主体 ID",
     "groupId": "组 ID",
     "issuer": "发行方",
+    "myAccount": "我的账号",
+    "useMyAccount": "使用我的账号",
+    "principalHint": "从身份系统复制用户或机器的规范主体 ID。",
+    "groupHint": "填写身份系统签发的组 ID 和发行方 URL。",
+    "membershipHint": "此角色需要主体先成为工作空间成员。",
     "role": "访问角色",
+    "directBindings": "直接授权",
+    "addBinding": "添加授权",
+    "addBindingHint": "为当前资源指定主体和访问角色。",
+    "emptyBindings": "此资源还没有直接授权",
+    "emptyBindingsHint": "工作空间授权仍可能生效；需要单独授权时，点击“添加授权”。",
     "grant": "授予角色",
     "revoke": "撤销绑定",
     "previous": "上一页",
     "next": "下一页",
     "denied": "当前主体尚未获得此作用域的授权查看权限。",
-    "bindingHint": "直接绑定与工作空间授权共同生效。",
+    "bindingHint": "这里只显示直接绑定；工作空间授权也可能生效。",
     "scopes": {
       "1": "工作空间",
-      "2": "Agent",
-      "3": "AgentTemplate",
-      "4": "Session",
-      "5": "Task"
+      "2": "智能体",
+      "3": "智能体模板",
+      "4": "会话",
+      "5": "任务"
     },
     "roles": {
       "1": "工作空间成员",
@@ -417,6 +436,17 @@
       "7": "执行查看者",
       "8": "执行控制者",
       "9": "授权管理员"
+    },
+    "roleHelp": {
+      "1": "加入工作空间；其他资源角色以此为前提。",
+      "2": "查看智能体、模板和工作流定义。",
+      "3": "编辑智能体和模板定义。",
+      "4": "编辑工作流定义。",
+      "5": "发布工作流版本。",
+      "6": "运行智能体或工作流。",
+      "7": "查看会话或任务执行内容。",
+      "8": "控制任务执行，例如取消任务。",
+      "9": "查看并管理资源授权。"
     }
   }
 }
