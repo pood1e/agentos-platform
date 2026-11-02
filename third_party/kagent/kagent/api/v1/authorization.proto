@@ -11,6 +11,7 @@ option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1
 // AuthorizationService manages resource-scoped access for authenticated principals.
 service AuthorizationService {
   rpc ListAccessRoles(ListAccessRolesRequest) returns (ListAccessRolesResponse);
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
   rpc CheckPermissions(CheckPermissionsRequest) returns (CheckPermissionsResponse);
   rpc ListRoleBindings(ListRoleBindingsRequest) returns (ListRoleBindingsResponse);
   rpc GrantRole(GrantRoleRequest) returns (GrantRoleResponse);
@@ -138,6 +139,15 @@ message ResourceGrant {
 message ListAccessRolesRequest {}
 message ListAccessRolesResponse {
   repeated AccessRoleDefinition roles = 1;
+}
+
+message ListWorkspacesRequest {
+  PageRequest page = 1;
+}
+message ListWorkspacesResponse {
+  // A page can be empty while next_page_token remains set.
+  repeated WorkspaceAuthorizationReference workspaces = 1;
+  PageResponse page = 2;
 }
 
 message CheckPermissionsRequest {

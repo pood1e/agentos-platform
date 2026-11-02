@@ -39,7 +39,7 @@ api 与 dataplane 使用独立 ServiceAccount 和 NetworkPolicy。平台业务�
 ## 原生执行与投影
 
 API 将请求的 Bearer 凭据传给 kagent。kagent 返回规范主体、能力和 Session 授权，并在资源读取、执行、HITL 续接和运行时凭据出口重新校验。
-`/authorization` 使用原生 `AuthorizationService` 的资源动作及角色绑定契约。API 固定站点工作空间并传递实际凭据与请求取消；kagent 解析真实资源身份、计算权限并管理 OpenFGA 绑定。控制台根据原生 `allowed_actions` 展示授权入口和授予、撤销操作，查询按主体、工作空间与作用域隔离。
+`/authorization` 使用原生 `AuthorizationService` 的资源动作及角色绑定契约。API 转发当前凭据、目标工作空间与请求取消；kagent 基于当前 namespace UID 列出成员工作空间，解析真实资源身份、计算权限并管理 OpenFGA 绑定。控制台根据原生 `allowed_actions` 展示授权入口和授予、撤销操作，查询按主体、工作空间与作用域隔离。
 控制台直接消费原生分页、A2A 流与可信 `TaskExecution` 的根、父、关系和续接引用。停止只提交一次原生取消请求，子任务传播由 kagent 持久化推进。
 工具状态读取统一 `ToolResponse`，执行状态读取原生 Task；后台委派使用 `invoke_session(background=true)`。
 
