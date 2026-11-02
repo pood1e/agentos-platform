@@ -4,7 +4,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { ArtifactSchema, TaskState } from "../gen/a2a_pb.js";
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
-import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
+import { RoleDefinitionSchema, ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import {
   ListMCPAppToolsResponseSchema,
@@ -297,6 +297,74 @@ it("projects only model-visible bindings from native presets without losing norm
   expect(config.roles.find((role) => role.name === "preset-reader")?.tools[0]?.tools).toEqual([
     "lab-views_show_topology",
     "unavailable_tool",
+  ]);
+});
+
+it("keeps existing App-only bindings when an engineer edits model-visible tools", async () => {
+  const env = await setup();
+  const server = "lab-views-inspection";
+  env.fake.toolServers.push(
+    create(ToolServerSchema, {
+      ref: `agentos/${server}`,
+      groupKind: "RemoteMCPServer.kagent.dev",
+      discoveredTools: [],
+    }),
+  );
+  publishTargets(env.fake, [
+    {
+      server,
+      service: "lab-views",
+      environment: "lab",
+      project: "views",
+      engineer: "inspection",
+      access: "readOnly",
+      catalog: false,
+      tools: [
+        { name: "show_topology", write: false, requireApproval: false },
+        { name: "graph_data", write: false, requireApproval: false },
+      ],
+    },
+  ]);
+  const template = env.fake.templates.get("inspection");
+  const spec = template?.resource?.value?.spec as {
+    tools: { mcp: { server: { name: string }; tools: string[] } }[];
+  };
+  spec.tools.push({
+    mcp: {
+      server: { name: server },
+      tools: ["lab-views_show_topology", "lab-views_graph_data"],
+    },
+  });
+  env.caller({ ...env.owner, capabilities: [Capability.AGENTS_MANAGE] });
+  const config = await env.client.getConfiguration({});
+  const role = config.roles.find((item) => item.name === "inspection");
+  if (!role) throw new Error("inspection role missing");
+  expect(role.tools.find((binding) => binding.server === server)?.tools).toEqual([
+    "lab-views_show_topology",
+  ]);
+  const requirements = (await env.client.explainTools({ engineer: "inspection" })).requirements;
+  expect(requirements).toContainEqual(
+    expect.objectContaining({ server, tool: "lab-views_show_topology" }),
+  );
+  expect(requirements).not.toContainEqual(
+    expect.objectContaining({ server, tool: "lab-views_graph_data" }),
+  );
+  const invalid = clone(RoleDefinitionSchema, role);
+  invalid.tools.find((binding) => binding.server === server)?.tools.push("lab-views_graph_data");
+  await expect(env.client.updateRole({ role: invalid })).rejects.toMatchObject({
+    code: Code.InvalidArgument,
+    rawMessage: "configuration.invalidTools",
+  });
+  const updated = await env.client.updateRole({ role });
+  expect(updated.role?.tools.find((binding) => binding.server === server)?.tools).toEqual([
+    "lab-views_show_topology",
+    "lab-views_graph_data",
+  ]);
+  const visible = (await env.client.getConfiguration({})).roles.find(
+    (item) => item.name === "inspection",
+  );
+  expect(visible?.tools.find((binding) => binding.server === server)?.tools).toEqual([
+    "lab-views_show_topology",
   ]);
 });
 
