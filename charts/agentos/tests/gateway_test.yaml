@@ -15,6 +15,11 @@ tests:
       path: spec.traffic.authorization.policy.matchExpressions[0]
       pattern: "request.path.startsWith\\('/mcp/'\\) && request.path != '/mcp/team-sessions'"
   - lengthEqual: {path: spec.traffic.extAuth.conditional, count: 2}
+  - equal: {path: 'spec.traffic.extAuth.conditional[1].policy.http.allowedResponseHeaders', value: [authorization]}
+- it: sends the authorized subject token to the team-sessions MCP backend
+  template: gateway-mcp-backends.yaml
+  asserts:
+  - notExists: {path: 'spec.resources[0].spec.policies.auth'}
 - it: admits public traffic to the standalone environment gateway
   template: gateway-networkpolicy.yaml
   set:
@@ -41,10 +46,22 @@ tests:
 - it: uses native collaboration with a separately scoped discovery identity
   template: collaboration.yaml
   asserts:
-  - equal: {path: spec.url, value: 'http://kagent-controller:8083/mcp'}
+  - equal: {path: spec.url, value: 'http://kagent-controller.agentos.svc.cluster.local:8083/mcp'}
+  - equal: {path: spec.tokenPassthrough, value: true}
   - equal:
       path: spec.discoveryAuth.serviceAccount
       value: {serviceAccountRef: {name: agentos-discovery}, audience: kagent-invocation}
+- it: qualifies native collaboration with the release namespace
+  template: collaboration.yaml
+  release: {name: agentos, namespace: operations}
+  asserts:
+  - equal: {path: spec.url, value: 'http://kagent-controller.operations.svc.cluster.local:8083/mcp'}
+- it: preserves an absolute native collaboration endpoint
+  template: collaboration.yaml
+  set:
+    kagent.endpoint: https://native.example.test:8443
+  asserts:
+  - equal: {path: spec.url, value: 'https://native.example.test:8443/mcp'}
 - it: fetches native Actor keys with verified site trust
   template: actor-jwks.yaml
   asserts:

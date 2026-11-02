@@ -31,6 +31,14 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.controllerSubject" -}}
 {{- default (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) .Values.kagent.controllerSubject -}}
 {{- end -}}
+{{- define "agentos.kagentEndpoint" -}}
+{{- $endpoint := urlParse (trimSuffix "/" .Values.kagent.endpoint) -}}
+{{- $hostname := regexFind "^\\[[^]]+\\]|^[^:]+" $endpoint.host -}}
+{{- if regexMatch "^[a-zA-Z][a-zA-Z0-9-]*$" $hostname -}}
+  {{- $_ := set $endpoint "host" (printf "%s.%s.svc.cluster.local%s" $hostname .Release.Namespace (trimPrefix $hostname $endpoint.host)) -}}
+{{- end -}}
+{{- urlJoin $endpoint -}}
+{{- end -}}
 
 {{- define "agentos.origins" -}}
 {{- $hosts := .Values.route.hosts -}}
