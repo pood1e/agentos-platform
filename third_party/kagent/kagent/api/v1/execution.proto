@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "kagent/api/v1/common.proto";
+import "kagent/api/v1/authorization.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
 
@@ -39,6 +40,9 @@ message ScopeCeiling {
       }
     }
   }];
+  // Absent in a request inherits resolved dependencies; an empty set denies all.
+  // Persisted execution authority always records a UID-bound set.
+  ResourceGrantSet resources = 2;
 }
 
 // SessionAuthority separates the initiator from the Actor and storage owner.
@@ -100,14 +104,6 @@ message IssueSessionCredentialRequest {
 message IssueSessionCredentialResponse {
   string credential = 1;
   google.protobuf.Timestamp expires_at = 2;
-}
-
-message TaskReference {
-  string session_id = 1 [(buf.validate.field).string.uuid = true];
-  string task_id = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 256
-  }];
 }
 
 enum TaskRelation {

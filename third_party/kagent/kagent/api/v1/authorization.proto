@@ -4,7 +4,6 @@ package kagent.api.v1;
 
 import "buf/validate/validate.proto";
 import "kagent/api/v1/common.proto";
-import "kagent/api/v1/execution.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
 
@@ -162,6 +161,18 @@ message ResourceGrant {
     unique: true
     items: {enum: {defined_only: true, not_in: [0]}}
   }];
+}
+
+// ResourceGrantSet records exact resource identities and actions.
+message ResourceGrantSet {
+  repeated ResourceGrant grants = 1 [(buf.validate.field).repeated.max_items = 4096];
+}
+
+// ExecutionDependencyManifest separates direct runtime capabilities from
+// dependencies reachable only through explicitly configured Agent delegation.
+message ExecutionDependencyManifest {
+  ResourceGrantSet direct = 1 [(buf.validate.field).required = true];
+  ResourceGrantSet delegated = 2;
 }
 
 message ListAccessRolesRequest {}

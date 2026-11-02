@@ -43,6 +43,16 @@ tests:
   - equal:
       path: spec.traffic.extAuth.conditional[0].policy.http.responseMetadata.models
       value: json(response.body)
+  - equal:
+      path: spec.traffic.extAuth.conditional[0].policy.http.path
+      value: '"/authorize/runtime?workspace=agentos"'
+- it: binds model authorization to the destination workspace
+  template: gateway-auth.yaml
+  release: {name: agentos, namespace: operations}
+  asserts:
+  - equal:
+      path: spec.traffic.extAuth.conditional[0].policy.http.path
+      value: '"/authorize/runtime?workspace=operations"'
 - it: uses native collaboration with a separately scoped discovery identity
   template: collaboration.yaml
   asserts:
