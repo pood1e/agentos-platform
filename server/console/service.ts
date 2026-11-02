@@ -70,7 +70,7 @@ export function consoleService({
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const cancel = cancellationCommands(projection, clients);
   const messages = messageCommands(projection, clients, namespace, authorizeTools);
-  const conversations = conversationCommands(clients, namespace, entryAgent);
+  const conversations = conversationCommands(projection, clients, namespace, entryAgent);
   const roles = roleCommands(clients, namespace, access, roleDefaults, metadata);
   const { canOperate, approvalsFor } = interactionPermissions(projection, clients, authorizeTools);
   const visible = async (identity: Parameters<typeof viewer>[0], taskId: string) =>

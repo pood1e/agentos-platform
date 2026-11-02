@@ -70,7 +70,7 @@ it("rejects a call from an earlier workspace incarnation", async () => {
   if (!session?.authority) throw new Error("Session authority fixture missing");
   session.authority.workspaceUid = "old-uid";
   await expect(env.client.getAppResource(env.request)).rejects.toMatchObject({
-    code: Code.PermissionDenied,
+    code: Code.NotFound,
   });
 });
 

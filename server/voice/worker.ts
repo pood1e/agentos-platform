@@ -71,6 +71,7 @@ export function voiceService({
     return nativeHeaders.run(
       new Headers({ authorization: `Bearer ${value.nativeSessionCredential}` }),
       async () => {
+        if (!(await projection.session(value.contextId))) throw denied();
         const { session } = await clients.sessions.getSession({ sessionId: value.contextId });
         if (!session || session.authority?.initiatorId !== value.subject) throw denied();
         return run();

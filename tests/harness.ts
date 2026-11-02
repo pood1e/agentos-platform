@@ -42,7 +42,11 @@ export function fakeKagent(tasks: Task[] = fixtureTasks()) {
 
 export async function environment(tasks: Task[] = fixtureTasks()) {
   const { fake, clients } = fakeKagent(tasks);
-  const projection = taskQueries({ workspace: "agentos", clients });
+  const projection = taskQueries({
+    workspace: "agentos",
+    workspaceUID: async () => "agentos-uid",
+    clients,
+  });
   return {
     fake,
     clients,

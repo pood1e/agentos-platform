@@ -55,7 +55,11 @@ it("starts a tool-free workflow and lists its runs without a business role", asy
   if (!workflow) throw new Error("missing workflow");
   const client = consoleClient({
     ...env,
-    projection: taskQueries({ workspace: "agentos", clients: env.clients }),
+    projection: taskQueries({
+      workspace: "agentos",
+      workspaceUID: async () => "agentos-uid",
+      clients: env.clients,
+    }),
   });
   expect((await client.getConfiguration({})).roles.some((role) => role.name === "flow")).toBe(
     false,

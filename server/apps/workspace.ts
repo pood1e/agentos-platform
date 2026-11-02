@@ -17,6 +17,7 @@ import { memberWorkspace } from "../platform/access.js";
 import type { WorkspaceTarget } from "../platform/workspace-targets.js";
 import { taskQueries } from "../read-model/queries.js";
 import { roleDefaults } from "../shared/config.js";
+import { unavailable } from "../shared/errors.js";
 import { voiceFeature } from "../voice/feature.js";
 import { speechSettingsStore } from "../voice/settings.js";
 
@@ -36,9 +37,22 @@ export async function workspaceRuntime(
   const clients = kagentClients(kagentTransport({ url: target.kagentURL, namespace }));
   const access = await toolBindings(kube, namespace, app.log);
   const metadata = toolMetadata(clients);
-  const projection = taskQueries({ workspace: namespace, clients });
+  const core = kube.makeApiClient(CoreV1Api);
+  const projection = taskQueries({
+    workspace: namespace,
+    clients,
+    workspaceUID: async () => {
+      try {
+        const uid = (await core.readNamespace({ name: namespace })).metadata?.uid;
+        if (uid) return uid;
+      } catch (error) {
+        app.log.warn({ err: error, namespace }, "Workspace Namespace UID unavailable");
+      }
+      throw unavailable();
+    },
+  });
   const speech = speechSettingsStore(
-    kube.makeApiClient(CoreV1Api),
+    core,
     namespace,
     home ? (process.env.AGENTOS_SPEECH_SECRET ?? `${release}-speech`) : `${release}-speech`,
   );
@@ -89,11 +103,7 @@ export async function workspaceRuntime(
   });
   const management: ServiceImpl<typeof ManagementService> = managementService({
     access,
-    documents: workflowDocuments(
-      kube.makeApiClient(CoreV1Api),
-      kube.makeApiClient(CustomObjectsApi),
-      namespace,
-    ),
+    documents: workflowDocuments(core, kube.makeApiClient(CustomObjectsApi), namespace),
     clients,
     store: resourceStore(kube, namespace, `${release}-skills`, clients),
     gateway,

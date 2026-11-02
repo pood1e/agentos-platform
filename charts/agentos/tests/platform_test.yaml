@@ -24,6 +24,15 @@ tests:
     contains:
       path: subjects
       content: {kind: ServiceAccount, name: agentos-api, namespace: control}
+  - template: api-namespace-role.yaml
+    equal:
+      path: rules
+      value:
+        - {apiGroups: [''], resources: [namespaces], resourceNames: [agentos, research], verbs: [get]}
+  - template: api-namespace-rolebinding.yaml
+    contains:
+      path: subjects
+      content: {kind: ServiceAccount, name: agentos-api, namespace: agentos}
   - template: gateway-networkpolicy.yaml
     contains:
       path: spec.ingress[0].from
