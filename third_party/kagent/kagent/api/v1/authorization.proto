@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+package kagent.api.v1;
+
+import "buf/validate/validate.proto";
+import "kagent/api/v1/common.proto";
+import "kagent/api/v1/execution.proto";
+
+option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
+
+// AuthorizationService manages resource-scoped access for authenticated principals.
+service AuthorizationService {
+  rpc ListAccessRoles(ListAccessRolesRequest) returns (ListAccessRolesResponse);
+  rpc CheckPermissions(CheckPermissionsRequest) returns (CheckPermissionsResponse);
+  rpc ListRoleBindings(ListRoleBindingsRequest) returns (ListRoleBindingsResponse);
+  rpc GrantRole(GrantRoleRequest) returns (GrantRoleResponse);
+  rpc RevokeRole(RevokeRoleRequest) returns (RevokeRoleResponse);
+}
+
+enum Permission {
+  PERMISSION_UNSPECIFIED = 0;
+  PERMISSION_AGENT_READ = 1;
+  PERMISSION_AGENT_CREATE = 2;
+  PERMISSION_AGENT_UPDATE = 3;
+  PERMISSION_AGENT_DELETE = 4;
+  PERMISSION_AGENT_INVOKE = 5;
+  PERMISSION_TEMPLATE_READ = 6;
+  PERMISSION_TEMPLATE_CREATE = 7;
+  PERMISSION_TEMPLATE_UPDATE = 8;
+  PERMISSION_TEMPLATE_DELETE = 9;
+  PERMISSION_TEMPLATE_USE = 10;
+  PERMISSION_WORKFLOW_READ = 11;
+  PERMISSION_WORKFLOW_EDIT = 12;
+  PERMISSION_WORKFLOW_PUBLISH = 13;
+  PERMISSION_WORKFLOW_EXECUTE = 14;
+  PERMISSION_SESSION_READ = 15;
+  PERMISSION_SESSION_CREATE = 16;
+  PERMISSION_SESSION_SEND = 17;
+  PERMISSION_SESSION_SHARE = 18;
+  PERMISSION_SESSION_DELETE = 19;
+  PERMISSION_TASK_READ = 20;
+  PERMISSION_TASK_CANCEL = 21;
+  PERMISSION_TASK_RESPOND = 22;
+  PERMISSION_ACCESS_READ = 23;
+  PERMISSION_ACCESS_MANAGE = 24;
+}
+
+enum AccessRole {
+  ACCESS_ROLE_UNSPECIFIED = 0;
+  ACCESS_ROLE_WORKSPACE_MEMBER = 1;
+  ACCESS_ROLE_DEFINITION_READER = 2;
+  ACCESS_ROLE_DEFINITION_EDITOR = 3;
+  ACCESS_ROLE_WORKFLOW_EDITOR = 4;
+  ACCESS_ROLE_WORKFLOW_PUBLISHER = 5;
+  ACCESS_ROLE_EXECUTOR = 6;
+  ACCESS_ROLE_EXECUTION_READER = 7;
+  ACCESS_ROLE_EXECUTION_CONTROLLER = 8;
+  ACCESS_ROLE_ACCESS_ADMIN = 9;
+}
+
+enum AuthorizationScopeKind {
+  AUTHORIZATION_SCOPE_KIND_UNSPECIFIED = 0;
+  AUTHORIZATION_SCOPE_KIND_WORKSPACE = 1;
+  AUTHORIZATION_SCOPE_KIND_AGENT = 2;
+  AUTHORIZATION_SCOPE_KIND_AGENT_TEMPLATE = 3;
+  AUTHORIZATION_SCOPE_KIND_SESSION = 4;
+  AUTHORIZATION_SCOPE_KIND_TASK = 5;
+}
+
+message IdentityGroup {
+  string issuer = 1 [(buf.validate.field).string = {
+    uri: true
+    max_bytes: 192
+    pattern: "^https://[^?#]+$"
+  }];
+  string id = 2 [(buf.validate.field).string = {min_bytes: 1, max_bytes: 128}];
+}
+
+// Users and machine identities use the same provider-qualified principal ID.
+message SubjectReference {
+  oneof subject {
+    option (buf.validate.oneof).required = true;
+    string principal_id = 1 [(buf.validate.field).string = {min_bytes: 1, max_bytes: 256}];
+    IdentityGroup group = 2;
+  }
+}
+
+message WorkspaceAuthorizationReference {
+  string namespace = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+  }];
+  // When supplied, this must match the namespace's current UID.
+  string uid = 2 [(buf.validate.field).string = {max_len: 128}];
+}
+
+message KubernetesAuthorizationReference {
+  AuthorizationScopeKind kind = 1 [(buf.validate.field).enum = {
+    in: [2, 3]
+  }];
+  ResourceReference ref = 2 [(buf.validate.field).required = true];
+  // When supplied, this must match the object's current UID.
+  string uid = 3 [(buf.validate.field).string.max_len = 128];
+}
+
+message AuthorizationResource {
+  oneof resource {
+    option (buf.validate.oneof).required = true;
+    WorkspaceAuthorizationReference workspace = 1;
+    KubernetesAuthorizationReference kubernetes = 2;
+    string session_id = 3 [(buf.validate.field).string.uuid = true];
+    TaskReference task = 4;
+  }
+}
+
+message AccessRoleDefinition {
+  AccessRole role = 1;
+  repeated AuthorizationScopeKind scope_kinds = 2;
+}
+
+message RoleBinding {
+  SubjectReference subject = 1 [(buf.validate.field).required = true];
+  AccessRole role = 2 [(buf.validate.field).enum = {defined_only: true, not_in: [0]}];
+  AuthorizationResource scope = 3 [(buf.validate.field).required = true];
+}
+
+message ResourceGrant {
+  AuthorizationResource resource = 1 [(buf.validate.field).required = true];
+  repeated Permission permissions = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 24
+    unique: true
+    items: {enum: {defined_only: true, not_in: [0]}}
+  }];
+}
+
+message ListAccessRolesRequest {}
+message ListAccessRolesResponse {
+  repeated AccessRoleDefinition roles = 1;
+}
+
+message CheckPermissionsRequest {
+  repeated ResourceGrant checks = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+  }];
+  WorkspaceAuthorizationReference workspace = 2 [(buf.validate.field).required = true];
+}
+
+message ResourceAccess {
+  AuthorizationResource resource = 1;
+  repeated Permission allowed_actions = 2;
+}
+
+message CheckPermissionsResponse {
+  // Results retain request order. Missing and inaccessible resources grant no actions.
+  repeated ResourceAccess resources = 1;
+}
+
+message ListRoleBindingsRequest {
+  AuthorizationResource scope = 1 [(buf.validate.field).required = true];
+  PageRequest page = 2;
+  WorkspaceAuthorizationReference workspace = 3 [(buf.validate.field).required = true];
+}
+message ListRoleBindingsResponse {
+  repeated RoleBinding bindings = 1;
+  PageResponse page = 2;
+}
+
+message GrantRoleRequest {
+  string request_id = 1 [(buf.validate.field).string.uuid = true];
+  RoleBinding binding = 2 [(buf.validate.field).required = true];
+  WorkspaceAuthorizationReference workspace = 3 [(buf.validate.field).required = true];
+}
+message GrantRoleResponse {
+  RoleBinding binding = 1;
+}
+message RevokeRoleRequest {
+  string request_id = 1 [(buf.validate.field).string.uuid = true];
+  RoleBinding binding = 2 [(buf.validate.field).required = true];
+  WorkspaceAuthorizationReference workspace = 3 [(buf.validate.field).required = true];
+}
+message RevokeRoleResponse {}

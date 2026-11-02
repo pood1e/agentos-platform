@@ -380,5 +380,44 @@
     "sourceConflict": "Workflow revision resource conflict",
     "notFound": "Workflow not found",
     "runtimeChanged": "Runtime configuration changed; reload before editing"
+  },
+  "authorization": {
+    "title": "Resource access",
+    "scope": "Scope",
+    "openScope": "View access",
+    "sessionId": "Session ID",
+    "taskId": "Task ID",
+    "subject": "Subject",
+    "subjectType": "Subject type",
+    "principal": "User / machine",
+    "group": "IdP group",
+    "principalId": "Canonical principal ID",
+    "groupId": "Group ID",
+    "issuer": "Issuer",
+    "role": "Access role",
+    "grant": "Grant role",
+    "revoke": "Revoke binding",
+    "previous": "Previous",
+    "next": "Next",
+    "denied": "The current principal needs access to view bindings in this scope.",
+    "bindingHint": "Direct bindings and workspace grants contribute to effective access.",
+    "scopes": {
+      "1": "Workspace",
+      "2": "Agent",
+      "3": "AgentTemplate",
+      "4": "Session",
+      "5": "Task"
+    },
+    "roles": {
+      "1": "Workspace member",
+      "2": "Definition reader",
+      "3": "Definition editor",
+      "4": "Workflow editor",
+      "5": "Workflow publisher",
+      "6": "Executor",
+      "7": "Execution reader",
+      "8": "Execution controller",
+      "9": "Access administrator"
+    }
   }
 }

@@ -55,6 +55,13 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: "authorization",
+        lazy: async () => ({
+          Component: (await import("../features/authorization/AuthorizationPage.js"))
+            .AuthorizationPage,
+        }),
+      },
+      {
         path: "agents",
         element: <AdvancedLayout />,
         children: [

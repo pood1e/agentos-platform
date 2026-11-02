@@ -53,6 +53,8 @@ message SessionAuthority {
   string root_session_id = 4;
   google.protobuf.Timestamp expires_at = 6;
   ScopeCeiling scope_ceiling = 7;
+  // Immutable Kubernetes namespace UID captured by the native Session service.
+  string workspace_uid = 8;
 }
 
 message GetSessionAuthorityRequest {

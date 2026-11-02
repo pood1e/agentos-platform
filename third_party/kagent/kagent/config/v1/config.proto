@@ -89,6 +89,11 @@ message ChartConfig {
 // compiled into the ADK protobuf contract or native Harness configuration.
 message ControllerConfig {
   option (buf.validate.message).cel = {
+    id: "controller.resource_authentication"
+    message: "authorization requires server.auth.mode oidc"
+    expression: "!has(this.authorization) || this.server.auth.mode == 'oidc'"
+  };
+  option (buf.validate.message).cel = {
     id: "controller.execution_authentication"
     message: "execution_authorization requires server.auth.mode oidc"
     expression: "!has(this.execution_authorization) || this.server.auth.mode == 'oidc'"
@@ -120,6 +125,20 @@ message ControllerConfig {
   PushConfig push = 15;
   MemoryConfig memory = 16;
   ExecutionAuthorizationConfig execution_authorization = 17;
+  OpenFGAConfig authorization = 18;
+}
+
+// OpenFGAConfig selects the immutable resource authorization model.
+message OpenFGAConfig {
+  string api_url = 1 [(buf.validate.field).string = {
+    uri: true
+    pattern: "^https?://[^/?#@]+$"
+  }];
+  string store_id = 2 [(buf.validate.field).string.pattern = "^[0-9A-HJKMNP-TV-Z]{26}$"];
+  string authorization_model_id = 3 [(buf.validate.field).string.pattern = "^[0-9A-HJKMNP-TV-Z]{26}$"];
+  string api_token_file = 4;
+  string ca_file = 5;
+  string group_claim = 6 [(buf.validate.field).string.max_bytes = 128];
 }
 
 // ExecutionAuthorizationConfig enables native scope policy and a durable

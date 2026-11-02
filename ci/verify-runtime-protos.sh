@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-# Proto copies match the fork commits that publish the pinned runtime images.
+# Proto copies match the pinned native source revisions.
 task_root=$(pwd)
 sources="$task_root/.cache/runtime-sources"
 fetch() {
@@ -11,7 +11,7 @@ fetch() {
   git -C "$sources/$1" checkout --quiet --detach FETCH_HEAD
   test "$(git -C "$sources/$1" rev-parse HEAD)" = "$2"
 }
-fetch kagent 90c55a96e1b34e05e6c86431d1ce383952f15bb0
+fetch kagent 8168d8b3f6ab89c4bb2852537b64f92c547a5482
 fetch substrate dece7140130772d0ab4ad66fc000f88c2e2687a1
 git ls-files 'third_party/kagent/**/*.proto' | while IFS= read -r proto; do
   cmp "$sources/kagent/proto/${proto#third_party/kagent/}" "$task_root/$proto"

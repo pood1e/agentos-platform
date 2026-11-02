@@ -1,5 +1,6 @@
 import { CoreV1Api, CustomObjectsApi } from "@kubernetes/client-node";
 import { registerDelegation } from "../authorization/delegation.js";
+import { authorizationService } from "../authorization/service.js";
 import { registerConsole } from "../console/app.js";
 import { consoleService } from "../console/service.js";
 import { knowledgeConfig } from "../knowledge/config.js";
@@ -74,6 +75,7 @@ const apps = mcpApps({
 });
 registerAppAuthorization(app, apps, identity);
 await registerConsole(app, {
+  authorization: authorizationService(clients.authorization, workspace),
   context: workspaceContext(workspace, entryAgent, identity),
   service: consoleService({
     metadata,

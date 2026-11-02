@@ -379,5 +379,44 @@
     "sourceConflict": "流程版本资源发生冲突",
     "notFound": "工作流不存在",
     "runtimeChanged": "运行配置已变化，请重新加载后编辑"
+  },
+  "authorization": {
+    "title": "资源授权",
+    "scope": "作用域",
+    "openScope": "查看授权",
+    "sessionId": "Session ID",
+    "taskId": "Task ID",
+    "subject": "主体",
+    "subjectType": "主体类型",
+    "principal": "用户 / 机器",
+    "group": "IdP 组",
+    "principalId": "规范主体 ID",
+    "groupId": "组 ID",
+    "issuer": "发行方",
+    "role": "访问角色",
+    "grant": "授予角色",
+    "revoke": "撤销绑定",
+    "previous": "上一页",
+    "next": "下一页",
+    "denied": "当前主体尚未获得此作用域的授权查看权限。",
+    "bindingHint": "直接绑定与工作空间授权共同生效。",
+    "scopes": {
+      "1": "工作空间",
+      "2": "Agent",
+      "3": "AgentTemplate",
+      "4": "Session",
+      "5": "Task"
+    },
+    "roles": {
+      "1": "工作空间成员",
+      "2": "定义查看者",
+      "3": "定义编辑者",
+      "4": "工作流编辑者",
+      "5": "工作流发布者",
+      "6": "执行者",
+      "7": "执行查看者",
+      "8": "执行控制者",
+      "9": "授权管理员"
+    }
   }
 }

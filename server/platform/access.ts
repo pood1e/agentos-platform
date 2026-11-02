@@ -3,6 +3,7 @@ import { MethodOptions_IdempotencyLevel } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextKey, type Interceptor } from "@connectrpc/connect";
 import { UserIdentitySchema } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { AccessProfileSchema } from "../../gen/agentos/console/v1/access_pb.js";
+import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
 import { can } from "../../shared/permissions.js";
 import type { userIdentity } from "../authorization/identity.js";
 import { requiredCapability } from "../authorization/permissions.js";
@@ -30,6 +31,7 @@ export function workspaceContext(
     const headers = nativeRequestHeaders(request.header);
     const principal = await nativeHeaders.run(headers, () => identity(headers));
     if (
+      request.service.typeName !== AuthorizationService.typeName &&
       request.method.idempotency !== MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS &&
       !(
         request.service.typeName === "agentos.console.v1.ConsoleService" &&
