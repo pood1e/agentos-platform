@@ -23,7 +23,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- $identity := $root.Values.identity -}}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
-- {name: KAGENT_URL, value: {{ $root.Values.kagent.endpoint | quote }}}
+- {name: KAGENT_URL, value: {{ include "agentos.kagentEndpoint" $root | quote }}}
 - {name: KAGENT_NAMESPACE, value: {{ $root.Release.Namespace | quote }}}
 {{- if eq .component "api" }}
 {{- with $identity.caCertificateRef }}

@@ -228,9 +228,6 @@ gateway:
                   http:
                     requestTimeout: 10m
                 protocol: StreamableHTTP
-        policies:
-          auth:
-            passthrough: {}
 controller:
   image: registry.example.com/agentos/platform-controller:0.39.0
   imagePullSecrets: []

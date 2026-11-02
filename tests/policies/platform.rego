@@ -162,6 +162,13 @@ deny contains "native collaboration endpoint differs from the native control pla
 	remote.spec.url != concat("", [api_environment.KAGENT_URL.value, "/mcp"])
 }
 
+deny contains "native collaboration lacks runtime caller credentials" if {
+	some remote in objects
+	remote.kind == "RemoteMCPServer"
+	remote.metadata.name == "kagent-collaboration"
+	remote.spec.tokenPassthrough != true
+}
+
 deny contains sprintf("%s lacks native discovery credentials", [remote.metadata.name]) if {
 	some remote in objects
 	remote.kind == "RemoteMCPServer"

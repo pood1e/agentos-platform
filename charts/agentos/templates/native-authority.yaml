@@ -1,4 +1,4 @@
-{{- $endpoint := urlParse .Values.kagent.endpoint -}}
+{{- $endpoint := urlParse (include "agentos.kagentEndpoint" .) -}}
 {{- $address := regexFind "^\\[[^]]+\\]|^[^:]+" $endpoint.host | trimAll "[]" -}}
 {{- $port := regexFind ":[0-9]+$" $endpoint.host | trimPrefix ":" -}}
 apiVersion: agentgateway.dev/v1alpha1
