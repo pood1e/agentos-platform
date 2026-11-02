@@ -23,18 +23,17 @@ import { authorizationService } from "../server/authorization/service.js";
 import { registerConsole } from "../server/console/app.js";
 import { consoleService } from "../server/console/service.js";
 import { kagentClients } from "../server/kagent/clients.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { environment, testBindings } from "./harness.js";
-import { allowWorkspace } from "./workspace-member.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>) {
   const native = kagentClients(
     createRouterTransport((router) => router.service(AuthorizationService, implementation)),
   );
   const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
-  const service = authorizationService(native.authorization);
-  const context = workspaceContext("assistant", async () => principal, allowWorkspace("team"));
+  const service = authorizationService(new Map([["team", native.authorization]]), "team");
+  const context = testWorkspaceContext("team", async () => principal, allowWorkspace("team"));
   const client = createClient(
     AuthorizationService,
     createRouterTransport((router) => router.service(AuthorizationService, service), {
@@ -47,7 +46,7 @@ function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>
 const grantRequest = () =>
   create(GrantRoleRequestSchema, {
     requestId: crypto.randomUUID(),
-    workspace: { namespace: "team" },
+    workspace: { namespace: "team", uid: "team-uid" },
     binding: {
       role: AccessRole.WORKSPACE_MEMBER,
       scope: { resource: { case: "workspace", value: { namespace: "team" } } },
@@ -86,27 +85,27 @@ it("delegates access decisions to native authorization with actual credentials",
 it("forwards workspace scope to native authorization", async () => {
   const read = vi.fn((_request: ListRoleBindingsRequest) => ({ bindings: [] }));
   const list = vi.fn((_request: ListWorkspacesRequest) => ({
-    workspaces: [{ namespace: "other", uid: "workspace-2" }],
+    workspaces: [{ namespace: "team", uid: "workspace-2" }],
   }));
   const { client } = setup({
     listWorkspaces: list,
     listRoleBindings: read,
   });
   const directory = await client.listWorkspaces({
-    workspace: { namespace: "other", uid: "workspace-2" },
+    workspace: { namespace: "team", uid: "workspace-2" },
   });
-  expect(directory.workspaces).toMatchObject([{ namespace: "other", uid: "workspace-2" }]);
+  expect(directory.workspaces).toMatchObject([{ namespace: "team", uid: "workspace-2" }]);
   expect(list).toHaveBeenCalledOnce();
   expect(list.mock.calls[0]?.[0].workspace).toMatchObject({
-    namespace: "other",
+    namespace: "team",
     uid: "workspace-2",
   });
   await client.listRoleBindings({
-    workspace: { namespace: "other", uid: "workspace-2" },
-    scope: { resource: { case: "workspace", value: { namespace: "other", uid: "workspace-2" } } },
+    workspace: { namespace: "team", uid: "workspace-2" },
+    scope: { resource: { case: "workspace", value: { namespace: "team", uid: "workspace-2" } } },
   });
   expect(read.mock.calls[0]?.[0].workspace).toMatchObject({
-    namespace: "other",
+    namespace: "team",
     uid: "workspace-2",
   });
 });
@@ -136,7 +135,7 @@ it("propagates cancellation through the native authorization call", async () => 
   });
   const controller = new AbortController();
   const request = client.checkPermissions(
-    { workspace: { namespace: "team" } },
+    { workspace: { namespace: "team", uid: "team-uid" } },
     { signal: controller.signal },
   );
   await pending;

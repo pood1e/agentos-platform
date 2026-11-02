@@ -76,6 +76,7 @@ export function AppView({
     const app = create(AppReferenceSchema, {
       taskId,
       callId,
+      workspace: reference.workspace,
     });
     const element = frame.current;
     if (!element) return;
@@ -127,7 +128,15 @@ export function AppView({
       deliver.current = () => {};
       bridge.current = undefined;
     };
-  }, [taskId, callId, canMessage, resource.data, resource.dataUpdatedAt, resource.isError]);
+  }, [
+    taskId,
+    callId,
+    reference.workspace,
+    canMessage,
+    resource.data,
+    resource.dataUpdatedAt,
+    resource.isError,
+  ]);
   const failed = error || resource.isError;
   return (
     <div

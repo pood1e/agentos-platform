@@ -7,6 +7,29 @@ release:
 templates:
 - '*.yaml'
 tests:
+- it: routes configured workspaces and grants a central API access to this release
+  set:
+    api.workspaces:
+      - {namespace: research, release: agentos-research, entryAgent: assistant, harness: standard, kagentURL: 'http://kagent-controller.research.svc.cluster.local:8083'}
+    api.delegates:
+      - {namespace: control, release: agentos}
+  asserts:
+  - template: api-deployment.yaml
+    contains:
+      path: spec.template.spec.containers[0].env
+      content:
+        name: AGENTOS_WORKSPACES
+        value: '[{"entryAgent":"assistant","harness":"standard","kagentURL":"http://kagent-controller.agentos.svc.cluster.local:8083","namespace":"agentos","release":"agentos"},{"entryAgent":"assistant","harness":"standard","kagentURL":"http://kagent-controller.research.svc.cluster.local:8083","namespace":"research","release":"agentos-research"}]'
+  - template: api-rolebinding.yaml
+    contains:
+      path: subjects
+      content: {kind: ServiceAccount, name: agentos-api, namespace: control}
+  - template: gateway-networkpolicy.yaml
+    contains:
+      path: spec.ingress[0].from
+      content:
+        namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: control}}
+        podSelector: {matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: agentos, app.kubernetes.io/component: api}}
 - it: drains requests before replacing a ready instance of every process
   asserts:
   - template: api-deployment.yaml

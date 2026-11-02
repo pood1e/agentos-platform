@@ -10,6 +10,7 @@ import { registerAppAuthorization } from "../server/mcp-apps/http.js";
 import { object, partTypeKey } from "../server/read-model/decode/messages.js";
 import { mcpAppsEnvironment as setup } from "./fixtures/mcp-apps.js";
 import { publishTargets } from "./harness.js";
+import { allowWorkspace } from "./workspace-member.js";
 
 async function canonical() {
   const env = await setup();
@@ -43,11 +44,34 @@ it("authorizes canonical bindings without an Environment or an Agent-named conne
   expect(env.invoke).toHaveBeenCalledWith(
     "http://gateway.test:8080",
     "lab-views",
-    expect.objectContaining(env.request.app),
+    expect.objectContaining({
+      taskId: env.request.app.taskId,
+      callId: env.request.app.callId,
+      workspace: expect.objectContaining(env.request.app.workspace),
+    }),
     "latest-alice-token",
     { name: "lab-views_graph_data", arguments: undefined },
     expect.any(AbortSignal),
   );
+});
+
+it("rejects an App reference bound to another workspace identity", async () => {
+  const env = await canonical();
+  await expect(
+    env.client.getAppResource({
+      app: { ...env.request.app, workspace: { namespace: "agentos", uid: "old-uid" } },
+    }),
+  ).rejects.toMatchObject({ code: Code.NotFound });
+});
+
+it("rejects a call from an earlier workspace incarnation", async () => {
+  const env = await canonical();
+  const session = env.fake.sessions.get(env.task.contextId);
+  if (!session?.authority) throw new Error("Session authority fixture missing");
+  session.authority.workspaceUid = "old-uid";
+  await expect(env.client.getAppResource(env.request)).rejects.toMatchObject({
+    code: Code.PermissionDenied,
+  });
 });
 
 it.each(["origin", "callback", "revoked", "policy"])(
@@ -104,7 +128,11 @@ async function authority() {
     return env.owner;
   });
   const authorize = vi.spyOn(env.apps, "authorize");
-  registerAppAuthorization(app, env.apps, identity);
+  registerAppAuthorization(app, (namespace) =>
+    namespace === "agentos"
+      ? { apps: env.apps, identity, member: allowWorkspace("agentos") }
+      : undefined,
+  );
   const headers = {
     authorization: "Bearer current-viewer",
     "x-agentos-app-reference": Buffer.from(
@@ -137,6 +165,26 @@ it("derives gateway selection from native bindings and ignores forged authorizat
     selection: { server: "lab-views", tools: ["lab-views_show_topology", "lab-views_graph_data"] },
   });
   expect(env.identity).toHaveBeenCalledOnce();
+});
+
+it("denies gateway callbacks after workspace recreation", async () => {
+  const env = await authority();
+  const reference = create(AppReferenceSchema, {
+    ...env.request.app,
+    workspace: { namespace: "agentos", uid: "old-uid" },
+  });
+  const response = await env.app.inject({
+    method: "POST",
+    url: "/authorize/mcp-app?server=lab-views",
+    headers: {
+      ...env.headers,
+      "x-agentos-app-reference": Buffer.from(toJsonString(AppReferenceSchema, reference)).toString(
+        "base64url",
+      ),
+    },
+  });
+  expect(response.statusCode).toBe(403);
+  expect(env.authorize).not.toHaveBeenCalled();
 });
 
 it.each([

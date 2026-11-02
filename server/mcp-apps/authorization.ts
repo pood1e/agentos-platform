@@ -60,7 +60,13 @@ export function appAuthorization({
     signal: AbortSignal,
   ) {
     signal.throwIfAborted();
-    if (!reference?.taskId || !reference.callId) throw notFound("mcpApp.unavailable");
+    if (
+      !reference?.taskId ||
+      !reference.callId ||
+      reference.workspace?.namespace !== namespace ||
+      !reference.workspace.uid
+    )
+      throw notFound("mcpApp.unavailable");
     const entry = await projection.entry(reference.taskId);
     if (!entry || entry.subject !== identity.subject) throw notFound("task.notFound");
     const [{ session }, authority] = await Promise.all([
@@ -75,7 +81,8 @@ export function appAuthorization({
       session.agent?.namespace !== namespace ||
       authority.revoked ||
       authority.authority?.initiatorId !== identity.subject ||
-      authority.authority?.sessionId !== session.id
+      authority.authority?.sessionId !== session.id ||
+      authority.authority.workspaceUid !== reference.workspace.uid
     )
       throw appDenied();
     const run = await taskRun(entry, projection.fullTask);

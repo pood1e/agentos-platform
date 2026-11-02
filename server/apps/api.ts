@@ -1,118 +1,80 @@
-import { CoreV1Api, CustomObjectsApi } from "@kubernetes/client-node";
+import { discovery } from "openid-client";
+import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
+import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import { registerDelegation } from "../authorization/delegation.js";
 import { authorizationService } from "../authorization/service.js";
 import { registerConsole } from "../console/app.js";
-import { consoleService } from "../console/service.js";
-import { knowledgeConfig } from "../knowledge/config.js";
-import { resourceStore } from "../management/resources.js";
-import { managementService } from "../management/service.js";
-import { workflowDocuments } from "../management/workflows/documents.js";
 import { registerAppAuthorization } from "../mcp-apps/http.js";
-import { mcpApps } from "../mcp-apps/service.js";
-import { memberWorkspace, workspaceContext } from "../platform/access.js";
-import { listenConfig, requiredEnv, roleDefaults } from "../shared/config.js";
+import { workspaceContext } from "../platform/access.js";
+import { workspaceService } from "../platform/dispatch.js";
+import { workspaceTargets } from "../platform/workspace-targets.js";
+import { listenConfig, requiredEnv } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
-import { voiceFeature } from "../voice/feature.js";
-import { speechSettingsStore } from "../voice/settings.js";
-import {
-  closeOnSignal,
-  consoleDependencies,
-  platformApp,
-  platformClients,
-  platformConfig,
-  queryServices,
-} from "./platform.js";
+import { closeOnSignal, platformApp, platformConfig } from "./platform.js";
+import { workspaceRuntime } from "./workspace.js";
 
 const config = platformConfig();
-const { workspace } = config;
+const targets = workspaceTargets();
+if (targets[0]?.namespace !== config.workspace)
+  throw new Error("The first workspace must match KAGENT_NAMESPACE");
+if (targets[0].kagentURL !== config.kagent.url)
+  throw new Error("The first workspace must match KAGENT_URL");
 const app = platformApp();
-const clients = platformClients(config);
-const { access, metadata, oauth, identity } = await consoleDependencies(config, clients, app.log);
-const projection = queryServices(config, clients);
-
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
-const entryAgent = process.env.AGENTOS_ENTRY_AGENT ?? "assistant";
-const release = process.env.AGENTOS_RELEASE ?? "agentos";
+const oauth = await discovery(
+  new URL(requiredEnv("AGENTOS_OIDC_ISSUER")),
+  requiredEnv("AGENTOS_OIDC_CLIENT_ID"),
+  requiredEnv("AGENTOS_OIDC_CLIENT_SECRET"),
+);
+oauth.timeout = 10;
+const runtimes = new Map(
+  await Promise.all(
+    targets.map(
+      async (target) =>
+        [
+          target.namespace,
+          await workspaceRuntime(target, {
+            kube: config.kube,
+            app,
+            origin,
+            writerRole: requiredEnv("AGENTOS_OIDC_WRITER_ROLE"),
+            home: target === targets[0],
+          }),
+        ] as const,
+    ),
+  ),
+);
+const home = runtimes.get(config.workspace);
+if (!home) throw new Error("Home workspace unavailable");
 await registerDelegation(app, {
   origin,
   returnOrigins: JSON.parse(requiredEnv("AGENTOS_DELEGATION_ORIGINS")),
   client: oauth,
   key: Buffer.from(requiredEnv("AGENTOS_COOKIE_SECRET"), "base64"),
-  clients,
+  clients: new Map([...runtimes].map(([namespace, runtime]) => [namespace, runtime.clients])),
 });
-const speechSettings = speechSettingsStore(
-  config.kube.makeApiClient(CoreV1Api),
-  workspace,
-  process.env.AGENTOS_SPEECH_SECRET ?? `${release}-speech`,
-);
-const voice = await voiceFeature(app, {
-  kube: config.kube,
-  settings: speechSettings.load,
-  projection,
-  clients,
-  agent: { namespace: workspace, name: entryAgent },
-});
-const knowledge = knowledgeConfig(config.kagent);
-const gateway = {
-  name: process.env.AGENTOS_GATEWAY_NAME ?? "agentos-gateway",
-  url: process.env.AGENTOS_GATEWAY_URL ?? "http://agentos-gateway:8080",
-  mcpUrl:
-    process.env.AGENTOS_MCP_GATEWAY_URL ??
-    process.env.AGENTOS_GATEWAY_URL ??
-    "http://agentos-mcp-gateway:8080",
-  namespace: workspace,
-  nativeAuthorityBackend: `${release}-native-authority`,
-};
-const apps = mcpApps({
-  clients,
-  projection,
-  namespace: workspace,
-  access,
-  metadata,
-  sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
-  gatewayURL: gateway.url,
-  log: app.log,
-});
-registerAppAuthorization(app, apps, identity);
+registerAppAuthorization(app, (namespace) => runtimes.get(namespace));
 await registerConsole(app, {
-  authorization: authorizationService(clients.authorization),
-  context: workspaceContext(
-    entryAgent,
-    identity,
-    memberWorkspace(clients.authorization, workspace),
+  authorization: authorizationService(
+    new Map(
+      [...runtimes].map(([namespace, runtime]) => [namespace, runtime.clients.authorization]),
+    ),
+    config.workspace,
   ),
-  service: consoleService({
-    metadata,
-    apps,
-    projection,
-    clients,
-    namespace: workspace,
-    access,
-    roleDefaults: roleDefaults(),
-    voice: voice?.console,
-    entryAgent,
-    delegationUrl: `${origin}/delegation/start`,
-  }),
-  management: managementService({
-    access,
-    documents: workflowDocuments(
-      config.kube.makeApiClient(CoreV1Api),
-      config.kube.makeApiClient(CustomObjectsApi),
-      workspace,
-    ),
-    clients,
-    store: resourceStore(
-      config.kube,
-      workspace,
-      process.env.AGENTOS_SKILL_CATALOG ?? "agentos-skills",
-      clients,
-    ),
-    gateway,
-    knowledge,
-    speech: speechSettings,
-  }),
+  context: workspaceContext(home.identity, runtimes),
+  service: workspaceService(
+    ConsoleService,
+    new Map([...runtimes].map(([key, value]) => [key, value.service])),
+  ),
+  management: workspaceService(
+    ManagementService,
+    new Map([...runtimes].map(([key, value]) => [key, value.management])),
+  ),
 });
-registerHealth(app, () => access.healthy());
-closeOnSignal(app, [access.close]);
-await voice?.listen(listenConfig().host);
+registerHealth(app, () => [...runtimes.values()].every((runtime) => runtime.access.healthy()));
+closeOnSignal(
+  app,
+  [...runtimes.values()].map((runtime) => runtime.access.close),
+);
+await home.voice?.listen(listenConfig().host);
 await app.listen(listenConfig());

@@ -79,10 +79,14 @@ export function consoleService({
     ...voice,
     getAppResource: (request, context) => {
       if (!apps) throw unavailable();
+      if (request.app?.workspace?.uid !== context.values.get(accessProfile).workspace?.uid)
+        throw notFound("mcpApp.unavailable");
       return apps.getResource(request, context.values.get(requestIdentity), context.signal);
     },
     callAppTool: (request, context) => {
       if (!apps) throw unavailable();
+      if (request.app?.workspace?.uid !== context.values.get(accessProfile).workspace?.uid)
+        throw notFound("mcpApp.unavailable");
       return apps.callTool(request, context.values.get(requestIdentity), context.signal);
     },
     async getAccessProfile(_request, context) {

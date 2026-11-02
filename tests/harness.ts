@@ -13,13 +13,12 @@ import type { AccessPlan } from "../server/governance/access-plans.js";
 import { serverTargets, type Target, ToolBindings } from "../server/governance/bindings.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import { nativeCredentials } from "../server/kagent/context.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { taskQueries } from "../server/read-model/queries.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
 import { fixtureAgents, fixtureSessions, fixtureTasks } from "./fixtures/kagent.js";
-import { allowWorkspace } from "./workspace-member.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 /** The console user that recorded fixtures belong to. */
 export const operator = create(UserIdentitySchema, {
@@ -91,7 +90,7 @@ export function consoleClient(
     createRouterTransport((router) => router.service(ConsoleService, service), {
       router: {
         interceptors: [
-          workspaceContext("assistant", async () => identity(), allowWorkspace("agentos")),
+          testWorkspaceContext("agentos", async () => identity(), allowWorkspace("agentos")),
           createValidateInterceptor(),
         ],
       },

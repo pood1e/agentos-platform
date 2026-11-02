@@ -13,8 +13,9 @@ import {
   nativeRequestHeaders,
   nativeStream,
 } from "../server/kagent/context.js";
-import { accessProfile, memberWorkspace, workspaceContext } from "../server/platform/access.js";
+import { accessProfile, memberWorkspace } from "../server/platform/access.js";
 import { capabilityRole } from "../shared/permissions.js";
+import { testWorkspaceContext } from "./workspace-member.js";
 
 function setup() {
   const received: Headers[] = [];
@@ -78,10 +79,11 @@ function setup() {
       {
         router: {
           interceptors: [
-            workspaceContext(
-              "assistant",
+            testWorkspaceContext(
+              "workspace",
               userIdentity(native, "writer"),
               memberWorkspace(native.authorization, "workspace"),
+              "workspace-1",
             ),
           ],
         },

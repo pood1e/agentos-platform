@@ -23,6 +23,12 @@ spec:
               - {key: app, operator: In, values: [atenet-egress, atenet-router]}
         - podSelector:
             matchLabels: {ate.dev/worker-pool: kagent-default}
+        {{- range .Values.api.delegates }}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .namespace }}}
+          podSelector:
+            matchLabels: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: {{ .release }}, app.kubernetes.io/component: api}
+        {{- end }}
         {{- if .Values.voice.enabled }}
         - podSelector:
             matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: voice}

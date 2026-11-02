@@ -10,6 +10,15 @@
     "agents": "智能体",
     "settings": "配置"
   },
+  "workspaces": {
+    "title": "工作空间",
+    "hint": "选择已获授权的工作空间。",
+    "open": "进入",
+    "switch": "切换工作空间",
+    "all": "全部工作空间",
+    "empty": "当前账号暂无可用工作空间。",
+    "failed": "工作空间目录暂不可用，请稍后重试。"
+  },
   "status": {
     "live": "实时连接",
     "connecting": "连接中",

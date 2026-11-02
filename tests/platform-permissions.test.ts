@@ -5,9 +5,8 @@ import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ConnectionKind, ManagementService } from "../gen/agentos/management/v1/management_pb.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities, capabilityRole, roleCapabilities } from "../shared/permissions.js";
-import { allowWorkspace } from "./workspace-member.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 it("enforces each resource permission independently at every public mutation", async () => {
   const principal = create(UserIdentitySchema, { subject: "user:alice", write: true });
@@ -37,7 +36,7 @@ it("enforces each resource permission independently at every public mutation", a
     {
       router: {
         interceptors: [
-          workspaceContext("assistant", async () => principal, allowWorkspace("workspace")),
+          testWorkspaceContext("workspace", async () => principal, allowWorkspace("workspace")),
         ],
       },
     },

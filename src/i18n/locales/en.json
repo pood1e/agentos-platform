@@ -10,6 +10,15 @@
     "agents": "Agents",
     "settings": "Settings"
   },
+  "workspaces": {
+    "title": "Workspaces",
+    "hint": "Choose a workspace you can access.",
+    "open": "Open",
+    "switch": "Switch workspace",
+    "all": "All workspaces",
+    "empty": "No workspaces are available for this account.",
+    "failed": "The workspace directory is unavailable. Try again later."
+  },
   "status": {
     "live": "Live",
     "connecting": "Connecting",

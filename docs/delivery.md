@@ -35,6 +35,29 @@ identity:
 
 kagent 配置 OIDC AuthProvider、ScopeRule、OAuthTokenSource 与持久凭据加密 Secret。平台 API 将离线授权交给原生凭据服务，kagent PostgreSQL 与密钥由站点统一备份。
 api 与 dataplane 使用独立 ServiceAccount / NetworkPolicy；dataplane 提供 `8080` 业务 MCP，原生协作 MCP 直连 kagent。
+
+## 多工作空间
+
+每个工作空间使用独立 namespace、AgentOS release 与 kagent 实例。中心 release 的 `api.workspaces` 配置其他实例；自身实例由 Chart 自动加入目录。目标 release 的 `api.delegates` 授予中心 API ServiceAccount 资源访问和网关入口：
+
+```yaml
+# 中心 release
+api:
+  workspaces:
+    - namespace: research
+      release: agentos-research
+      entryAgent: assistant
+      harness: standard
+      kagentURL: http://kagent-controller.research.svc.cluster.local:8083
+
+# research release
+api:
+  delegates:
+    - namespace: agentos
+      release: agentos
+```
+
+两个 release 使用同一 OIDC 主体规范，并在各自原生授权存储中建立工作空间成员绑定。中心 API 从各实例的原生 `ListWorkspaces` 汇总当前用户可见目录；委托凭据登记到当前工作空间的 kagent 实例。
 `runtime.actorIssuer` / `runtime.actorJWKS` 固定 Substrate 身份源；`runtime.kubernetesIssuer` 与集群签发方一致；`runtime.kubernetesJWKS` 使用原生 HTTPS Backend 连接可供网关读取的 Kubernetes 公钥端点。参考部署为该公开公钥授予 `system:service-account-issuer-discovery` 只读权限。网关 origin 同步登记到 kagent `gatewayAudiences`。
 
 ## 模型连接

@@ -40,11 +40,6 @@ app.kubernetes.io/component: {{ .component }}
 {{ include "agentos.telemetryEnv" . }}
 {{- end -}}
 
-{{- define "agentos.knowledgeEnv" -}}
-- {name: AGENTOS_GATEWAY_URL, value: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace | quote }}}
-- {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
-{{- end -}}
-
 {{- define "agentos.platformDeployment" -}}
 {{- $root := .root -}}
 {{- $values := index $root.Values .component -}}
@@ -161,6 +156,13 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "agentos.name" .root }}-{{ .component }}
     namespace: {{ .root.Release.Namespace }}
+{{- if eq .component "api" }}
+{{- range .root.Values.api.delegates }}
+  - kind: ServiceAccount
+    name: {{ .release }}-api
+    namespace: {{ .namespace }}
+{{- end }}
+{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

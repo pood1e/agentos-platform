@@ -9,16 +9,16 @@ import {
   SaveWorkflowLayoutRequestSchema,
   WorkflowSchema,
 } from "../gen/agentos/management/v1/workflow_pb.js";
+import { GetSessionAuthorityResponseSchema } from "../gen/kagent/api/v1/execution_pb.js";
 import { definitionResource, definitionSpec } from "../server/management/workflows/definition.js";
 import { workflowCommands } from "../server/management/workflows/service.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { taskQueries } from "../server/read-model/queries.js";
 import { object } from "../shared/json.js";
 import { initialDocument } from "../src/features/workflows/document.js";
 import { newWorkflow, updateSpec } from "../src/features/workflows/draft.js";
 import { consoleClient, publishTargets } from "./harness.js";
 import { managementEnvironment } from "./management-harness.js";
-import { allowWorkspace } from "./workspace-member.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
 beforeEach(async () => {
@@ -217,8 +217,8 @@ it("enforces workspace and administration gates before workflow source writes", 
     createRouterTransport((router) => router.service(ManagementService, env.service), {
       router: {
         interceptors: [
-          workspaceContext(
-            "assistant",
+          testWorkspaceContext(
+            "agentos",
             async () => create(UserIdentitySchema, { subject: "reader" }),
             allowWorkspace("agentos"),
           ),
@@ -246,4 +246,34 @@ it("reads a Session's pinned workflow after later publications", async () => {
   await publish(draft, false);
   const pinned = await env.clients.workflows.getSessionWorkflow({ sessionId: session?.id });
   expect(new TextDecoder().decode(pinned.document)).toBe(initialDocument);
+});
+
+it("rejects a pinned workflow from a recreated workspace", async () => {
+  const { workflow } = await publish();
+  const { session } = await env.clients.sessions.createSession({
+    agent: workflow?.agent?.ref,
+    requestId: "workspace-recreation",
+  });
+  vi.spyOn(env.clients.execution, "getSessionAuthority").mockResolvedValueOnce(
+    create(GetSessionAuthorityResponseSchema, {
+      authority: { sessionId: session?.id, workspaceUid: "previous-uid" },
+    }),
+  );
+  const client = createClient(
+    ManagementService,
+    createRouterTransport((router) => router.service(ManagementService, env.service), {
+      router: {
+        interceptors: [
+          testWorkspaceContext(
+            "agentos",
+            async () => create(UserIdentitySchema, { subject: "reader" }),
+            allowWorkspace("agentos"),
+          ),
+        ],
+      },
+    }),
+  );
+  await expect(client.getSessionWorkflow({ sessionId: session?.id })).rejects.toMatchObject({
+    code: Code.NotFound,
+  });
 });
