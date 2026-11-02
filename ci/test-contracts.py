@@ -24,6 +24,7 @@ class ContractsTest(unittest.TestCase):
                     name in {"package.json", "LICENSE", "buf.lock", "authorization.json"}
                     or (path.parts[0] in {"proto", "third_party"} and name.endswith(".proto"))
                     or (path.parts[:2] == ("gen", "schema") and name.endswith(".json"))
+                    or name in {"gen/kagent/workflow.js", "gen/kagent/workflow.d.ts"}
                     or (
                         path.parts[0] == "gen"
                         and name.endswith(
@@ -54,6 +55,8 @@ class ContractsTest(unittest.TestCase):
             )
             Path(directory, "consumer.ts").write_text("""
 import type {AccessPlanStatus} from '@agentos/contracts/gen/kubernetes';
+import type {AgentSystem} from '@agentos/contracts/gen/kagent/workflow';
+export type {AgentSystem};
 const status: AccessPlanStatus = {observedGeneration: 1, targets: [
   {server: 'tools', service: 'tools', catalog: false, tools: [{name: 'read', write: false, requireApproval: false}]}]};
 export default status;

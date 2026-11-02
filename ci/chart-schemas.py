@@ -8,7 +8,7 @@ import yaml
 
 cache = Path(".cache/chart-check")
 cache.mkdir(parents=True, exist_ok=True)
-KAGENT = "852629af657f9e337c05e56d2a0650c292e5086f"
+KAGENT = "90c55a96e1b34e05e6c86431d1ce383952f15bb0"
 AGENTGATEWAY = "v1.7.0"
 GATEWAY_API = "v1.6.1"
 CERT_MANAGER = "v1.21.2"
@@ -58,7 +58,7 @@ sources = [
     chart(
         "kagent-crds",
         "oci://ghcr.io/pood1e/kagent/helm/kagent-crds",
-        f"0.0.0-main.g{KAGENT}",
+        f"0.0.0-dev.g{KAGENT}",
     ),
     chart(
         "agentgateway-crds",
