@@ -20,6 +20,10 @@ const kinds = [
   AuthorizationScopeKind.AGENT_TEMPLATE,
   AuthorizationScopeKind.SESSION,
   AuthorizationScopeKind.TASK,
+  AuthorizationScopeKind.HARNESS,
+  AuthorizationScopeKind.MODEL_CONNECTION,
+  AuthorizationScopeKind.MCP_SERVER,
+  AuthorizationScopeKind.MCP_TOOL,
 ];
 
 export function ScopeSelector({
@@ -39,6 +43,7 @@ export function ScopeSelector({
   const [manual, setManual] = useState(false);
   const [name, setName] = useState("");
   const [taskId, setTaskId] = useState("");
+  const [toolName, setToolName] = useState("");
   const { options, error, loading } = useResourceOptions(profile, kind, selected);
 
   return (
@@ -69,6 +74,21 @@ export function ScopeSelector({
               resource: { case: "task", value: { sessionId: name.trim(), taskId: taskId.trim() } },
             }),
           );
+        if (kind === AuthorizationScopeKind.MCP_TOOL)
+          return onSelect(
+            create(AuthorizationResourceSchema, {
+              resource: {
+                case: "mcpTool",
+                value: {
+                  server: {
+                    kind: AuthorizationScopeKind.MCP_SERVER,
+                    ref: { namespace: workspace, name: name.trim() },
+                  },
+                  name: toolName,
+                },
+              },
+            }),
+          );
         onSelect(
           create(AuthorizationResourceSchema, {
             resource: {
@@ -97,6 +117,7 @@ export function ScopeSelector({
               setManual(false);
               setName("");
               setTaskId("");
+              setToolName("");
             }}
           >
             {kinds.map((value) => (
@@ -136,7 +157,9 @@ export function ScopeSelector({
               {t(
                 kind === AuthorizationScopeKind.SESSION || kind === AuthorizationScopeKind.TASK
                   ? "authorization.sessionId"
-                  : "configuration.name",
+                  : kind === AuthorizationScopeKind.MCP_TOOL
+                    ? "authorization.mcpServer"
+                    : "configuration.name",
               )}
               <Input
                 id={`${id}-name`}
@@ -144,12 +167,12 @@ export function ScopeSelector({
                 maxLength={
                   kind === AuthorizationScopeKind.SESSION || kind === AuthorizationScopeKind.TASK
                     ? 36
-                    : 63
+                    : 253
                 }
                 pattern={
                   kind === AuthorizationScopeKind.SESSION || kind === AuthorizationScopeKind.TASK
                     ? "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-                    : "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+                    : "[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*"
                 }
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -170,12 +193,31 @@ export function ScopeSelector({
                 />
               </label>
             )}
+            {kind === AuthorizationScopeKind.MCP_TOOL && (
+              <label
+                htmlFor={`${id}-tool`}
+                className="grid min-w-56 flex-1 gap-1 text-xs text-muted-foreground"
+              >
+                {t("authorization.toolName")}
+                <Input
+                  id={`${id}-tool`}
+                  required
+                  maxLength={256}
+                  value={toolName}
+                  onChange={(event) => setToolName(event.target.value)}
+                />
+                <span>{t("authorization.toolNameHint")}</span>
+              </label>
+            )}
           </>
         )}
         <Button
           type="submit"
           variant="outline"
-          disabled={kind !== AuthorizationScopeKind.WORKSPACE && !manual && !choice}
+          disabled={
+            (kind !== AuthorizationScopeKind.WORKSPACE && !manual && !choice) ||
+            (kind === AuthorizationScopeKind.MCP_TOOL && manual && [...toolName].length > 128)
+          }
         >
           {t("authorization.openScope")}
         </Button>

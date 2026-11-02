@@ -13,6 +13,8 @@ import { expect, it, vi } from "vitest";
 import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.js";
 import {
   AccessRole,
+  AuthorizationResourceSchema,
+  AuthorizationScopeKind,
   AuthorizationService,
   type GrantRoleRequest,
   GrantRoleRequestSchema,
@@ -186,6 +188,35 @@ it("registers the native contract on HTTP and validates requests before upstream
     expect(upstream).not.toHaveBeenCalled();
     await client.grantRole(grantRequest());
     expect(upstream).toHaveBeenCalledOnce();
+    const toolGrant = grantRequest();
+    if (!toolGrant.binding) throw new Error("Missing test binding");
+    toolGrant.binding.role = AccessRole.DEPENDENCY_USER;
+    toolGrant.binding.scope = create(AuthorizationResourceSchema, {
+      resource: {
+        case: "mcpTool",
+        value: {
+          server: {
+            kind: AuthorizationScopeKind.MCP_SERVER,
+            ref: { namespace: "team", name: "tools.v2" },
+            uid: "server-uid",
+          },
+          name: "Read/Logs & metrics ",
+        },
+      },
+    });
+    await client.grantRole(toolGrant);
+    expect(upstream).toHaveBeenLastCalledWith(
+      expect.objectContaining({ binding: toolGrant.binding }),
+      expect.anything(),
+    );
+    const tool = toolGrant.binding.scope.resource;
+    if (tool.case !== "mcpTool" || !tool.value.server) throw new Error("Missing test tool");
+    tool.value.server.kind = AuthorizationScopeKind.HARNESS;
+    await expect(client.grantRole(toolGrant)).rejects.toMatchObject({ code: Code.InvalidArgument });
+    tool.value.server.kind = AuthorizationScopeKind.MCP_SERVER;
+    tool.value.name = "x".repeat(129);
+    await expect(client.grantRole(toolGrant)).rejects.toMatchObject({ code: Code.InvalidArgument });
+    expect(upstream).toHaveBeenCalledTimes(2);
   } finally {
     await app.close();
     await env.close();

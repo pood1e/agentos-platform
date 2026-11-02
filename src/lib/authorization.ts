@@ -19,6 +19,8 @@ export function authorizationScopeKind(scope: AuthorizationResource) {
       return AuthorizationScopeKind.SESSION;
     case "task":
       return AuthorizationScopeKind.TASK;
+    case "mcpTool":
+      return AuthorizationScopeKind.MCP_TOOL;
     default:
       return AuthorizationScopeKind.UNSPECIFIED;
   }
