@@ -28,7 +28,7 @@ export function WorkflowSettings({
   const { t } = useTranslation();
   const access = useAccess().data;
   const policy = useQuery({
-    queryKey: ["workflows", "tools", access?.workspace, access?.subject, identity],
+    queryKey: ["workflows", "tools", access?.workspace?.uid, access?.subject, identity],
     queryFn: () => consoleClient.explainTools({ identity }),
     enabled: !!identity,
   });

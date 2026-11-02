@@ -20,9 +20,9 @@ export function listenConfig(env = process.env, port = 8080) {
   return { host: env.AGENTOS_HOST ?? "127.0.0.1", port: Number(env.AGENTOS_PORT ?? port) };
 }
 
-export function roleDefaults(env = process.env) {
+export function roleDefaults(harness: string, env = process.env) {
   return {
     modelConfig: env.AGENTOS_MODEL_CONFIG ?? "default-model-config",
-    harness: env.AGENTOS_HARNESS ?? "standard",
+    harness,
   };
 }

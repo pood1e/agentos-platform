@@ -27,7 +27,7 @@ export function VoiceCallControls({
   const call = useVoiceCall({
     client: consoleClient,
     contextId,
-    scope: JSON.stringify([access.data?.workspace, access.data?.subject]),
+    scope: JSON.stringify([access.data?.workspace?.uid, access.data?.subject]),
     language: localStorage.getItem("speech-language") ?? i18n.resolvedLanguage?.split("-")[0] ?? "",
     capabilities: capabilities.data,
     report,

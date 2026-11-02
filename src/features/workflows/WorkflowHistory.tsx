@@ -12,7 +12,7 @@ export function WorkflowHistory() {
   const { name = "" } = useParams();
   const { t } = useTranslation();
   const access = useAccess().data;
-  const namespace = access?.workspace ?? "";
+  const namespace = access?.workspace?.namespace ?? "";
   const [token, setToken] = useState("");
   const [session, setSession] = useState("");
   const runs = useQuery({

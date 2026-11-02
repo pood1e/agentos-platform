@@ -16,6 +16,8 @@ import harnessSchema from "../../gen/schema/kagent.harness.json" with { type: "j
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { type KnowledgeConfig, knowledgeService } from "../knowledge/service.js";
+import { accessProfile } from "../platform/access.js";
+import { notFound } from "../shared/errors.js";
 import type { SpeechSettingsStore } from "../voice/settings.js";
 import { agentRuntime } from "./agent-runtime.js";
 import { connectionCommands, type GatewayConfig } from "./connections.js";
@@ -63,7 +65,18 @@ export function managementService({
   const workflows = workflowCommands(store, clients, documents, gateway.namespace, access);
   return {
     getWorkflowSchema: (request) => clients.workflows.getWorkflowSchema(request),
-    getSessionWorkflow: (request) => clients.workflows.getSessionWorkflow(request),
+    async getSessionWorkflow(request, context) {
+      const [{ session }, { authority }] = await Promise.all([
+        clients.sessions.getSession({ sessionId: request.sessionId }),
+        clients.execution.getSessionAuthority({ sessionId: request.sessionId }),
+      ]);
+      if (
+        session?.agent?.namespace !== gateway.namespace ||
+        authority?.workspaceUid !== context.values.get(accessProfile).workspace?.uid
+      )
+        throw notFound("workflow.invalidReference");
+      return clients.workflows.getSessionWorkflow(request);
+    },
     listWorkflows: () => workflows.list(),
     getWorkflow: async (request) => ({ workflow: await workflows.read(request.ref) }),
     validateWorkflow: (request) => workflows.validate(request.workflow),

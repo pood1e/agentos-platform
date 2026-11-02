@@ -108,7 +108,11 @@ it.each(["lab-views-assistant", "lab-views-assistant-approval"])(
     expect(env.invoke).toHaveBeenCalledWith(
       "http://gateway.test:8080",
       "lab-views-assistant",
-      expect.objectContaining(env.request.app),
+      expect.objectContaining({
+        taskId: env.request.app.taskId,
+        callId: env.request.app.callId,
+        workspace: expect.objectContaining(env.request.app.workspace),
+      }),
       "latest-alice-token",
       { name: "lab-views_graph_data", arguments: undefined },
       expect.any(AbortSignal),
@@ -155,7 +159,11 @@ it("calls only same-service app-visible read tools as the current viewer and ori
   expect(env.invoke).toHaveBeenCalledWith(
     "http://gateway.test:8080",
     "lab-views-assistant",
-    expect.objectContaining(env.request.app),
+    expect.objectContaining({
+      taskId: env.request.app.taskId,
+      callId: env.request.app.callId,
+      workspace: expect.objectContaining(env.request.app.workspace),
+    }),
     "latest-alice-token",
     { name: "lab-views_graph_data", arguments: { focus: "router-1", identity: "admin" } },
     expect.any(AbortSignal),

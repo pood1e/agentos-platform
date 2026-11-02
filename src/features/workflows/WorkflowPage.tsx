@@ -12,7 +12,7 @@ export function WorkflowPage({ isNew = false }: { isNew?: boolean } = {}) {
   const { name = "" } = useParams();
   const { t } = useTranslation();
   const access = useAccess().data;
-  const namespace = access?.workspace ?? "";
+  const namespace = access?.workspace?.namespace ?? "";
   const editable = useCapability(Capability.AGENTS_MANAGE);
   const workflow = useQuery({
     queryKey: ["workflows", "definition", namespace, access?.subject, name],

@@ -5,6 +5,7 @@ import { ManagementService } from "../../gen/agentos/management/v1/management_pb
 import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
 
 import i18n from "../i18n/index.js";
+import { currentWorkspace } from "./workspace-route.js";
 
 export const transport = createConnectTransport({
   baseUrl: window.location.origin,
@@ -12,6 +13,10 @@ export const transport = createConnectTransport({
     (next) => (request) => {
       const locale = i18n.resolvedLanguage ?? i18n.language;
       if (locale) request.header.set("Accept-Language", locale);
+      if (currentWorkspace && request.service.typeName !== AuthorizationService.typeName) {
+        request.header.set("x-agentos-workspace", currentWorkspace.namespace);
+        request.header.set("x-agentos-workspace-uid", currentWorkspace.uid);
+      }
       return next(request);
     },
   ],

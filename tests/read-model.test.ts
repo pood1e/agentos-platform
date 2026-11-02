@@ -6,6 +6,7 @@ import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentSchema } from "../gen/kagent/api/v1/agents_pb.js";
+import { visibleGraph } from "../server/console/history.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { agentSummary } from "../server/read-model/views/agents.js";
@@ -148,6 +149,22 @@ describe("listings", () => {
     env = await environment();
   });
   afterAll(() => env.close());
+
+  it("hides direct Sessions and Tasks from a previous Namespace incarnation", async () => {
+    const session = env.fake.sessions.get(ids.chatContext);
+    if (!session?.authority) throw new Error("missing fixture session authority");
+    expect(await env.projection.session(ids.chatContext)).toBeDefined();
+    expect(await env.projection.entry(ids.chat)).toBeDefined();
+    session.authority.workspaceUid = "previous-namespace-uid";
+    try {
+      expect(await env.projection.session(ids.chatContext)).toBeUndefined();
+      expect(await env.projection.entry(ids.chat)).toBeUndefined();
+      expect(await env.projection.graphOf({ taskId: ids.chat })).toBeUndefined();
+      expect(await visibleGraph(env.projection, reader, { taskId: ids.chat })).toBeUndefined();
+    } finally {
+      session.authority.workspaceUid = "agentos-uid";
+    }
+  });
 
   it("projects the native session of operation roots", async () => {
     const root = await env.projection.entry(ids.dispatchRoot);

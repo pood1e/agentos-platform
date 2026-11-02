@@ -33,7 +33,7 @@ export function ScopeSelector({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const { workspace } = profile;
+  const workspace = profile.workspace?.namespace ?? "";
   const [kind, setKind] = useState(authorizationScopeKind(selected));
   const [choice, setChoice] = useState(resourceSearch(selected).toString());
   const [manual, setManual] = useState(false);

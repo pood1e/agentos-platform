@@ -34,7 +34,7 @@ export function Layout({ children }: { children?: ReactNode }) {
     window.location.assign(delegation);
   }, [access.data]);
   const transport = useTransport();
-  const scope = JSON.stringify([access.data?.workspace, access.data?.subject]);
+  const scope = JSON.stringify([access.data?.workspace?.uid, access.data?.subject]);
   const scopedTransport = useMemo(
     () => addStaticKeyToTransport(transport, scope),
     [transport, scope],

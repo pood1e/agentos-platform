@@ -6,6 +6,7 @@ import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_p
 import { ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { AppReferenceSchema } from "../../gen/agentos/mcp/v1/app_pb.js";
 import { nativeHeaders, nativeSignal } from "../kagent/context.js";
+import type { WorkspaceMember } from "../platform/access.js";
 import type { McpApps } from "./service.js";
 
 const validator = createValidator();
@@ -13,10 +14,15 @@ const validator = createValidator();
 /** Gateway extAuth authenticates the original viewer again; no caller headers grant selection. */
 export function registerAppAuthorization(
   app: FastifyInstance,
-  apps: McpApps,
-  identity: (headers: Headers) => Promise<UserIdentity>,
+  target: (namespace: string) =>
+    | {
+        apps: McpApps;
+        identity: (headers: Headers) => Promise<UserIdentity>;
+        member: WorkspaceMember;
+      }
+    | undefined,
 ) {
-  app.route<{ Querystring: { server?: string } }>({
+  app.route<{ Querystring: { server?: string; workspace?: string } }>({
     method: ["POST", "GET", "DELETE"],
     url: "/authorize/mcp-app",
     handler: async (request, reply) => {
@@ -25,12 +31,15 @@ export function registerAppAuthorization(
       if (!bearer?.match(/^Bearer [^\s,]+$/)) return reply.code(401).send();
       const encoded = request.headers["x-agentos-app-reference"];
       const server = request.query.server;
+      const gatewayWorkspace = request.query.workspace;
       if (
         typeof encoded !== "string" ||
         encoded.length > 2048 ||
         !/^[A-Za-z0-9_-]+$/.test(encoded) ||
         typeof server !== "string" ||
-        !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(server)
+        !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(server) ||
+        typeof gatewayWorkspace !== "string" ||
+        !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(gatewayWorkspace)
       )
         return reply.code(403).send();
       const headers = new Headers({ authorization: bearer });
@@ -41,11 +50,18 @@ export function registerAppAuthorization(
         );
         if (validator.validate(AppReferenceSchema, reference).kind !== "valid")
           return reply.code(403).send();
+        const workspace = reference.workspace;
+        if (workspace?.namespace !== gatewayWorkspace) return reply.code(403).send();
+        const selected = target(gatewayWorkspace);
+        if (!workspace?.uid || !selected) return reply.code(403).send();
         const signal = AbortSignal.timeout(10_000);
         const selection = await nativeSignal.run(signal, () =>
           nativeHeaders.run(headers, async () => {
-            const principal = await identity(headers);
-            return apps.authorize(reference, principal, signal);
+            const member = await selected.member(headers, signal, workspace.uid);
+            if (member.namespace !== workspace.namespace || member.uid !== workspace.uid)
+              throw new ConnectError("Workspace access denied", Code.PermissionDenied);
+            const principal = await selected.identity(headers);
+            return selected.apps.authorize(reference, principal, signal);
           }),
         );
         if (selection.server !== server) return reply.code(403).send();

@@ -9,15 +9,16 @@ import {
   SaveWorkflowLayoutRequestSchema,
   WorkflowSchema,
 } from "../gen/agentos/management/v1/workflow_pb.js";
+import { GetSessionAuthorityResponseSchema } from "../gen/kagent/api/v1/execution_pb.js";
 import { definitionResource, definitionSpec } from "../server/management/workflows/definition.js";
 import { workflowCommands } from "../server/management/workflows/service.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { taskQueries } from "../server/read-model/queries.js";
 import { object } from "../shared/json.js";
 import { initialDocument } from "../src/features/workflows/document.js";
 import { newWorkflow, updateSpec } from "../src/features/workflows/draft.js";
 import { consoleClient, publishTargets } from "./harness.js";
 import { managementEnvironment } from "./management-harness.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
 beforeEach(async () => {
@@ -54,7 +55,11 @@ it("starts a tool-free workflow and lists its runs without a business role", asy
   if (!workflow) throw new Error("missing workflow");
   const client = consoleClient({
     ...env,
-    projection: taskQueries({ workspace: "agentos", clients: env.clients }),
+    projection: taskQueries({
+      workspace: "agentos",
+      workspaceUID: async () => "agentos-uid",
+      clients: env.clients,
+    }),
   });
   expect((await client.getConfiguration({})).roles.some((role) => role.name === "flow")).toBe(
     false,
@@ -216,8 +221,10 @@ it("enforces workspace and administration gates before workflow source writes", 
     createRouterTransport((router) => router.service(ManagementService, env.service), {
       router: {
         interceptors: [
-          workspaceContext("agentos", "assistant", async () =>
-            create(UserIdentitySchema, { subject: "reader" }),
+          testWorkspaceContext(
+            "agentos",
+            async () => create(UserIdentitySchema, { subject: "reader" }),
+            allowWorkspace("agentos"),
           ),
           createValidateInterceptor(),
         ],
@@ -243,4 +250,34 @@ it("reads a Session's pinned workflow after later publications", async () => {
   await publish(draft, false);
   const pinned = await env.clients.workflows.getSessionWorkflow({ sessionId: session?.id });
   expect(new TextDecoder().decode(pinned.document)).toBe(initialDocument);
+});
+
+it("rejects a pinned workflow from a recreated workspace", async () => {
+  const { workflow } = await publish();
+  const { session } = await env.clients.sessions.createSession({
+    agent: workflow?.agent?.ref,
+    requestId: "workspace-recreation",
+  });
+  vi.spyOn(env.clients.execution, "getSessionAuthority").mockResolvedValueOnce(
+    create(GetSessionAuthorityResponseSchema, {
+      authority: { sessionId: session?.id, workspaceUid: "previous-uid" },
+    }),
+  );
+  const client = createClient(
+    ManagementService,
+    createRouterTransport((router) => router.service(ManagementService, env.service), {
+      router: {
+        interceptors: [
+          testWorkspaceContext(
+            "agentos",
+            async () => create(UserIdentitySchema, { subject: "reader" }),
+            allowWorkspace("agentos"),
+          ),
+        ],
+      },
+    }),
+  );
+  await expect(client.getSessionWorkflow({ sessionId: session?.id })).rejects.toMatchObject({
+    code: Code.NotFound,
+  });
 });

@@ -20,7 +20,15 @@ const graphPageSize = 12;
 const missing = (error: unknown) => error instanceof ConnectError && error.code === Code.NotFound;
 
 /** Native catalog reads and exact A2A task access share the caller's authority. */
-export function taskQueries({ workspace, clients }: { workspace: string; clients: KagentClients }) {
+export function taskQueries({
+  workspace,
+  workspaceUID,
+  clients,
+}: {
+  workspace: string;
+  workspaceUID: () => Promise<string>;
+  clients: KagentClients;
+}) {
   const changes = new EventEmitter().setMaxListeners(0);
   async function agents(signal?: AbortSignal) {
     const [agents, templates] = await Promise.all([
@@ -33,7 +41,11 @@ export function taskQueries({ workspace, clients }: { workspace: string; clients
   async function session(id: string, signal?: AbortSignal) {
     try {
       const { session } = await clients.sessions.getSession({ sessionId: id }, { ...rpc, signal });
-      return session?.agent?.namespace === workspace ? sessionInfo(session) : undefined;
+      if (session?.agent?.namespace !== workspace) return undefined;
+      const uid = await workspaceUID();
+      return uid !== "" && session.authority?.workspaceUid === uid
+        ? sessionInfo(session)
+        : undefined;
     } catch (error) {
       if (missing(error)) return undefined;
       throw error;

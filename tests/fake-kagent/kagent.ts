@@ -99,6 +99,7 @@ export class FakeKagent {
         sessionId: session.id,
         initiatorId: session.creator,
         rootSessionId: execution?.root?.sessionId ?? session.id,
+        workspaceUid: `${session.agent?.namespace}-uid`,
         scopeCeiling: { scopes: [] },
       });
     }
@@ -160,6 +161,7 @@ export class FakeKagent {
       sessionId: session.id,
       rootSessionId: session.id,
       initiatorId: session.creator,
+      workspaceUid: `${agent.namespace}-uid`,
     });
     this.sessions.set(session.id, session);
     const value = this.agents.find((item) => agentKey(item.ref) === agentKey(agent))?.resource
@@ -198,6 +200,7 @@ export class FakeKagent {
       initiatorId: parent.creator,
       parentSessionId: parent.id,
       rootSessionId: parent.authority?.rootSessionId ?? parent.id,
+      workspaceUid: parent.authority?.workspaceUid,
     });
     signal.throwIfAborted();
     return child;

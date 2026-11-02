@@ -47,7 +47,7 @@ export function AgentDirectory({
 }) {
   const { t } = useTranslation();
   const editable = useCapability(Capability.AGENTS_MANAGE);
-  const workspace = useAccess().data?.workspace ?? "";
+  const workspace = useAccess().data?.workspace?.namespace ?? "";
   const names = agents
     .filter((agent) => agent.id.startsWith(`${workspace}/`))
     .map((agent) => agent.id.slice(workspace.length + 1));

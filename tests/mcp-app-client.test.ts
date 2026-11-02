@@ -43,7 +43,11 @@ it("calls the native gateway App view with the current viewer's bearer", async (
   const result = await callAppTool(
     address,
     "lab-views-assistant",
-    create(AppReferenceSchema, { taskId: "task", callId: "call" }),
+    create(AppReferenceSchema, {
+      taskId: "task",
+      callId: "call",
+      workspace: { namespace: "agentos", uid: "workspace-uid" },
+    }),
     "current-viewer-token",
     { name: "graph_data", arguments: { focus: "router-1" } },
     new AbortController().signal,
@@ -78,7 +82,11 @@ it("rejects gateway redirects before leaking the viewer's credential", async () 
     callAppTool(
       address,
       "lab-views-assistant",
-      create(AppReferenceSchema, { taskId: "task", callId: "call" }),
+      create(AppReferenceSchema, {
+        taskId: "task",
+        callId: "call",
+        workspace: { namespace: "agentos", uid: "workspace-uid" },
+      }),
       "viewer-token",
       { name: "graph_data" },
       new AbortController().signal,

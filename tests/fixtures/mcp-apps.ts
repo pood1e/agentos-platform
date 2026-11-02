@@ -6,9 +6,9 @@ import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.
 import { consoleService } from "../../server/console/service.js";
 import { toolMetadata } from "../../server/kagent/tool-metadata.js";
 import { mcpApps } from "../../server/mcp-apps/service.js";
-import { workspaceContext } from "../../server/platform/access.js";
 import { appScenario } from "../fake-kagent/apps.js";
 import { environment, testBindings } from "../harness.js";
+import { allowWorkspace, testWorkspaceContext } from "../workspace-member.js";
 
 export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.example") {
   const env = await environment([]);
@@ -60,11 +60,19 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
           },
         ],
       },
-      router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] },
+      router: {
+        interceptors: [
+          testWorkspaceContext("agentos", async () => caller, allowWorkspace("agentos")),
+        ],
+      },
     }),
   );
   const request = {
-    app: { taskId: scenario.task.id, callId: scenario.callId },
+    app: {
+      taskId: scenario.task.id,
+      callId: scenario.callId,
+      workspace: { namespace: "agentos", uid: "agentos-uid" },
+    },
   };
   return {
     ...env,

@@ -26,7 +26,7 @@ export function ExecutionPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const access = useAccess();
-  const ref = { namespace: access.data?.workspace ?? "", name: agent };
+  const ref = { namespace: access.data?.workspace?.namespace ?? "", name: agent };
   const chat = useChat(ref, session, started);
   const sessionScope = session
     ? create(AuthorizationResourceSchema, { resource: { case: "sessionId", value: session } })

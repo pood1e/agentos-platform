@@ -413,6 +413,62 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "workspaces": {
+          "type": "array",
+          "maxItems": 31,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "release", "entryAgent", "harness", "kagentURL"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "release": {
+                "type": "string",
+                "maxLength": 44,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "entryAgent": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "harness": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "kagentURL": {
+                "type": "string",
+                "pattern": "^https?://[^/]+(:[0-9]+)?$"
+              }
+            }
+          }
+        },
+        "delegates": {
+          "type": "array",
+          "maxItems": 31,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "release"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "release": {
+                "type": "string",
+                "maxLength": 44,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            }
+          }
+        },
         "replicas": {
           "type": "integer",
           "minimum": 1
@@ -427,7 +483,7 @@
           }
         }
       },
-      "required": ["replicas", "resources"]
+      "required": ["replicas", "resources", "workspaces", "delegates"]
     },
     "dataplane": {
       "type": "object",

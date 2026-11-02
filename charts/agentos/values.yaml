@@ -16,6 +16,8 @@ kagent:
   controllerSubject: ""
 api:
   replicas: 2
+  workspaces: []
+  delegates: []
   resources:
     requests:
       cpu: 100m

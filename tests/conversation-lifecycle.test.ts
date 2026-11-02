@@ -12,7 +12,7 @@ it("delegates deletion admission and history removal to the native API", async (
     "delete-request",
     "Delete target",
   );
-  const remove = conversationCommands(env.clients, "agentos", "assistant").remove;
+  const remove = conversationCommands(env.projection, env.clients, "agentos", "assistant").remove;
   const deleted = vi.spyOn(env.clients.sessions, "deleteSession");
   await remove(create(DeleteSessionRequestSchema, { sessionId: session.id }), operator);
   expect(deleted).toHaveBeenCalledExactlyOnceWith(
@@ -35,7 +35,7 @@ it.each([Code.Aborted, Code.FailedPrecondition])(
       new ConnectError("native execution active", code),
     );
     await expect(
-      conversationCommands(env.clients, "agentos", "assistant").remove(
+      conversationCommands(env.projection, env.clients, "agentos", "assistant").remove(
         create(DeleteSessionRequestSchema, { sessionId: session.id }),
         operator,
       ),
@@ -51,10 +51,30 @@ it("preserves native ownership denial before issuing a delete", async () => {
   );
   const deleted = vi.spyOn(env.clients.sessions, "deleteSession");
   await expect(
-    conversationCommands(env.clients, "agentos", "assistant").remove(
+    conversationCommands(env.projection, env.clients, "agentos", "assistant").remove(
       create(DeleteSessionRequestSchema, { sessionId: "foreign" }),
       operator,
     ),
   ).rejects.toMatchObject({ code: Code.NotFound });
   expect(deleted).not.toHaveBeenCalled();
+});
+
+it("refuses to delete a session from an earlier Namespace incarnation", async () => {
+  const env = await environment([]);
+  const session = env.fake.createSession(
+    { namespace: "agentos", name: "assistant" },
+    "old-namespace-request",
+    "Old Namespace",
+  );
+  if (!session.authority) throw new Error("missing session authority");
+  session.authority.workspaceUid = "previous-namespace-uid";
+  const deleted = vi.spyOn(env.clients.sessions, "deleteSession");
+  await expect(
+    conversationCommands(env.projection, env.clients, "agentos", "assistant").remove(
+      create(DeleteSessionRequestSchema, { sessionId: session.id }),
+      operator,
+    ),
+  ).rejects.toMatchObject({ code: Code.NotFound });
+  expect(deleted).not.toHaveBeenCalled();
+  expect(env.fake.sessions.has(session.id)).toBe(true);
 });

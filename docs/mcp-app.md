@@ -16,7 +16,7 @@ flowchart LR
 ```
 
 Agent 调用展示工具后，控制台从原生任务还原其视图资源。浏览器展开卡片时加载模板，View 接收原工具入参与结果，后续取数通过宿主回调。
-任务 ID 与调用 ID 标识视图实例，`ui://` URI 标识可复用模板；子 Agent 的视图随委派结果展示。
+工作空间 UID、任务 ID 与调用 ID 标识视图实例，`ui://` URI 标识可复用模板；子 Agent 的视图随委派结果展示。
 
 ## 服务契约
 
@@ -35,7 +35,7 @@ AccessPlan 编译器对目录路由开放模板与元数据，Agent 路由保留
 
 | RPC | 行为 |
 | --- | --- |
-| `GetAppResource` | 按 `AppReference` 的任务 ID、调用 ID 校验归属，返回模板与 `_meta.ui` |
+| `GetAppResource` | 按 `AppReference` 的工作空间、任务 ID、调用 ID 校验归属，返回模板与 `_meta.ui` |
 | `CallAppTool` | 校验同服务、`app` 可见性与只读工具分级，以当前查看者身份调用 |
 
 回调使用查看者的最新凭证，按原调用 Agent 的环境身份交换令牌，访问环境网关 `/mcp/<identity>/<service>`。

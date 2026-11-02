@@ -4,6 +4,7 @@ package agentos.mcp.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "kagent/api/v1/authorization.proto";
 
 // A view is supplied by the MCP server that owns its originating operation.
 message AppView {
@@ -23,4 +24,5 @@ message AppReference {
     min_len: 1
     max_len: 256
   }];
+  kagent.api.v1.WorkspaceAuthorizationReference workspace = 3 [(buf.validate.field).required = true];
 }

@@ -8,6 +8,8 @@ interface DelegationRequest {
   state: string;
   nonce: string;
   returnTo: string;
+  namespace: string;
+  uid: string;
   started: number;
 }
 
@@ -19,6 +21,23 @@ declare module "@fastify/secure-session" {
 
 const lifetime = 10 * 60_000;
 
+export function delegationWorkspace(
+  returnTo: string,
+  origins: readonly string[],
+  namespaces: ReadonlySet<string>,
+) {
+  try {
+    const url = new URL(returnTo);
+    const path = /^\/w\/([^/]+)\/([^/]+)(?:\/|$)/.exec(url.pathname);
+    if (!origins.includes(url.origin) || !path) return;
+    const namespace = decodeURIComponent(path[1]);
+    const uid = decodeURIComponent(path[2]);
+    return uid && namespaces.has(namespace) ? { namespace, uid } : undefined;
+  } catch {
+    return;
+  }
+}
+
 /** Users authorize background execution once on the API origin; any client links to the start. */
 export async function registerDelegation(
   app: FastifyInstance,
@@ -27,7 +46,7 @@ export async function registerDelegation(
     returnOrigins: string[];
     client: oidc.Configuration;
     key: Buffer;
-    clients: KagentClients;
+    clients: ReadonlyMap<string, KagentClients>;
   },
 ) {
   await app.register(secureSession, {
@@ -36,22 +55,25 @@ export async function registerDelegation(
     expiry: lifetime / 1000,
     cookie: { path: "/", secure: true, httpOnly: true, sameSite: "lax" },
   });
-  const registered = (target: string) => {
-    try {
-      return config.returnOrigins.includes(new URL(target).origin);
-    } catch {
-      return false;
-    }
-  };
-
   app.get<{ Querystring: { return_to?: string } }>("/delegation/start", async (request, reply) => {
     const returnTo = request.query.return_to ?? "";
-    if (returnTo && !registered(returnTo))
-      return reply.code(400).send({ message: "Unregistered return address" });
+    const workspace = delegationWorkspace(
+      returnTo,
+      config.returnOrigins,
+      new Set(config.clients.keys()),
+    );
+    if (!workspace) return reply.code(400).send({ message: "Unregistered return address" });
     const verifier = oidc.randomPKCECodeVerifier();
     const state = oidc.randomState();
     const nonce = oidc.randomNonce();
-    request.session.set("delegation", { verifier, state, nonce, returnTo, started: Date.now() });
+    request.session.set("delegation", {
+      verifier,
+      state,
+      nonce,
+      returnTo,
+      ...workspace,
+      started: Date.now(),
+    });
     const url = oidc.buildAuthorizationUrl(config.client, {
       redirect_uri: `${config.origin}/delegation/callback`,
       scope: "openid offline_access",
@@ -82,10 +104,23 @@ export async function registerDelegation(
         },
       );
       if (!tokens.refresh_token) throw new Error("Renewable delegation credential required");
-      await config.clients.execution.registerDelegationCredential(
+      const clients = config.clients.get(pending.namespace);
+      if (!clients) throw new Error("Workspace authority unavailable");
+      const headers = { authorization: `Bearer ${tokens.access_token}` };
+      const member = await clients.authorization.listWorkspaces(
+        { workspace: { namespace: pending.namespace, uid: pending.uid } },
+        { headers, timeoutMs: 10_000 },
+      );
+      if (
+        member.workspaces.length !== 1 ||
+        member.workspaces[0]?.namespace !== pending.namespace ||
+        member.workspaces[0]?.uid !== pending.uid
+      )
+        throw new Error("Workspace membership required");
+      await clients.execution.registerDelegationCredential(
         { refreshToken: tokens.refresh_token },
         {
-          headers: { authorization: `Bearer ${tokens.access_token}` },
+          headers,
           timeoutMs: 30_000,
         },
       );

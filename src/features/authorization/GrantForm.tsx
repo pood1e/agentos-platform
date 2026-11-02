@@ -18,6 +18,7 @@ import {
   type AccessRoleDefinition,
   type AuthorizationResource,
   RoleBindingSchema,
+  type WorkspaceAuthorizationReference,
 } from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { authorizationClient } from "../../lib/console.js";
 import { Failure } from "../management/ResourcePage.js";
@@ -30,7 +31,7 @@ export function GrantForm({
   onChanged,
   onClose,
 }: {
-  workspace: string;
+  workspace: WorkspaceAuthorizationReference;
   subject: string;
   scope: AuthorizationResource;
   roles: AccessRoleDefinition[];
@@ -59,7 +60,7 @@ export function GrantForm({
       const key = JSON.stringify(binding);
       if (intent.current?.key !== key) intent.current = { key, id: crypto.randomUUID() };
       await authorizationClient.grantRole({
-        workspace: { namespace: workspace },
+        workspace,
         requestId: intent.current.id,
         binding,
       });

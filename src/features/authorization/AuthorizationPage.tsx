@@ -58,7 +58,9 @@ function WorkspaceAuthorization({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const { subject, workspace } = profile;
+  const { subject, workspace: reference } = profile;
+  if (!reference) throw new Error("Access profile is missing workspace identity");
+  const workspace = reference.namespace;
   const [tokens, setTokens] = useState([""]);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<{ binding: RoleBinding; requestId: string }>();
@@ -69,13 +71,13 @@ function WorkspaceAuthorization({
   const canManage = allowed.includes(Permission.ACCESS_MANAGE);
   const canShare = allowed.includes(Permission.SESSION_SHARE);
   const kind = authorizationScopeKind(scope);
-  const prefix = ["resource-authorization", subject, workspace];
+  const prefix = ["resource-authorization", subject, reference.uid];
   const bindings = useQuery({
     queryKey: [...prefix, "bindings", scope, tokens.at(-1)],
     queryFn: ({ signal }) =>
       authorizationClient.listRoleBindings(
         {
-          workspace: { namespace: workspace },
+          workspace: reference,
           scope,
           page: { limit: 50, pageToken: tokens.at(-1) },
         },
@@ -239,7 +241,7 @@ function WorkspaceAuthorization({
       {adding && availableRoles.length > 0 && (
         <GrantForm
           key={`${selectedKey}:${canManage}`}
-          workspace={workspace}
+          workspace={reference}
           subject={subject}
           scope={scope}
           roles={availableRoles}
@@ -254,7 +256,7 @@ function WorkspaceAuthorization({
           onClose={() => setRemoving(undefined)}
           onConfirm={async () => {
             await authorizationClient.revokeRole({
-              workspace: { namespace: workspace },
+              workspace: reference,
               requestId: removing.requestId,
               binding: removing.binding,
             });
@@ -271,11 +273,11 @@ export function AuthorizationPage() {
   const access = useAccess();
   const [search, setSearch] = useSearchParams();
   if (access.data) {
-    const selected = resourceFromSearch(access.data.workspace, search);
+    const selected = resourceFromSearch(access.data.workspace?.namespace ?? "", search);
     const selectedKey = resourceSearch(selected).toString();
     return (
       <WorkspaceAuthorization
-        key={`${access.data.subject}:${access.data.workspace}:${selectedKey}`}
+        key={`${access.data.subject}:${access.data.workspace?.uid}:${selectedKey}`}
         profile={access.data}
         selected={selected}
         selectedKey={selectedKey}
