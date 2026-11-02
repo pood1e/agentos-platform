@@ -45,6 +45,11 @@ export class ToolBindings {
   catalogServer(server: ToolServer, servers: ToolServer[]) {
     const target = this.targets.get(server.ref.split("/").at(-1) ?? "");
     if (target?.access === "write") return server;
+    return this.metadataServer(server, servers);
+  }
+
+  metadataServer(server: ToolServer, servers: ToolServer[]) {
+    const target = this.targets.get(server.ref.split("/").at(-1) ?? "");
     return (
       servers.find(
         (candidate) => candidate.ref === `${server.ref.split("/")[0]}/${target?.service}`,

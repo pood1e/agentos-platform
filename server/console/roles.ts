@@ -54,7 +54,7 @@ export function roleCommands(
   ) {
     const server = servers.find((item) => item.ref.split("/").at(-1) === binding.server);
     return server
-      ? metadata.modelTools(policy.catalogServer(server, servers), binding.tools)
+      ? metadata.modelTools(policy.metadataServer(server, servers), binding.tools)
       : binding.tools;
   }
 

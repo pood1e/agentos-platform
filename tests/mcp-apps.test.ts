@@ -317,7 +317,7 @@ it("keeps existing App-only bindings when an engineer edits model-visible tools"
       environment: "lab",
       project: "views",
       engineer: "inspection",
-      access: "readOnly",
+      access: "write",
       catalog: false,
       tools: [
         { name: "show_topology", write: false, requireApproval: false },
@@ -334,6 +334,12 @@ it("keeps existing App-only bindings when an engineer edits model-visible tools"
       server: { name: server },
       tools: ["lab-views_show_topology", "lab-views_graph_data"],
     },
+  });
+  const discover = env.clients.tools.listMCPAppTools.bind(env.clients.tools);
+  vi.spyOn(env.clients.tools, "listMCPAppTools").mockImplementation((request, options) => {
+    if (request.server?.ref?.name === server)
+      throw new ConnectError("Profile tool metadata is unavailable", Code.Internal);
+    return discover(request, options);
   });
   env.caller({ ...env.owner, capabilities: [Capability.AGENTS_MANAGE] });
   const config = await env.client.getConfiguration({});
