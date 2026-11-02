@@ -159,6 +159,51 @@ describe("console service", () => {
     await close();
   });
 
+  it("configures policy-authorized tools while live discovery is empty", async () => {
+    const { client, fake, close } = await workbench();
+    for (const server of fake.toolServers) server.discoveredTools = [];
+    const configuration = await client.getConfiguration({});
+    const inspection = configuration.roles.find((role) => role.name === "inspection");
+    if (!inspection) throw new Error("inspection role missing");
+    const { requirements } = await client.explainTools({ engineer: "inspection" });
+    expect(requirements).toContainEqual(
+      expect.objectContaining({
+        server: "kagent-tool-server",
+        tool: "k8s_describe_resource",
+        requireApproval: false,
+      }),
+    );
+    const draft = clone(RoleDefinitionSchema, inspection);
+    draft.tools
+      .find((binding) => binding.server === "kagent-tool-server")
+      ?.tools.push("k8s_describe_resource");
+    const invalid = clone(RoleDefinitionSchema, draft);
+    invalid.tools[0]?.tools.push("unknown_tool");
+    expect(await rejection(client.updateRole({ role: invalid }))).toEqual({
+      code: Code.InvalidArgument,
+      key: "configuration.invalidTools",
+    });
+    const updated = await client.updateRole({ role: draft });
+    expect(updated.role?.tools).toContainEqual(
+      expect.objectContaining({
+        server: "kagent-tool-server",
+        tools: ["k8s_get_resources", "k8s_describe_resource"],
+      }),
+    );
+    const created = await client.createRole({
+      role: {
+        name: "service-health",
+        displayName: "Service health",
+        systemPrompt: "Inspect services.",
+        tools: [{ server: "kagent-tool-server", tools: ["k8s_get_resources"] }],
+      },
+    });
+    expect(created.role?.tools).toContainEqual(
+      expect.objectContaining({ server: "kagent-tool-server", tools: ["k8s_get_resources"] }),
+    );
+    await close();
+  });
+
   it("saves roles through native templates with approval and concurrency checks", async () => {
     const { client, fake, close } = await workbench();
     const configuration = await client.getConfiguration({});

@@ -79,6 +79,12 @@ export class ToolBindings {
     return target?.tools?.find((entry) => entry.name === name);
   }
 
+  private qualifiedName(target: Target, name: string) {
+    return target.environment && !name.startsWith(`${target.service}_`)
+      ? `${target.service}_${name}`
+      : name;
+  }
+
   tool(server: string, name: string) {
     return this.decision(this.targets.get(server), name);
   }
@@ -131,26 +137,21 @@ export class ToolBindings {
     return this.decision(this.targets.get(server), tool)?.requireApproval ?? true;
   }
 
-  requirements(engineer: string, servers: ToolServer[]) {
-    return servers.flatMap((server) => {
-      const name = server.ref.split("/").at(-1) ?? server.ref;
-      if (!this.usable(engineer, name)) return [];
-      return server.discoveredTools.flatMap((tool) => {
-        const decision = this.decision(this.targets.get(name), tool.name);
-        return decision
-          ? [
-              create(ToolRequirementSchema, {
-                server: name,
-                tool: tool.name,
-                requireApproval: decision.requireApproval,
-              }),
-            ]
-          : [];
-      });
+  requirements(engineer: string) {
+    return [...this.targets.values()].flatMap((target) => {
+      if (!this.usable(engineer, target.server)) return [];
+      return (target.tools ?? []).map((decision) =>
+        create(ToolRequirementSchema, {
+          server: target.server,
+          tool: this.qualifiedName(target, decision.name),
+          requireApproval: decision.requireApproval,
+        }),
+      );
     });
   }
 
-  bindings(engineer: string, bindings: ToolBinding[], servers: ToolServer[], strict: boolean) {
+  bindings(engineer: string, bindings: ToolBinding[], mode: "validate" | "normalize") {
+    const strict = mode === "validate";
     const groups = new Map<string, ToolBinding>();
     for (const binding of bindings) {
       const source = this.targets.get(binding.server);
@@ -164,15 +165,12 @@ export class ToolBindings {
             )
           : source;
         const decision = this.decision(target, name);
-        const discovered = servers.find(
-          (server) => server.ref.split("/").at(-1) === target?.server,
-        );
         if (
           !source ||
           !this.usable(engineer, binding.server) ||
           !target ||
           !decision ||
-          (strict && !discovered?.discoveredTools.some((tool) => tool.name === name))
+          name !== this.qualifiedName(target, decision.name)
         ) {
           if (strict) return undefined;
           continue;
