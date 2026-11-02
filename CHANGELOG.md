@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.7](https://github.com/pood1e/agentos-platform/compare/v0.51.6...v0.51.7) (2026-11-02)
+
+
+### Bug Fixes
+
+* **console:** preserve App-only bindings on role updates ([#279](https://github.com/pood1e/agentos-platform/issues/279)) ([3067707](https://github.com/pood1e/agentos-platform/commit/3067707bd369284a4a0a83dfcef796b5da1dd6de))
+
 ## [0.51.6](https://github.com/pood1e/agentos-platform/compare/v0.51.5...v0.51.6) (2026-11-02)
 
 
