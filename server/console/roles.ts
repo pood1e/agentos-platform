@@ -1,17 +1,19 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { EngineerToolsSchema } from "../../gen/agentos/console/v1/engineer_pb.js";
-import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
+import type { RoleDefinition, ToolBinding } from "../../gen/agentos/console/v1/role_pb.js";
 import { ModelPurpose } from "../../gen/agentos/management/v1/management_pb.js";
 import { ErrorInfoSchema } from "../../gen/google/rpc/error_details_pb.js";
+import type { AgentTemplate } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import {
   type ResourceReference,
   ResourceReferenceSchema,
 } from "../../gen/kagent/api/v1/common_pb.js";
+import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
 import { modelPurpose } from "../../shared/model-purpose.js";
-import type { BindingView } from "../governance/bindings.js";
+import type { BindingView, ToolBindings } from "../governance/bindings.js";
 import { validateAgent } from "../kagent/admission.js";
-import type { KagentClients } from "../kagent/clients.js";
+import { type KagentClients, pool } from "../kagent/clients.js";
 import { isWorkflowTemplate } from "../kagent/templates.js";
 import { type ToolMetadata, toolMetadata } from "../kagent/tool-metadata.js";
 import { userResource } from "../management/native.js";
@@ -45,6 +47,17 @@ export function roleCommands(
   defaults: RoleDefaults,
   metadata: ToolMetadata = toolMetadata(clients),
 ) {
+  async function modelTools(
+    binding: Pick<ToolBinding, "server" | "tools">,
+    servers: ToolServer[],
+    policy: ToolBindings,
+  ) {
+    const server = servers.find((item) => item.ref.split("/").at(-1) === binding.server);
+    return server
+      ? metadata.modelTools(policy.catalogServer(server, servers), binding.tools)
+      : binding.tools;
+  }
+
   async function catalog() {
     const [templates, tools, models] = await Promise.all([
       clients.templates.listAgentTemplates({ namespace }, read),
@@ -71,7 +84,11 @@ export function roleCommands(
     };
   }
 
-  async function checked(role: RoleDefinition, selectedHarness?: ResourceReference) {
+  async function checked(
+    role: RoleDefinition,
+    selectedHarness?: ResourceReference,
+    existing?: AgentTemplate,
+  ) {
     if (systemRoles.has(role.name)) throw invalid("configuration.invalidRole");
     const current = await catalog();
     if (
@@ -80,7 +97,25 @@ export function roleCommands(
         !current.modelConfigs.some((model) => model.ref?.name === role.modelConfig?.name))
     )
       throw invalid("management.invalidModel");
-    const tools = (await access()).bindings(role.name, role.tools, "validate");
+    const policy = await access();
+    for (const binding of role.tools) {
+      if ((await modelTools(binding, current.servers, policy)).length !== binding.tools.length)
+        throw invalid("configuration.invalidTools");
+    }
+    const hidden = existing
+      ? await Promise.all(
+          roleDefinition(existing).tools.map(async (binding) => {
+            const visible = new Set(await modelTools(binding, current.servers, policy));
+            return { ...binding, tools: binding.tools.filter((name) => !visible.has(name)) };
+          }),
+        )
+      : [];
+    const retained = policy.bindings(
+      role.name,
+      hidden.filter((binding) => binding.tools.length),
+      "normalize",
+    );
+    const tools = policy.bindings(role.name, [...role.tools, ...(retained ?? [])], "validate");
     if (!tools) throw invalid("configuration.invalidTools");
     if (selectedHarness) {
       if (selectedHarness.namespace && selectedHarness.namespace !== namespace)
@@ -115,13 +150,8 @@ export function roleCommands(
       templates.map(async (template) => {
         const role = roleDefinition(template);
         for (const binding of role.tools) {
-          const server = servers.find((server) => server.ref.split("/").at(-1) === binding.server);
-          if (!server) continue;
           try {
-            binding.tools = await metadata.modelTools(
-              policy.catalogServer(server, servers),
-              binding.tools,
-            );
+            binding.tools = await modelTools(binding, servers, policy);
           } catch {
             // Keep existing selections when discovery is unavailable; saves still validate the catalog.
           }
@@ -144,7 +174,27 @@ export function roleCommands(
   }
 
   async function explain(engineer: string) {
-    return { requirements: (await access()).requirements(engineer) };
+    const [policy, { toolServers }] = await Promise.all([
+      access(),
+      clients.tools.listToolServers({}, read),
+    ]);
+    const servers = toolServers.filter((server) => server.ref.startsWith(`${namespace}/`));
+    const requirements = policy.requirements(engineer);
+    const grouped = new Map<string, string[]>();
+    for (const requirement of requirements) {
+      const tools = grouped.get(requirement.server) ?? [];
+      tools.push(requirement.tool);
+      grouped.set(requirement.server, tools);
+    }
+    const visible = new Set<string>();
+    await pool([...grouped], 4, async ([server, tools]) => {
+      if (!servers.some((item) => item.ref.endsWith(`/${server}`))) return;
+      for (const name of await modelTools({ server, tools }, servers, policy))
+        visible.add(`${server}\u0000${name}`);
+    });
+    return {
+      requirements: requirements.filter((item) => visible.has(`${item.server}\u0000${item.tool}`)),
+    };
   }
 
   async function createRole(draft: RoleDefinition, harness?: ResourceReference) {
@@ -223,7 +273,7 @@ export function roleCommands(
       throw notFound("configuration.missingRole");
     if (draft.resourceVersion !== roleDefinition(current).resourceVersion)
       throw conflict("configuration.conflict");
-    const role = await checked(draft);
+    const role = await checked(draft, undefined, current);
     const value = current.resource?.value ?? {};
     try {
       const metadata = object(value.metadata);
