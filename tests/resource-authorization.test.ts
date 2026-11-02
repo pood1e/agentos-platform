@@ -16,7 +16,8 @@ import {
   AuthorizationService,
   type GrantRoleRequest,
   GrantRoleRequestSchema,
-  WorkspaceAuthorizationReferenceSchema,
+  type ListRoleBindingsRequest,
+  type ListWorkspacesRequest,
 } from "../gen/kagent/api/v1/authorization_pb.js";
 import { authorizationService } from "../server/authorization/service.js";
 import { registerConsole } from "../server/console/app.js";
@@ -31,7 +32,7 @@ function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>
     createRouterTransport((router) => router.service(AuthorizationService, implementation)),
   );
   const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
-  const service = authorizationService(native.authorization, "team");
+  const service = authorizationService(native.authorization);
   const context = workspaceContext("team", "assistant", async () => principal);
   const client = createClient(
     AuthorizationService,
@@ -81,31 +82,32 @@ it("delegates access decisions to native authorization with actual credentials",
   });
 });
 
-it("pins every scoped native RPC to the active workspace", async () => {
-  const read = vi.fn(() => ({}));
-  const write = vi.fn(() => ({}));
+it("forwards workspace scope to native authorization", async () => {
+  const read = vi.fn((_request: ListRoleBindingsRequest) => ({ bindings: [] }));
+  const list = vi.fn((_request: ListWorkspacesRequest) => ({
+    workspaces: [{ namespace: "other", uid: "workspace-2" }],
+  }));
   const { client } = setup({
-    checkPermissions: read,
+    listWorkspaces: list,
     listRoleBindings: read,
-    grantRole: write,
-    revokeRole: write,
   });
-  for (const workspace of [
-    undefined,
-    create(WorkspaceAuthorizationReferenceSchema, { namespace: "other" }),
-  ]) {
-    const grant = grantRequest();
-    grant.workspace = workspace;
-    for (const call of [
-      () => client.checkPermissions({ workspace }),
-      () => client.listRoleBindings({ workspace }),
-      () => client.grantRole(grant),
-      () => client.revokeRole({ requestId: grant.requestId, binding: grant.binding, workspace }),
-    ])
-      await expect(call()).rejects.toMatchObject({ code: Code.PermissionDenied });
-  }
-  expect(read).not.toHaveBeenCalled();
-  expect(write).not.toHaveBeenCalled();
+  const directory = await client.listWorkspaces({
+    workspace: { namespace: "other", uid: "workspace-2" },
+  });
+  expect(directory.workspaces).toMatchObject([{ namespace: "other", uid: "workspace-2" }]);
+  expect(list).toHaveBeenCalledOnce();
+  expect(list.mock.calls[0]?.[0].workspace).toMatchObject({
+    namespace: "other",
+    uid: "workspace-2",
+  });
+  await client.listRoleBindings({
+    workspace: { namespace: "other", uid: "workspace-2" },
+    scope: { resource: { case: "workspace", value: { namespace: "other", uid: "workspace-2" } } },
+  });
+  expect(read.mock.calls[0]?.[0].workspace).toMatchObject({
+    namespace: "other",
+    uid: "workspace-2",
+  });
 });
 
 it("propagates cancellation through the native authorization call", async () => {
@@ -147,6 +149,7 @@ it("registers the native contract on HTTP and validates requests before upstream
   const upstream = vi.fn(() => ({}));
   const proxy = setup({
     listAccessRoles: () => ({ roles: [{ role: AccessRole.WORKSPACE_MEMBER }] }),
+    listWorkspaces: () => ({ workspaces: [{ namespace: "team", uid: "workspace-1" }] }),
     grantRole: upstream,
   });
   const app = Fastify();
@@ -168,6 +171,17 @@ it("registers the native contract on HTTP and validates requests before upstream
   try {
     const result = await client.listAccessRoles({});
     expect(result.roles[0]?.role).toBe(AccessRole.WORKSPACE_MEMBER);
+    const workspaces = await client.listWorkspaces({});
+    expect(workspaces.workspaces[0]?.uid).toBe("workspace-1");
+    await expect(client.listWorkspaces({ page: { limit: 101 } })).rejects.toMatchObject({
+      code: Code.InvalidArgument,
+    });
+    await expect(
+      client.listWorkspaces({
+        workspace: { namespace: "team" },
+        page: { pageToken: "cursor" },
+      }),
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
     await expect(client.grantRole({})).rejects.toMatchObject({ code: Code.InvalidArgument });
     expect(upstream).not.toHaveBeenCalled();
     await client.grantRole(grantRequest());

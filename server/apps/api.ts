@@ -75,7 +75,7 @@ const apps = mcpApps({
 });
 registerAppAuthorization(app, apps, identity);
 await registerConsole(app, {
-  authorization: authorizationService(clients.authorization, workspace),
+  authorization: authorizationService(clients.authorization),
   context: workspaceContext(workspace, entryAgent, identity),
   service: consoleService({
     metadata,

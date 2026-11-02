@@ -11,6 +11,7 @@ option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1
 // AuthorizationService manages resource-scoped access for authenticated principals.
 service AuthorizationService {
   rpc ListAccessRoles(ListAccessRolesRequest) returns (ListAccessRolesResponse);
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
   rpc CheckPermissions(CheckPermissionsRequest) returns (CheckPermissionsResponse);
   rpc ListRoleBindings(ListRoleBindingsRequest) returns (ListRoleBindingsResponse);
   rpc GrantRole(GrantRoleRequest) returns (GrantRoleResponse);
@@ -138,6 +139,22 @@ message ResourceGrant {
 message ListAccessRolesRequest {}
 message ListAccessRolesResponse {
   repeated AccessRoleDefinition roles = 1;
+}
+
+message ListWorkspacesRequest {
+  option (buf.validate.message).cel = {
+    id: "list_workspaces.filter_cursor"
+    message: "workspace filter cannot use a page token"
+    expression: "!has(this.workspace) || !has(this.page) || this.page.page_token == ''"
+  };
+  PageRequest page = 1;
+  // An exact lookup verifies membership without scanning the workspace directory.
+  WorkspaceAuthorizationReference workspace = 2;
+}
+message ListWorkspacesResponse {
+  // A page can be empty while next_page_token remains set.
+  repeated WorkspaceAuthorizationReference workspaces = 1;
+  PageResponse page = 2;
 }
 
 message CheckPermissionsRequest {
