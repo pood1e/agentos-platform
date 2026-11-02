@@ -1,3 +1,6 @@
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { toNodeHandler } from "@modelcontextprotocol/node";
+import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 import { sessionTools } from "../server/team-sessions/tools.js";
 import { fakeKagent, testBindings } from "./harness.js";
@@ -57,5 +60,51 @@ describe("team sessions", () => {
     expect(denied.structuredContent.tools).toEqual([
       { server: "remediation-tools", tools: ["k8s_apply_manifest"], requireApproval: true },
     ]);
+  });
+
+  it("prepares policy-authorized roles through the HTTP SDK when discovery is empty", async () => {
+    const { clients, fake } = fakeKagent();
+    for (const server of fake.toolServers) server.discoveredTools = [];
+    const handler = toNodeHandler(sessionTools(clients, "agentos", testBindings(fake)));
+    const app = Fastify();
+    app.route({
+      method: ["GET", "POST", "DELETE"],
+      url: "/mcp",
+      handler: async (request, reply) => {
+        reply.hijack();
+        await handler(request.raw, reply.raw, request.body);
+      },
+    });
+    const address = await app.listen({ host: "127.0.0.1", port: 0 });
+    const client = new Client({ name: "team-sessions-test", version: "1.0.0" });
+    try {
+      await client.connect(new StreamableHTTPClientTransport(new URL("/mcp", address)));
+      expect((await client.listTools()).tools.map((tool) => tool.name)).toContain("prepare_role");
+      const prepared = await client.callTool({
+        name: "prepare_role",
+        arguments: {
+          name: "service-health",
+          displayName: "Service health",
+          systemPrompt: "Inspect services.",
+          tools: [{ server: "kagent-tool-server", tools: ["k8s_get_resources"] }],
+        },
+      });
+      expect(prepared.structuredContent).toMatchObject({
+        tools: [{ server: "kagent-tool-server", tools: ["k8s_get_resources"] }],
+      });
+      const rejected = await client.callTool({
+        name: "prepare_role",
+        arguments: {
+          name: "service-health",
+          displayName: "Service health",
+          systemPrompt: "Inspect services.",
+          tools: [{ server: "kagent-tool-server", tools: ["unknown_tool"] }],
+        },
+      });
+      expect(rejected.isError).toBe(true);
+    } finally {
+      await client.close();
+      await app.close();
+    }
   });
 });

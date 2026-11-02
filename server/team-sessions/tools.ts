@@ -56,7 +56,7 @@ export function sessionTools(clients: KagentClients, namespace: string, access: 
         "prepare_role",
         {
           description:
-            "Prepare a complete editable role draft. Tool bindings name a RemoteMCPServer and exact discovered tool names; approval follows the execution requirements and tools it denies are rejected. This is read-only: it does not create or update templates, engineers, or resources. A successful result becomes the editable role form.",
+            "Prepare a complete editable role draft. Tool bindings name a RemoteMCPServer and policy-authorized tool names; approval follows the execution requirements and denied tools are rejected. This is read-only: it does not create or update templates, engineers, or resources. A successful result becomes the editable role form.",
           inputSchema: inputSchema(roleSchema),
           annotations: { readOnlyHint: true },
         },
@@ -67,7 +67,7 @@ export function sessionTools(clients: KagentClients, namespace: string, access: 
           if (validation.kind !== "valid") throw new Error(String(validation.error));
           const tools = systemRoles.has(role.name)
             ? undefined
-            : (await access()).bindings(role.name, role.tools, await inWorkspace(), true);
+            : (await access()).bindings(role.name, role.tools, "validate");
           if (!tools)
             throw new Error(
               "Use a new role name and only tools the execution requirements grants to it",

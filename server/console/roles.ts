@@ -80,7 +80,7 @@ export function roleCommands(
         !current.modelConfigs.some((model) => model.ref?.name === role.modelConfig?.name))
     )
       throw invalid("management.invalidModel");
-    const tools = (await access()).bindings(role.name, role.tools, current.servers, true);
+    const tools = (await access()).bindings(role.name, role.tools, "validate");
     if (!tools) throw invalid("configuration.invalidTools");
     if (selectedHarness) {
       if (selectedHarness.namespace && selectedHarness.namespace !== namespace)
@@ -144,8 +144,7 @@ export function roleCommands(
   }
 
   async function explain(engineer: string) {
-    const [{ servers }, view] = await Promise.all([catalog(), access()]);
-    return { requirements: view.requirements(engineer, servers) };
+    return { requirements: (await access()).requirements(engineer) };
   }
 
   async function createRole(draft: RoleDefinition, harness?: ResourceReference) {

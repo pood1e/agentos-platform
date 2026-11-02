@@ -28,7 +28,7 @@ const servers = [
 describe("engineer tool access", () => {
   it("starts role drafts with available native team memory", () => {
     const draft = newRole();
-    expect(access.bindings("inspection", draft.tools, servers, true)).toEqual(draft.tools);
+    expect(access.bindings("inspection", draft.tools, "validate")).toEqual(draft.tools);
   });
 
   it("merges overlapping identities without duplicate tools or weaker approval requirements", () => {
@@ -42,7 +42,7 @@ describe("engineer tool access", () => {
         tools: [read, write],
       }),
     ];
-    const merged = access.bindings("remediation", bindings, servers, false);
+    const merged = access.bindings("remediation", bindings, "normalize");
     expect(merged).toEqual([
       create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read] }),
       create(ToolBindingSchema, {
@@ -51,7 +51,7 @@ describe("engineer tool access", () => {
         requireApproval: true,
       }),
     ]);
-    expect(access.bindings("remediation", merged ?? [], servers, false)).toEqual(merged);
+    expect(access.bindings("remediation", merged ?? [], "normalize")).toEqual(merged);
   });
 
   it("intersects the caller's write permission with the Agent's environment ceiling and denies unknown tools", () => {
@@ -110,10 +110,12 @@ describe("engineer tool access", () => {
   });
 
   it("offers only the engineer's own identities and platform servers", () => {
-    const permissions = access.requirements("inspection", servers);
-    expect(new Set(permissions.map((item) => item.server))).toEqual(
-      new Set(["lab-kubernetes-inspection", "kagent-collaboration"]),
-    );
+    const permissions = access.requirements("inspection");
+    const names = new Set(permissions.map((item) => item.server));
+    expect(names.has("lab-kubernetes-inspection")).toBe(true);
+    expect(names.has("kagent-collaboration")).toBe(true);
+    expect(names.has("kagent-tool-server")).toBe(true);
+    expect(names.has("lab-kubernetes-remediation")).toBe(false);
     expect(permissions).toContainEqual(
       expect.objectContaining({ tool: read, requireApproval: false }),
     );
@@ -134,8 +136,7 @@ describe("engineer tool access", () => {
             requireApproval: false,
           },
         ],
-        servers,
-        true,
+        "validate",
       ),
     ).toEqual([
       expect.objectContaining({
@@ -157,37 +158,49 @@ describe("engineer tool access", () => {
         requireApproval: false,
       },
     ];
-    expect(access.bindings("inspection", borrowed, servers, true)).toBeUndefined();
-    expect(access.bindings("inspection", borrowed, servers, false)).toEqual([]);
+    expect(access.bindings("inspection", borrowed, "validate")).toBeUndefined();
+    expect(access.bindings("inspection", borrowed, "normalize")).toEqual([]);
   });
 
-  it.each([
-    ["missing servers", []],
-    ["empty discovery", servers.map((server) => tools(server.ref.split("/").at(-1) ?? "", []))],
-    ["partial discovery", [tools("kagent-collaboration", ["list_agents"])]],
-  ])(
-    "preserves configured tools during %s without weakening execution requirements",
-    (_name, discovered) => {
-      const bindings = [
-        create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
-        create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read, write] }),
-        create(ToolBindingSchema, { server: "lab-kubernetes-inspection", tools: [read] }),
-        create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["unknown_tool"] }),
-      ];
-      expect(access.bindings("remediation", bindings, discovered, false)).toEqual([
-        create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
-        create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read] }),
-        create(ToolBindingSchema, {
-          server: "lab-kubernetes-remediation-changes",
-          tools: [write],
-          requireApproval: true,
-        }),
-      ]);
-      expect(
-        access.bindings("remediation", bindings.slice(0, 2), discovered, true),
-      ).toBeUndefined();
-    },
-  );
+  it("uses ready policy decisions for configuration while rejecting unknown tools", () => {
+    const bindings = [
+      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
+      create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read, write] }),
+    ];
+    expect(access.requirements("remediation")).toContainEqual(
+      expect.objectContaining({
+        server: "lab-kubernetes-remediation-changes",
+        tool: write,
+        requireApproval: true,
+      }),
+    );
+    expect(access.bindings("remediation", bindings, "validate")).toEqual([
+      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
+      create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read] }),
+      create(ToolBindingSchema, {
+        server: "lab-kubernetes-remediation-changes",
+        tools: [write],
+        requireApproval: true,
+      }),
+    ]);
+    expect(
+      access.bindings(
+        "remediation",
+        [
+          ...bindings,
+          create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["unknown_tool"] }),
+        ],
+        "validate",
+      ),
+    ).toBeUndefined();
+    expect(
+      access.bindings(
+        "remediation",
+        [create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: ["pods_list"] })],
+        "validate",
+      ),
+    ).toBeUndefined();
+  });
 
   it("keeps simulation write tools in their write view without approval pauses", () => {
     const simulation = new ToolBindings(
@@ -204,7 +217,7 @@ describe("engineer tool access", () => {
         })),
       ),
     );
-    expect(simulation.requirements("remediation", servers)).toContainEqual(
+    expect(simulation.requirements("remediation")).toContainEqual(
       expect.objectContaining({
         server: "lab-kubernetes-remediation-changes",
         tool: write,
@@ -221,8 +234,7 @@ describe("engineer tool access", () => {
             requireApproval: true,
           }),
         ],
-        servers,
-        true,
+        "validate",
       ),
     ).toEqual([
       expect.objectContaining({
@@ -245,8 +257,7 @@ describe("engineer tool access", () => {
             tools: [write],
           }),
         ],
-        servers,
-        true,
+        "validate",
       ),
     ).toBeUndefined();
   });
