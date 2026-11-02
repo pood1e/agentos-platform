@@ -71,7 +71,7 @@ await registerConsole(app, {
     new Map([...runtimes].map(([key, value]) => [key, value.management])),
   ),
 });
-registerHealth(app, () => [...runtimes.values()].every((runtime) => runtime.access.healthy()));
+registerHealth(app, () => home.access.healthy());
 closeOnSignal(
   app,
   [...runtimes.values()].map((runtime) => runtime.access.close),
