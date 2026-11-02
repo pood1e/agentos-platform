@@ -92,7 +92,7 @@ it("projects an App from native metadata and reads only the original call's reso
 });
 
 it.each(["lab-views-assistant", "lab-views-assistant-approval"])(
-  "resolves structured MCP activity from %s to the selected engineer connection",
+  "resolves structured MCP activity from %s to the selected Agent connection",
   async (server) => {
     const env = await setup();
     for (const part of env.task.artifacts[0].parts) {
@@ -300,7 +300,7 @@ it("projects only model-visible bindings from native presets without losing norm
   ]);
 });
 
-it("keeps existing App-only bindings when an engineer edits model-visible tools", async () => {
+it("keeps existing App-only bindings when an Agent edits model-visible tools", async () => {
   const env = await setup();
   const server = "lab-views-inspection";
   env.fake.toolServers.push(
@@ -316,7 +316,7 @@ it("keeps existing App-only bindings when an engineer edits model-visible tools"
       service: "lab-views",
       environment: "lab",
       project: "views",
-      engineer: "inspection",
+      identity: "inspection",
       access: "write",
       catalog: false,
       tools: [
@@ -348,7 +348,7 @@ it("keeps existing App-only bindings when an engineer edits model-visible tools"
   expect(role.tools.find((binding) => binding.server === server)?.tools).toEqual([
     "lab-views_show_topology",
   ]);
-  const requirements = (await env.client.explainTools({ engineer: "inspection" })).requirements;
+  const requirements = (await env.client.explainTools({ identity: "inspection" })).requirements;
   expect(requirements).toContainEqual(
     expect.objectContaining({ server, tool: "lab-views_show_topology" }),
   );
@@ -390,7 +390,7 @@ it("checks write visibility against the selected profile instead of the read-onl
     {
       metadata: {
         name: profile,
-        labels: { "agentos.dev/engineer": "assistant", "agentos.dev/tool-access": "write" },
+        labels: { "agentos.dev/identity": "assistant", "agentos.dev/tool-access": "write" },
       },
       spec: { mcp: { targets: [{ name: "lab-views" }] } },
     },
@@ -415,7 +415,7 @@ it("checks write visibility against the selected profile instead of the read-onl
       service: "lab-views",
       environment: "lab",
       project: "views",
-      engineer: "assistant",
+      identity: "assistant",
       access: "write",
       catalog: false,
       tools: [

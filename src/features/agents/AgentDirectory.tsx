@@ -15,43 +15,43 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
-import type { Engineer, EngineerTools } from "../../../gen/agentos/console/v1/engineer_pb.js";
+import type { AgentSummary, AgentTools } from "../../../gen/agentos/console/v1/agent_pb.js";
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { Avatar } from "../shared/Avatar.js";
-import { engineerDescription, engineerName, roleLabel } from "../shared/engineers.js";
+import { agentDescription, agentName, roleLabel } from "../shared/agents.js";
 import { posture } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { toolCount } from "./role-draft.js";
 
-export function Team({
-  engineers: agents,
+export function AgentDirectory({
+  agents,
   roles: definitions,
   tools,
   loading,
   onConfigure,
 }: {
-  engineers: Engineer[];
+  agents: AgentSummary[];
   roles: RoleDefinition[];
-  tools: EngineerTools[];
+  tools: AgentTools[];
   loading: boolean;
-  onConfigure: (role: RoleDefinition, trigger: HTMLButtonElement, engineer: string) => void;
+  onConfigure: (role: RoleDefinition, trigger: HTMLButtonElement, agentId: string) => void;
 }) {
   const { t } = useTranslation();
   const editable = useCapability(Capability.AGENTS_MANAGE);
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("*");
-  const roles = new Map<string, number>();
+  const [templateFilter, setTemplateFilter] = useState("*");
+  const templates = new Map<string, number>();
   for (const agent of agents) {
-    const key = agent.role || "?";
-    roles.set(key, (roles.get(key) ?? 0) + 1);
+    const key = (agent.template?.name ?? "") || "?";
+    templates.set(key, (templates.get(key) ?? 0) + 1);
   }
-  const selectedRole = roles.has(role) ? role : "*";
+  const selectedTemplate = templates.has(templateFilter) ? templateFilter : "*";
   const query = search.trim().toLowerCase();
   const visible = agents.filter(
     (agent) =>
-      (selectedRole === "*" || (agent.role || "?") === selectedRole) &&
-      `${engineerName(agent)} ${agent.id} ${engineerDescription(agent)} ${roleLabel(agent.role)}`
+      (selectedTemplate === "*" || ((agent.template?.name ?? "") || "?") === selectedTemplate) &&
+      `${agentName(agent)} ${agent.id} ${agentDescription(agent)} ${roleLabel(agent.template?.name ?? "")}`
         .toLowerCase()
         .includes(query),
   );
@@ -68,13 +68,13 @@ export function Team({
             className="bg-card pl-9"
           />
         </div>
-        <Select value={selectedRole} onValueChange={setRole}>
-          <SelectTrigger aria-label={t("team.filterRole")} className="w-40 bg-card">
+        <Select value={selectedTemplate} onValueChange={setTemplateFilter}>
+          <SelectTrigger aria-label={t("team.filterTemplate")} className="w-40 bg-card">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="*">{t("team.allRoles")}</SelectItem>
-            {[...roles].map(([key, count]) => (
+            <SelectItem value="*">{t("team.allTemplates")}</SelectItem>
+            {[...templates].map(([key, count]) => (
               <SelectItem key={key} value={key}>
                 {roleLabel(key === "?" ? "" : key)} · {count}
               </SelectItem>
@@ -85,7 +85,7 @@ export function Team({
           {t("team.memberCount", {
             visible: visible.length,
             total: agents.length,
-            roles: roles.size,
+            roles: templates.size,
           })}
         </span>
       </div>
@@ -94,29 +94,29 @@ export function Team({
           !agents.length &&
           [0, 1, 2].map((key) => <Skeleton key={key} className="h-56" />)}
         {visible.map((agent) => {
-          const definition = definitions.find((item) => item.name === agent.role);
+          const definition = definitions.find((item) => item.name === (agent.template?.name ?? ""));
           const builtinCatalog = tools.find(
-            (item) => `${item.engineer?.namespace}/${item.engineer?.name}` === agent.id,
+            (item) => `${item.agent?.namespace}/${item.agent?.name}` === agent.id,
           )?.builtinCatalog;
           return (
             <Card
               key={agent.id}
               data-testid="team-card"
               data-agent={agent.id}
-              data-role={agent.role}
+              data-template={agent.template?.name ?? ""}
               className="gap-0 overflow-hidden py-0 shadow-none"
             >
               <CardContent className="flex flex-1 flex-col gap-3 p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="min-w-0 truncate font-semibold" title={engineerName(agent)}>
-                    {engineerName(agent)}
+                  <h2 className="min-w-0 truncate font-semibold" title={agentName(agent)}>
+                    {agentName(agent)}
                   </h2>
                   <Status state={agent.state} />
                 </div>
                 <div className="flex flex-1 items-center gap-4">
                   <div className="flex h-28 w-24 shrink-0 items-end justify-center rounded-lg bg-gradient-to-b from-sky-50/70 to-muted/40 dark:from-sky-950/40 dark:to-muted/30">
                     <Avatar
-                      role={agent.role}
+                      role={agent.template?.name ?? ""}
                       state={posture(agent.state)}
                       animated
                       className="h-28 w-24"
@@ -127,13 +127,13 @@ export function Team({
                       <Badge
                         variant="secondary"
                         className="max-w-24 shrink-0"
-                        title={roleLabel(agent.role)}
+                        title={roleLabel(agent.template?.name ?? "")}
                       >
-                        <span className="truncate">{roleLabel(agent.role)}</span>
+                        <span className="truncate">{roleLabel(agent.template?.name ?? "")}</span>
                       </Badge>
                     )}
                     <p className="text-xs leading-5 text-muted-foreground">
-                      {engineerDescription(agent, definition?.description)}
+                      {agentDescription(agent, definition?.description)}
                     </p>
                     <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <div className="flex gap-1.5">

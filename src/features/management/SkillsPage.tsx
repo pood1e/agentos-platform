@@ -28,10 +28,10 @@ import {
 } from "../../../gen/agentos/management/v1/management_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
-import { editSkill, newSkill, skillKinds, withKind } from "../engineers/role-draft.js";
-import { SkillSourceFields } from "../engineers/SkillSourceFields.js";
+import { editSkill, newSkill, skillKinds, withKind } from "../agents/role-draft.js";
+import { SkillSourceFields } from "../agents/SkillSourceFields.js";
+import { roleLabel } from "../shared/agents.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
-import { roleLabel } from "../shared/engineers.js";
 import { ResourceSheet, SaveButton } from "./ResourceDialog.js";
 import { Failure, ResourcePage, useManagementPage } from "./ResourcePage.js";
 

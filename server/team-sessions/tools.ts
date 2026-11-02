@@ -12,7 +12,7 @@ import manifest from "../../package.json" with { type: "json" };
 import type { BindingView } from "../governance/bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { toolMetadata } from "../kagent/tool-metadata.js";
-import { systemRoles } from "../read-model/agents.js";
+import { systemTemplates } from "../read-model/agents.js";
 import { inputSchema, result, validator } from "./schema.js";
 
 /** Role drafting and the workspace's business tool catalog. */
@@ -34,7 +34,7 @@ export function sessionTools(clients: KagentClients, namespace: string, access: 
         "list_role_tools",
         {
           description:
-            "Discover the MCP servers, exact tool names and descriptions a new role can bind. Environment services require an engineer identity, so they are not listed. Returns the official kagent ListToolServersResponse. Discovery is read-only and does not invoke any discovered tool.",
+            "Discover the MCP servers, exact tool names and descriptions a new role can bind. Environment services require an execution identity, so they are not listed. Returns the official kagent ListToolServersResponse. Discovery is read-only and does not invoke any discovered tool.",
           inputSchema: inputSchema(toolSchema),
           annotations: { readOnlyHint: true },
         },
@@ -56,7 +56,7 @@ export function sessionTools(clients: KagentClients, namespace: string, access: 
         "prepare_role",
         {
           description:
-            "Prepare a complete editable role draft. Tool bindings name a RemoteMCPServer and policy-authorized tool names; approval follows the execution requirements and denied tools are rejected. This is read-only: it does not create or update templates, engineers, or resources. A successful result becomes the editable role form.",
+            "Prepare a complete editable role draft. Tool bindings name a RemoteMCPServer and policy-authorized tool names; approval follows the execution requirements and denied tools are rejected. This is read-only: it does not create or update templates, Agents, or resources. A successful result becomes the editable role form.",
           inputSchema: inputSchema(roleSchema),
           annotations: { readOnlyHint: true },
         },
@@ -65,7 +65,7 @@ export function sessionTools(clients: KagentClients, namespace: string, access: 
           role.resourceVersion = "";
           const validation = validator.validate(RoleDefinitionSchema, role);
           if (validation.kind !== "valid") throw new Error(String(validation.error));
-          const tools = systemRoles.has(role.name)
+          const tools = systemTemplates.has(role.name)
             ? undefined
             : (await access()).bindings(role.name, role.tools, "validate");
           if (!tools)

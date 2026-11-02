@@ -25,7 +25,7 @@ func TestTemplateUsesLocalMCPServerReference(t *testing.T) {
 			ObservedGeneration: 1,
 			Conditions:         []metav1.Condition{{Type: "Ready", Status: metav1.ConditionTrue}},
 			Targets: []platform.CompiledTarget{{
-				Server: "lab-ops", Service: "ops", Engineer: "asset", Environment: "lab",
+				Server: "lab-ops", Service: "ops", Identity: "asset", Environment: "lab",
 				Tools: []platform.CompiledTool{{Name: "get"}, {Name: "update", Write: true, RequireApproval: true}},
 			}},
 		},

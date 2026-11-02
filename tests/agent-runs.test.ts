@@ -4,7 +4,8 @@ import { expect, it, vi } from "vitest";
 import { ArtifactSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { TaskCatalogView } from "../gen/kagent/api/v1/task_catalog_pb.js";
-import { engineer } from "../server/read-model/views/engineers.js";
+import { agentRef } from "../server/read-model/agents.js";
+import { agentSummary } from "../server/read-model/views/agents.js";
 import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 import { toolPart } from "./fixtures/ordered-chat.js";
 import { consoleClient, environment } from "./harness.js";
@@ -15,27 +16,30 @@ it("reports actual running work even alongside a paused run", () => {
   if (!entry) throw new Error("Missing background fixture");
   const waiting = { ...entry, state: TaskState.INPUT_REQUIRED, interactions: [] };
   const working = { ...entry, id: "working-run", state: TaskState.WORKING, interactions: [] };
-  expect(engineer(index.graph(), entry.agentId, [waiting, working]).state).toBe(
+  expect(agentSummary(index.graph(), entry.agentId, [waiting, working]).state).toBe(
     ActivityState.WORKING,
   );
-  expect(engineer(index.graph(), entry.agentId, [waiting]).state).toBe(
+  expect(agentSummary(index.graph(), entry.agentId, [waiting]).state).toBe(
     ActivityState.AWAITING_INPUT,
   );
   expect(
-    engineer(index.graph(), entry.agentId, [
+    agentSummary(index.graph(), entry.agentId, [
       { ...entry, state: TaskState.UNSPECIFIED, interactions: [] },
     ]).state,
   ).toBe(ActivityState.UNOBSERVED);
 });
 
-it("exposes an authenticated read-only engineer run API", async () => {
+it("exposes an authenticated read-only Agent run API", async () => {
   const env = await environment();
   try {
     const client = consoleClient(env);
-    const result = await client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 20 });
+    const result = await client.listAgentRuns({
+      agent: { namespace: "agentos", name: "inspection" },
+      pageSize: 20,
+    });
     expect(result.runs.length).toBeGreaterThan(0);
     expect(result.runs.every((run) => run.agentId === "agentos/inspection")).toBe(true);
-    await expect(client.listEngineerRuns({ engineer: "" })).rejects.toMatchObject({
+    await expect(client.listAgentRuns({})).rejects.toMatchObject({
       code: Code.InvalidArgument,
     });
   } finally {
@@ -48,8 +52,8 @@ it("reads compact terminal records while preserving active details", async () =>
   try {
     const client = consoleClient(env);
     const catalog = vi.spyOn(env.clients.catalog, "listTaskRecords");
-    const summary = await client.listEngineerRuns({
-      engineer: "agentos/inspection",
+    const summary = await client.listAgentRuns({
+      agent: { namespace: "agentos", name: "inspection" },
       pageSize: 100,
     });
     expect(catalog.mock.calls.at(-1)?.[0]).toMatchObject({
@@ -70,8 +74,8 @@ it("reads compact terminal records while preserving active details", async () =>
 it("returns changing native run progress and tool activity through the console API", async () => {
   const tasks = fixtureTasks();
   const original = tasks.find((task) => task.id === ids.background);
-  const engineerId = fixtureState().entry(ids.background)?.agentId;
-  if (!original || !engineerId) throw new Error("Missing background fixture");
+  const agentId = fixtureState().entry(ids.background)?.agentId;
+  if (!original || !agentId) throw new Error("Missing background fixture");
   const work = clone(TaskSchema, original);
   if (!work.status) throw new Error("Missing task status");
   work.status.state = TaskState.WORKING;
@@ -87,8 +91,8 @@ it("returns changing native run progress and tool activity through the console A
   const env = await environment(tasks.map((task) => (task.id === work.id ? work : task)));
   try {
     const client = consoleClient(env);
-    const active = await client.listEngineerRuns({
-      engineer: engineerId,
+    const active = await client.listAgentRuns({
+      agent: agentRef(agentId),
       states: [ActivityState.WORKING],
     });
     const run = active.runs.find((item) => item.taskId === work.id);
@@ -115,12 +119,12 @@ it("returns changing native run progress and tool activity through the console A
       }),
     );
     env.fake.update(work, TaskState.COMPLETED);
-    const current = await client.listEngineerRuns({
-      engineer: engineerId,
+    const current = await client.listAgentRuns({
+      agent: agentRef(agentId),
       states: [ActivityState.WORKING],
     });
     expect(current.runs.some((item) => item.taskId === work.id)).toBe(false);
-    const history = await client.listEngineerRuns({ engineer: engineerId });
+    const history = await client.listAgentRuns({ agent: agentRef(agentId) });
     expect(history.runs.find((item) => item.taskId === work.id)).toMatchObject({
       state: ActivityState.SUCCEEDED,
       progress: "",

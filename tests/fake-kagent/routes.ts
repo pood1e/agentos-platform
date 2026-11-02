@@ -22,6 +22,7 @@ import { terminal } from "../../server/read-model/state.js";
 import { appHTML, appService, appTools, appUri } from "./apps.js";
 import type { FakeKagent } from "./kagent.js";
 import { taskCatalogRoutes } from "./task-catalog.js";
+import { workflowRoutes } from "./workflows.js";
 
 const page = <T>(items: T[], token: string, size: number) => {
   const offset = Number(token || "0");
@@ -42,6 +43,7 @@ function asHarness(value: import("@bufbuild/protobuf").JsonObject) {
 
 /** Official kagent and A2A services backed by the fake runtime. */
 export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
+  workflowRoutes(fake, router);
   taskCatalogRoutes(fake, router);
   router.service(SystemService, {
     getCurrentUser: () => ({ principalId: "user:operator", claims: { roles: [] } }),
@@ -79,9 +81,14 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
     },
   });
   router.service(AgentService, {
-    listAgents: (request) => ({
-      agents: fake.agents.filter((agent) => agent.ref?.namespace === request.namespace),
-    }),
+    listAgents(request) {
+      const { items, token } = page(
+        fake.agents.filter((agent) => agent.ref?.namespace === request.namespace),
+        request.page?.pageToken ?? "",
+        request.page?.limit || 100,
+      );
+      return { agents: items, page: { nextPageToken: token } };
+    },
     getAgent(request) {
       const agent = fake.agents.find((item) => agentKey(item.ref) === agentKey(request.ref));
       if (!agent) throw new ConnectError("agent not found", Code.NotFound);
@@ -222,7 +229,16 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
     },
   });
   router.service(AgentTemplateService, {
-    listAgentTemplates: () => ({ agentTemplates: [...fake.templates.values()] }),
+    listAgentTemplates(request) {
+      const { items, token } = page(
+        [...fake.templates.values()].filter(
+          (template) => template.ref?.namespace === request.namespace,
+        ),
+        request.page?.pageToken ?? "",
+        request.page?.limit || 100,
+      );
+      return { agentTemplates: items, page: { nextPageToken: token } };
+    },
     getAgentTemplate: (request) => ({ agentTemplate: fake.template(request.ref?.name ?? "") }),
     createAgentTemplate(request) {
       const name = request.ref?.name ?? "";

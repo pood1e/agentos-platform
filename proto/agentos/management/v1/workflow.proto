@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package agentos.management.v1;
+
+import "buf/validate/validate.proto";
+import "kagent/api/v1/agent_templates.proto";
+import "kagent/api/v1/agents.proto";
+import "kagent/api/v1/common.proto";
+
+// A native workflow definition and its execution binding, independent of role catalogs.
+message Workflow {
+  // Native execution identity and Harness binding, shared by all workflow entry points.
+  kagent.api.v1.Agent agent = 1 [(buf.validate.field).required = true];
+  // Present when the Agent references a shared template; inline behavior stays on Agent.
+  kagent.api.v1.AgentTemplate agent_template = 2;
+  string document = 3 [(buf.validate.field).string = {min_bytes: 1, max_bytes: 65536}];
+  WorkflowLayout layout = 4;
+  string source_sha256 = 5;
+  // Desired native revision for the published definition and Agent identity.
+  string prepared_revision = 6;
+}
+
+message WorkflowLayout {
+  repeated WorkflowNodePosition nodes = 1 [(buf.validate.field).repeated.max_items = 512];
+}
+
+message WorkflowNodePosition {
+  string path = 1 [(buf.validate.field).string = {min_len: 1, max_len: 512}];
+  double x = 2 [(buf.validate.field).double = {gte: -100000, lte: 100000, finite: true}];
+  double y = 3 [(buf.validate.field).double = {gte: -100000, lte: 100000, finite: true}];
+}
+
+message ListWorkflowsRequest {}
+message ListWorkflowsResponse {
+  repeated kagent.api.v1.Agent agents = 1;
+}
+message GetWorkflowRequest {
+  kagent.api.v1.ResourceReference ref = 1 [(buf.validate.field).required = true];
+}
+message GetWorkflowResponse {
+  Workflow workflow = 1;
+}
+message ValidateWorkflowRequest {
+  Workflow workflow = 1 [(buf.validate.field).required = true];
+}
+message ValidateWorkflowResponse {
+  string prepared_revision = 1;
+}
+message PublishWorkflowRequest {
+  Workflow workflow = 1 [(buf.validate.field).required = true];
+  bool create = 2;
+}
+message PublishWorkflowResponse {
+  Workflow workflow = 1;
+}
+message SaveWorkflowLayoutRequest {
+  kagent.api.v1.ResourceReference ref = 1 [(buf.validate.field).required = true];
+  WorkflowLayout layout = 2 [(buf.validate.field).required = true];
+  string resource_version = 3 [(buf.validate.field).string.min_len = 1];
+}
+message SaveWorkflowLayoutResponse {
+  Workflow workflow = 1;
+}

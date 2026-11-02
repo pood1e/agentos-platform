@@ -4,8 +4,8 @@ import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ConnectionSchema } from "../gen/agentos/management/v1/management_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
-import { ownIdentities, toolRequirements } from "../src/features/engineers/mcp-services.js";
-import { newRole } from "../src/features/engineers/role-draft.js";
+import { ownIdentities, toolRequirements } from "../src/features/agents/mcp-services.js";
+import { newRole } from "../src/features/agents/role-draft.js";
 import { fixturePlans } from "./harness.js";
 
 const access = new ToolBindings(serverTargets(fixturePlans()));
@@ -25,7 +25,7 @@ const servers = [
   tools("kagent-collaboration", ["search_memory"]),
 ];
 
-describe("engineer tool access", () => {
+describe("Agent tool access", () => {
   it("starts role drafts with available native team memory", () => {
     const draft = newRole();
     expect(access.bindings("inspection", draft.tools, "validate")).toEqual(draft.tools);
@@ -109,7 +109,7 @@ describe("engineer tool access", () => {
     ).toBe(true);
   });
 
-  it("offers only the engineer's own identities and platform servers", () => {
+  it("offers only the Agent's own identities and platform servers", () => {
     const permissions = access.requirements("inspection");
     const names = new Set(permissions.map((item) => item.server));
     expect(names.has("lab-kubernetes-inspection")).toBe(true);
@@ -274,11 +274,36 @@ describe("engineer tool access", () => {
     expect(lookup("s", "t")).toBe(true);
     expect(lookup("s", "other")).toBeUndefined();
     const service = create(ConnectionSchema, {
-      credentialBindings: [{ engineer: "inspection", server: servers[1] }],
+      credentialBindings: [{ identity: "inspection", server: servers[1] }],
     });
     expect(ownIdentities("inspection", service).map((item) => item.ref)).toEqual([
       "agentos/lab-kubernetes-inspection",
     ]);
     expect(ownIdentities("diagnosis", service)).toEqual([]);
   });
+});
+
+it("requires an explicit execution identity for environment tool bindings", () => {
+  const policy = new ToolBindings(
+    new Map([
+      [
+        "ownerless",
+        {
+          server: "ownerless",
+          service: "ops",
+          environment: "lab",
+          catalog: false,
+          tools: [{ name: "inspect", write: false, requireApproval: false }],
+        },
+      ],
+    ]),
+  );
+  expect(policy.usable("analysis", "ownerless")).toBe(false);
+  expect(
+    policy.bindings(
+      "analysis",
+      [create(ToolBindingSchema, { server: "ownerless", tools: ["ops_inspect"] })],
+      "validate",
+    ),
+  ).toBeUndefined();
 });

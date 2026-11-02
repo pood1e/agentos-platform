@@ -1,4 +1,5 @@
 import type { JsonObject } from "@bufbuild/protobuf";
+import { listNativeAgents, listNativeTemplates } from "../kagent/catalog.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { object } from "../read-model/decode/messages.js";
 import { userResource } from "./native.js";
@@ -9,9 +10,7 @@ export function kagentResources(clients: KagentClients, namespace: string) {
       read: async (name: string) =>
         (await clients.agents.getAgent({ ref: { namespace, name } })).agent?.resource?.value,
       list: async () =>
-        (await clients.agents.listAgents({ namespace })).agents.map(
-          (item) => item.resource?.value ?? {},
-        ),
+        (await listNativeAgents(clients, namespace)).map((item) => item.resource?.value ?? {}),
       save: async (resource: JsonObject, create: boolean) =>
         (
           await clients.agents[create ? "createAgent" : "updateAgent"]({
@@ -32,9 +31,7 @@ export function kagentResources(clients: KagentClients, namespace: string) {
         (await clients.templates.getAgentTemplate({ ref: { namespace, name } })).agentTemplate
           ?.resource?.value,
       list: async () =>
-        (await clients.templates.listAgentTemplates({ namespace })).agentTemplates.map(
-          (item) => item.resource?.value ?? {},
-        ),
+        (await listNativeTemplates(clients, namespace)).map((item) => item.resource?.value ?? {}),
       save: async (resource: JsonObject, create: boolean) =>
         (
           await clients.templates[create ? "createAgentTemplate" : "updateAgentTemplate"]({

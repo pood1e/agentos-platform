@@ -1,4 +1,4 @@
-import { clone } from "@bufbuild/protobuf";
+import { clone, create as createMessage } from "@bufbuild/protobuf";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { Blocks, BookOpen, LoaderCircle, NotebookPen, Play, Save, X } from "lucide-react";
 import { type ChangeEvent, useCallback, useState } from "react";
@@ -25,26 +25,27 @@ import {
   type RoleDefinition,
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
+import { ResourceReferenceSchema } from "../../../gen/kagent/api/v1/common_pb.js";
 import { errorKey } from "../../../shared/errors.js";
 import { useCapability } from "../../lib/access.js";
-import { engineerName } from "../shared/engineers.js";
+import { agentName } from "../shared/agents.js";
 import { RoleBuilderPanel } from "./RoleBuilder.js";
 import { RoleRuntime } from "./RoleRuntime.js";
 import { RoleSection as Section } from "./RoleSection.js";
 import { RoleSkills } from "./RoleSkills.js";
-import { RoleTools } from "./RoleTools.js";
 import { editRole, newRole } from "./role-draft.js";
+import { ToolBindingsEditor } from "./ToolBindingsEditor.js";
 
 export function RoleEditor({
   role,
-  engineer,
+  agentId,
   configuration,
   onSaved,
   onReturnFocus,
   onRuntimeApplied,
 }: {
   role?: RoleDefinition;
-  engineer?: string;
+  agentId?: string;
   configuration: GetConfigurationResponse;
   onSaved: () => void;
   onReturnFocus: () => void;
@@ -63,13 +64,13 @@ export function RoleEditor({
   const [tab, setTab] = useState("prompt");
   const [harness, setHarness] = useState(configuration.defaultHarness?.name ?? "");
   const agent = configuration.agents.find(
-    (item) => `${item.ref?.namespace}/${item.ref?.name}` === engineer,
+    (item) => `${item.ref?.namespace}/${item.ref?.name}` === agentId,
   );
   const create = useMutation(ConsoleService.method.createRole);
   const update = useMutation(ConsoleService.method.updateRole);
   const access = useQuery(
     ConsoleService.method.explainTools,
-    { engineer: draft.name },
+    { identity: draft.name },
     { enabled: /^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/.test(draft.name) },
   );
   const saving = create.isPending || update.isPending;
@@ -156,7 +157,13 @@ export function RoleEditor({
               disabled={!!role}
               value={draft.displayName}
               placeholder={
-                role ? engineerName({ id: draft.name, name: "", role: draft.name }) : undefined
+                role
+                  ? agentName({
+                      id: draft.name,
+                      name: "",
+                      template: createMessage(ResourceReferenceSchema, { name: draft.name }),
+                    })
+                  : undefined
               }
               onChange={field("displayName")}
             />
@@ -241,16 +248,23 @@ export function RoleEditor({
           </Section>
           <Section value="tools">
             <div className="p-4 sm:p-6">
-              <RoleTools
-                role={draft}
+              <ToolBindingsEditor
+                identity={draft.name}
+                bindings={draft.tools}
                 builtinCatalog={
-                  configuration.engineerTools.find(
-                    (item) => `${item.engineer?.namespace}/${item.engineer?.name}` === engineer,
+                  configuration.agentTools.find(
+                    (item) => `${item.agent?.namespace}/${item.agent?.name}` === agentId,
                   )?.builtinCatalog
                 }
                 servers={configuration.toolServers}
                 requirements={access.data?.requirements}
-                onChange={setDraft}
+                onChange={(tools) =>
+                  setDraft((current) =>
+                    editRole(current, (next) => {
+                      next.tools = tools;
+                    }),
+                  )
+                }
               />
             </div>
           </Section>

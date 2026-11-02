@@ -27,7 +27,7 @@ it("distinguishes the caller's read-only ceiling from an unselected or unknown A
     tools: [{ server: "service", tools: ["service_read", "service_write", "service_unknown"] }],
   });
   const authorize = (tools: string[], write: boolean) =>
-    authorizeToolSelection(policy, "engineer", role, tools, write);
+    authorizeToolSelection(policy, "agent", role, tools, write);
   expect(() => authorize(["service_read"], false)).not.toThrow();
   expect(() => authorize(["mcp__service__service_write"], true)).not.toThrow();
   expect(() => authorize(["service_write"], false)).toThrowError(

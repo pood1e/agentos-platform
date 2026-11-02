@@ -63,7 +63,7 @@ export function chatTarget(
   if (!chatAgent(namespace, entry, ref, identity)) throw notFound("chat.invalidConversation");
 }
 
-/** Existing engineer sessions are read-only views, with ownership checked by visibleGraph. */
+/** Existing Agent sessions are read-only views, with ownership checked by visibleGraph. */
 export function conversationTarget(
   namespace: string,
   entry: string,

@@ -4,11 +4,11 @@ import type { GetConfigurationResponse } from "../../../gen/agentos/console/v1/c
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { Agent } from "../../../gen/kagent/api/v1/agents_pb.js";
 import { ResourceReferenceSchema } from "../../../gen/kagent/api/v1/common_pb.js";
+import { AgentRuntime } from "../management/AgentRuntime.js";
 import { object } from "../management/connection-schema.js";
-import { EngineerRuntime } from "../management/EngineerRuntime.js";
 import { HarnessPicker } from "../management/HarnessPicker.js";
 import { runtimeModel } from "../management/runtime-models.js";
-import { RoleModel } from "./RoleModel.js";
+import { ModelConfigSelect } from "./ModelConfigSelect.js";
 import { editRole } from "./role-draft.js";
 
 export function RoleRuntime({
@@ -32,9 +32,9 @@ export function RoleRuntime({
 }) {
   if (agent)
     return (
-      <EngineerRuntime
+      <AgentRuntime
         agent={agent}
-        role={role}
+        defaultModel={role.modelConfig}
         models={configuration.modelConfigs}
         harnesses={configuration.harnesses}
         onApplied={(template) => {
@@ -75,7 +75,17 @@ export function RoleRuntime({
           );
         }}
       />
-      <RoleModel role={role} models={configuration.modelConfigs} onChange={onChange} />
+      <ModelConfigSelect
+        value={role.modelConfig}
+        models={configuration.modelConfigs}
+        onChange={(model) =>
+          onChange((current) =>
+            editRole(current, (next) => {
+              next.modelConfig = model;
+            }),
+          )
+        }
+      />
     </div>
   );
 }

@@ -144,7 +144,7 @@ export function connectionCommands(
         (item) =>
           request.kind === ConnectionKind.MODEL ||
           (object(item.spec).mcp !== undefined &&
-            !targets.get(text(meta(item).name))?.engineer &&
+            !targets.get(text(meta(item).name))?.identity &&
             object(meta(item).annotations)["agentos.dev/connection-role"] !== "ingress"),
       )
       .filter((item) =>

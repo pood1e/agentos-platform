@@ -34,7 +34,7 @@ async function snapshot(
 }
 
 it.each([false, true])(
-  "reads a caller-owned engineer session with administrator=%s",
+  "reads a caller-owned Agent session with administrator=%s",
   async (administrator) => {
     const env = await environment();
     const identity = create(UserIdentitySchema, {
@@ -50,7 +50,7 @@ it.each([false, true])(
       await expect(
         client.sendMessage({
           ...request,
-          messageId: "direct-engineer-write",
+          messageId: "direct-agent-write",
           text: "Run another task",
         }),
       ).rejects.toMatchObject({ code: Code.NotFound });

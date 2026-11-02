@@ -1,0 +1,1415 @@
+{
+  "type": "object",
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": [
+        "adk.declarative/v0.2"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "AgentSystem"
+      ]
+    },
+    "agents": {
+      "type": [
+        "null",
+        "array"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "agent_class": {
+            "type": "string",
+            "enum": [
+              "LlmAgent",
+              "LoopAgent",
+              "ParallelAgent",
+              "SequentialAgent",
+              "Workflow"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "sub_agents": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "entry": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/$defs/Node"
+            }
+          },
+          "edges": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "route": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "from",
+                "to"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "max_concurrency": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "instruction_from": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "config_map": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "secret": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "env": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "global_instruction": {
+            "type": "string"
+          },
+          "global_instruction_from": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "config_map": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "secret": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "env": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "tools": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "output_key": {
+            "type": "string"
+          },
+          "output_schema": true,
+          "include_contents": {
+            "type": "string"
+          },
+          "callbacks": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "before_model": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "function": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "after_model": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "function": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "before_tool": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "function": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "after_tool": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "function": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "disallow_transfer_to_parent": {
+            "type": "boolean"
+          },
+          "disallow_transfer_to_peers": {
+            "type": "boolean"
+          },
+          "agent_tools": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_iterations": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "agent_class"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "mcp_servers": {
+      "type": [
+        "null",
+        "array"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "url_from": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "config_map": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "secret": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "env": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "headers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "value_from": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "config_map": {
+                      "type": [
+                        "null",
+                        "object"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "key"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "secret": {
+                      "type": [
+                        "null",
+                        "object"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "key"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "env": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tools": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "Node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "agent"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            },
+            "agent_ref": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "namespace": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "input_schema": true,
+            "output_schema": true
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "cel"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "input_schema": true,
+            "vars": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "expr": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "expr"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "output": {
+              "type": "string"
+            },
+            "route": {
+              "type": "string"
+            },
+            "routes": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "when": {
+                    "type": "string"
+                  },
+                  "route": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "route"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "state_delta": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "output_schema": true
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "dynamic"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "function": {
+              "type": "string"
+            },
+            "max_iters": {
+              "type": "integer"
+            },
+            "children": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "isolation": {
+              "type": "string"
+            },
+            "input_schema": true,
+            "output_schema": true
+          },
+          "required": [
+            "id",
+            "type",
+            "function"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "function"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "function": {
+              "type": "string"
+            },
+            "input_schema": true,
+            "output_schema": true
+          },
+          "required": [
+            "id",
+            "type",
+            "function"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "hitl"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "message"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "join"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "input_schema": true
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "llm"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "input_schema": true,
+            "model": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "instruction": {
+              "type": "string"
+            },
+            "instruction_from": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "config_map": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "key"
+                  ],
+                  "additionalProperties": false
+                },
+                "secret": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "key"
+                  ],
+                  "additionalProperties": false
+                },
+                "env": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "global_instruction": {
+              "type": "string"
+            },
+            "global_instruction_from": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "config_map": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "key"
+                  ],
+                  "additionalProperties": false
+                },
+                "secret": {
+                  "type": [
+                    "null",
+                    "object"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "key"
+                  ],
+                  "additionalProperties": false
+                },
+                "env": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "tools": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "output_key": {
+              "type": "string"
+            },
+            "output_schema": true,
+            "include_contents": {
+              "type": "string"
+            },
+            "callbacks": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "before_model": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "when": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "function": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "after_model": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "when": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "function": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "before_tool": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "when": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "function": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "after_tool": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "when": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "function": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "model"
+          ],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "instruction"
+              ]
+            },
+            {
+              "required": [
+                "instruction_from"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "parallel_worker"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "function": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            },
+            "agent_ref": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "namespace": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "max_concurrency": {
+              "type": "integer"
+            },
+            "input_schema": true,
+            "output_schema": true
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "tool"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "retry": {
+              "type": [
+                "null",
+                "object"
+              ],
+              "properties": {
+                "max_attempts": {
+                  "type": "integer"
+                },
+                "initial_delay": {
+                  "type": "string"
+                },
+                "max_delay": {
+                  "type": "string"
+                },
+                "backoff_factor": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "jitter": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "when": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "string"
+            },
+            "server": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "tool"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "workflow"
+              ]
+            },
+            "description": {
+              "type": "string"
+            },
+            "nodes": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "$ref": "#/$defs/Node"
+              }
+            },
+            "edges": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "route": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "nodes",
+            "edges"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "title": "AgentSystem",
+  "required": [
+    "apiVersion",
+    "kind",
+    "agents"
+  ],
+  "additionalProperties": false
+}

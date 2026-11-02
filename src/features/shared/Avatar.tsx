@@ -2,7 +2,7 @@ import { type CSSProperties, memo, useId } from "react";
 import { packAsset, usePack } from "@/lib/pack";
 import { cn } from "@/lib/utils";
 import type { AvatarRig } from "../../../gen/agentos/console/v1/pack_pb.js";
-import { roleLabel } from "./engineers.js";
+import { roleLabel } from "./agents.js";
 import "./avatar.css";
 
 type Posture = "working" | "waiting" | "idle";

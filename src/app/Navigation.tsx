@@ -1,4 +1,13 @@
-import { Blocks, BookOpen, BrainCircuit, Cpu, MessageCircle, Play, Users } from "lucide-react";
+import {
+  Blocks,
+  BookOpen,
+  BrainCircuit,
+  Cpu,
+  GitBranch,
+  MessageCircle,
+  Play,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -6,18 +15,19 @@ import { useAccess } from "@/lib/access";
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
-  { path: "/engineers", label: "navigation.agents", icon: Users },
+  { path: "/agents", label: "navigation.agents", icon: Users },
+  { path: "/workflows", label: "workflow.title", icon: GitBranch },
   {
-    path: "/engineers/knowledge",
+    path: "/agents/knowledge",
     label: "management.tabs.knowledge",
     icon: BrainCircuit,
   },
 ];
 const settings = [
-  { path: "/engineers/models", label: "management.tabs.models", icon: Cpu },
-  { path: "/engineers/mcp", label: "management.tabs.mcp", icon: Blocks },
-  { path: "/engineers/harnesses", label: "management.tabs.harnesses", icon: Play },
-  { path: "/engineers/skills", label: "management.tabs.skills", icon: BookOpen },
+  { path: "/agents/models", label: "management.tabs.models", icon: Cpu },
+  { path: "/agents/mcp", label: "management.tabs.mcp", icon: Blocks },
+  { path: "/agents/harnesses", label: "management.tabs.harnesses", icon: Play },
+  { path: "/agents/skills", label: "management.tabs.skills", icon: BookOpen },
 ];
 
 export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -31,7 +41,7 @@ export function Navigation({ onNavigate }: { onNavigate?: () => void }) {
         variant="ghost"
         className="h-9 w-full justify-start gap-3 aria-[current=page]:bg-secondary aria-[current=page]:text-secondary-foreground"
       >
-        <NavLink to={path} end={path === "/engineers"} onClick={onNavigate}>
+        <NavLink to={path} end={path === "/agents"} onClick={onNavigate}>
           <Icon />
           {t(label)}
         </NavLink>

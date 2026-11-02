@@ -27,6 +27,6 @@ export const active = (state: ActivityState) =>
 export const awaiting = (state: ActivityState) =>
   state === ActivityState.AWAITING_APPROVAL || state === ActivityState.AWAITING_INPUT;
 
-/** Avatar posture for an engineer's activity. */
+/** Avatar posture for an agentId's activity. */
 export const posture = (state: ActivityState) =>
   active(state) ? "working" : awaiting(state) ? "waiting" : "idle";

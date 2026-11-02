@@ -129,7 +129,7 @@ type CompiledTarget struct {
 	Service     string `json:"service"`
 	Project     string `json:"project,omitempty"`
 	Environment string `json:"environment,omitempty"`
-	Engineer    string `json:"engineer,omitempty"`
+	Identity    string `json:"identity,omitempty"`
 	Catalog     bool   `json:"catalog"`
 	// +kubebuilder:validation:Enum=readOnly;write
 	Access string         `json:"access,omitempty"`

@@ -38,7 +38,7 @@ expected_bindings(template) := {binding |
 	some plan in objects
 	plan.kind == "AccessPlan"
 	some target in plan.status.targets
-	target.engineer == template.metadata.name
+	target.identity == template.metadata.name
 	target.environment
 	some tool in target.tools
 	binding := {"server": target.server, "tool": sprintf("%s_%s", [target.service, tool.name]), "review": tool.requireApproval}

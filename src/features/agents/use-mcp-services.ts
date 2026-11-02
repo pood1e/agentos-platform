@@ -3,11 +3,13 @@ import {
   type Connection,
   ConnectionKind,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { useAccess } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 
 export function useMCPServices() {
+  const access = useAccess().data;
   return useQuery({
-    queryKey: ["management", "mcp-services"],
+    queryKey: ["management", "mcp-services", access?.workspace, access?.subject],
     queryFn: async () => {
       const connections: Connection[] = [];
       let pageToken = "";

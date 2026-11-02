@@ -17,18 +17,18 @@ const reads = {
     signal: AbortSignal | undefined,
     caller: string,
   ) => client.listTasks({}, { signal, headers: { authorization: `Bearer ${caller}` } }),
-  engineers: (
+  agents: (
     client: ReturnType<typeof consoleClient>,
     signal: AbortSignal | undefined,
     caller: string,
-  ) => client.listEngineers({}, { signal, headers: { authorization: `Bearer ${caller}` } }),
+  ) => client.listAgents({}, { signal, headers: { authorization: `Bearer ${caller}` } }),
   runs: (
     client: ReturnType<typeof consoleClient>,
     signal: AbortSignal | undefined,
     caller: string,
   ) =>
-    client.listEngineerRuns(
-      { engineer: "agentos/inspection" },
+    client.listAgentRuns(
+      { agent: { namespace: "agentos", name: "inspection" } },
       { signal, headers: { authorization: `Bearer ${caller}` } },
     ),
 };

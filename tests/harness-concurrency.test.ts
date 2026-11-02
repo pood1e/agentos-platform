@@ -17,7 +17,7 @@ afterEach(async () => env.close());
 async function request() {
   const current = await env.store.get("agents", "inspection");
   return {
-    engineer: { name: "inspection", namespace: "agentos" },
+    agent: { name: "inspection", namespace: "agentos" },
     harness: { name: "codex", namespace: "agentos" },
     generation: BigInt(String(object(current.metadata).generation)),
     expectedUid: text(object(current.metadata).uid),
@@ -28,7 +28,7 @@ async function request() {
   };
 }
 
-describe("engineer Harness configuration concurrency", () => {
+describe("Agent Harness configuration concurrency", () => {
   it("accepts an edit after the controller changes only readiness", async () => {
     const edit = await request();
     const original = await env.store.get("agents", "inspection");
@@ -37,7 +37,7 @@ describe("engineer Harness configuration concurrency", () => {
       { ...original, status: { conditions: [{ type: "Ready", status: "False" }] } },
       false,
     );
-    const { agent } = await client.setEngineerRuntime(edit);
+    const { agent } = await client.setAgentRuntime(edit);
     expect(object(agent?.resource?.value?.spec).harnessRef).toEqual({ name: "codex" });
     expect(agent?.resource?.value?.status).toEqual({
       conditions: [{ type: "Ready", status: "False" }],
@@ -66,14 +66,14 @@ describe("engineer Harness configuration concurrency", () => {
         }
         return write(kind, value, create);
       });
-      await expect(client.setEngineerRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
+      await expect(client.setAgentRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
       expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
         name: change === "status" ? "standard" : "memory",
       });
     });
   }
 
-  it("rejects an engineer recreated under the same name and generation", async () => {
+  it("rejects an Agent recreated under the same name and generation", async () => {
     const edit = await request();
     const original = await env.store.get("agents", "inspection");
     env.fake.agents.splice(
@@ -81,7 +81,7 @@ describe("engineer Harness configuration concurrency", () => {
       1,
     );
     env.fake.resources.save("agents", { ...original, metadata: { name: "inspection" } }, true);
-    await expect(client.setEngineerRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
+    await expect(client.setAgentRuntime(edit)).rejects.toMatchObject({ code: Code.Aborted });
     expect(object((await env.store.get("agents", "inspection")).spec).harnessRef).toEqual({
       name: "standard",
     });

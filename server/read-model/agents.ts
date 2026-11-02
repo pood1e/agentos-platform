@@ -9,7 +9,7 @@ import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { isWorkflowTemplate } from "../kagent/templates.js";
 import { millis, object, text } from "./decode/messages.js";
 
-export const systemRoles = new Set(["assistant", "role-builder"]);
+export const systemTemplates = new Set(["assistant", "role-builder"]);
 
 export const agentKey = (ref?: Pick<ResourceReference, "namespace" | "name">) =>
   ref ? `${ref.namespace}/${ref.name}` : "";
@@ -21,7 +21,7 @@ export function agentRef(id: string) {
 
 export interface AgentInfo {
   id: string;
-  role: string;
+  templateName: string;
   displayName: string;
   description: string;
   ready: boolean;
@@ -50,7 +50,7 @@ export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTem
   );
   return {
     id: agentKey(agent.ref),
-    role: workflow ? "" : text(templateRef.name),
+    templateName: text(templateRef.name),
     workflow,
     displayName: text(annotations["agentos.dev/display-name"]),
     description: template

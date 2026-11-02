@@ -6,11 +6,11 @@ import "agentos/execution/v1/state.proto";
 import "kagent/api/v1/common.proto";
 import "kagent/api/v1/agents.proto";
 
-// kagent Agent identified by namespace/name; its template reference selects the role.
-message Engineer {
+// Authorized native Agent summary with its referenced behavior template.
+message AgentSummary {
   string id = 1;
   string name = 2;
-  string role = 3;
+  kagent.api.v1.ResourceReference template = 3;
   string description = 4;
   agentos.execution.v1.ActivityState state = 5;
   string unavailable_reason = 6;
@@ -19,9 +19,9 @@ message Engineer {
   int32 tool_calls = 9;
 }
 
-// Runtime-provided tools are observed per engineer, independently of editable MCP bindings.
-message EngineerTools {
-  kagent.api.v1.ResourceReference engineer = 1;
+// Runtime-provided tools are observed per Agent, independently of editable MCP bindings.
+message AgentTools {
+  kagent.api.v1.ResourceReference agent = 1;
   reserved 2;
   reserved "builtin_tools";
   kagent.api.v1.BuiltinToolCatalog builtin_catalog = 3;

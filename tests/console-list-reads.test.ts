@@ -10,8 +10,8 @@ import {
   TaskCatalogScopeSchema,
 } from "../gen/kagent/api/v1/task_catalog_pb.js";
 import { catalogState } from "../server/read-model/catalog-state.js";
+import { agentSummary } from "../server/read-model/views/agents.js";
 import { conversationProgress } from "../server/read-model/views/conversation-work.js";
-import { engineer } from "../server/read-model/views/engineers.js";
 import { catalogFixture } from "./fake-kagent/task-catalog-model.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment } from "./harness.js";
@@ -19,7 +19,7 @@ import { consoleClient, environment } from "./harness.js";
 const agent = { namespace: "agentos", name: "assistant" };
 afterEach(() => vi.restoreAllMocks());
 
-it("maps recorded conversations and Engineer metrics without scanning session metadata", async () => {
+it("maps recorded conversations and AgentSummary metrics without scanning session metadata", async () => {
   const env = await environment(),
     client = consoleClient(env);
   const catalog = catalogFixture(
@@ -32,13 +32,10 @@ it("maps recorded conversations and Engineer metrics without scanning session me
   );
   const expected = catalog.graph
     .agents()
-    .filter((member) => !member.workflow && !["assistant", "role-builder"].includes(member.role))
-    .map((member) => engineer(catalog.graph, member.id, catalog.graph.agentEntries(member.id)));
-  const actual = await client.listEngineers({});
-  expect(actual.engineers).toEqual(expected);
-  expect(actual.engineers.reduce((total, member) => total + member.toolCalls, 0)).toBeGreaterThan(
-    0,
-  );
+    .map((member) => agentSummary(catalog.graph, member.id, catalog.graph.agentEntries(member.id)));
+  const actual = await client.listAgents({});
+  expect(actual.agents).toEqual(expected);
+  expect(actual.agents.reduce((total, member) => total + member.toolCalls, 0)).toBeGreaterThan(0);
   const conversations = await client.listConversations({ agent, pageSize: 100 });
   expect(conversations.conversations[0]?.state).toBe(
     conversationProgress(catalog.graph, fixtureIds.chatContext).state,
@@ -146,8 +143,8 @@ it("fails closed on catalog errors and retries fresh without an old-API fallback
   vi.spyOn(env.clients.catalog, "listAgentActivity").mockRejectedValueOnce(
     new ConnectError("unavailable", Code.Unavailable),
   );
-  await expect(client.listEngineers({})).rejects.toMatchObject({ code: Code.Unavailable });
-  expect((await client.listEngineers({})).engineers.length).toBeGreaterThan(0);
+  await expect(client.listAgents({})).rejects.toMatchObject({ code: Code.Unavailable });
+  expect((await client.listAgents({})).agents.length).toBeGreaterThan(0);
   expect(env.fake.listed).toEqual([]);
   expect(env.fake.fetched).toEqual([]);
 });
@@ -182,8 +179,11 @@ it.each([0, 120])(
     const lineage = vi.spyOn(env.clients.execution, "getTaskExecution");
     await client.listConversations({ agent, pageSize: 3 });
     await client.listTasks({ pageSize: 3, includeExecutionGraph: true });
-    await client.listEngineers({});
-    await client.listEngineerRuns({ engineer: "agentos/inspection", pageSize: 3 });
+    await client.listAgents({});
+    await client.listAgentRuns({
+      agent: { namespace: "agentos", name: "inspection" },
+      pageSize: 3,
+    });
     expect(env.fake.catalogReads).toHaveLength(4);
     expect(agents).toHaveBeenCalledTimes(3);
     expect(templates).toHaveBeenCalledTimes(3);

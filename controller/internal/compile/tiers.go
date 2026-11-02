@@ -91,7 +91,7 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 					result.Resources = append(result.Resources, resources...)
 					if identity.Name != "catalog" {
 						target := catalog
-						target.Server, target.Engineer, target.Catalog = project+"-"+identity.Name, identity.Name, false
+						target.Server, target.Identity, target.Catalog = project+"-"+identity.Name, identity.Name, false
 						target.Access = "readOnly"
 						if len(write) != 0 {
 							target.Access = "write"
@@ -113,7 +113,7 @@ func Plan(plan *platform.AccessPlan) (Result, error) {
 						continue
 					}
 					target := catalog
-					target.Server, target.Engineer, target.Catalog, target.Access = service+"-"+identity.Name, identity.Name, false, view.access
+					target.Server, target.Identity, target.Catalog, target.Access = service+"-"+identity.Name, identity.Name, false, view.access
 					path := "/mcp/" + service + "/" + identity.Name + "/readonly"
 					if view.access == "write" {
 						target.Server += "-changes"

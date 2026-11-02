@@ -7,25 +7,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
+import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
 import { languageModels } from "../management/runtime-models.js";
-import { editRole } from "./role-draft.js";
 
-export function RoleModel({
-  role,
+export function ModelConfigSelect({
+  value: selectedModel,
   models,
   onChange,
   disabled = false,
 }: {
-  role: RoleDefinition;
+  value?: ResourceReference;
   models: ModelConfig[];
-  onChange: (role: RoleDefinition) => void;
+  onChange: (value: ResourceReference | undefined) => void;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const available = languageModels(models);
-  const selected = role.modelConfig?.name ?? "";
+  const selected = selectedModel?.name ?? "";
   const value = available.some((model) => model.ref?.name === selected) ? selected : "";
   return (
     <div className="space-y-2">
@@ -33,13 +32,7 @@ export function RoleModel({
       <Select
         value={value}
         disabled={disabled || available.length === 0}
-        onValueChange={(name) =>
-          onChange(
-            editRole(role, (next) => {
-              next.modelConfig = models.find((model) => model.ref?.name === name)?.ref;
-            }),
-          )
-        }
+        onValueChange={(name) => onChange(models.find((model) => model.ref?.name === name)?.ref)}
       >
         <SelectTrigger aria-label={t("management.modelConnection")}>
           <SelectValue placeholder={t("harness.selectModel")} />

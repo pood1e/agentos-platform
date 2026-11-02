@@ -1,1 +1,1 @@
-{{ include "agentos.preset" (dict "name" (printf "%s-engineers" .Release.Name) "root" . "files" (.Files.Glob "presets/engineers/*.yaml")) }}
+{{ include "agentos.preset" (dict "name" (printf "%s-agents" .Release.Name) "root" . "files" (.Files.Glob "presets/agents/*.yaml")) }}

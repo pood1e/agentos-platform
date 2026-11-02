@@ -1,10 +1,11 @@
-import { CoreV1Api } from "@kubernetes/client-node";
+import { CoreV1Api, CustomObjectsApi } from "@kubernetes/client-node";
 import { registerDelegation } from "../authorization/delegation.js";
 import { registerConsole } from "../console/app.js";
 import { consoleService } from "../console/service.js";
 import { knowledgeConfig } from "../knowledge/config.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
+import { workflowDocuments } from "../management/workflows/documents.js";
 import { registerAppAuthorization } from "../mcp-apps/http.js";
 import { mcpApps } from "../mcp-apps/service.js";
 import { workspaceContext } from "../platform/access.js";
@@ -87,6 +88,12 @@ await registerConsole(app, {
     delegationUrl: `${origin}/delegation/start`,
   }),
   management: managementService({
+    access,
+    documents: workflowDocuments(
+      config.kube.makeApiClient(CoreV1Api),
+      config.kube.makeApiClient(CustomObjectsApi),
+      workspace,
+    ),
     clients,
     store: resourceStore(
       config.kube,

@@ -1,4 +1,4 @@
-import { type AgentInfo, type SessionInfo, systemRoles } from "./agents.js";
+import { type AgentInfo, type SessionInfo, systemTemplates } from "./agents.js";
 import type { CallEntry } from "./calls.js";
 import type { TaskEntry } from "./entry.js";
 
@@ -45,7 +45,7 @@ export class TaskGraph {
   contextEntries = (contextId: string) => this.contexts.get(contextId) ?? [];
   agentEntries = (agentId: string) => this.byAgent.get(agentId) ?? [];
   taskOfMessage = (messageId: string) => this.entries.get(this.messages.get(messageId) ?? "");
-  roleOf = (agentId: string) => this.agentInfo.get(agentId)?.role ?? "";
+  templateOf = (agentId: string) => this.agentInfo.get(agentId)?.templateName ?? "";
 
   target(entry: TaskEntry, call: CallEntry): string | undefined {
     return this.relations().targets.get(callKey(entry.id, call.id));
@@ -57,7 +57,7 @@ export class TaskGraph {
     while (entry && !seen.has(entry.id)) {
       seen.add(entry.id);
       const parent = this.entry(this.relations().parents.get(entry.id) ?? "");
-      if (!parent || systemRoles.has(this.roleOf(parent.agentId))) return entry;
+      if (!parent || systemTemplates.has(this.templateOf(parent.agentId))) return entry;
       entry = parent;
     }
     return undefined;
@@ -94,9 +94,9 @@ export class TaskGraph {
       }
     }
     const roots = [...this.entries.values()].filter((entry) => {
-      if (systemRoles.has(this.roleOf(entry.agentId))) return false;
+      if (systemTemplates.has(this.templateOf(entry.agentId))) return false;
       const parent = this.entry(parents.get(entry.id) ?? "");
-      return !parent || systemRoles.has(this.roleOf(parent.agentId));
+      return !parent || systemTemplates.has(this.templateOf(parent.agentId));
     });
     return { targets, parents, roots };
   }

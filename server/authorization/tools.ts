@@ -5,7 +5,7 @@ import type { ToolBindings } from "../governance/bindings.js";
 
 export function authorizeToolSelection(
   policy: ToolBindings,
-  engineer: string,
+  identity: string,
   role: Pick<RoleDefinition, "tools">,
   tools: string[],
   write: boolean,
@@ -13,11 +13,11 @@ export function authorizeToolSelection(
   for (const tool of tools) {
     const name = toolBaseName(tool);
     const selected = role.tools.filter((binding) => policy.selectedTool(binding, name));
-    if (selected.some((binding) => policy.permitsTool(engineer, binding.server, name, write)))
+    if (selected.some((binding) => policy.permitsTool(identity, binding.server, name, write)))
       continue;
     const readOnly =
       !write &&
-      selected.some((binding) => policy.permitsTool(engineer, binding.server, name, true));
+      selected.some((binding) => policy.permitsTool(identity, binding.server, name, true));
     throw new ConnectError(
       readOnly
         ? "This execution has read-only permissions"

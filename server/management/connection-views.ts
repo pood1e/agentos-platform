@@ -19,11 +19,11 @@ export function serviceBindings(
   const name = text(meta(service).name);
   const targets = compiledTargets(plans);
   return [
-    { server: name, engineer: "catalog" },
-    ...[...targets.values()].filter((target) => target.service === name && target.engineer),
+    { server: name, identity: "catalog" },
+    ...[...targets.values()].filter((target) => target.service === name && target.identity),
   ].map((target) =>
     create(MCPCredentialBindingSchema, {
-      engineer: target.engineer,
+      identity: target.identity,
       server:
         servers.find((server) => server.ref === `${namespace}/${target.server}`) ??
         create(ToolServerSchema, { ref: `${namespace}/${target.server}` }),
