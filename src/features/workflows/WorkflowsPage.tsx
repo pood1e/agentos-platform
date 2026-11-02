@@ -1,5 +1,6 @@
+import { create } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch } from "lucide-react";
+import { GitBranch, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
@@ -13,8 +14,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
+import {
+  AuthorizationResourceSchema,
+  AuthorizationScopeKind,
+} from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { useAccess, useCapability } from "../../lib/access.js";
+import { useAgentAccess } from "../../lib/authorization.js";
 import { managementClient } from "../../lib/console.js";
+import { authorizationHref } from "../authorization/resource-location.js";
 import { ResourcePage } from "../management/ResourcePage.js";
 
 export function WorkflowsPage() {
@@ -28,6 +35,12 @@ export function WorkflowsPage() {
     queryFn: () => managementClient.listWorkflows({}),
     refetchInterval: 10_000,
   });
+  const accessible =
+    useAgentAccess(
+      (list.data?.agents ?? [])
+        .filter((agent) => agent.ref?.namespace === access?.workspace && !!agent.ref?.name)
+        .map((agent) => agent.ref?.name ?? ""),
+    ).data ?? [];
   const visible = (list.data?.agents ?? []).filter((agent) =>
     agent.ref?.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -68,11 +81,36 @@ export function WorkflowsPage() {
                 </div>
               </TableCell>
               <TableCell>
-                <Button asChild variant="outline" size="sm">
-                  <Link to={`/workflows/${encodeURIComponent(agent.ref?.name ?? "")}/history`}>
-                    {t("workflow.history")}
-                  </Link>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to={`/workflows/${encodeURIComponent(agent.ref?.name ?? "")}/history`}>
+                      {t("workflow.history")}
+                    </Link>
+                  </Button>
+                  {accessible.includes(agent.ref?.name ?? "") && (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link
+                        to={authorizationHref(
+                          create(AuthorizationResourceSchema, {
+                            resource: {
+                              case: "kubernetes",
+                              value: {
+                                kind: AuthorizationScopeKind.AGENT,
+                                ref: {
+                                  namespace: access?.workspace ?? "",
+                                  name: agent.ref?.name ?? "",
+                                },
+                              },
+                            },
+                          }),
+                        )}
+                      >
+                        <ShieldCheck />
+                        {t("authorization.title")}
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

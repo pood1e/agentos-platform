@@ -1,6 +1,8 @@
+import { create } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
 import {
   type AuthorizationResource,
+  AuthorizationResourceSchema,
   AuthorizationScopeKind,
   Permission,
 } from "../../gen/kagent/api/v1/authorization_pb.js";
@@ -39,6 +41,47 @@ export function useResourceAccess(scope: AuthorizationResource | undefined) {
       return result.resources[0];
     },
     enabled: !!scope && !!workspace && !!subject,
+    retry: false,
+    refetchInterval: 10_000,
+  });
+}
+
+export function useAgentAccess(names: string[]) {
+  const profile = useAccess().data;
+  const workspace = profile?.workspace ?? "";
+  const subject = profile?.subject ?? "";
+  const uniqueNames = [...new Set(names.filter(Boolean))].sort();
+  return useQuery({
+    queryKey: ["resource-authorization", subject, workspace, "agent-access", uniqueNames],
+    queryFn: async ({ signal }) => {
+      const allowed: string[] = [];
+      for (let offset = 0; offset < uniqueNames.length; offset += 50) {
+        const batch = uniqueNames.slice(offset, offset + 50);
+        const { resources } = await authorizationClient.checkPermissions(
+          {
+            workspace: { namespace: workspace },
+            checks: batch.map((name) => ({
+              resource: create(AuthorizationResourceSchema, {
+                resource: {
+                  case: "kubernetes",
+                  value: {
+                    kind: AuthorizationScopeKind.AGENT,
+                    ref: { namespace: workspace, name },
+                  },
+                },
+              }),
+              permissions: [Permission.ACCESS_READ],
+            })),
+          },
+          { signal, timeoutMs: 10_000 },
+        );
+        resources.forEach((resource, index) => {
+          if (resource.allowedActions.includes(Permission.ACCESS_READ)) allowed.push(batch[index]);
+        });
+      }
+      return allowed;
+    },
+    enabled: !!workspace && !!subject && uniqueNames.length > 0,
     retry: false,
     refetchInterval: 10_000,
   });

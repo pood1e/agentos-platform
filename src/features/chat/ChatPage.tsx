@@ -1,12 +1,21 @@
 import { ThreadPrimitive } from "@assistant-ui/react";
+import { create } from "@bufbuild/protobuf";
 import { skipToken, useQuery } from "@connectrpc/connect-query";
 import { keepPreviousData } from "@tanstack/react-query";
+import { ShieldCheck } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import { Button } from "@/components/ui/button";
 import { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
+import {
+  AuthorizationResourceSchema,
+  Permission,
+} from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { useAccess } from "../../lib/access.js";
+import { useResourceAccess } from "../../lib/authorization.js";
 import { useSpeechCapabilities } from "../../lib/speech.js";
+import { authorizationHref } from "../authorization/resource-location.js";
 import { usePaging } from "../shared/paging.js";
 import { WorkingAgents } from "./AgentPresence.js";
 import { ChatComposer } from "./ChatComposer.js";
@@ -31,6 +40,12 @@ export function ChatPage() {
   const access = useAccess();
   const name = access.data?.entryAgent?.name ?? "assistant";
   const agent = { namespace: access.data?.workspace ?? "", name };
+  const sessionScope = contextId
+    ? create(AuthorizationResourceSchema, { resource: { case: "sessionId", value: contextId } })
+    : undefined;
+  const sessionAccess = useResourceAccess(sessionScope);
+  const canViewAccess =
+    sessionAccess.isSuccess && sessionAccess.data?.allowedActions.includes(Permission.ACCESS_READ);
   const chat = useChat(agent, contextId, (id) => navigate(`/chat/${id}`));
   const voice = useSpeechCapabilities().data?.enabled === true;
   const [calling, setCalling] = useState(false);
@@ -74,6 +89,14 @@ export function ChatPage() {
       <div className="flex min-h-0 min-w-0 flex-col">
         <div className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 sm:px-4">
           <h1 className="min-w-0 truncate text-sm font-medium">{title || t("chat.assistant")}</h1>
+          {canViewAccess && sessionScope && (
+            <Button asChild variant="outline" size="sm" className="shrink-0">
+              <Link to={authorizationHref(sessionScope)}>
+                <ShieldCheck />
+                {t("authorization.title")}
+              </Link>
+            </Button>
+          )}
         </div>
         {voice && (
           <Suspense fallback={null}>

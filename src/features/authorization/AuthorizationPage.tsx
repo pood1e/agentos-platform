@@ -1,8 +1,9 @@
-import { create } from "@bufbuild/protobuf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { LoaderCircle, LockKeyhole, Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,34 +17,51 @@ import type { AccessProfile } from "../../../gen/agentos/console/v1/access_pb.js
 import {
   AccessRole,
   type AuthorizationResource,
-  AuthorizationResourceSchema,
   Permission,
   type RoleBinding,
-  type SubjectReference,
 } from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { useAccess } from "../../lib/access.js";
 import { authorizationScopeKind, useResourceAccess } from "../../lib/authorization.js";
 import { authorizationClient } from "../../lib/console.js";
 import { Failure } from "../management/ResourcePage.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
+import { BindingSubject, subjectName } from "./BindingSubject.js";
 import { GrantForm } from "./GrantForm.js";
+import { resourceFromSearch, resourceSearch } from "./resource-location.js";
 import { ScopeSelector } from "./ScopeSelector.js";
 
-function subjectName(subject: SubjectReference | undefined) {
-  if (subject?.subject.case === "group")
-    return `${subject.subject.value.id} · ${subject.subject.value.issuer}`;
-  return subject?.subject.case === "principalId" ? subject.subject.value : "";
+function resourceName(resource: AuthorizationResource, workspace: string) {
+  switch (resource.resource.case) {
+    case "workspace":
+      return workspace;
+    case "kubernetes":
+      return resource.resource.value.ref?.name ?? "";
+    case "sessionId":
+      return resource.resource.value;
+    case "task":
+      return resource.resource.value.taskId;
+    default:
+      return "";
+  }
 }
 
-function WorkspaceAuthorization({ profile }: { profile: AccessProfile }) {
+function WorkspaceAuthorization({
+  profile,
+  selected,
+  selectedKey,
+  onSelect,
+}: {
+  profile: AccessProfile;
+  selected: AuthorizationResource;
+  selectedKey: string;
+  onSelect: (resource: AuthorizationResource) => void;
+}) {
   const { t } = useTranslation();
   const cache = useQueryClient();
   const { subject, workspace } = profile;
-  const [selected, setSelected] = useState(() =>
-    create(AuthorizationResourceSchema, {
-      resource: { case: "workspace", value: { namespace: workspace } },
-    }),
-  );
+  const [tokens, setTokens] = useState([""]);
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<{ binding: RoleBinding; requestId: string }>();
   const access = useResourceAccess(selected);
   const scope = access.data?.resource ?? selected;
   const allowed = access.isSuccess ? (access.data?.allowedActions ?? []) : [];
@@ -51,8 +69,6 @@ function WorkspaceAuthorization({ profile }: { profile: AccessProfile }) {
   const canManage = allowed.includes(Permission.ACCESS_MANAGE);
   const canShare = allowed.includes(Permission.SESSION_SHARE);
   const kind = authorizationScopeKind(scope);
-  const [tokens, setTokens] = useState([""]);
-  const [removing, setRemoving] = useState<{ binding: RoleBinding; requestId: string }>();
   const prefix = ["resource-authorization", subject, workspace];
   const bindings = useQuery({
     queryKey: [...prefix, "bindings", scope, tokens.at(-1)],
@@ -82,115 +98,154 @@ function WorkspaceAuthorization({ profile }: { profile: AccessProfile }) {
     setTokens([""]);
     return cache.invalidateQueries({ queryKey: prefix });
   };
-  const select = (resource: AuthorizationResource) => {
-    setSelected(resource);
-    setTokens([""]);
-    setRemoving(undefined);
-  };
+  const hasNext = !!bindings.data?.page?.nextPageToken;
+  const hasBindings = (bindings.data?.bindings.length ?? 0) > 0;
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4" aria-label={t("authorization.title")}>
-      <header className="flex items-center justify-between gap-3">
-        <div>
+    <section
+      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4"
+      aria-label={t("authorization.title")}
+    >
+      <header>
+        <div className="flex items-center gap-2">
           <h1 className="text-xl font-semibold tracking-tight">{t("authorization.title")}</h1>
-          <p className="text-xs text-muted-foreground">
-            {workspace} · {t("authorization.bindingHint")}
-          </p>
+          <Badge variant="outline">{workspace}</Badge>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t("configuration.refresh")}
-          disabled={access.isFetching || bindings.isFetching}
-          onClick={() => void changed()}
-        >
-          <RefreshCw />
-        </Button>
+        <p className="mt-1 text-sm text-muted-foreground">{t("authorization.pageHint")}</p>
       </header>
-      <ScopeSelector workspace={workspace} onSelect={select} />
-      <Failure error={access.error ?? bindings.error ?? roles.error} />
-      {access.isPending && (
-        <p className="text-sm text-muted-foreground" role="status">
-          {t("management.loading")}
-        </p>
-      )}
-      {access.isSuccess && !canRead && (
-        <p className="text-sm text-muted-foreground">{t("authorization.denied")}</p>
-      )}
-      {(canManage || canShare) && availableRoles.length > 0 && (
+      <ScopeSelector profile={profile} selected={selected} onSelect={onSelect} />
+      <div
+        className="rounded-xl border bg-card"
+        aria-busy={access.isFetching || bindings.isFetching}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b p-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold">{t("authorization.directBindings")}</h2>
+            </div>
+            <p className="mt-1 break-all text-sm text-foreground">
+              {t(`authorization.scopes.${kind}`)} · {resourceName(scope, workspace)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("authorization.bindingHint")}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t("configuration.refresh")}
+              disabled={access.isFetching || bindings.isFetching}
+              onClick={() => void changed()}
+            >
+              <RefreshCw
+                className={access.isFetching || bindings.isFetching ? "animate-spin" : ""}
+              />
+            </Button>
+            {(canManage || canShare) && availableRoles.length > 0 && (
+              <Button onClick={() => setAdding(true)}>
+                <Plus />
+                {t("authorization.addBinding")}
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="p-4">
+          <Failure error={access.error ?? bindings.error ?? roles.error} />
+          {(access.isPending || (canRead && bindings.isPending)) && (
+            <div
+              className="flex items-center gap-2 py-10 text-sm text-muted-foreground"
+              role="status"
+            >
+              <LoaderCircle className="size-4 animate-spin" />
+              {t("management.loading")}
+            </div>
+          )}
+          {access.isSuccess && !canRead && (
+            <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+              <LockKeyhole className="size-5 shrink-0" />
+              {t("authorization.denied")}
+            </div>
+          )}
+          {canRead && bindings.isSuccess && !hasBindings && (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <ShieldCheck className="size-8 text-muted-foreground" />
+              <p className="text-sm font-medium">{t("authorization.emptyBindings")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("authorization.emptyBindingsHint")}
+              </p>
+            </div>
+          )}
+          {canRead && bindings.isSuccess && hasBindings && (
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("authorization.subject")}</TableHead>
+                    <TableHead>{t("authorization.role")}</TableHead>
+                    <TableHead className="w-24 text-right">{t("workflow.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bindings.data.bindings.map((binding) => (
+                    <TableRow key={`${JSON.stringify(binding.subject)}:${binding.role}`}>
+                      <TableCell>
+                        <BindingSubject value={binding.subject} current={subject} />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {t(`authorization.roles.${binding.role}`)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(canManage ||
+                          (canShare && binding.role === AccessRole.EXECUTION_READER)) && (
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label={t("authorization.revoke")}
+                            onClick={() => setRemoving({ binding, requestId: crypto.randomUUID() })}
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          {canRead && (tokens.length > 1 || hasNext) && (
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={tokens.length < 2 || bindings.isFetching}
+                onClick={() => setTokens((current) => current.slice(0, -1))}
+              >
+                {t("authorization.previous")}
+              </Button>
+              <span className="text-xs text-muted-foreground">{tokens.length}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasNext || bindings.isFetching}
+                onClick={() =>
+                  setTokens((current) => [...current, bindings.data?.page?.nextPageToken ?? ""])
+                }
+              >
+                {t("authorization.next")}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+      {adding && availableRoles.length > 0 && (
         <GrantForm
-          key={`${JSON.stringify(scope)}:${canManage}`}
+          key={`${selectedKey}:${canManage}`}
           workspace={workspace}
+          subject={subject}
           scope={scope}
           roles={availableRoles}
           onChanged={changed}
+          onClose={() => setAdding(false)}
         />
-      )}
-      {canRead && (
-        <>
-          <div
-            className="min-h-0 flex-1 overflow-auto rounded-xl border bg-card"
-            aria-busy={bindings.isFetching}
-          >
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("authorization.subject")}</TableHead>
-                  <TableHead>{t("authorization.role")}</TableHead>
-                  <TableHead className="w-16">
-                    <span className="sr-only">{t("authorization.revoke")}</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bindings.data?.bindings.map((binding) => (
-                  <TableRow key={`${JSON.stringify(binding.subject)}:${binding.role}`}>
-                    <TableCell className="break-all font-mono text-xs">
-                      {subjectName(binding.subject)}
-                    </TableCell>
-                    <TableCell>{t(`authorization.roles.${binding.role}`)}</TableCell>
-                    <TableCell>
-                      {(canManage ||
-                        (canShare && binding.role === AccessRole.EXECUTION_READER)) && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={t("authorization.revoke")}
-                          onClick={() => setRemoving({ binding, requestId: crypto.randomUUID() })}
-                        >
-                          <Trash2 />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {bindings.isSuccess && bindings.data.bindings.length === 0 && (
-              <p className="p-10 text-center text-sm text-muted-foreground">
-                {t("management.empty")}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              disabled={tokens.length < 2 || bindings.isFetching}
-              onClick={() => setTokens((current) => current.slice(0, -1))}
-            >
-              {t("authorization.previous")}
-            </Button>
-            <span className="text-sm text-muted-foreground">{tokens.length}</span>
-            <Button
-              variant="outline"
-              disabled={!bindings.data?.page?.nextPageToken || bindings.isFetching}
-              onClick={() =>
-                setTokens((current) => [...current, bindings.data?.page?.nextPageToken ?? ""])
-              }
-            >
-              {t("authorization.next")}
-            </Button>
-          </div>
-        </>
       )}
       {removing && (
         <ConfirmDelete
@@ -212,13 +267,22 @@ function WorkspaceAuthorization({ profile }: { profile: AccessProfile }) {
 }
 
 export function AuthorizationPage() {
+  const { t } = useTranslation();
   const access = useAccess();
-  return access.data ? (
-    <WorkspaceAuthorization
-      key={`${access.data.subject}:${access.data.workspace}`}
-      profile={access.data}
-    />
-  ) : (
-    <Failure error={access.error} />
-  );
+  const [search, setSearch] = useSearchParams();
+  if (access.data) {
+    const selected = resourceFromSearch(access.data.workspace, search);
+    const selectedKey = resourceSearch(selected).toString();
+    return (
+      <WorkspaceAuthorization
+        key={`${access.data.subject}:${access.data.workspace}:${selectedKey}`}
+        profile={access.data}
+        selected={selected}
+        selectedKey={selectedKey}
+        onSelect={(resource) => setSearch(resourceSearch(resource))}
+      />
+    );
+  }
+  if (access.error) return <Failure error={access.error} />;
+  return <p role="status">{t("management.loading")}</p>;
 }

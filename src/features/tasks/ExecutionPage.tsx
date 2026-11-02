@@ -1,11 +1,18 @@
 import { ThreadPrimitive } from "@assistant-ui/react";
-import { PanelRightClose } from "lucide-react";
+import { create } from "@bufbuild/protobuf";
+import { PanelRightClose, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AuthorizationResourceSchema,
+  Permission,
+} from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { useAccess } from "../../lib/access.js";
+import { useResourceAccess } from "../../lib/authorization.js";
+import { authorizationHref } from "../authorization/resource-location.js";
 import { WorkingAgents } from "../chat/AgentPresence.js";
 import { ConversationRuntime } from "../chat/ConversationRuntime.js";
 import { ConversationTranscript } from "../chat/ConversationTranscript.js";
@@ -21,6 +28,12 @@ export function ExecutionPage() {
   const access = useAccess();
   const ref = { namespace: access.data?.workspace ?? "", name: agent };
   const chat = useChat(ref, session, started);
+  const sessionScope = session
+    ? create(AuthorizationResourceSchema, { resource: { case: "sessionId", value: session } })
+    : undefined;
+  const sessionAccess = useResourceAccess(sessionScope);
+  const canViewAccess =
+    sessionAccess.isSuccess && sessionAccess.data?.allowedActions.includes(Permission.ACCESS_READ);
   return (
     <aside
       data-testid="execution-view"
@@ -31,6 +44,14 @@ export function ExecutionPage() {
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {chat.conversation?.title || t("task.execution")}
         </span>
+        {canViewAccess && sessionScope && (
+          <Button asChild variant="outline" size="sm">
+            <Link to={authorizationHref(sessionScope)}>
+              <ShieldCheck />
+              {t("authorization.title")}
+            </Link>
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon-sm"
