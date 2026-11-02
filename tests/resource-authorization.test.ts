@@ -17,6 +17,7 @@ import {
   type GrantRoleRequest,
   GrantRoleRequestSchema,
   type ListRoleBindingsRequest,
+  type ListWorkspacesRequest,
 } from "../gen/kagent/api/v1/authorization_pb.js";
 import { authorizationService } from "../server/authorization/service.js";
 import { registerConsole } from "../server/console/app.js";
@@ -83,14 +84,22 @@ it("delegates access decisions to native authorization with actual credentials",
 
 it("forwards workspace scope to native authorization", async () => {
   const read = vi.fn((_request: ListRoleBindingsRequest) => ({ bindings: [] }));
-  const list = vi.fn(() => ({ workspaces: [{ namespace: "other", uid: "workspace-2" }] }));
+  const list = vi.fn((_request: ListWorkspacesRequest) => ({
+    workspaces: [{ namespace: "other", uid: "workspace-2" }],
+  }));
   const { client } = setup({
     listWorkspaces: list,
     listRoleBindings: read,
   });
-  const directory = await client.listWorkspaces({});
+  const directory = await client.listWorkspaces({
+    workspace: { namespace: "other", uid: "workspace-2" },
+  });
   expect(directory.workspaces).toMatchObject([{ namespace: "other", uid: "workspace-2" }]);
   expect(list).toHaveBeenCalledOnce();
+  expect(list.mock.calls[0]?.[0].workspace).toMatchObject({
+    namespace: "other",
+    uid: "workspace-2",
+  });
   await client.listRoleBindings({
     workspace: { namespace: "other", uid: "workspace-2" },
     scope: { resource: { case: "workspace", value: { namespace: "other", uid: "workspace-2" } } },
@@ -167,6 +176,12 @@ it("registers the native contract on HTTP and validates requests before upstream
     await expect(client.listWorkspaces({ page: { limit: 101 } })).rejects.toMatchObject({
       code: Code.InvalidArgument,
     });
+    await expect(
+      client.listWorkspaces({
+        workspace: { namespace: "team" },
+        page: { pageToken: "cursor" },
+      }),
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
     await expect(client.grantRole({})).rejects.toMatchObject({ code: Code.InvalidArgument });
     expect(upstream).not.toHaveBeenCalled();
     await client.grantRole(grantRequest());
