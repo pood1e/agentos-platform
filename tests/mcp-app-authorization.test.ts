@@ -152,7 +152,7 @@ it("derives gateway selection from native bindings and ignores forged authorizat
   });
   const response = await env.app.inject({
     method: "POST",
-    url: "/authorize/mcp-app?server=lab-views",
+    url: "/authorize/mcp-app?server=lab-views&workspace=agentos",
     headers: {
       ...env.headers,
       "x-substrate-actor-token": "forged",
@@ -175,13 +175,45 @@ it("denies gateway callbacks after workspace recreation", async () => {
   });
   const response = await env.app.inject({
     method: "POST",
-    url: "/authorize/mcp-app?server=lab-views",
+    url: "/authorize/mcp-app?server=lab-views&workspace=agentos",
     headers: {
       ...env.headers,
       "x-agentos-app-reference": Buffer.from(toJsonString(AppReferenceSchema, reference)).toString(
         "base64url",
       ),
     },
+  });
+  expect(response.statusCode).toBe(403);
+  expect(env.authorize).not.toHaveBeenCalled();
+});
+
+it("binds App authorization to the gateway workspace, not the caller's reference", async () => {
+  const env = await authority();
+  const foreign = create(AppReferenceSchema, {
+    ...env.request.app,
+    workspace: { namespace: "operations", uid: "operations-uid" },
+  });
+  const response = await env.app.inject({
+    method: "POST",
+    url: "/authorize/mcp-app?server=lab-views&workspace=agentos",
+    headers: {
+      ...env.headers,
+      "x-agentos-app-reference": Buffer.from(toJsonString(AppReferenceSchema, foreign)).toString(
+        "base64url",
+      ),
+    },
+  });
+  expect(response.statusCode).toBe(403);
+  expect(env.identity).not.toHaveBeenCalled();
+  expect(env.authorize).not.toHaveBeenCalled();
+});
+
+it("rejects an App callback without a gateway workspace", async () => {
+  const env = await authority();
+  const response = await env.app.inject({
+    method: "POST",
+    url: "/authorize/mcp-app?server=lab-views",
+    headers: env.headers,
   });
   expect(response.statusCode).toBe(403);
   expect(env.authorize).not.toHaveBeenCalled();
@@ -206,7 +238,7 @@ it.each([
   const env = await authority();
   const response = await env.app.inject({
     method: "POST",
-    url: `/authorize/mcp-app?server=${server}`,
+    url: `/authorize/mcp-app?server=${server}&workspace=agentos`,
     headers: { ...env.headers, ...changed },
   });
   expect(response.statusCode).toBe(status);
@@ -244,14 +276,14 @@ it.each(["GET", "DELETE"] as const)(
     const env = await authority();
     const response = await env.app.inject({
       method,
-      url: "/authorize/mcp-app?server=lab-views",
+      url: "/authorize/mcp-app?server=lab-views&workspace=agentos",
       headers: env.headers,
     });
     expect(response.statusCode).toBe(200);
     env.fake.renewable = false;
     const revoked = await env.app.inject({
       method,
-      url: "/authorize/mcp-app?server=lab-views",
+      url: "/authorize/mcp-app?server=lab-views&workspace=agentos",
       headers: env.headers,
     });
     expect(revoked.statusCode).toBe(403);

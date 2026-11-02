@@ -22,7 +22,7 @@ export function registerAppAuthorization(
       }
     | undefined,
 ) {
-  app.route<{ Querystring: { server?: string } }>({
+  app.route<{ Querystring: { server?: string; workspace?: string } }>({
     method: ["POST", "GET", "DELETE"],
     url: "/authorize/mcp-app",
     handler: async (request, reply) => {
@@ -31,12 +31,15 @@ export function registerAppAuthorization(
       if (!bearer?.match(/^Bearer [^\s,]+$/)) return reply.code(401).send();
       const encoded = request.headers["x-agentos-app-reference"];
       const server = request.query.server;
+      const gatewayWorkspace = request.query.workspace;
       if (
         typeof encoded !== "string" ||
         encoded.length > 2048 ||
         !/^[A-Za-z0-9_-]+$/.test(encoded) ||
         typeof server !== "string" ||
-        !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(server)
+        !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(server) ||
+        typeof gatewayWorkspace !== "string" ||
+        !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(gatewayWorkspace)
       )
         return reply.code(403).send();
       const headers = new Headers({ authorization: bearer });
@@ -48,7 +51,8 @@ export function registerAppAuthorization(
         if (validator.validate(AppReferenceSchema, reference).kind !== "valid")
           return reply.code(403).send();
         const workspace = reference.workspace;
-        const selected = workspace && target(workspace.namespace);
+        if (workspace?.namespace !== gatewayWorkspace) return reply.code(403).send();
+        const selected = target(gatewayWorkspace);
         if (!workspace?.uid || !selected) return reply.code(403).send();
         const signal = AbortSignal.timeout(10_000);
         const selection = await nativeSignal.run(signal, () =>
