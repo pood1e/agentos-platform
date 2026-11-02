@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.6](https://github.com/pood1e/agentos-platform/compare/v0.51.5...v0.51.6) (2026-11-02)
+
+
+### Bug Fixes
+
+* **console:** validate MCP bindings against ready policy decisions ([#277](https://github.com/pood1e/agentos-platform/issues/277)) ([ff4d73f](https://github.com/pood1e/agentos-platform/commit/ff4d73f515f6218580c1d01748cb4e16143e9a2b))
+
 ## [0.51.5](https://github.com/pood1e/agentos-platform/compare/v0.51.4...v0.51.5) (2026-11-01)
 
 
