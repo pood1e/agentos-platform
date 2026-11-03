@@ -8,23 +8,19 @@ import (
 	"os"
 	"time"
 
-	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
-	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
 	"github.com/kagent-dev/kagent/go/integrations/agentgateway"
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"github.com/pood1e/agentos-platform/controller/internal/connections"
 	"github.com/pood1e/agentos-platform/controller/internal/reconcile"
+	platformscheme "github.com/pood1e/agentos-platform/controller/internal/scheme"
 	"github.com/pood1e/agentos-platform/controller/internal/speech"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metrics "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func run() error {
@@ -49,11 +45,9 @@ func run() error {
 		return fmt.Errorf("namespace and a valid mode are required")
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&options)))
-	scheme := runtime.NewScheme()
-	for _, add := range []func(*runtime.Scheme) error{clientgoscheme.AddToScheme, platform.AddToScheme, agw.AddToScheme, kagent.AddToScheme, gw.Install} {
-		if err := add(scheme); err != nil {
-			return err
-		}
+	scheme, err := platformscheme.New()
+	if err != nil {
+		return err
 	}
 	manager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{Scheme: scheme, Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{namespace: {}}}, LeaderElection: true, LeaderElectionNamespace: namespace, LeaderElectionID: "agentos-" + mode + ".agentos.dev", HealthProbeBindAddress: ":8081", Metrics: metrics.Options{BindAddress: "0"}})
 	if err != nil {

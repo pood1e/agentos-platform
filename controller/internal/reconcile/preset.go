@@ -85,7 +85,7 @@ func (r *Preset) resource(ctx context.Context, preset *platform.Preset, raw runt
 	}
 	annotations[PresetOwner], annotations["agentos.dev/preset-digest"] = preset.Name, state.Digest
 	object.SetAnnotations(annotations)
-	ref, err := apply(ctx, r.Client, r.Scheme, preset, &object, "agentos-presets")
+	ref, err := apply(ctx, r.Client, r.Scheme, preset, &object, presetManager)
 	if apierrors.IsConflict(err) {
 		state.UserOwned, state.UID = true, string(current.GetUID())
 		return state, userOwned(ctx, r.Client, current, preset.UID)
