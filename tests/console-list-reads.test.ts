@@ -11,8 +11,7 @@ import {
 } from "../gen/kagent/api/v1/task_catalog_pb.js";
 import { catalogState } from "../server/read-model/catalog-state.js";
 import { agentSummary } from "../server/read-model/views/agents.js";
-import { conversationProgress } from "../server/read-model/views/conversation-work.js";
-import { catalogFixture } from "./fake-kagent/task-catalog-model.js";
+import { catalogFixture, conversationProgress } from "./fake-kagent/task-catalog-model.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment } from "./harness.js";
 
@@ -30,9 +29,13 @@ it("maps recorded conversations and AgentSummary metrics without scanning sessio
     }),
     null,
   );
-  const expected = catalog.graph
-    .agents()
-    .map((member) => agentSummary(catalog.graph, member.id, catalog.graph.agentEntries(member.id)));
+  const expected = catalog.graph.agents().map((member) =>
+    agentSummary(
+      catalog.graph,
+      member.id,
+      catalog.graph.all().filter((entry) => entry.agentId === member.id),
+    ),
+  );
   const actual = await client.listAgents({});
   expect(actual.agents).toEqual(expected);
   expect(actual.agents.reduce((total, member) => total + member.toolCalls, 0)).toBeGreaterThan(0);

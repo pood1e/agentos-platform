@@ -31,7 +31,6 @@ describe("conversation worker projection", () => {
       state: TaskState.COMPLETED,
       answer: "Initial findings",
       statusAt: 100,
-      version: "initial-completed",
     });
     const results = async () =>
       (await view(index)).messages.flatMap((message) =>
@@ -55,7 +54,6 @@ describe("conversation worker projection", () => {
       state: TaskState.WORKING,
       answer: "Unfinished follow-up",
       statusAt: 200,
-      version: "continued-working",
     };
     index.upsert(continuation);
     expect(await results()).toContainEqual(first);
@@ -69,7 +67,6 @@ describe("conversation worker projection", () => {
       ...continuation,
       state: TaskState.COMPLETED,
       answer: "Follow-up findings",
-      version: "continued-completed",
     });
     const completed = await results();
     expect(completed).toContainEqual(first);
@@ -91,7 +88,6 @@ describe("conversation worker projection", () => {
       ...entry,
       state: TaskState.WORKING,
       answer: "internal child draft",
-      version: "child-working",
     });
     const working = await view(index);
     expect(working.runs.find((run) => run.taskId === entry.id)?.state).toBe(ActivityState.WORKING);
@@ -107,7 +103,6 @@ describe("conversation worker projection", () => {
       ...entry,
       state: TaskState.COMPLETED,
       answer: "verified child result",
-      version: "child-done",
     });
     const done = await view(index);
     const result = done.messages

@@ -4,15 +4,19 @@ import { expect, it } from "vitest";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ResourceReferenceSchema } from "../gen/kagent/api/v1/common_pb.js";
 import { roleCommands } from "../server/console/roles.js";
-import { object } from "../server/read-model/decode/messages.js";
+import { toolMetadata } from "../server/kagent/tool-metadata.js";
+import { object } from "../shared/json.js";
 import { fakeKagent, testBindings } from "./harness.js";
 
 it("rejects arbitrary embedding model names on both role creation and update", async () => {
   const { fake, clients } = fakeKagent();
-  const commands = roleCommands(clients, "agentos", testBindings(fake), {
-    modelConfig: "default-model-config",
-    harness: "standard",
-  });
+  const commands = roleCommands(
+    clients,
+    "agentos",
+    testBindings(fake),
+    "standard",
+    toolMetadata(clients),
+  );
   const source = fake.resources.get("modelconfigs", "knowledge-embedding");
   fake.resources.save(
     "modelconfigs",

@@ -4,10 +4,10 @@ import type { GetConfigurationResponse } from "../../../gen/agentos/console/v1/c
 import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { Agent } from "../../../gen/kagent/api/v1/agents_pb.js";
 import { ResourceReferenceSchema } from "../../../gen/kagent/api/v1/common_pb.js";
-import { AgentRuntime } from "../management/AgentRuntime.js";
-import { object } from "../management/connection-schema.js";
-import { HarnessPicker } from "../management/HarnessPicker.js";
-import { runtimeModel } from "../management/runtime-models.js";
+import { object } from "../../../shared/json.js";
+import { HarnessPicker } from "../shared/HarnessPicker.js";
+import { runtimeModel } from "../shared/runtime-models.js";
+import { AgentRuntime } from "./AgentRuntime.js";
 import { ModelConfigSelect } from "./ModelConfigSelect.js";
 import { editRole } from "./role-draft.js";
 

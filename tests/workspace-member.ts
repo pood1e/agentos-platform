@@ -2,7 +2,8 @@ import { create } from "@bufbuild/protobuf";
 import type { Interceptor } from "@connectrpc/connect";
 import { WorkspaceAuthorizationReferenceSchema } from "../gen/kagent/api/v1/authorization_pb.js";
 import type { userIdentity } from "../server/authorization/identity.js";
-import { type WorkspaceMember, workspaceContext } from "../server/platform/access.js";
+import type { WorkspaceMember } from "../server/authorization/workspaces.js";
+import { workspaceContext } from "../server/platform/access.js";
 
 export const allowWorkspace = (namespace: string) => async () =>
   create(WorkspaceAuthorizationReferenceSchema, { namespace, uid: `${namespace}-uid` });

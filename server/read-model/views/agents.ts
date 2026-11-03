@@ -1,7 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { type AgentSummary, AgentSummarySchema } from "../../../gen/agentos/console/v1/agent_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import { type AgentInfo, agentRef } from "../agents.js";
+import { agentRef } from "../../kagent/resources.js";
+import type { AgentInfo } from "../agents.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { interrupted, terminal } from "../state.js";

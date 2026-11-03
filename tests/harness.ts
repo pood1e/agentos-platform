@@ -1,7 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { createClient, createRouterTransport } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
-import { inject } from "vitest";
 import type { Task } from "../gen/a2a_pb.js";
 import {
   type UserIdentity,
@@ -10,10 +9,13 @@ import {
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { type ConsoleDependencies, consoleService } from "../server/console/service.js";
 import type { AccessPlan } from "../server/governance/access-plans.js";
-import { serverTargets, type Target, ToolBindings } from "../server/governance/bindings.js";
+import { serverTargets } from "../server/governance/access-plans.js";
+import { type Target, ToolBindings } from "../server/governance/tool-bindings.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import { nativeCredentials } from "../server/kagent/context.js";
-import { taskQueries } from "../server/read-model/queries.js";
+import { toolMetadata } from "../server/kagent/tool-metadata.js";
+import { mcpApps } from "../server/mcp-apps/service.js";
+import { type TaskQueries, taskQueries } from "../server/read-model/queries.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
@@ -55,8 +57,6 @@ export async function environment(tasks: Task[] = fixtureTasks()) {
   };
 }
 
-export const fixturePlans = () => JSON.parse(inject("accessPlans")) as AccessPlan[];
-
 /** Native credential isolation and execution requirements in the fake workspace. */
 export function testBindings(fake: FakeKagent) {
   return async () =>
@@ -75,20 +75,54 @@ export function publishTargets(fake: FakeKagent, targets: Target[]) {
 
 export type Environment = Awaited<ReturnType<typeof environment>>;
 
+/** The execution tree around a task or conversation visible to the caller. */
+export async function graphOf(
+  projection: TaskQueries,
+  id: { taskId?: string; contextId?: string },
+) {
+  const value = id.taskId
+    ? await projection.entry(id.taskId)
+    : await projection.session(id.contextId ?? "");
+  return value ? projection.graph("contextId" in value ? value.contextId : value.id) : undefined;
+}
+
+/** Console service dependencies of the fake workspace, with MCP Apps sandbox disabled. */
+export function consoleDependencies(
+  env: Pick<Environment, "fake" | "clients" | "projection">,
+  overrides: Partial<ConsoleDependencies> = {},
+): ConsoleDependencies {
+  const access = testBindings(env.fake);
+  const metadata = toolMetadata(env.clients);
+  const { clients, projection } = env;
+  return {
+    apps: mcpApps({
+      clients,
+      projection,
+      namespace: "agentos",
+      access,
+      metadata,
+      sandboxOrigin: "",
+      gatewayURL: "",
+    }),
+    metadata,
+    projection,
+    clients,
+    namespace: "agentos",
+    access,
+    defaultHarness: "standard",
+    entryAgent: "assistant",
+    delegationUrl: "",
+    ...overrides,
+  };
+}
+
 /** Console API over the environment, called by the given identity. */
 export function consoleClient(
   env: Environment,
   overrides: Partial<ConsoleDependencies> = {},
   identity: () => UserIdentity = () => operator,
 ) {
-  const service = consoleService({
-    projection: env.projection,
-    clients: env.clients,
-    namespace: "agentos",
-    access: testBindings(env.fake),
-    roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-    ...overrides,
-  });
+  const service = consoleService(consoleDependencies(env, overrides));
   return createClient(
     ConsoleService,
     createRouterTransport((router) => router.service(ConsoleService, service), {

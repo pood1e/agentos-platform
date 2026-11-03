@@ -1,5 +1,4 @@
-import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
-import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
+import { create } from "@bufbuild/protobuf";
 import { type Message, type Task, TaskState } from "../../gen/a2a_pb.js";
 import {
   type Interaction,
@@ -9,8 +8,8 @@ import {
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { HitlTool } from "../../gen/kagent/api/v1/interactions_pb.js";
 import type { Approval, CallEntry } from "./calls.js";
-import { type HitlPayload, hitlExtension, hitlPayload, isHitlResponse } from "./decode/hitl.js";
-import { millis, object, timeline } from "./decode/messages.js";
+import { type HitlPayload, hitlPayload } from "./decode/hitl.js";
+import { millis, protoValue, stamp, timeline } from "./decode/messages.js";
 
 interface Request {
   message: Message;
@@ -86,8 +85,13 @@ export function approvals(task: Task): Map<string, Approval> {
   return result;
 }
 
-const stamp = (ms?: number) => (ms === undefined ? undefined : timestampFromMs(ms));
-const value = (args?: JsonValue) => (args === undefined ? undefined : fromJson(ValueSchema, args));
+function interactionState(request: Request) {
+  const approval = request.payload.type === "tool_approval_request";
+  if (request.canceled) return ActivityState.CANCELED;
+  if (!request.response)
+    return approval ? ActivityState.AWAITING_APPROVAL : ActivityState.AWAITING_INPUT;
+  return !approval || approved(request) ? ActivityState.SUCCEEDED : ActivityState.REJECTED;
+}
 
 export function interactions(task: Task, agentId: string, calls: CallEntry[]): Interaction[] {
   const seen = new Set<string>();
@@ -112,7 +116,7 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
           id: tool.id,
           callId: tool.callId,
           name: tool.name,
-          args: value(tool.args),
+          args: protoValue(tool.args),
         })),
         questions:
           request.payload.type === "ask_user_request"
@@ -123,15 +127,7 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
               }))
             : [],
         explanation: call?.intent || hint,
-        state: request.canceled
-          ? ActivityState.CANCELED
-          : !request.response
-            ? approval
-              ? ActivityState.AWAITING_APPROVAL
-              : ActivityState.AWAITING_INPUT
-            : !approval || approved(request)
-              ? ActivityState.SUCCEEDED
-              : ActivityState.REJECTED,
+        state: interactionState(request),
         requestedAt: stamp(
           timeline(request.message.metadata) ??
             call?.startedAt ??
@@ -156,16 +152,4 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
       }),
     ];
   });
-}
-
-export interface Decision {
-  messageId: string;
-  payload: JsonValue;
-}
-
-export function latestDecision(task: Task): Decision | undefined {
-  const message = task.history.findLast(isHitlResponse);
-  return message
-    ? { messageId: message.messageId, payload: object(message.metadata?.[hitlExtension]) }
-    : undefined;
 }

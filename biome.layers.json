@@ -1,0 +1,217 @@
+{
+  "overrides": [
+    {
+      "includes": ["**/server/shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "../kagent/**",
+                      "../governance/**",
+                      "../read-model/**",
+                      "../authorization/**",
+                      "../platform/**",
+                      "../console/**",
+                      "../management/**",
+                      "../knowledge/**",
+                      "../mcp-apps/**",
+                      "../team-sessions/**",
+                      "../voice/**",
+                      "../apps/**"
+                    ],
+                    "message": "Dependencies point toward server/shared; see docs/code-navigation.md."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/server/kagent/**", "**/server/governance/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "../read-model/**",
+                      "../authorization/**",
+                      "../platform/**",
+                      "../console/**",
+                      "../management/**",
+                      "../knowledge/**",
+                      "../mcp-apps/**",
+                      "../team-sessions/**",
+                      "../voice/**",
+                      "../apps/**"
+                    ],
+                    "message": "Dependencies point toward server/shared; see docs/code-navigation.md."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/server/read-model/**",
+        "**/server/authorization/**",
+        "**/server/platform/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "../console/**",
+                      "../../console/**",
+                      "../management/**",
+                      "../../management/**",
+                      "../knowledge/**",
+                      "../../knowledge/**",
+                      "../mcp-apps/**",
+                      "../../mcp-apps/**",
+                      "../team-sessions/**",
+                      "../../team-sessions/**",
+                      "../voice/**",
+                      "../../voice/**",
+                      "../apps/**",
+                      "../../apps/**"
+                    ],
+                    "message": "Dependencies point toward server/shared; see docs/code-navigation.md."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/server/console/**",
+        "**/server/knowledge/**",
+        "**/server/mcp-apps/**",
+        "**/server/team-sessions/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../management/**", "../voice/**", "../apps/**"],
+                    "message": "Dependencies point toward server/shared; see docs/code-navigation.md."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/server/management/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../console/**", "../../console/**", "../apps/**", "../../apps/**"],
+                    "message": "Dependencies point toward server/shared; see docs/code-navigation.md."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/server/voice/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../management/**", "../apps/**"],
+                    "message": "Dependencies point toward server/shared; see docs/code-navigation.md."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/shared/*.ts", "!**/server/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../server/**", "../src/**"],
+                    "message": "shared/ is imported by the browser and the server; it imports neither."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "../server/**",
+                      "../../server/**",
+                      "../../../server/**",
+                      "../../../../server/**"
+                    ],
+                    "message": "Browser code reaches the server only through generated RPC clients."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

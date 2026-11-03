@@ -10,17 +10,15 @@ import { workspaceService } from "../platform/dispatch.js";
 import { workspaceTargets } from "../platform/workspace-targets.js";
 import { listenConfig, requiredEnv } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
-import { closeOnSignal, platformApp, platformConfig } from "./platform.js";
-import { workspaceRuntime } from "./workspace.js";
+import { closeOnSignal, platformApp, platformKube } from "./platform.js";
+import { type WorkspaceRuntime, workspaceRuntime } from "./workspace.js";
 
-const config = platformConfig();
+const kube = platformKube();
 const targets = workspaceTargets();
-if (targets[0]?.namespace !== config.workspace)
-  throw new Error("The first workspace must match KAGENT_NAMESPACE");
-if (targets[0].kagentURL !== config.kagent.url)
-  throw new Error("The first workspace must match KAGENT_URL");
+const homeNamespace = targets[0].namespace;
 const app = platformApp();
 const origin = requiredEnv("AGENTOS_API_ORIGIN");
+const writerRole = requiredEnv("AGENTOS_OIDC_WRITER_ROLE");
 const oauth = await discovery(
   new URL(requiredEnv("AGENTOS_OIDC_ISSUER")),
   requiredEnv("AGENTOS_OIDC_CLIENT_ID"),
@@ -34,41 +32,43 @@ const runtimes = new Map(
         [
           target.namespace,
           await workspaceRuntime(target, {
-            kube: config.kube,
+            kube,
             app,
             origin,
-            writerRole: requiredEnv("AGENTOS_OIDC_WRITER_ROLE"),
-            home: target === targets[0],
+            writerRole,
+            home: target.namespace === homeNamespace,
           }),
         ] as const,
     ),
   ),
 );
-const home = runtimes.get(config.workspace);
+const home = runtimes.get(homeNamespace);
 if (!home) throw new Error("Home workspace unavailable");
+const perWorkspace = <T>(select: (runtime: WorkspaceRuntime) => T) =>
+  new Map([...runtimes].map(([namespace, runtime]) => [namespace, select(runtime)]));
+
 await registerDelegation(app, {
   origin,
   returnOrigins: JSON.parse(requiredEnv("AGENTOS_DELEGATION_ORIGINS")),
   client: oauth,
   key: Buffer.from(requiredEnv("AGENTOS_COOKIE_SECRET"), "base64"),
-  clients: new Map([...runtimes].map(([namespace, runtime]) => [namespace, runtime.clients])),
+  clients: perWorkspace((runtime) => runtime.clients),
 });
 registerAppAuthorization(app, (namespace) => runtimes.get(namespace));
 await registerConsole(app, {
   authorization: authorizationService(
-    new Map(
-      [...runtimes].map(([namespace, runtime]) => [namespace, runtime.clients.authorization]),
-    ),
-    config.workspace,
+    perWorkspace((runtime) => runtime.clients.authorization),
+    homeNamespace,
+    app.log,
   ),
   context: workspaceContext(home.identity, runtimes),
   service: workspaceService(
     ConsoleService,
-    new Map([...runtimes].map(([key, value]) => [key, value.service])),
+    perWorkspace((runtime) => runtime.service),
   ),
   management: workspaceService(
     ManagementService,
-    new Map([...runtimes].map(([key, value]) => [key, value.management])),
+    perWorkspace((runtime) => runtime.management),
   ),
 });
 registerHealth(app, () => home.access.healthy());

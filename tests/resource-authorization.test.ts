@@ -26,7 +26,7 @@ import { registerConsole } from "../server/console/app.js";
 import { consoleService } from "../server/console/service.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import { allCapabilities } from "../shared/permissions.js";
-import { environment, testBindings } from "./harness.js";
+import { consoleDependencies, environment } from "./harness.js";
 import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>) {
@@ -34,7 +34,9 @@ function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>
     createRouterTransport((router) => router.service(AuthorizationService, implementation)),
   );
   const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
-  const service = authorizationService(new Map([["team", native.authorization]]), "team");
+  const service = authorizationService(new Map([["team", native.authorization]]), "team", {
+    warn: vi.fn(),
+  });
   const context = testWorkspaceContext("team", async () => principal, allowWorkspace("team"));
   const client = createClient(
     AuthorizationService,
@@ -158,12 +160,7 @@ it("registers the native contract on HTTP and validates requests before upstream
   await registerConsole(app, {
     context: proxy.context,
     authorization: proxy.service,
-    service: consoleService({
-      ...env,
-      namespace: "team",
-      access: testBindings(env.fake),
-      roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-    }),
+    service: consoleService(consoleDependencies(env, { namespace: "team" })),
   });
   const url = await app.listen({ host: "127.0.0.1", port: 0 });
   const client = createClient(

@@ -4,7 +4,7 @@ import { expect, it, vi } from "vitest";
 import { ArtifactSchema, TaskSchema, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { TaskCatalogView } from "../gen/kagent/api/v1/task_catalog_pb.js";
-import { agentRef } from "../server/read-model/agents.js";
+import { agentRef } from "../server/kagent/resources.js";
 import { agentSummary } from "../server/read-model/views/agents.js";
 import { fixtureState, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
 import { toolPart } from "./fixtures/ordered-chat.js";

@@ -7,14 +7,13 @@ import type {
   RespondInteractionRequest,
   SendMessageRequest,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
-import { InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
+import { type Interaction, InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
 import {
   AskUserResponseSchema,
   ToolApprovalResponseSchema,
 } from "../../gen/kagent/api/v1/interactions_pb.js";
-import { shortTitle } from "../../shared/title.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentKey } from "../read-model/agents.js";
+import { agentKey, agentRef } from "../kagent/resources.js";
 import { hitlExtension, hitlReply } from "../read-model/decode/hitl.js";
 import { timelineKey } from "../read-model/decode/messages.js";
 import { ingest } from "../read-model/entry.js";
@@ -22,15 +21,58 @@ import type { TaskQueries } from "../read-model/queries.js";
 import { awaiting } from "../read-model/state.js";
 import { fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import { messageIdentity } from "../shared/idempotency.js";
+import { shortTitle } from "../shared/title.js";
+
+type Decision = RespondInteractionRequest["decision"];
+
+/** The native reply answering a pending interaction, or undefined when the decision does not fit. */
+function interactionReply(pending: Interaction, decision: Decision) {
+  if (pending.kind === InteractionKind.APPROVAL && decision.case === "approval") {
+    const approvals = decision.value.approvals;
+    const ids = new Set(approvals.map((item) => item.id));
+    if (
+      approvals.length !== pending.tools.length ||
+      ids.size !== approvals.length ||
+      pending.tools.some((tool) => !ids.has(tool.id))
+    )
+      return undefined;
+    return {
+      payload: {
+        type: "tool_approval_response" as const,
+        value: create(ToolApprovalResponseSchema, { approvals }),
+      },
+      summary: "The user responded to the tool confirmation",
+    };
+  }
+  if (pending.kind === InteractionKind.QUESTION && decision.case === "answer") {
+    const answers = decision.value.answers;
+    const valid =
+      answers.length === pending.questions.length &&
+      answers.every(
+        (answer, position) =>
+          answer.values.length > 0 &&
+          answer.values.every((value) => value.trim()) &&
+          (pending.questions[position]?.multiple || answer.values.length === 1),
+      );
+    if (!valid) return undefined;
+    return {
+      payload: {
+        type: "ask_user_response" as const,
+        value: create(AskUserResponseSchema, {
+          id: pending.requestId,
+          answers: answers.map((answer) => ({ answer: answer.values })),
+        }),
+      },
+      summary: answers.map((answer) => answer.values.join(", ")).join("\n"),
+    };
+  }
+  return undefined;
+}
 
 export function messageCommands(
   projection: TaskQueries,
   clients: KagentClients,
   namespace: string,
-  authorizeTools?: (
-    session: import("../../gen/kagent/api/v1/sessions_pb.js").Session,
-    tools: string[],
-  ) => Promise<void>,
 ) {
   async function target(request: SendMessageRequest, identity: UserIdentity) {
     const ref = request.agent;
@@ -47,14 +89,14 @@ export function messageCommands(
     }
     const agent = await projection.agent(id);
     if (!agent?.ready) throw fail(Code.Unavailable, "chat.notReady");
-    const [agentNamespace = "", name = ""] = agent.id.split("/");
+    const owner = agentRef(agent.id);
     const { session } = await clients.sessions.createSession(
       {
-        agent: { namespace: agentNamespace, name },
+        agent: owner,
         requestId: messageIdentity(
           "chat",
-          agentNamespace,
-          name,
+          owner.namespace,
+          owner.name,
           identity.subject,
           request.messageId,
         ),
@@ -70,22 +112,20 @@ export function messageCommands(
     const text = request.text.trim();
     if (!text) throw invalid("chat.invalidMessage");
     const { agentId, contextId } = await target(request, identity);
-    const dispatch = () =>
-      projection.send(
-        agentId,
-        create(MessageSchema, {
-          messageId: request.messageId,
-          contextId,
-          role: Role.USER,
-          parts: [{ content: { case: "text", value: text } }],
-          extensions: [hitlExtension],
-          metadata: {
-            [timelineKey]: new Date().toISOString(),
-            "agentos.initiator": identity.subject,
-          },
-        }),
-      );
-    const task = await dispatch();
+    const task = await projection.send(
+      agentId,
+      create(MessageSchema, {
+        messageId: request.messageId,
+        contextId,
+        role: Role.USER,
+        parts: [{ content: { case: "text", value: text } }],
+        extensions: [hitlExtension],
+        metadata: {
+          [timelineKey]: new Date().toISOString(),
+          "agentos.initiator": identity.subject,
+        },
+      }),
+    );
     return { contextId: task.contextId, taskId: task.id };
   }
 
@@ -94,82 +134,26 @@ export function messageCommands(
     if (!entry) throw notFound("interaction.stale");
     const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
     if (!session) throw fail(Code.PermissionDenied, "chat.executionDenied");
-
     const task = await clients.a2a.getTask(
       { tenant: entry.agentId, id: request.taskId },
       { timeoutMs: 10_000 },
     );
-    const fresh = ingest(task, entry.agentId);
-    const pending = fresh.interactions.find(
+    const pending = ingest(task, entry.agentId).interactions.find(
       (item) => item.requestId === request.requestId && awaiting(item.state),
     );
     if (!pending) throw precondition("interaction.stale");
-    const decision = request.decision;
-    const target = { taskId: task.id, contextId: task.contextId };
-    if (pending.kind === InteractionKind.APPROVAL && decision.case === "approval") {
-      if (authorizeTools && decision.value.approvals.some((item) => item.approved)) {
-        const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
-        if (!session) throw fail(Code.PermissionDenied, "approval.executionDenied");
-        await authorizeTools(
-          session,
-          pending.tools
-            .filter((tool) =>
-              decision.value.approvals.some((item) => item.id === tool.id && item.approved),
-            )
-            .map((tool) => tool.name),
-        );
-      }
-      const decisions = decision.value.approvals;
-      const ids = new Set(decisions.map((item) => item.id));
-      if (
-        decisions.length !== pending.tools.length ||
-        ids.size !== decisions.length ||
-        pending.tools.some((tool) => !ids.has(tool.id))
-      )
-        throw invalid("interaction.invalidAnswer");
-      await projection.send(
-        entry.agentId,
-        hitlReply(
-          target,
-          randomUUID(),
-          {
-            type: "tool_approval_response",
-            value: create(ToolApprovalResponseSchema, { approvals: decisions }),
-          },
-          "The user responded to the tool confirmation",
-        ),
-      );
-      return {};
-    }
-    if (pending.kind === InteractionKind.QUESTION && decision.case === "answer") {
-      const answers = decision.value.answers;
-      const valid =
-        answers.length === pending.questions.length &&
-        answers.every(
-          (answer, position) =>
-            answer.values.length > 0 &&
-            answer.values.every((value) => value.trim()) &&
-            (pending.questions[position]?.multiple || answer.values.length === 1),
-        );
-      if (!valid) throw invalid("interaction.invalidAnswer");
-      await projection.send(
-        entry.agentId,
-        hitlReply(
-          target,
-          randomUUID(),
-          {
-            type: "ask_user_response",
-            value: create(AskUserResponseSchema, {
-              id: pending.requestId,
-              answers: answers.map((answer) => ({ answer: answer.values })),
-            }),
-          },
-          answers.map((answer) => answer.values.join(", ")).join("\n"),
-        ),
-      );
-      return {};
-    }
-    throw invalid("interaction.invalidAnswer");
+    const reply = interactionReply(pending, request.decision);
+    if (!reply) throw invalid("interaction.invalidAnswer");
+    await projection.send(
+      entry.agentId,
+      hitlReply(
+        { taskId: task.id, contextId: task.contextId },
+        randomUUID(),
+        reply.payload,
+        reply.summary,
+      ),
+    );
+    return {};
   }
 
   return { send, respond };

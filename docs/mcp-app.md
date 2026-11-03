@@ -58,7 +58,7 @@ AccessPlan 编译器对目录路由开放模板与元数据，Agent 路由保留
 | 显示与上下文 | `inline` / `fullscreen`、主题、语言与规范样式变量 |
 
 沙箱初始化或资源读取失败后提供重试；未配置沙箱时使用普通工具展示。
-宿主封装见 [mcp-app-host.ts](../shared/browser/mcp-app-host.ts)，接入配置见[扩展契约](extension.md)。
+宿主封装见 [mcp-app-host.ts](../src/features/chat/apps/mcp-app-host.ts)，接入配置见[扩展契约](extension.md)。
 
 ## 验证与参考
 

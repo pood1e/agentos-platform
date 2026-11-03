@@ -15,17 +15,18 @@ import type { ToolBinding } from "../../../gen/agentos/console/v1/role_pb.js";
 import type { ToolRequirement } from "../../../gen/agentos/console/v1/tool_pb.js";
 import type { BuiltinToolCatalog } from "../../../gen/kagent/api/v1/agents_pb.js";
 import type { ToolServer } from "../../../gen/kagent/api/v1/tools_pb.js";
+import { toolServerName } from "../../../shared/kagent-resources.js";
 import { useCapability } from "../../lib/access.js";
 import {
   connectionEnvironment,
   connectionLabel,
   connectionName,
   connectionProject,
-} from "../management/connection-schema.js";
-import { Failure } from "../management/ResourcePage.js";
+} from "../shared/connection.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { toolServerLabel, toolText } from "../shared/tool-label.js";
-import { serverName, serviceServers, toolRequirements } from "./mcp-services.js";
+import { serviceServers, toolRequirements } from "./mcp-services.js";
 import { hasTool, toggleTool } from "./tool-bindings.js";
 import { useMCPServices } from "./use-mcp-services.js";
 
@@ -66,7 +67,7 @@ export function ToolBindingsEditor({
               discoveredTools: profiles.flatMap((server) =>
                 server.discoveredTools.map((tool) => ({
                   ...tool,
-                  server: serverName(server),
+                  server: toolServerName(server),
                 })),
               ),
               id: connectionName(service),
@@ -83,7 +84,7 @@ export function ToolBindingsEditor({
         ...server,
         discoveredTools: server.discoveredTools.map((tool) => ({
           ...tool,
-          server: serverName(server),
+          server: toolServerName(server),
         })),
         id: server.ref,
         label: toolServerLabel(server.ref),

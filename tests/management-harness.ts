@@ -37,17 +37,13 @@ export async function managementEnvironment() {
     speech: speechSettingsStore(config.makeApiClient(CoreV1Api), "agentos", "agentos-speech"),
     store,
     clients: env.clients,
-    gateway: {
-      url,
-      mcpUrl: url,
-      namespace: "agentos",
-      name: "agentos-gateway",
-      nativeAuthorityBackend: "agentos-native-authority",
-    },
-    knowledge: { namespace: "agentos", ttlDays: 3650 },
+    namespace: "agentos",
+    gatewayName: "agentos-gateway",
+    knowledgeTtlDays: 3650,
   };
   return {
     ...env,
+    url,
     store,
     kubeConfig: config,
     dependencies,

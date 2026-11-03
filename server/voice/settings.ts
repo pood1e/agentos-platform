@@ -9,8 +9,8 @@ import type {
   GetSpeechConfigurationResponse,
   SaveSpeechConfigurationRequest,
 } from "../../gen/agentos/management/v1/management_pb.js";
-import { resourceError } from "../management/resources.js";
 import { invalid } from "../shared/errors.js";
+import { resourceError, userOwned } from "../shared/kubernetes.js";
 import { validateSpeechConfiguration } from "./config.js";
 
 export type SpeechSettings = Omit<GetSpeechConfigurationResponse, "$typeName" | "configuration"> & {
@@ -97,12 +97,8 @@ export function speechSettingsStore(
           body: {
             ...current,
             metadata: {
-              ...current.metadata,
+              ...userOwned(current.metadata ?? {}),
               resourceVersion: request.resourceVersion,
-              annotations: { ...current.metadata?.annotations, "agentos.dev/ownership": "user" },
-              ownerReferences: current.metadata?.ownerReferences?.filter(
-                (ref) => ref.kind !== "Preset" || ref.apiVersion !== "agentos.dev/v1alpha1",
-              ),
             },
             data,
           },

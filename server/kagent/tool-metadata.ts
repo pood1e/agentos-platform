@@ -6,9 +6,9 @@ import {
   McpUiToolMetaSchema,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { LRUCache } from "lru-cache";
-import type { ToolRequirement } from "../../gen/agentos/console/v1/tool_pb.js";
 import type { MCPAppTool, ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
-import { type KagentClients, pool } from "./clients.js";
+import { pool } from "../shared/async.js";
+import type { KagentClients } from "./clients.js";
 
 export const appOnly = (tool: MCPAppTool) => {
   const ui = tool.meta?.value?.ui;
@@ -25,44 +25,26 @@ export const appVisible = (tool: MCPAppTool) => {
 };
 
 export function toolMetadata(clients: KagentClients) {
-  const cache = new LRUCache<string, MCPAppTool[]>({ max: 256, ttl: 60_000 });
-  const serverCache = new LRUCache<string, Promise<ToolServer[]>>({ max: 1, ttl: 5_000 });
-  async function servers() {
-    let request = serverCache.get("servers");
-    if (!request) {
-      request = clients.tools
-        .listToolServers({}, { timeoutMs: 5_000 })
-        .then((result) => result.toolServers)
-        .catch((error) => {
-          serverCache.delete("servers");
-          throw error;
-        });
-      serverCache.set("servers", request);
-    }
-    return request;
-  }
-  const pending = new Map<string, Promise<MCPAppTool[]>>();
   const reference = (server: ToolServer) => {
     const [namespace, name] = server.ref.split("/");
     return { ref: { namespace, name }, groupKind: server.groupKind };
   };
-  async function tools(server: ToolServer) {
-    const key = `${server.groupKind}:${server.ref}`;
-    const known = cache.get(key);
-    if (known) return known;
-    let request = pending.get(key);
-    if (!request) {
-      request = clients.tools
-        .listMCPAppTools({ server: reference(server) }, { timeoutMs: 10_000 })
-        .then(({ tools }) => {
-          cache.set(key, tools);
-          return tools;
-        })
-        .finally(() => pending.delete(key));
-      pending.set(key, request);
-    }
-    return request;
-  }
+  const toolCache = new LRUCache<string, MCPAppTool[], ToolServer>({
+    max: 256,
+    ttl: 60_000,
+    fetchMethod: async (_key, _stale, { context }) =>
+      (await clients.tools.listMCPAppTools({ server: reference(context) }, { timeoutMs: 10_000 }))
+        .tools,
+  });
+  const serverCache = new LRUCache<string, ToolServer[]>({
+    max: 1,
+    ttl: 5_000,
+    fetchMethod: async () =>
+      (await clients.tools.listToolServers({}, { timeoutMs: 5_000 })).toolServers,
+  });
+  const servers = async () => (await serverCache.fetch("servers")) ?? [];
+  const tools = async (server: ToolServer) =>
+    (await toolCache.fetch(`${server.groupKind}:${server.ref}`, { context: server })) ?? [];
   async function modelServers(
     servers: ToolServer[],
     source: (server: ToolServer) => ToolServer = (server) => server,
@@ -100,34 +82,7 @@ export function toolMetadata(clients: KagentClients) {
     const hidden = new Set((await tools(server)).filter(appOnly).map((tool) => tool.name));
     return names.filter((name) => !hidden.has(name));
   }
-  async function appOnlyCalls(
-    references: Pick<ToolRequirement, "server" | "tool">[],
-    namespace: string,
-  ) {
-    if (!references.length) return false;
-    try {
-      const toolServers = await servers();
-      for (const reference of references) {
-        const server = toolServers.find(
-          (server) => server.ref === `${namespace}/${reference.server}`,
-        );
-        if (!server) throw new Error("MCP server metadata is missing");
-        const tool = (await tools(server)).find((tool) => tool.name === reference.tool);
-        if (!tool) throw new Error("MCP tool metadata is missing");
-        if (appOnly(tool)) return true;
-      }
-      return false;
-    } catch (cause) {
-      throw new ConnectError(
-        "MCP tool metadata unavailable",
-        Code.Unavailable,
-        undefined,
-        undefined,
-        cause,
-      );
-    }
-  }
-  return { tools, reference, modelServers, modelTools, appOnlyCalls, servers };
+  return { tools, reference, modelServers, modelTools, servers };
 }
 
 export type ToolMetadata = ReturnType<typeof toolMetadata>;

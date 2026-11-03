@@ -1,28 +1,25 @@
 import type { JsonObject } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
 import {
   ApiException,
   CoreV1Api,
   CustomObjectsApi,
   type KubeConfig,
 } from "@kubernetes/client-node";
+import { object } from "../../shared/json.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { object } from "../read-model/decode/messages.js";
-import { conflict, fail, invalid, notFound } from "../shared/errors.js";
+import { userResource } from "../kagent/resources.js";
+import { invalid } from "../shared/errors.js";
+import { resourceError, userOwned } from "../shared/kubernetes.js";
 import { kagentResources } from "./kagent-resources.js";
-import { userResource } from "./native.js";
 
 const resourceKinds = {
   accessPlans: ["agentos.dev", "v1alpha1", "accessplans"],
   models: ["agentgateway.dev", "v1alpha1", "agentgatewaymodels"],
   mcps: ["agentgateway.dev", "v1alpha1", "agentgatewaybackends"],
-  mcpPolicies: ["agentgateway.dev", "v1alpha1", "agentgatewaypolicies"],
-  routes: ["gateway.networking.k8s.io", "v1", "httproutes"],
   templates: ["api.kagent.dev", "v1alpha3", "agenttemplates"],
   agents: ["api.kagent.dev", "v1alpha3", "agents"],
   harnesses: ["api.kagent.dev", "v1alpha3", "harnesses"],
   modelConfigs: ["api.kagent.dev", "v1alpha3", "modelconfigs"],
-  remoteMCPs: ["api.kagent.dev", "v1alpha3", "remotemcpservers"],
 } as const;
 export type ResourceKind = keyof typeof resourceKinds;
 
@@ -35,16 +32,6 @@ export interface ResourceStore {
   readCatalog(): Promise<{ value: string; version: string }>;
   writeCatalog(value: string, version: string): Promise<string>;
   credential(name: string, value: string, owner: JsonObject): Promise<void>;
-}
-
-export function resourceError(error: unknown): never {
-  if (error instanceof ConnectError) throw error;
-  if (error instanceof ApiException) {
-    if (error.code === 409) throw conflict("configuration.conflict");
-    if (error.code === 404) throw notFound("management.notFound");
-    if (error.code === 400 || error.code === 422) throw invalid("management.invalid");
-  }
-  throw fail(Code.Unavailable, "management.unavailable");
 }
 
 /** Native Kubernetes resources retain their CRD schema and resourceVersion semantics. */
@@ -164,11 +151,7 @@ export function resourceStore(
             apiVersion: "v1",
             kind: "ConfigMap",
             metadata: {
-              ...current.metadata,
-              annotations: { ...current.metadata?.annotations, "agentos.dev/ownership": "user" },
-              ownerReferences: current.metadata?.ownerReferences?.filter(
-                (ref) => ref.kind !== "Preset" || ref.apiVersion !== "agentos.dev/v1alpha1",
-              ),
+              ...userOwned(current.metadata ?? {}),
               namespace,
               name: catalogName,
               resourceVersion: version,

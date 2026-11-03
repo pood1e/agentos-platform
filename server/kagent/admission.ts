@@ -1,6 +1,8 @@
 import type { JsonObject } from "@bufbuild/protobuf";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import { kagentApiVersion } from "../../shared/kagent-resources.js";
 import type { KagentClients } from "./clients.js";
+import { resource } from "./resources.js";
 
 /** Native compilers validate the complete candidate against live dependencies. */
 export async function validateAgent(
@@ -11,11 +13,12 @@ export async function validateAgent(
   await clients.agents.validateAgent(
     {
       ref,
-      resource: {
-        apiVersion: "api.kagent.dev/v1alpha3",
+      resource: resource({
+        apiVersion: kagentApiVersion,
         kind: "Agent",
-        value: { apiVersion: "api.kagent.dev/v1alpha3", kind: "Agent", metadata: ref, spec },
-      },
+        metadata: { name: ref.name, namespace: ref.namespace },
+        spec,
+      }),
     },
     { timeoutMs: 30_000 },
   );

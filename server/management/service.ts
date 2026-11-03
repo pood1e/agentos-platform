@@ -13,14 +13,14 @@ import transcriptionSchema from "../../gen/schema/agentos.console.v1.SpeechTrans
   type: "json",
 };
 import harnessSchema from "../../gen/schema/kagent.harness.json" with { type: "json" };
-import type { BindingView } from "../governance/bindings.js";
+import type { BindingView } from "../governance/tool-bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { type KnowledgeConfig, knowledgeService } from "../knowledge/service.js";
+import { knowledgeService } from "../knowledge/service.js";
 import { accessProfile } from "../platform/access.js";
 import { notFound } from "../shared/errors.js";
 import type { SpeechSettingsStore } from "../voice/settings.js";
 import { agentRuntime } from "./agent-runtime.js";
-import { connectionCommands, type GatewayConfig } from "./connections.js";
+import { connectionCommands } from "./connections.js";
 import { harnessCommands } from "./harnesses.js";
 import type { ResourceStore } from "./resources.js";
 import { skillCommands } from "./skills.js";
@@ -43,8 +43,9 @@ export interface ManagementDependencies {
   documents: WorkflowDocuments;
   store: ResourceStore;
   clients: KagentClients;
-  gateway: GatewayConfig;
-  knowledge: KnowledgeConfig;
+  namespace: string;
+  gatewayName: string;
+  knowledgeTtlDays: number;
   speech: SpeechSettingsStore;
 }
 
@@ -53,16 +54,17 @@ export function managementService({
   documents,
   store,
   clients,
-  gateway,
-  knowledge,
+  namespace,
+  gatewayName,
+  knowledgeTtlDays,
   speech,
 }: ManagementDependencies): ServiceImpl<typeof ManagementService> {
-  const connections = connectionCommands(store, clients, gateway);
-  const skills = skillCommands(store, clients, gateway.namespace);
-  const memories = knowledgeService(clients, knowledge);
-  const harnesses = harnessCommands(store, gateway.namespace);
-  const runtime = agentRuntime(store, clients, gateway.namespace);
-  const workflows = workflowCommands(store, clients, documents, gateway.namespace, access);
+  const connections = connectionCommands(store, clients, namespace, gatewayName);
+  const skills = skillCommands(store, clients, namespace);
+  const memories = knowledgeService(clients, namespace, knowledgeTtlDays);
+  const harnesses = harnessCommands(store, namespace);
+  const runtime = agentRuntime(store, clients, namespace);
+  const workflows = workflowCommands(store, clients, documents, namespace, access);
   return {
     getWorkflowSchema: (request) => clients.workflows.getWorkflowSchema(request),
     async getSessionWorkflow(request, context) {
@@ -71,7 +73,7 @@ export function managementService({
         clients.execution.getSessionAuthority({ sessionId: request.sessionId }),
       ]);
       if (
-        session?.agent?.namespace !== gateway.namespace ||
+        session?.agent?.namespace !== namespace ||
         authority?.workspaceUid !== context.values.get(accessProfile).workspace?.uid
       )
         throw notFound("workflow.invalidReference");

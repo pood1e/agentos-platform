@@ -4,21 +4,18 @@ import { ModelPurpose } from "../../gen/agentos/management/v1/management_pb.js";
 import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import { object, text } from "../../shared/json.js";
 import { modelPurpose } from "../../shared/model-purpose.js";
 import { validateAgent } from "../kagent/admission.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentInfo, systemTemplates } from "../read-model/agents.js";
-import { object, text } from "../read-model/decode/messages.js";
+import { meta, resource, systemTemplates } from "../kagent/resources.js";
+import { agentInfo } from "../read-model/agents.js";
 import { conflict, invalid } from "../shared/errors.js";
-import { meta, resource } from "./native.js";
+import { localName } from "./native.js";
 import type { ResourceStore } from "./resources.js";
 
 export function agentRuntime(store: ResourceStore, clients: KagentClients, namespace: string) {
-  function local(ref: ResourceReference | undefined) {
-    if (!ref?.name || (ref.namespace && ref.namespace !== namespace))
-      throw invalid("harness.invalidReference");
-    return ref.name;
-  }
+  const local = (ref: ResourceReference | undefined) => localName(ref, namespace);
   async function read(ref: ResourceReference | undefined) {
     const name = local(ref);
     const value = await store.get("agents", name);

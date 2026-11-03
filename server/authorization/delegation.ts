@@ -2,6 +2,7 @@ import secureSession from "@fastify/secure-session";
 import type { FastifyInstance } from "fastify";
 import * as oidc from "openid-client";
 import type { KagentClients } from "../kagent/clients.js";
+import { memberWorkspace } from "./workspaces.js";
 
 interface DelegationRequest {
   verifier: string;
@@ -106,17 +107,12 @@ export async function registerDelegation(
       if (!tokens.refresh_token) throw new Error("Renewable delegation credential required");
       const clients = config.clients.get(pending.namespace);
       if (!clients) throw new Error("Workspace authority unavailable");
-      const headers = { authorization: `Bearer ${tokens.access_token}` };
-      const member = await clients.authorization.listWorkspaces(
-        { workspace: { namespace: pending.namespace, uid: pending.uid } },
-        { headers, timeoutMs: 10_000 },
+      const headers = new Headers({ authorization: `Bearer ${tokens.access_token}` });
+      await memberWorkspace(clients.authorization, pending.namespace)(
+        headers,
+        AbortSignal.timeout(10_000),
+        pending.uid,
       );
-      if (
-        member.workspaces.length !== 1 ||
-        member.workspaces[0]?.namespace !== pending.namespace ||
-        member.workspaces[0]?.uid !== pending.uid
-      )
-        throw new Error("Workspace membership required");
       await clients.execution.registerDelegationCredential(
         { refreshToken: tokens.refresh_token },
         {
@@ -127,8 +123,6 @@ export async function registerDelegation(
     } catch {
       return reply.code(401).send({ message: "Delegation failed" });
     }
-    return pending.returnTo
-      ? reply.redirect(pending.returnTo)
-      : reply.type("text/plain; charset=utf-8").send("Background execution is authorized.");
+    return reply.redirect(pending.returnTo);
   });
 }

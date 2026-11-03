@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { object } from "./connection-schema.js";
+import { object } from "../../../shared/json.js";
 
 export function ModelRequestOptions({
   spec,

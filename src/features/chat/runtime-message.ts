@@ -4,8 +4,8 @@ import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Role } from "../../../gen/a2a_pb.js";
 import type { ChatMessage } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import { redact } from "../../../shared/redact.js";
 import { pretty } from "../../lib/format.js";
+import { redact } from "../../lib/redact.js";
 import { active, awaiting } from "../status/activity.js";
 
 export const convertMessage = (message: ChatMessage): ThreadMessageLike => ({

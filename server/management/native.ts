@@ -1,39 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { object, text } from "../read-model/decode/messages.js";
+import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
 import { invalid } from "../shared/errors.js";
-import type { ResourceKind, ResourceStore } from "./resources.js";
-export interface GatewayConfig {
-  name: string;
-  url: string;
-  mcpUrl: string;
-  namespace: string;
-  nativeAuthorityBackend: string;
-}
-export const meta = (value: JsonObject) => object(value.metadata);
-export function userResource(value: JsonObject): JsonObject {
-  const metadata = meta(value);
-  const owners = metadata.ownerReferences;
-  return {
-    ...value,
-    metadata: {
-      ...metadata,
-      annotations: { ...object(metadata.annotations), "agentos.dev/ownership": "user" },
-      ...(Array.isArray(owners)
-        ? {
-            ownerReferences: owners.filter(
-              (owner) =>
-                !(
-                  object(owner).apiVersion === "agentos.dev/v1alpha1" &&
-                  object(owner).kind === "Preset"
-                ),
-            ),
-          }
-        : {}),
-    },
-  };
-}
 
 /** Preserve native references while preventing editors from borrowing other services' credentials. */
 export function credentialReferences(
@@ -66,17 +34,10 @@ export function credentialReferences(
     }
   }
 }
-export const resource = (value: JsonObject) => ({
-  apiVersion: text(value.apiVersion),
-  kind: text(value.kind),
-  value,
-});
 
-export async function optional(store: ResourceStore, kind: ResourceKind, name: string) {
-  try {
-    return await store.get(kind, name);
-  } catch (error) {
-    if (error instanceof ConnectError && error.code === Code.NotFound) return undefined;
-    throw error;
-  }
+/** The name of a reference that must stay within this workspace. */
+export function localName(ref: ResourceReference | undefined, namespace: string) {
+  if (!ref?.name || (ref.namespace && ref.namespace !== namespace))
+    throw invalid("harness.invalidReference");
+  return ref.name;
 }

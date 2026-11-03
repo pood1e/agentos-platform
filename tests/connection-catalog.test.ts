@@ -6,7 +6,7 @@ import {
   ConnectionSchema,
   ManagementService,
 } from "../gen/agentos/management/v1/management_pb.js";
-import { meta } from "../server/management/native.js";
+import { meta } from "../server/kagent/resources.js";
 import { managementEnvironment } from "./management-harness.js";
 
 it("excludes inbound endpoints before pagination and protects them without hiding undiscovered services", async () => {

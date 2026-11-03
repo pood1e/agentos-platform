@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { create } from "@bufbuild/protobuf";
+import { create, type JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { ToolBindingSchema } from "../../../gen/agentos/console/v1/role_pb.js";
 import {
@@ -9,15 +9,17 @@ import {
   WorkflowSchema,
 } from "../../../gen/agentos/management/v1/workflow_pb.js";
 import { object, text } from "../../../shared/json.js";
-import type { BindingView } from "../../governance/bindings.js";
+import { kagentApiVersion as apiVersion } from "../../../shared/kagent-resources.js";
+import type { BindingView } from "../../governance/tool-bindings.js";
 import type { KagentClients } from "../../kagent/clients.js";
-import { conflict, invalid } from "../../shared/errors.js";
-import { credentialReferences, userResource } from "../native.js";
+import { userResource } from "../../kagent/resources.js";
+import { bindingFromSpec, bindingSpec } from "../../kagent/role-template.js";
+import { conflict, hasCode, invalid } from "../../shared/errors.js";
+import { credentialReferences } from "../native.js";
 import type { ResourceStore } from "../resources.js";
 import { workflowCatalog } from "./catalog.js";
 import {
   agentSpec,
-  apiVersion,
   checkDocument,
   definitionResource,
   definitionSpec,
@@ -49,26 +51,14 @@ export function workflowCommands(
     checkDocument(workflow.document);
     if (spec.systemPrompt !== undefined || spec.systemPromptFrom !== undefined)
       throw invalid("workflow.invalidTemplate");
-    const raw = Array.isArray(spec.tools) ? spec.tools.map(object) : [];
-    if (
-      raw.some(
-        (binding) =>
-          !binding.mcp ||
-          !Array.isArray(object(binding.mcp).tools) ||
-          !(object(binding.mcp).tools as unknown[]).length,
-      )
-    )
+    const requested = (Array.isArray(spec.tools) ? spec.tools.map(object) : []).map(
+      bindingFromSpec,
+    );
+    if (requested.some((binding) => !binding.tools.length))
       throw invalid("configuration.invalidTools");
     const bindings = (await access()).bindings(
       owner(workflow),
-      raw.map((binding) => {
-        const mcp = object(binding.mcp);
-        return create(ToolBindingSchema, {
-          server: text(object(mcp.server).name),
-          tools: mcp.tools as string[],
-          requireApproval: mcp.requireApproval === true,
-        });
-      }),
+      requested.map((binding) => create(ToolBindingSchema, binding)),
       "validate",
     );
     if (!bindings) throw invalid("configuration.invalidTools");
@@ -76,13 +66,7 @@ export function workflowCommands(
       ref,
       spec: {
         ...spec,
-        tools: bindings.map((binding) => ({
-          mcp: {
-            server: { kind: "RemoteMCPServer", name: binding.server },
-            tools: binding.tools,
-            requireApproval: binding.requireApproval,
-          },
-        })),
+        tools: bindings.map(bindingSpec),
         workflowFrom: documents.source(owner(workflow), workflow.document),
       },
     };
@@ -137,14 +121,8 @@ export function workflowCommands(
     );
     return { preparedRevision: result.preparedRevision };
   }
-  async function publish(request: PublishWorkflowRequest) {
-    const draft = request.workflow;
-    if (!draft?.agent) throw invalid("workflow.invalidReference");
-    const { ref, spec } = await candidate(draft);
-    const current = await catalog.optional(ref);
-    if (!request.create && !current) throw invalid("workflow.notFound");
-    const target = current ? definitionResource(current) : undefined;
-    const desired = userResource(
+  function desiredResource(draft: Workflow, spec: JsonObject) {
+    return userResource(
       withLayout(
         {
           ...definitionResource(draft),
@@ -162,7 +140,48 @@ export function workflowCommands(
         draft,
       ),
     );
+  }
+  /** Agent and template are separate native objects, so a retry may find the template committed. */
+  async function createDefinition(
+    draft: Workflow,
+    desired: JsonObject,
+    ref: Awaited<ReturnType<typeof candidate>>["ref"],
+  ) {
+    if (!draft.agentTemplate) {
+      await store.save("agents", desired, true);
+      return;
+    }
+    try {
+      await store.save("templates", desired, true);
+    } catch (error) {
+      if (!hasCode(error, Code.AlreadyExists)) throw error;
+      const existing = await store.get("templates", owner(draft));
+      if (!isDeepStrictEqual(existing.spec, desired.spec)) throw error;
+    }
+    await store.save(
+      "agents",
+      {
+        ...draft.agent?.resource?.value,
+        apiVersion,
+        kind: "Agent",
+        metadata: {
+          ...object(draft.agent?.resource?.value?.metadata),
+          namespace,
+          name: ref.name,
+        },
+      },
+      true,
+    );
+  }
+  async function publish(request: PublishWorkflowRequest) {
+    const draft = request.workflow;
+    if (!draft?.agent) throw invalid("workflow.invalidReference");
+    const { ref, spec } = await candidate(draft);
+    const current = await catalog.optional(ref);
+    if (!request.create && !current) throw invalid("workflow.notFound");
+    const desired = desiredResource(draft, spec);
     if (current) {
+      const target = definitionResource(current);
       if (
         templateReference(current.agent) !== templateReference(draft.agent) ||
         (draft.agentTemplate &&
@@ -171,16 +190,16 @@ export function workflowCommands(
         throw invalid("workflow.runtimeChanged");
       if (
         current.document === draft.document &&
-        isDeepStrictEqual(target?.spec, desired.spec) &&
+        isDeepStrictEqual(target.spec, desired.spec) &&
         isDeepStrictEqual(
-          object(object(target?.metadata).annotations),
+          object(object(target.metadata).annotations),
           object(object(desired.metadata).annotations),
         )
       )
         return { workflow: current };
       if (request.create) throw new ConnectError("Workflow already exists", Code.AlreadyExists);
       const expected = object(desired.metadata);
-      const actual = object(target?.metadata);
+      const actual = object(target.metadata);
       if (expected.resourceVersion !== actual.resourceVersion || expected.uid !== actual.uid)
         throw conflict("configuration.conflict");
     }
@@ -188,33 +207,8 @@ export function workflowCommands(
     await compile(draft, { ref, spec });
     await documents.stage(owner(draft), draft.document);
     await documents.prune(owner(draft), draft.document);
-    if (request.create) {
-      if (draft.agentTemplate) {
-        try {
-          await store.save("templates", desired, true);
-        } catch (error) {
-          // An earlier accepted template may have lost its response before Agent creation.
-          if (!(error instanceof ConnectError && error.code === Code.AlreadyExists)) throw error;
-          const existing = await store.get("templates", owner(draft));
-          if (!isDeepStrictEqual(existing.spec, desired.spec)) throw error;
-        }
-        await store.save(
-          "agents",
-          {
-            ...draft.agent.resource?.value,
-            apiVersion,
-            kind: "Agent",
-            metadata: {
-              ...object(draft.agent.resource?.value?.metadata),
-              namespace,
-              name: ref.name,
-            },
-          },
-          true,
-        );
-      } else await store.save("agents", desired, true);
-    } else
-      await store.save(draft.agentTemplate ? "templates" : "agents", userResource(desired), false);
+    if (request.create) await createDefinition(draft, desired, ref);
+    else await store.save(draft.agentTemplate ? "templates" : "agents", desired, false);
     return { workflow: await catalog.read(ref) };
   }
   async function layout(request: SaveWorkflowLayoutRequest) {

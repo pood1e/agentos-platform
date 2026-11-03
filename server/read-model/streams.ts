@@ -1,16 +1,16 @@
-import type { Task, TaskState } from "../../gen/a2a_pb.js";
+import type { Task } from "../../gen/a2a_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { statusMillis } from "./decode/messages.js";
 import type { TaskEntry } from "./entry.js";
 import { applyEvent } from "./events.js";
-import { interrupted, terminal } from "./state.js";
-
-const settled = (state?: TaskState) => terminal(state) || interrupted(state);
+import { settled } from "./state.js";
 
 /** Text deltas of the running tasks one viewer watches; they never enter the projection. */
 export class TaskStreams {
   private tasks = new Map<string, Task>();
   private streams = new Map<string, AbortController>();
+  /** Counts task state changes; text deltas leave it alone. */
+  transitions = 0;
 
   constructor(
     private clients: Pick<KagentClients, "a2a">,
@@ -58,8 +58,10 @@ export class TaskStreams {
         { signal: AbortSignal.any([controller.signal, this.signal]) },
       );
       for await (const event of stream) {
-        const task = applyEvent(this.tasks.get(entry.id), event);
+        const previous = this.tasks.get(entry.id);
+        const task = applyEvent(previous, event);
         if (!task) continue;
+        if (previous && task.status?.state !== previous.status?.state) this.transitions++;
         this.tasks.set(entry.id, task);
         this.changed();
         if (settled(task.status?.state)) break;

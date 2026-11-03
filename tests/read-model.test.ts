@@ -6,14 +6,14 @@ import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentSchema } from "../gen/kagent/api/v1/agents_pb.js";
-import { visibleGraph } from "../server/console/history.js";
+import { visibleGraph } from "../server/console/visibility.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { agentSummary } from "../server/read-model/views/agents.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { taskSummary } from "../server/read-model/views/task.js";
 import { fixtureGraph, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment, operator } from "./harness.js";
+import { environment, graphOf, operator } from "./harness.js";
 
 const fullTask = async ({ id }: { id: string }) => fixtureTasks().find((task) => task.id === id);
 
@@ -159,7 +159,7 @@ describe("listings", () => {
     try {
       expect(await env.projection.session(ids.chatContext)).toBeUndefined();
       expect(await env.projection.entry(ids.chat)).toBeUndefined();
-      expect(await env.projection.graphOf({ taskId: ids.chat })).toBeUndefined();
+      expect(await graphOf(env.projection, { taskId: ids.chat })).toBeUndefined();
       expect(await visibleGraph(env.projection, reader, { taskId: ids.chat })).toBeUndefined();
     } finally {
       session.authority.workspaceUid = "agentos-uid";
@@ -218,7 +218,7 @@ describe("listings", () => {
     const child = await env.projection.entry(ids.inspection);
     const [first] = (await env.projection.operations(reader, { ...page, pageSize: 1 })).tasks;
     expect(first?.updatedAt && timestampMs(first.updatedAt)).toBe(child?.statusAt);
-    const graph = await env.projection.graphOf({ taskId: first?.id ?? "" });
+    const graph = await graphOf(env.projection, { taskId: first?.id ?? "" });
     expect(graph && taskTree(graph, first?.id ?? "")?.entries.map((entry) => entry.id)).toContain(
       ids.inspection,
     );

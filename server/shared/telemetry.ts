@@ -20,7 +20,7 @@ const rpcDurations = {
   }),
   server: meter.createHistogram("rpc.server.call.duration", {
     ...seconds,
-    description: "Duration of incoming Connect RPCs, including gateway authorization",
+    description: "Duration of incoming Connect RPCs until the response starts",
   }),
 };
 /** Records Connect RPCs with the OpenTelemetry RPC semantic conventions. */

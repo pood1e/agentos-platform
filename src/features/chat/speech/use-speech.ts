@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import type { DictationPhase } from "../../../../shared/browser/voice/dictation.js";
 import { consoleClient } from "../../../lib/console.js";
 import { useSpeechCapabilities } from "../../../lib/speech.js";
 import { useVoiceCallActive } from "../voice/context.js";
+import type { DictationPhase } from "../voice/dictation.js";
 
 // LiveKit loads only for deployments with voice.
 const loadVoice = () =>
-  Promise.all([
-    import("../../../../shared/browser/voice/dictation.js"),
-    import("../../../../shared/browser/voice/speech.js"),
-  ]);
+  Promise.all([import("../voice/dictation.js"), import("../voice/speech.js")]);
 
 export function useSpeech() {
   const { t, i18n } = useTranslation();

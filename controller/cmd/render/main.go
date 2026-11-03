@@ -6,13 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
-	kagent "github.com/kagent-dev/kagent/go/api/v1alpha3"
-	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"github.com/pood1e/agentos-platform/controller/internal/render"
-	"k8s.io/apimachinery/pkg/runtime"
-	core "k8s.io/client-go/kubernetes/scheme"
-	gw "sigs.k8s.io/gateway-api/apis/v1"
+	platformscheme "github.com/pood1e/agentos-platform/controller/internal/scheme"
 	"sigs.k8s.io/yaml"
 )
 
@@ -25,11 +20,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	scheme := runtime.NewScheme()
-	for _, add := range []func(*runtime.Scheme) error{core.AddToScheme, platform.AddToScheme, agw.AddToScheme, kagent.AddToScheme, gw.Install} {
-		if err := add(scheme); err != nil {
-			return err
-		}
+	scheme, err := platformscheme.New()
+	if err != nil {
+		return err
 	}
 	gateway := render.Gateway(objects, *release, *namespace)
 	expanded, err := render.Expand(objects, scheme, *namespace, gateway)

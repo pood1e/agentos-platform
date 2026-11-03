@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ConnectionSchema } from "../gen/agentos/management/v1/management_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
-import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
+import { serverTargets } from "../server/governance/access-plans.js";
+import { ToolBindings } from "../server/governance/tool-bindings.js";
 import { ownIdentities, toolRequirements } from "../src/features/agents/mcp-services.js";
 import { newRole } from "../src/features/agents/role-draft.js";
-import { fixturePlans } from "./harness.js";
+import { fixturePlans } from "./fixtures/access-plans.js";
 
 const access = new ToolBindings(serverTargets(fixturePlans()));
 const tools = (name: string, names: string[]) =>
@@ -52,61 +53,6 @@ describe("Agent tool access", () => {
       }),
     ]);
     expect(access.bindings("remediation", merged ?? [], "normalize")).toEqual(merged);
-  });
-
-  it("intersects the caller's write permission with the Agent's environment ceiling and denies unknown tools", () => {
-    expect(access.permitsCall("inspection", ["lab-kubernetes"], "pods_list", false)).toBe(true);
-    expect(
-      access.permitsCall("inspection", ["lab-kubernetes"], "resources_create_or_update", true),
-    ).toBe(false);
-    expect(
-      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", false),
-    ).toBe(false);
-    expect(
-      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", true),
-    ).toBe(true);
-    expect(access.permitsCall("remediation", ["lab-kubernetes"], "unknown", true)).toBe(false);
-    expect(access.permitsCall("remediation", ["unrelated"], "pods_list", true)).toBe(false);
-    expect(
-      access.permitsTool("remediation", "lab-kubernetes-remediation-changes", write, false),
-    ).toBe(false);
-    expect(access.permitsTool("inspection", "lab-kubernetes-inspection", write, true)).toBe(false);
-    expect(access.permitsTool("inspection", "kagent-collaboration", "create_session", false)).toBe(
-      true,
-    );
-  });
-  it("keeps identical tool names scoped to their own service", () => {
-    const policy = new ToolBindings(
-      new Map([
-        [
-          "reader",
-          {
-            server: "reader",
-            service: "reader",
-            catalog: false,
-            tools: [{ name: "get", write: false, requireApproval: false }],
-          },
-        ],
-        [
-          "writer",
-          {
-            server: "writer",
-            service: "writer",
-            catalog: false,
-            tools: [{ name: "get", write: true, requireApproval: true }],
-          },
-        ],
-      ]),
-    );
-    expect(policy.permitsTool("inspection", "reader", "get", false)).toBe(true);
-    expect(policy.permitsTool("inspection", "writer", "get", false)).toBe(false);
-    expect(policy.permitsTool("inspection", "unknown", "get", true)).toBe(false);
-    expect(
-      policy.selectedTool(
-        create(ToolBindingSchema, { server: "reader", tools: ["reader_get"] }),
-        "get",
-      ),
-    ).toBe(true);
   });
 
   it("offers only the Agent's own identities and platform servers", () => {

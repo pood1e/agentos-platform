@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { DictationPhase } from "../../../../shared/browser/voice/dictation.js";
+import type { DictationPhase } from "../voice/dictation.js";
 
 export type SpeechControls = {
   phase: DictationPhase;

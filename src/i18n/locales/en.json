@@ -17,7 +17,8 @@
     "switch": "Switch workspace",
     "all": "All workspaces",
     "empty": "No workspaces are available for this account.",
-    "failed": "The workspace directory is unavailable. Try again later."
+    "failed": "The workspace directory is unavailable. Try again later.",
+    "partial": "Some workspaces cannot be reached right now, so this list may be incomplete."
   },
   "status": {
     "live": "Live",

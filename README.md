@@ -22,7 +22,7 @@ mise exec -- npm ci
 mise exec -- npm run verify
 ```
 
-`npm run verify` 执行生成、构建、静态检查与单元测试。
+`npm run verify` 执行生成、构建、静态检查与单元测试。`gen/` 不入库，`proto` 或 `third_party` 变更后先执行 `npm run generate`。
 
 前端开发连接已部署的平台 API。复制 [`.env.example`](.env.example) 为 `.env`，设置 API 地址与 Bearer 令牌后启动：
 

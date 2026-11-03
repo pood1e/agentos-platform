@@ -7,7 +7,7 @@ import {
   SaveConnectionRequestSchema,
 } from "../gen/agentos/management/v1/management_pb.js";
 import { connectionCommands } from "../server/management/connections.js";
-import { object } from "../server/read-model/decode/messages.js";
+import { object } from "../shared/json.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
@@ -37,7 +37,7 @@ const draft = () =>
   });
 
 it("commits one parent and leaves derived resources to reconciliation", async () => {
-  const commands = connectionCommands(env.store, env.clients, env.dependencies.gateway);
+  const commands = connectionCommands(env.store, env.clients, "agentos", "agentos-gateway");
   const save = vi.spyOn(env.store, "save");
   const validate = vi.spyOn(env.store, "validate");
   await commands.save(
@@ -55,7 +55,7 @@ it("commits one parent and leaves derived resources to reconciliation", async ()
 });
 
 it("preserves a committed parent when its acknowledgement is lost", async () => {
-  const commands = connectionCommands(env.store, env.clients, env.dependencies.gateway);
+  const commands = connectionCommands(env.store, env.clients, "agentos", "agentos-gateway");
   const write = env.store.save;
   const save = vi.spyOn(env.store, "save").mockImplementationOnce(async (kind, ...args) => {
     await write(kind, ...args);
@@ -76,7 +76,7 @@ it("preserves a committed parent when its acknowledgement is lost", async () => 
 });
 
 it("rejects invalid parent input before writing", async () => {
-  const commands = connectionCommands(env.store, env.clients, env.dependencies.gateway);
+  const commands = connectionCommands(env.store, env.clients, "agentos", "agentos-gateway");
   const write = vi.spyOn(env.store, "save");
   const invalid = draft();
   object(object(invalid.resource?.value?.spec).match).model = "wildcard-*";
@@ -87,7 +87,7 @@ it("rejects invalid parent input before writing", async () => {
 });
 
 it("preserves concurrent edits through native resourceVersion", async () => {
-  const commands = connectionCommands(env.store, env.clients, env.dependencies.gateway);
+  const commands = connectionCommands(env.store, env.clients, "agentos", "agentos-gateway");
   const { connection: initial } = await commands.save(
     create(SaveConnectionRequestSchema, { create: true, connection: draft() }),
   );

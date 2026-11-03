@@ -1,7 +1,7 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { errorKey } from "../../../shared/errors.js";
+import { errorKey } from "../../lib/errors.js";
 
 export function WorkflowFailure({ error }: { error: unknown }) {
   const { t } = useTranslation();

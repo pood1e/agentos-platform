@@ -5,14 +5,17 @@ import Fastify, { type FastifyInstance, LogController } from "fastify";
 import { RoomServiceClient } from "livekit-server-sdk";
 import { VoiceService } from "../../gen/agentos/voice/v1/voice_pb.js";
 import { serviceAccountTokens } from "../authorization/workloads.js";
-import { consoleErrors } from "../console/interceptor.js";
 import { requiredEnv } from "../shared/config.js";
+import { consoleErrors } from "../shared/rpc-errors.js";
+import { rpcMetrics } from "../shared/telemetry.js";
 import { voiceConsole } from "./console.js";
 import { voiceTickets } from "./tickets.js";
 import { type VoiceWorkerDependencies, voiceService, voiceWorker } from "./worker.js";
 
 // Audience of the worker's projected service account token.
 const workerAudience = "agentos-voice";
+// Declared by the api Deployment, Service and NetworkPolicy templates.
+const workerPort = 9093;
 
 /**
  * Voice is configured per deployment; without its agent name the API has no voice routes.
@@ -38,6 +41,7 @@ export async function voiceFeature(
   });
   await server.register(fastifyConnectPlugin, {
     interceptors: [
+      rpcMetrics("server"),
       consoleErrors(app.log),
       voiceWorker(review, workerAudience, requiredEnv("AGENTOS_VOICE_SUBJECT")),
       createValidateInterceptor(),
@@ -69,7 +73,6 @@ export async function voiceFeature(
       dependencies.clients,
       dependencies.agent,
     ),
-    listen: (host: string) =>
-      server.listen({ host, port: Number(process.env.AGENTOS_VOICE_PORT ?? "9093") }),
+    listen: (host: string) => server.listen({ host, port: workerPort }),
   };
 }

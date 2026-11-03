@@ -1,18 +1,18 @@
 import { clone, create } from "@bufbuild/protobuf";
 import { type Workflow, WorkflowSchema } from "../../../gen/agentos/management/v1/workflow_pb.js";
 import { object } from "../../../shared/json.js";
+import { kagentApiVersion } from "../../../shared/kagent-resources.js";
 import { initialDocument } from "./document.js";
 
-const apiVersion = "api.kagent.dev/v1alpha3";
 export function newWorkflow(namespace: string, name = ""): Workflow {
   return create(WorkflowSchema, {
     agent: {
       ref: { namespace, name },
       resource: {
-        apiVersion,
+        apiVersion: kagentApiVersion,
         kind: "Agent",
         value: {
-          apiVersion,
+          apiVersion: kagentApiVersion,
           kind: "Agent",
           metadata: { name, namespace },
           spec: { harnessRef: { name: "standard" }, template: { ref: { name } } },
@@ -22,10 +22,10 @@ export function newWorkflow(namespace: string, name = ""): Workflow {
     agentTemplate: {
       ref: { namespace, name },
       resource: {
-        apiVersion,
+        apiVersion: kagentApiVersion,
         kind: "AgentTemplate",
         value: {
-          apiVersion,
+          apiVersion: kagentApiVersion,
           kind: "AgentTemplate",
           metadata: { name, namespace },
           spec: { workflowFrom: { name: "candidate", key: "workflow.yaml" } },

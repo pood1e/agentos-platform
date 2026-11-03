@@ -1,19 +1,28 @@
 import { Code, ConnectError, type HandlerContext, type ServiceImpl } from "@connectrpc/connect";
+import type { FastifyBaseLogger } from "fastify";
 import type {
   AuthorizationService,
   ListWorkspacesRequest,
   WorkspaceAuthorizationReference,
 } from "../../gen/kagent/api/v1/authorization_pb.js";
+import { partialDirectoryHeader } from "../../shared/kagent-resources.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { credentialHeaders } from "../kagent/context.js";
-import { pageOf } from "../read-model/page.js";
+import { hasCode } from "../shared/errors.js";
+import { pageOf } from "../shared/page.js";
+import { directoryEntry } from "./workspaces.js";
 
 type Client = KagentClients["authorization"];
 
-/** Every configured native authority is queried for membership in its own namespace. */
+/**
+ * Every configured native authority is queried for membership in its own namespace.
+ * The directory is navigation: admission rechecks membership per request, so listing the
+ * reachable authorities cannot widen access, while one outage must not hide the others.
+ */
 export function authorizationService(
   clients: ReadonlyMap<string, Client>,
   homeNamespace: string,
+  log: Pick<FastifyBaseLogger, "warn">,
 ): ServiceImpl<typeof AuthorizationService> {
   const home = clients.get(homeNamespace);
   if (!home) throw new Error("Home workspace authority missing");
@@ -34,36 +43,34 @@ export function authorizationService(
   };
   async function listWorkspaces(request: ListWorkspacesRequest, context: HandlerContext) {
     if (request.workspace) {
-      const result = await target(request.workspace.namespace).listWorkspaces(
-        request,
-        options(context),
-      );
-      if (
-        result.workspaces.length > 1 ||
-        result.workspaces.some(
-          (item) =>
-            item.namespace !== request.workspace?.namespace ||
-            !item.uid ||
-            (request.workspace?.uid && item.uid !== request.workspace.uid),
-        )
-      )
-        throw new ConnectError("Invalid workspace directory response", Code.Unavailable);
+      const { namespace, uid } = request.workspace;
+      const result = await target(namespace).listWorkspaces(request, options(context));
+      directoryEntry(result.workspaces, namespace, uid);
       return result;
     }
-    const found = await Promise.all(
+    const namespaces = [...clients.keys()];
+    const answers = await Promise.allSettled(
       [...clients].map(async ([namespace, client]) => {
         const result = await client.listWorkspaces({ workspace: { namespace } }, options(context));
-        if (
-          result.workspaces.length > 1 ||
-          result.workspaces.some((item) => item.namespace !== namespace || !item.uid)
-        )
-          throw new ConnectError("Invalid workspace directory response", Code.Unavailable);
-        return result.workspaces[0];
+        return directoryEntry(result.workspaces, namespace);
       }),
     );
-    const items = found
-      .filter((item): item is WorkspaceAuthorizationReference => !!item)
-      .sort((a, b) => a.namespace.localeCompare(b.namespace));
+    const items: WorkspaceAuthorizationReference[] = [];
+    const failures: unknown[] = [];
+    answers.forEach((answer, index) => {
+      if (answer.status === "fulfilled") {
+        if (answer.value) items.push(answer.value);
+      } else if (!hasCode(answer.reason, Code.PermissionDenied, Code.NotFound)) {
+        failures.push(answer.reason);
+        log.warn(
+          { err: answer.reason, namespace: namespaces[index] },
+          "Workspace authority failed",
+        );
+      }
+    });
+    if (failures.length === clients.size) throw failures[0];
+    if (failures.length) context.responseHeader.set(partialDirectoryHeader, "true");
+    items.sort((a, b) => a.namespace.localeCompare(b.namespace));
     const page = pageOf(
       items,
       { pageSize: request.page?.limit || 50, pageToken: request.page?.pageToken ?? "", query: "" },

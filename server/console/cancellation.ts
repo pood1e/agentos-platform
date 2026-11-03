@@ -2,7 +2,7 @@ import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_p
 import type { KagentClients } from "../kagent/clients.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import { notFound } from "../shared/errors.js";
-import { viewer, visibleGraph } from "./history.js";
+import { viewer, visibleGraph } from "./visibility.js";
 
 /** One native cancellation persists the fence and propagates through delegated work. */
 export function cancellationCommands(projection: TaskQueries, clients: KagentClients) {

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { create, fromJson, type JsonValue, toJson, toJsonString } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import { Code, ConnectError } from "@connectrpc/connect";
 import {
   ArtifactSchema,
   type Message,
@@ -14,10 +15,18 @@ import {
 } from "../../gen/a2a_pb.js";
 import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { InvokeSessionOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
+import { hitlPayload } from "../../server/read-model/decode/hitl.js";
 import { messageText, partTypeKey, timelineKey } from "../../server/read-model/decode/messages.js";
+import { terminal } from "../../server/read-model/state.js";
 import { fixtureIds, fixtureTasks } from "../fixtures/kagent.js";
 import type { FakeKagent } from "./kagent.js";
 import { awaitingApproval } from "./scenario.js";
+
+const part = (kind: "function_response", data: JsonValue) => ({
+  content: { case: "data" as const, value: fromJson(ValueSchema, data) },
+  metadata: { [partTypeKey]: kind },
+});
+const textPart = (value: string) => ({ content: { case: "text" as const, value } });
 
 function activity(name: string, args: JsonValue, output: JsonValue): Part[] {
   const id = randomUUID();
@@ -183,4 +192,37 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
       ...activity("load_memory", { query: task.id }, { source: task.id }),
     ]);
   finish(fake, task, `已处理：${text}`);
+}
+
+/** Answers a follow-up message on a running task, resuming it after a human decision. */
+export function reply(fake: FakeKagent, task: Task, message: Message): Task {
+  if (terminal(task.status?.state))
+    throw new ConnectError("Task is not accepting messages", Code.FailedPrecondition);
+  task.history.push(message);
+  const request = hitlPayload(task.status?.message);
+  const decision = hitlPayload(message);
+  const parts =
+    request?.type === "tool_approval_request" && decision?.type === "tool_approval_response"
+      ? request.value.tools.map((tool) =>
+          part("function_response", {
+            id: tool.callId,
+            name: tool.name,
+            response: decision.value.approvals.every((item) => item.approved)
+              ? { output: { output: "configmap/approval-smoke created\n" } }
+              : { error: `error tool "${tool.name}" call is rejected` },
+          }),
+        )
+      : [];
+  task.artifacts.push(
+    create(ArtifactSchema, {
+      artifactId: randomUUID(),
+      parts: [...parts, textPart("处置结果已核验。")],
+    }),
+  );
+  fake.update(task, TaskState.WORKING);
+  setTimeout(() => {
+    if (fake.tasks.get(task.id) === task && !terminal(task.status?.state))
+      fake.update(task, TaskState.COMPLETED);
+  }, 200);
+  return task;
 }

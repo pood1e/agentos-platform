@@ -11,13 +11,49 @@ import {
   type TaskCatalogScope,
   TaskCatalogView,
 } from "../../gen/kagent/api/v1/task_catalog_pb.js";
-import { agentInfo, agentKey, sessionInfo } from "../../server/read-model/agents.js";
+import { agentKey } from "../../server/kagent/resources.js";
+import { agentInfo, sessionInfo } from "../../server/read-model/agents.js";
 import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { ingest, type TaskEntry } from "../../server/read-model/entry.js";
 import { TaskGraph } from "../../server/read-model/graph.js";
-import { terminal } from "../../server/read-model/state.js";
+import { taskActivity, terminal } from "../../server/read-model/state.js";
+import { busy, outcomeState, taskTree } from "../../server/read-model/tree.js";
+import { conversationWork } from "../../server/read-model/views/conversation-work.js";
 import { pendingApproval } from "../../server/read-model/views/runs.js";
 import type { FakeKagent } from "./kagent.js";
+
+/** Native conversation status: includes background work, unlike composer availability. */
+export function conversationProgress(graph: TaskGraph, contextId: string) {
+  const entries = graph.contextEntries(contextId);
+  const runs = conversationWork(graph, entries);
+  const latest = entries.toSorted(
+    (a, b) => (b.createdAt ?? b.statusAt ?? 0) - (a.createdAt ?? a.statusAt ?? 0),
+  )[0];
+  const tree = latest && taskTree(graph, latest.id);
+  const priority = [
+    ActivityState.AWAITING_APPROVAL,
+    ActivityState.AWAITING_INPUT,
+    ActivityState.WORKING,
+    ActivityState.SUBMITTED,
+  ];
+  const state =
+    priority.find((state) => runs.some((run) => run.state === state)) ??
+    (entries.some((entry) => {
+      const work = taskTree(graph, entry.id);
+      return work && busy(work);
+    })
+      ? ActivityState.WORKING
+      : tree
+        ? taskActivity(outcomeState(tree))
+        : ActivityState.IDLE);
+  return {
+    state,
+    updatedAt: Math.max(
+      0,
+      ...runs.flatMap((run) => (run.updatedAt ? timestampMs(run.updatedAt) : [])),
+    ),
+  };
+}
 
 export function catalogFixture(
   fake: FakeKagent,

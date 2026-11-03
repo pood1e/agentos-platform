@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { JsonObject } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { object, text } from "../../server/read-model/decode/messages.js";
+import { object, text } from "../../shared/json.js";
 import type { FakeKagent } from "./kagent.js";
 import { nativeWatch } from "./native-watch.js";
 

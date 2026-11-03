@@ -3,13 +3,13 @@ import { timestampMs } from "@bufbuild/protobuf/wkt";
 import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
-import { agentRef } from "../server/read-model/agents.js";
+import { agentRef } from "../server/kagent/resources.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { runSummary } from "../server/read-model/views/runs.js";
 import { pendingApprovalTasks } from "./fake-kagent/scenario.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment, fakeKagent, operator } from "./harness.js";
+import { environment, fakeKagent, graphOf, operator } from "./harness.js";
 
 const page = { query: "", pageSize: 1, pageToken: "" };
 const reader = { subject: operator.subject, administrator: false };
@@ -76,7 +76,7 @@ it("binds cursors to normalized states and members", async () => {
 it("projects native run starts in summaries and full execution details", async () => {
   const { projection, close } = await environment();
   try {
-    const graph = await projection.graphOf({ taskId: ids.dispatchRoot });
+    const graph = await graphOf(projection, { taskId: ids.dispatchRoot });
     const tree = graph && taskTree(graph, ids.dispatchRoot);
     if (!tree) throw new Error("missing operation");
     for (const entry of tree.entries) {

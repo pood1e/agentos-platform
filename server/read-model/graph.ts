@@ -1,4 +1,5 @@
-import { type AgentInfo, type SessionInfo, systemTemplates } from "./agents.js";
+import { systemTemplates } from "../kagent/resources.js";
+import type { AgentInfo, SessionInfo } from "./agents.js";
 import type { CallEntry } from "./calls.js";
 import type { TaskEntry } from "./entry.js";
 
@@ -6,6 +7,7 @@ export interface Relations {
   /** Child task per `${taskId}:${callId}` delegation call. */
   targets: Map<string, string>;
   parents: Map<string, string>;
+  children: Map<string, string[]>;
   roots: TaskEntry[];
 }
 
@@ -13,7 +15,11 @@ const callKey = (taskId: string, callId: string) => `${taskId}:${callId}`;
 
 function group(entries: TaskEntry[], key: (entry: TaskEntry) => string) {
   const groups = new Map<string, TaskEntry[]>();
-  for (const entry of entries) groups.set(key(entry), [...(groups.get(key(entry)) ?? []), entry]);
+  for (const entry of entries) {
+    const members = groups.get(key(entry));
+    if (members) members.push(entry);
+    else groups.set(key(entry), [entry]);
+  }
   return groups;
 }
 
@@ -21,7 +27,6 @@ function group(entries: TaskEntry[], key: (entry: TaskEntry) => string) {
 export class TaskGraph {
   private entries: Map<string, TaskEntry>;
   private contexts: Map<string, TaskEntry[]>;
-  private byAgent: Map<string, TaskEntry[]>;
   private messages = new Map<string, string>();
   private sessionInfo: Map<string, SessionInfo>;
   private agentInfo: Map<string, AgentInfo>;
@@ -30,7 +35,6 @@ export class TaskGraph {
   constructor(entries: TaskEntry[] = [], sessions: SessionInfo[] = [], agents: AgentInfo[] = []) {
     this.entries = new Map(entries.map((entry) => [entry.id, entry]));
     this.contexts = group(entries, (entry) => entry.contextId);
-    this.byAgent = group(entries, (entry) => entry.agentId);
     for (const entry of entries) for (const id of entry.messageIds) this.messages.set(id, entry.id);
     this.sessionInfo = new Map(sessions.map((session) => [session.id, session]));
     this.agentInfo = new Map(agents.map((agent) => [agent.id, agent]));
@@ -43,7 +47,6 @@ export class TaskGraph {
   sessions = () => [...this.sessionInfo.values()];
   all = () => [...this.entries.values()];
   contextEntries = (contextId: string) => this.contexts.get(contextId) ?? [];
-  agentEntries = (agentId: string) => this.byAgent.get(agentId) ?? [];
   taskOfMessage = (messageId: string) => this.entries.get(this.messages.get(messageId) ?? "");
   templateOf = (agentId: string) => this.agentInfo.get(agentId)?.templateName ?? "";
 
@@ -82,10 +85,12 @@ export class TaskGraph {
   private build(): Relations {
     const targets = new Map<string, string>();
     const parents = new Map<string, string>();
+    const children = new Map<string, string[]>();
     for (const entry of this.entries.values()) {
-      const execution = entry.execution;
-      if (execution?.parent && this.entries.has(execution.parent.taskId)) {
-        parents.set(entry.id, execution.parent.taskId);
+      const parent = entry.execution?.parent?.taskId;
+      if (parent && this.entries.has(parent)) {
+        parents.set(entry.id, parent);
+        children.set(parent, [...(children.get(parent) ?? []), entry.id]);
       }
       for (const call of entry.calls) {
         const child = this.resolve(call);
@@ -98,6 +103,6 @@ export class TaskGraph {
       const parent = this.entry(parents.get(entry.id) ?? "");
       return !parent || systemTemplates.has(this.templateOf(parent.agentId));
     });
-    return { targets, parents, roots };
+    return { targets, parents, children, roots };
   }
 }

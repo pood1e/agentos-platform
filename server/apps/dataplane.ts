@@ -1,21 +1,23 @@
 import { AuthenticationV1Api } from "@kubernetes/client-node";
 import { serviceAccountTokens } from "../authorization/workloads.js";
-import { toolBindings } from "../governance/bindings.js";
-import { registerPlatformMcp } from "../platform/mcp.js";
+import { toolBindings } from "../governance/access-plans.js";
+import { kagentClients, kagentTransport } from "../kagent/clients.js";
 import { listenConfig, requiredEnv } from "../shared/config.js";
 import { registerHealth } from "../shared/health.js";
-import { closeOnSignal, platformApp, platformClients, platformConfig } from "./platform.js";
+import { registerPlatformMcp } from "../team-sessions/authorization.js";
+import { closeOnSignal, platformApp, platformKube } from "./platform.js";
 
-const config = platformConfig();
+const kube = platformKube();
+const namespace = requiredEnv("KAGENT_NAMESPACE");
 const app = platformApp();
-const clients = platformClients(config);
-const access = await toolBindings(config.kube, config.workspace, app.log);
+const clients = kagentClients(kagentTransport(requiredEnv("KAGENT_URL")));
+const access = await toolBindings(kube, namespace, app.log);
 await registerPlatformMcp(
   app,
-  config.workspace,
+  namespace,
   clients,
   access,
-  serviceAccountTokens(config.kube.makeApiClient(AuthenticationV1Api)),
+  serviceAccountTokens(kube.makeApiClient(AuthenticationV1Api)),
   requiredEnv("AGENTOS_CONTROLLER_SUBJECT"),
 );
 registerHealth(app, () => access.healthy());

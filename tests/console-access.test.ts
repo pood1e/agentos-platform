@@ -5,6 +5,7 @@ import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js"
 import { AuthorizationService } from "../gen/kagent/api/v1/authorization_pb.js";
 import { SystemService } from "../gen/kagent/api/v1/system_pb.js";
 import { userIdentity } from "../server/authorization/identity.js";
+import { memberWorkspace } from "../server/authorization/workspaces.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import {
   credentialHeaders,
@@ -13,7 +14,7 @@ import {
   nativeRequestHeaders,
   nativeStream,
 } from "../server/kagent/context.js";
-import { accessProfile, memberWorkspace } from "../server/platform/access.js";
+import { accessProfile } from "../server/platform/access.js";
 import { capabilityRole } from "../shared/permissions.js";
 import { testWorkspaceContext } from "./workspace-member.js";
 

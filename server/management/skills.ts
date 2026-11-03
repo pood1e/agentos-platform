@@ -5,11 +5,12 @@ import {
   type SaveSkillRequest,
   SkillCatalogSchema,
 } from "../../gen/agentos/management/v1/management_pb.js";
-import { roleDefinition, skillSource } from "../console/role-template.js";
+import { defaultModelConfig, kagentApiVersion } from "../../shared/kagent-resources.js";
 import { listNativeTemplates } from "../kagent/catalog.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { type PageRequest, pageOf } from "../read-model/page.js";
+import { roleDefinition, skillSource } from "../kagent/role-template.js";
 import { conflict, fail, invalid, notFound } from "../shared/errors.js";
+import { type PageRequest, pageOf } from "../shared/page.js";
 import type { ResourceStore } from "./resources.js";
 
 export function skillCommands(store: ResourceStore, clients: KagentClients, namespace: string) {
@@ -44,11 +45,11 @@ export function skillCommands(store: ResourceStore, clients: KagentClients, name
     const item = request.item;
     if (!item?.skill?.name.trim()) throw invalid("management.invalid");
     await store.validate("templates", {
-      apiVersion: "api.kagent.dev/v1alpha3",
+      apiVersion: kagentApiVersion,
       kind: "AgentTemplate",
       metadata: { generateName: "skill-validation-", namespace },
       spec: {
-        modelConfig: { name: "default-model-config" },
+        modelConfig: { name: defaultModelConfig },
         systemPrompt: "Validate skill source",
         skills: [{ name: item.skill.name, source: skillSource(item.skill) }],
       },

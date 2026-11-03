@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, inject, it } from "vitest";
-import { type AccessPlan, serverTargets } from "../shared/access-plans.js";
+import { type AccessPlan, serverTargets } from "../server/governance/access-plans.js";
 
 function fixture() {
   const [compiled] = JSON.parse(inject("accessPlans")) as AccessPlan[];

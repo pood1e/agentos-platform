@@ -4,9 +4,6 @@
 {{- $home := dict "namespace" .Release.Namespace "release" $name "entryAgent" .Values.entryAgent "harness" .Values.defaultHarness "kagentURL" (include "agentos.kagentEndpoint" .) -}}
 - name: AGENTOS_WORKSPACES
   value: {{ concat (list $home) .Values.api.workspaces | toJson | quote }}
-- {name: AGENTOS_SPEECH_SECRET, value: {{ $name }}-speech}
-- {name: AGENTOS_GATEWAY_URL, value: "http://{{ $name }}-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080"}
-- {name: AGENTOS_MCP_GATEWAY_URL, value: "http://{{ $name }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080"}
 - {name: AGENTOS_API_ORIGIN, value: {{ $origins.api | quote }}}
 - name: AGENTOS_DELEGATION_ORIGINS
   value: {{ prepend .Values.identity.returnOrigins $origins.console | uniq | toJson | quote }}
@@ -61,6 +58,8 @@
 {{- end -}}
 
 {{- define "agentos.dataplaneEnv" -}}
+- {name: KAGENT_URL, value: {{ include "agentos.kagentEndpoint" . | quote }}}
+- {name: KAGENT_NAMESPACE, value: {{ .Release.Namespace | quote }}}
 - {name: AGENTOS_CONTROLLER_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ include "agentos.name" . }}-discovery"}
 {{- end -}}
 

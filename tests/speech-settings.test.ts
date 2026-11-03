@@ -3,7 +3,7 @@ import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { SpeechConfigurationSchema } from "../gen/agentos/console/v1/speech_pb.js";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
-import { object } from "../server/read-model/decode/messages.js";
+import { object } from "../shared/json.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;

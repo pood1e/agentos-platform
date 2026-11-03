@@ -14,10 +14,11 @@ import {
 } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
-import { pool } from "../../kagent/clients.js";
-import { agentKey } from "../agents.js";
+import { object } from "../../../shared/json.js";
+import { roleBuilderAgent } from "../../../shared/kagent-resources.js";
+import { agentKey } from "../../kagent/resources.js";
+import { pool } from "../../shared/async.js";
 import { toolCalls } from "../calls.js";
-import { object } from "../decode/messages.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { approvals } from "../interactions.js";
@@ -153,6 +154,6 @@ export async function conversation(
       ),
     ),
     roleDraft:
-      member?.templateName === "role-builder" ? await roleDraft(fullTask, latest) : undefined,
+      member?.templateName === roleBuilderAgent ? await roleDraft(fullTask, latest) : undefined,
   });
 }

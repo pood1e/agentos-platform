@@ -10,8 +10,8 @@ import {
   InteractionKind,
   type Question,
 } from "../../../gen/agentos/console/v1/task_pb.js";
-import { errorKey } from "../../../shared/errors.js";
 import { useAccess } from "../../lib/access.js";
+import { errorKey } from "../../lib/errors.js";
 import { awaiting } from "../status/activity.js";
 import { Status } from "../status/Status.js";
 import { interactionLabel } from "./interaction-state.js";

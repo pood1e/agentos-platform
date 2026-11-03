@@ -1,13 +1,35 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { CatalogTask } from "../../gen/kagent/api/v1/task_catalog_pb.js";
-import { type AgentInfo, agentKey, sessionInfo } from "./agents.js";
+import { agentKey } from "../kagent/resources.js";
+import { type AgentInfo, sessionInfo } from "./agents.js";
 import { ingest } from "./entry.js";
 import { TaskGraph } from "./graph.js";
 
 export interface CatalogRows {
   tasks: CatalogTask[];
   sessions: Session[];
+}
+
+/**
+ * Identifies what a tree shows: payloads cannot change while these facts of settled tasks hold.
+ * Summary and detail views take status times from different stores with different precision,
+ * so times compare in whole seconds.
+ */
+export function catalogRevision({ tasks, sessions }: CatalogRows) {
+  return JSON.stringify([
+    tasks
+      .map(({ task, pendingToolApproval }) => [
+        task?.id,
+        task?.status?.state,
+        String(task?.status?.timestamp?.seconds),
+        pendingToolApproval,
+      ])
+      .sort(),
+    sessions
+      .map((session) => [session.id, session.name, String(session.updatedAt?.seconds)])
+      .sort(),
+  ]);
 }
 
 export function catalogGraph(namespace: string, rows: CatalogRows, agents: AgentInfo[]) {

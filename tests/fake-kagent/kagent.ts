@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { clone, create, fromJson, type JsonValue } from "@bufbuild/protobuf";
-import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
+import { clone, create } from "@bufbuild/protobuf";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import {
-  ArtifactSchema,
   type Message,
   type StreamResponse,
   StreamResponseSchema,
@@ -25,22 +24,17 @@ import {
   TaskRelation,
 } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { agentKey } from "../../server/read-model/agents.js";
-import { hitlPayload } from "../../server/read-model/decode/hitl.js";
-import { createdAtKey, object, partTypeKey } from "../../server/read-model/decode/messages.js";
+import type { TaskCatalogView } from "../../gen/kagent/api/v1/task_catalog_pb.js";
+import { agentKey } from "../../server/kagent/resources.js";
+import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
 import { conflict } from "../../server/shared/errors.js";
+import { object } from "../../shared/json.js";
 import { fixtureExecution } from "../fixtures/kagent.js";
-import { execute } from "./behavior.js";
+import { execute, reply } from "./behavior.js";
 import { templates, toolServers } from "./catalog.js";
 import { FakeMemory } from "./memory.js";
 import { FakeResources } from "./resources.js";
-
-const part = (kind: "function_response", data: JsonValue) => ({
-  content: { case: "data" as const, value: fromJson(ValueSchema, data) },
-  metadata: { [partTypeKey]: kind },
-});
-const textPart = (value: string) => ({ content: { case: "text" as const, value } });
 
 /** In-memory kagent with deterministic agent behavior for tests and local development. */
 export class FakeKagent {
@@ -62,7 +56,7 @@ export class FakeKagent {
   readonly received: Message[] = [];
   readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
   readonly fetched: string[] = [];
-  readonly catalogReads: { method: string; returned: number }[] = [];
+  readonly catalogReads: { method: string; returned: number; view?: TaskCatalogView }[] = [];
   private requests = new Map<string, string>();
   private updates = new EventEmitter().setMaxListeners(0);
   private clock = 0;
@@ -209,7 +203,7 @@ export class FakeKagent {
   /** Accepts a message the way kagent does, deduplicating initial messages by ID. */
   accept(message: Message): Task {
     this.received.push(message);
-    if (message.taskId) return this.reply(this.task(message.taskId), message);
+    if (message.taskId) return reply(this, this.task(message.taskId), message);
     const accepted = [...this.tasks.values()].find(
       (task) =>
         task.contextId === message.contextId &&
@@ -229,38 +223,6 @@ export class FakeKagent {
       void execute(this, task, message).catch((error) => {
         if (!signal.aborted) throw error;
       });
-    }, 200);
-    return task;
-  }
-
-  private reply(task: Task, message: Message): Task {
-    if (terminal(task.status?.state))
-      throw new ConnectError("Task is not accepting messages", Code.FailedPrecondition);
-    task.history.push(message);
-    const request = hitlPayload(task.status?.message);
-    const decision = hitlPayload(message);
-    const parts =
-      request?.type === "tool_approval_request" && decision?.type === "tool_approval_response"
-        ? request.value.tools.map((tool) =>
-            part("function_response", {
-              id: tool.callId,
-              name: tool.name,
-              response: decision.value.approvals.every((item) => item.approved)
-                ? { output: { output: "configmap/approval-smoke created\n" } }
-                : { error: `error tool "${tool.name}" call is rejected` },
-            }),
-          )
-        : [];
-    task.artifacts.push(
-      create(ArtifactSchema, {
-        artifactId: randomUUID(),
-        parts: [...parts, textPart("处置结果已核验。")],
-      }),
-    );
-    this.update(task, TaskState.WORKING);
-    setTimeout(() => {
-      if (this.tasks.get(task.id) === task && !terminal(task.status?.state))
-        this.update(task, TaskState.COMPLETED);
     }, 200);
     return task;
   }

@@ -4,12 +4,11 @@ import {
   ChatMessagePartSchema,
 } from "../../../gen/agentos/console/v1/conversation_pb.js";
 import { type Interaction, InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
-import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { millis } from "../decode/messages.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
-import { taskActivity, terminal } from "../state.js";
-import { busy, outcomeState, taskTree } from "../tree.js";
+import { terminal } from "../state.js";
+import { taskTree } from "../tree.js";
 import type { interactionAnchors } from "./interaction-anchors.js";
 import { runSummary } from "./runs.js";
 
@@ -22,36 +21,6 @@ export function conversationWork(graph: TaskGraph, entries: TaskEntry[]) {
         runs.set(member.id, runSummary(member, tree.background.has(member.id)));
   }
   return [...runs.values()];
-}
-
-/** Conversation status includes background work, unlike composer availability. */
-export function conversationProgress(graph: TaskGraph, contextId: string) {
-  const entries = graph.contextEntries(contextId);
-  const runs = conversationWork(graph, entries);
-  const latest = entries.toSorted(
-    (a, b) => (b.createdAt ?? b.statusAt ?? 0) - (a.createdAt ?? a.statusAt ?? 0),
-  )[0];
-  const tree = latest && taskTree(graph, latest.id);
-  const priority = [
-    ActivityState.AWAITING_APPROVAL,
-    ActivityState.AWAITING_INPUT,
-    ActivityState.WORKING,
-    ActivityState.SUBMITTED,
-  ];
-  const state =
-    priority.find((state) => runs.some((run) => run.state === state)) ??
-    (entries.some((entry) => {
-      const work = taskTree(graph, entry.id);
-      return work && busy(work);
-    })
-      ? ActivityState.WORKING
-      : tree
-        ? taskActivity(outcomeState(tree))
-        : ActivityState.IDLE);
-  return {
-    state,
-    updatedAt: Math.max(0, ...runs.flatMap((run) => millis(run.updatedAt) ?? [])),
-  };
 }
 
 /** Completed results remain visible when the delegated conversation continues. */

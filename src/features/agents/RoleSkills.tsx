@@ -14,9 +14,10 @@ import {
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { RoleDefinition, Skill } from "../../../gen/agentos/console/v1/role_pb.js";
 import { useCapability } from "../../lib/access.js";
-import { editRole, editSkill, newSkill, skillKinds, withKind } from "./role-draft.js";
+import { SkillSourceFields } from "../shared/SkillSourceFields.js";
+import { editSkill, newSkill, skillKinds, withKind } from "../shared/skill-draft.js";
+import { editRole } from "./role-draft.js";
 import { SkillPicker } from "./SkillPicker.js";
-import { SkillSourceFields } from "./SkillSourceFields.js";
 
 export function RoleSkills({
   role,

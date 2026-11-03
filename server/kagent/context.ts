@@ -5,9 +5,15 @@ import type { Interceptor } from "@connectrpc/connect";
 export const nativeHeaders = new AsyncLocalStorage<Headers>();
 export const nativeSignal = new AsyncLocalStorage<AbortSignal>();
 
+/** The token of a well-formed `Authorization: Bearer` value. */
+export const bearerToken = (authorization: string | null | undefined) =>
+  authorization?.match(/^Bearer ([^\s,]+)$/)?.[1];
+
+export const actorTokenHeader = "x-substrate-actor-token";
+
 export function credentialHeaders(input: Headers) {
   const headers = new Headers();
-  for (const name of ["authorization", "x-substrate-actor-token"]) {
+  for (const name of ["authorization", actorTokenHeader]) {
     const value = input.get(name);
     if (value) headers.set(name, value);
   }

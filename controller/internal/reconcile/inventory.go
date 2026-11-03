@@ -21,6 +21,9 @@ const UserOwner = "agentos.dev/ownership"
 const PresetOwner = "agentos.dev/preset"
 const ownerLabel = "agentos.dev/owner-uid"
 
+// presetManager never forces ownership: a server-side apply conflict means a user took over the field.
+const presetManager = "agentos-presets"
+
 func apply(ctx context.Context, c client.Client, scheme *runtime.Scheme, parent, desired client.Object, manager string) (platform.ResourceReference, error) {
 	gvk, err := apiutil.GVKForObject(desired, scheme)
 	if err != nil {
@@ -46,7 +49,7 @@ func apply(ctx context.Context, c client.Client, scheme *runtime.Scheme, parent,
 	labels[ownerLabel] = string(parent.GetUID())
 	desired.SetLabels(labels)
 	options := []client.PatchOption{client.FieldOwner(manager)}
-	if manager != "agentos-presets" {
+	if manager != presetManager {
 		options = append(options, client.ForceOwnership)
 	}
 	if err := c.Patch(ctx, desired, client.Apply, options...); err != nil {

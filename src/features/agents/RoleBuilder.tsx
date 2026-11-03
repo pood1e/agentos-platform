@@ -10,6 +10,7 @@ import {
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
+import { roleBuilderAgent } from "../../../shared/kagent-resources.js";
 import { useAccess } from "../../lib/access.js";
 import { ChatComposer } from "../chat/ChatComposer.js";
 import { ConversationRuntime } from "../chat/ConversationRuntime.js";
@@ -21,7 +22,7 @@ function RoleBuilder({ onDraft }: { onDraft: (draft: RoleDefinition) => void }) 
   const [contextId, setContext] = useState("");
   const access = useAccess();
   const chat = useChat(
-    { namespace: access.data?.workspace?.namespace ?? "", name: "role-builder" },
+    { namespace: access.data?.workspace?.namespace ?? "", name: roleBuilderAgent },
     contextId,
     setContext,
   );

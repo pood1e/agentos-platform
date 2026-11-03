@@ -1,16 +1,10 @@
 import { type Interaction, InteractionKind } from "../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
-import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
-import type { TaskQueries } from "../read-model/queries.js";
-export type AuthorizeTools = (session: Session, tools: string[]) => Promise<void>;
+import type { TaskGraph } from "../read-model/graph.js";
 
 /** Display permissions follow native authority; native A2A rechecks mutations. */
-export function interactionPermissions(
-  projection: Pick<TaskQueries, "entry">,
-  clients: KagentClients,
-  authorizeTools?: AuthorizeTools,
-) {
+export function interactionPermissions(clients: KagentClients) {
   const canOperate = async (contextId: string, subject: string) => {
     try {
       const result = await clients.execution.getSessionAuthority({ sessionId: contextId });
@@ -19,28 +13,27 @@ export function interactionPermissions(
       return false;
     }
   };
-  const approvalsFor = async (interactions: Interaction[], subject: string, operate: boolean) => {
+  /** Interactions come from the graph, so its entries already name their authorized Sessions. */
+  const approvalsFor = async (
+    interactions: Interaction[],
+    graph: TaskGraph,
+    subject: string,
+    operate: boolean,
+  ) => {
+    const sessions = new Map<string, Promise<boolean>>();
     for (const interaction of interactions) {
-      interaction.approve = false;
+      const contextId = graph.entry(interaction.taskId)?.contextId;
       if (
         !operate ||
+        !contextId ||
         interaction.kind !== InteractionKind.APPROVAL ||
         interaction.state !== ActivityState.AWAITING_APPROVAL
-      )
+      ) {
+        interaction.approve = false;
         continue;
-      try {
-        const entry = await projection.entry(interaction.taskId);
-        if (!entry || !(await canOperate(entry.contextId, subject))) continue;
-        if (authorizeTools) {
-          const { session } = await clients.sessions.getSession({ sessionId: entry.contextId });
-          if (!session) continue;
-          await authorizeTools(
-            session,
-            interaction.tools.map((tool) => tool.name),
-          );
-        }
-        interaction.approve = true;
-      } catch {}
+      }
+      if (!sessions.has(contextId)) sessions.set(contextId, canOperate(contextId, subject));
+      interaction.approve = (await sessions.get(contextId)) === true;
     }
   };
   return { canOperate, approvalsFor };

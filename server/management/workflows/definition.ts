@@ -12,7 +12,6 @@ import { invalid } from "../../shared/errors.js";
 import { documentDigest } from "./documents.js";
 
 const layoutKey = "agentos.dev/workflow-layout";
-export const apiVersion = "api.kagent.dev/v1alpha3";
 export const agentSpec = (agent?: Agent) => object(agent?.resource?.value?.spec);
 export const templateReference = (agent?: Agent) =>
   text(object(object(agentSpec(agent).template).ref).name);
