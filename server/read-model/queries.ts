@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import type { Message } from "../../gen/a2a_pb.js";
+import type { Message, Task } from "../../gen/a2a_pb.js";
 import {
   TaskCatalogScopeSchema,
   TaskCatalogView,
@@ -12,14 +12,22 @@ import { agentKey } from "../kagent/resources.js";
 import { acceptMessage } from "../kagent/send.js";
 import { eachPage } from "../shared/async.js";
 import { hasCode, unlessMissing } from "../shared/errors.js";
-import { agentInfo, sessionInfo } from "./agents.js";
-import { type CatalogRows, catalogGraph } from "./catalog-entries.js";
+import { type AgentInfo, agentInfo, sessionInfo } from "./agents.js";
+import { type CatalogRows, catalogGraph, catalogRevision } from "./catalog-entries.js";
 import { hitlExtension } from "./decode/hitl.js";
 import { ingest } from "./entry.js";
+import type { TaskGraph } from "./graph.js";
 import { listings } from "./listings.js";
 
 const rpc = { timeoutMs: 10_000 };
-const graphPageSize = 12;
+const detailPageSize = 12;
+const summaryPageSize = 100;
+
+export interface TreeSnapshot {
+  graph: TaskGraph;
+  tasks: ReadonlyMap<string, Task>;
+  revision: string;
+}
 
 /** Native catalog reads and exact A2A task access share the caller's authority. */
 export function taskQueries({
@@ -68,41 +76,55 @@ export function taskQueries({
     const projected = await unlessMissing(withExecution(task, known.agentId, signal));
     return projected && { ...projected, root: known.root, subject: known.subject };
   }
-  async function graph(anchor: string, signal?: AbortSignal) {
-    const read = async () => {
-      const rows: CatalogRows = { tasks: [], sessions: [] };
-      const sessions = new Map<string, CatalogRows["sessions"][number]>();
-      await eachPage(
-        async (pageToken) => {
-          let limit = graphPageSize;
-          for (;;) {
-            try {
-              const result = await clients.catalog.listTaskRecords(
-                {
-                  scope: create(TaskCatalogScopeSchema, {
-                    namespace: workspace,
-                    visibility: { case: "sessionTreeAnchor", value: anchor },
-                  }),
-                  page: { limit, pageToken },
-                  view: TaskCatalogView.DETAILS,
-                },
-                { ...rpc, signal },
-              );
-              for (const session of result.sessions) sessions.set(session.id, session);
-              return { items: result.tasks, token: result.page?.nextPageToken ?? "" };
-            } catch (error) {
-              if (!hasCode(error, Code.ResourceExhausted) || limit === 1) throw error;
-              limit = Math.max(1, Math.floor(limit / 2));
-            }
+  /** One authorized execution tree, in pages small enough for the requested view's payloads. */
+  async function readTree(
+    anchor: string,
+    view: TaskCatalogView,
+    pageSize: number,
+    signal?: AbortSignal,
+  ) {
+    const rows: CatalogRows = { tasks: [], sessions: [] };
+    const sessions = new Map<string, CatalogRows["sessions"][number]>();
+    await eachPage(
+      async (pageToken) => {
+        let limit = pageSize;
+        for (;;) {
+          try {
+            const result = await clients.catalog.listTaskRecords(
+              {
+                scope: create(TaskCatalogScopeSchema, {
+                  namespace: workspace,
+                  visibility: { case: "sessionTreeAnchor", value: anchor },
+                }),
+                page: { limit, pageToken },
+                view,
+              },
+              { ...rpc, signal },
+            );
+            for (const session of result.sessions) sessions.set(session.id, session);
+            return { items: result.tasks, token: result.page?.nextPageToken ?? "" };
+          } catch (error) {
+            if (!hasCode(error, Code.ResourceExhausted) || limit === 1) throw error;
+            limit = Math.max(1, Math.floor(limit / 2));
           }
-        },
-        (items) => rows.tasks.push(...items),
-      );
-      rows.sessions = [...sessions.values()];
-      return rows;
-    };
-    const [rows, members] = await Promise.all([read(), agents(signal)]);
-    return catalogGraph(workspace, rows, members);
+        }
+      },
+      (items) => rows.tasks.push(...items),
+    );
+    rows.sessions = [...sessions.values()];
+    return rows;
+  }
+  const treeSnapshot = (rows: CatalogRows, members: AgentInfo[]): TreeSnapshot => ({
+    graph: catalogGraph(workspace, rows, members),
+    tasks: new Map(rows.tasks.flatMap(({ task }) => (task ? [[task.id, task] as const] : []))),
+    revision: catalogRevision(rows),
+  });
+  async function graph(anchor: string, signal?: AbortSignal) {
+    const [rows, members] = await Promise.all([
+      readTree(anchor, TaskCatalogView.DETAILS, detailPageSize, signal),
+      agents(signal),
+    ]);
+    return treeSnapshot(rows, members).graph;
   }
   return {
     ...listings({ workspace, clients, agents }),
@@ -110,6 +132,15 @@ export function taskQueries({
     session,
     entry,
     graph,
+    /** The execution tree with its canonical payloads, for a viewer that keeps its own Agents. */
+    snapshot: async (anchor: string, members: AgentInfo[], signal?: AbortSignal) =>
+      treeSnapshot(
+        await readTree(anchor, TaskCatalogView.DETAILS, detailPageSize, signal),
+        members,
+      ),
+    /** The tree's revision from the indexed summary; the read itself reauthorizes the viewer. */
+    treeRevision: async (anchor: string, signal?: AbortSignal) =>
+      catalogRevision(await readTree(anchor, TaskCatalogView.SUMMARY, summaryPageSize, signal)),
     async agent(id: string) {
       return (await agents()).find((value) => value.id === id);
     },

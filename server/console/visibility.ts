@@ -17,11 +17,11 @@ export function viewer(identity: UserIdentity, systemOnly = false): Viewer {
 }
 
 /**
- * The execution tree of a task or conversation the identity may read.
+ * The conversation anchoring the execution tree of a task or conversation the identity may read.
  * Read access survives cancellation and credential expiry; it never grants execution authority.
  */
-export async function visibleGraph(
-  projection: Pick<TaskQueries, "entry" | "session" | "graph">,
+export async function visibleAnchor(
+  projection: Pick<TaskQueries, "entry" | "session">,
   reader: Viewer,
   id: { taskId?: string; contextId?: string },
   signal?: AbortSignal,
@@ -36,7 +36,17 @@ export async function visibleGraph(
     (reader.systemOnly && owner.subject === reader.subject)
   )
     return undefined;
-  return projection.graph("contextId" in owner ? owner.contextId : owner.id, signal);
+  return "contextId" in owner ? owner.contextId : owner.id;
+}
+
+export async function visibleGraph(
+  projection: Pick<TaskQueries, "entry" | "session" | "graph">,
+  reader: Viewer,
+  id: { taskId?: string; contextId?: string },
+  signal?: AbortSignal,
+) {
+  const anchor = await visibleAnchor(projection, reader, id, signal);
+  return anchor ? projection.graph(anchor, signal) : undefined;
 }
 
 type AgentRef = Pick<ResourceReference, "namespace" | "name"> | undefined;

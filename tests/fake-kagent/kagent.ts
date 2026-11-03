@@ -24,6 +24,7 @@ import {
   TaskRelation,
 } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
+import type { TaskCatalogView } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { agentKey } from "../../server/kagent/resources.js";
 import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
@@ -55,7 +56,7 @@ export class FakeKagent {
   readonly received: Message[] = [];
   readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
   readonly fetched: string[] = [];
-  readonly catalogReads: { method: string; returned: number }[] = [];
+  readonly catalogReads: { method: string; returned: number; view?: TaskCatalogView }[] = [];
   private requests = new Map<string, string>();
   private updates = new EventEmitter().setMaxListeners(0);
   private clock = 0;

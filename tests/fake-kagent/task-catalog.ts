@@ -125,7 +125,11 @@ export function taskCatalogRoutes(fake: FakeKagent, router: ConnectRouter) {
         request.scope?.visibility.case === "sessionTreeAnchor"
           ? request.scope.visibility.value
           : "";
-      fake.catalogReads.push({ method: "ListTaskRecords", returned: selected.items.length });
+      fake.catalogReads.push({
+        method: "ListTaskRecords",
+        returned: selected.items.length,
+        view: request.view,
+      });
       return {
         tasks: selected.items.map(({ entry }) =>
           catalogRow(fake, entry, request.view, backgroundOf(fixture.graph, entry, boundary)),

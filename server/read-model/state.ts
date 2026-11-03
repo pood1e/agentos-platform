@@ -10,6 +10,9 @@ export const terminal = (state?: TaskState) =>
 export const interrupted = (state?: TaskState) =>
   state === TaskState.INPUT_REQUIRED || state === TaskState.AUTH_REQUIRED;
 
+/** Nothing in the task changes until a person or a new message acts on it. */
+export const settled = (state?: TaskState) => terminal(state) || interrupted(state);
+
 export function taskActivity(state?: TaskState): ActivityState {
   switch (state) {
     case TaskState.SUBMITTED:
