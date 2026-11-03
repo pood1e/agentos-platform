@@ -4,12 +4,11 @@ import {
   RoleDefinitionSchema,
   type Skill,
   type SkillSchema,
+  type ToolBinding,
 } from "../../gen/agentos/console/v1/role_pb.js";
 import type { AgentTemplate } from "../../gen/kagent/api/v1/agent_templates_pb.js";
-import { object, text } from "../read-model/decode/messages.js";
-
-export const apiVersion = "api.kagent.dev/v1alpha3";
-export const displayNameKey = "agentos.dev/display-name";
+import { object, text } from "../../shared/json.js";
+import { displayNameAnnotation } from "../../shared/kagent-resources.js";
 
 const strings = (value: JsonValue | undefined) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -35,27 +34,38 @@ function skill(entry: JsonObject): MessageInitShape<typeof SkillSchema>["source"
   };
 }
 
+/** The tool selection of one native `spec.tools` entry. */
+export function bindingFromSpec(entry: JsonObject) {
+  const mcp = object(entry.mcp);
+  return {
+    server: text(object(mcp.server).name),
+    tools: strings(mcp.tools),
+    requireApproval: mcp.requireApproval === true,
+  };
+}
+
+export const bindingSpec = (
+  binding: Pick<ToolBinding, "server" | "tools" | "requireApproval">,
+) => ({
+  mcp: {
+    server: { kind: "RemoteMCPServer", name: binding.server },
+    tools: binding.tools,
+    requireApproval: binding.requireApproval,
+  },
+});
+
 export function roleDefinition(template: AgentTemplate): RoleDefinition {
   const value = template.resource?.value;
   const metadata = object(value?.metadata);
   const spec = object(value?.spec);
   return create(RoleDefinitionSchema, {
     name: template.ref?.name ?? text(metadata.name),
-    displayName: text(object(metadata.annotations)[displayNameKey]),
+    displayName: text(object(metadata.annotations)[displayNameAnnotation]),
     description: text(spec.description),
     systemPrompt: text(spec.systemPrompt),
-    tools: objects(spec.tools).flatMap((binding) => {
-      const mcp = object(binding.mcp);
-      return binding.mcp === undefined
-        ? []
-        : [
-            {
-              server: text(object(mcp.server).name),
-              tools: strings(mcp.tools),
-              requireApproval: mcp.requireApproval === true,
-            },
-          ];
-    }),
+    tools: objects(spec.tools).flatMap((binding) =>
+      binding.mcp === undefined ? [] : [bindingFromSpec(binding)],
+    ),
     skills: objects(spec.skills).map((entry) => ({
       name: text(entry.name),
       source: skill(entry),
@@ -90,13 +100,7 @@ export function templateSpec(role: RoleDefinition, previous: JsonObject): JsonOb
     ...(role.modelConfig?.name ? { modelConfig: { name: role.modelConfig.name } } : {}),
     description: role.description,
     systemPrompt: role.systemPrompt,
-    tools: role.tools.map((binding) => ({
-      mcp: {
-        server: { kind: "RemoteMCPServer", name: binding.server },
-        tools: binding.tools,
-        requireApproval: binding.requireApproval,
-      },
-    })),
+    tools: role.tools.map(bindingSpec),
     skills: role.skills.map((entry) => ({ name: entry.name, source: skillSource(entry) })),
   };
 }

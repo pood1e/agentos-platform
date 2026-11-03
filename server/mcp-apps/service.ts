@@ -11,9 +11,9 @@ import type {
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { Conversation } from "../../gen/agentos/console/v1/conversation_pb.js";
 import type { ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
-import type { BindingView, ToolBindings } from "../governance/bindings.js";
+import type { BindingView, ToolBindings } from "../governance/tool-bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { nativeHeaders } from "../kagent/context.js";
+import { bearerToken, nativeHeaders } from "../kagent/context.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { TaskQueries } from "../read-model/queries.js";
@@ -71,7 +71,14 @@ export function mcpApps({
     access,
     metadata,
   });
-  const projectionPolicy = new LRUCache<string, Promise<ToolBindings>>({ max: 1, ttl: 5_000 });
+  const assertEnabled = () => {
+    if (!sandboxOrigin) throw unavailable();
+  };
+  const projectionPolicy = new LRUCache<string, ToolBindings>({
+    max: 1,
+    ttl: 5_000,
+    fetchMethod: () => access(),
+  });
   const resources = new LRUCache<
     string,
     JsonObject,
@@ -107,7 +114,7 @@ export function mcpApps({
       identity: UserIdentity,
       signal: AbortSignal,
     ) {
-      if (!sandboxOrigin) throw unavailable();
+      assertEnabled();
       const origin = await authorize(reference, identity, signal);
       return { server: origin.binding.server, tools: origin.allowedTools };
     },
@@ -116,19 +123,15 @@ export function mcpApps({
       try {
         await projectAppViews(graph, fullTask, view, async (calls) => {
           if (!calls.length) return;
-          let policy = projectionPolicy.get("catalog");
-          if (!policy) {
-            policy = access();
-            projectionPolicy.set("catalog", policy);
-          }
-          await decorate(calls, await policy);
+          const policy = await projectionPolicy.fetch("catalog");
+          if (policy) await decorate(calls, policy);
         });
       } catch {
         log?.info({ component: "mcp-apps" }, "MCP App metadata unavailable");
       }
     },
     async getResource(request: GetAppResourceRequest, identity: UserIdentity, signal: AbortSignal) {
-      if (!sandboxOrigin) throw unavailable();
+      assertEnabled();
       const origin = await authorize(request.app, identity, signal);
       const key = `${origin.server.ref}:${origin.uri}`;
       signal.throwIfAborted();
@@ -140,16 +143,13 @@ export function mcpApps({
       return { result: { value: result }, sandboxOrigin };
     },
     async callTool(request: CallAppToolRequest, identity: UserIdentity, signal: AbortSignal) {
-      if (!sandboxOrigin) throw unavailable();
+      assertEnabled();
       const origin = await authorize(request.app, identity, signal);
       const tool = origin.tools.find(
         (tool) => origin.unprefix(tool.name) === origin.unprefix(request.name),
       );
       if (!tool || !origin.allowedTools.includes(tool.name)) throw appDenied();
-      const token = nativeHeaders
-        .getStore()
-        ?.get("authorization")
-        ?.match(/^Bearer ([^\s,]+)$/)?.[1];
+      const token = bearerToken(nativeHeaders.getStore()?.get("authorization"));
       if (!token)
         throw new ConnectError("MCP App viewer credential required", Code.Unauthenticated);
       const audit = {

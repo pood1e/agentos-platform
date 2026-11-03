@@ -7,9 +7,12 @@ import {
   TaskCatalogView,
 } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { listNativeAgents, listNativeTemplates } from "../kagent/catalog.js";
-import { eachPage, type KagentClients } from "../kagent/clients.js";
+import type { KagentClients } from "../kagent/clients.js";
+import { agentKey } from "../kagent/resources.js";
 import { acceptMessage } from "../kagent/send.js";
-import { agentInfo, agentKey, sessionInfo } from "./agents.js";
+import { eachPage } from "../shared/async.js";
+import { hasCode, unlessMissing } from "../shared/errors.js";
+import { agentInfo, sessionInfo } from "./agents.js";
 import { type CatalogRows, catalogGraph } from "./catalog-entries.js";
 import { hitlExtension } from "./decode/hitl.js";
 import { ingest } from "./entry.js";
@@ -17,7 +20,6 @@ import { listings } from "./listings.js";
 
 const rpc = { timeoutMs: 10_000 };
 const graphPageSize = 12;
-const missing = (error: unknown) => error instanceof ConnectError && error.code === Code.NotFound;
 
 /** Native catalog reads and exact A2A task access share the caller's authority. */
 export function taskQueries({
@@ -39,17 +41,12 @@ export function taskQueries({
     return agents.map((value) => agentInfo(value, byName));
   }
   async function session(id: string, signal?: AbortSignal) {
-    try {
-      const { session } = await clients.sessions.getSession({ sessionId: id }, { ...rpc, signal });
-      if (session?.agent?.namespace !== workspace) return undefined;
-      const uid = await workspaceUID();
-      return uid !== "" && session.authority?.workspaceUid === uid
-        ? sessionInfo(session)
-        : undefined;
-    } catch (error) {
-      if (missing(error)) return undefined;
-      throw error;
-    }
+    const session = (
+      await unlessMissing(clients.sessions.getSession({ sessionId: id }, { ...rpc, signal }))
+    )?.session;
+    if (session?.agent?.namespace !== workspace) return undefined;
+    const uid = await workspaceUID();
+    return uid !== "" && session.authority?.workspaceUid === uid ? sessionInfo(session) : undefined;
   }
   async function withExecution(
     task: Parameters<typeof ingest>[0],
@@ -65,20 +62,11 @@ export function taskQueries({
     return ingest(task, agentId, execution);
   }
   async function entry(id: string, signal?: AbortSignal) {
-    try {
-      const task = await clients.a2a.getTask({ id }, { ...rpc, signal });
-      const known = await session(task.contextId, signal);
-      return known
-        ? {
-            ...(await withExecution(task, known.agentId, signal)),
-            root: known.root,
-            subject: known.subject,
-          }
-        : undefined;
-    } catch (error) {
-      if (missing(error)) return undefined;
-      throw error;
-    }
+    const task = await unlessMissing(clients.a2a.getTask({ id }, { ...rpc, signal }));
+    const known = task && (await session(task.contextId, signal));
+    if (!task || !known) return undefined;
+    const projected = await unlessMissing(withExecution(task, known.agentId, signal));
+    return projected && { ...projected, root: known.root, subject: known.subject };
   }
   async function graph(anchor: string, signal?: AbortSignal) {
     const read = async () => {
@@ -103,12 +91,7 @@ export function taskQueries({
               for (const session of result.sessions) sessions.set(session.id, session);
               return { items: result.tasks, token: result.page?.nextPageToken ?? "" };
             } catch (error) {
-              if (
-                !(error instanceof ConnectError) ||
-                error.code !== Code.ResourceExhausted ||
-                limit === 1
-              )
-                throw error;
+              if (!hasCode(error, Code.ResourceExhausted) || limit === 1) throw error;
               limit = Math.max(1, Math.floor(limit / 2));
             }
           }
@@ -130,14 +113,8 @@ export function taskQueries({
     async agent(id: string) {
       return (await agents()).find((value) => value.id === id);
     },
-    async fullTask(value: { id: string; agentId: string }) {
-      try {
-        return await clients.a2a.getTask({ tenant: value.agentId, id: value.id }, rpc);
-      } catch (error) {
-        if (missing(error)) return undefined;
-        throw error;
-      }
-    },
+    fullTask: (value: { id: string; agentId: string }) =>
+      unlessMissing(clients.a2a.getTask({ tenant: value.agentId, id: value.id }, rpc)),
     async send(tenant: string, message: Message) {
       const task = await acceptMessage(clients.a2a, tenant, message, {
         "A2A-Extensions": hitlExtension,

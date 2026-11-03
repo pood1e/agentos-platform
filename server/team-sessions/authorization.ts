@@ -4,11 +4,13 @@ import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js"
 import { can } from "../../shared/permissions.js";
 import { userIdentity } from "../authorization/identity.js";
 import type { serviceAccountTokens } from "../authorization/workloads.js";
-import type { BindingView } from "../governance/bindings.js";
+import type { BindingView } from "../governance/tool-bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { registerTeamSessions } from "../team-sessions/app.js";
-import { sessionTools } from "../team-sessions/tools.js";
+import { bearerToken } from "../kagent/context.js";
+import { registerTeamSessions } from "./app.js";
+import { sessionTools } from "./tools.js";
 
+const scopes = ["list_role_tools", "prepare_role"];
 const discovery = new Set([
   "initialize",
   "notifications/initialized",
@@ -40,22 +42,14 @@ export async function registerPlatformMcp(
         const principal = await identity(native);
         if (!can(principal, Capability.AGENTS_MANAGE))
           throw new ConnectError("Permission denied", Code.PermissionDenied);
-        return {
-          clientId: principal.subject,
-          scopes: ["list_role_tools", "prepare_role"],
-          headers: native,
-        };
+        return { clientId: principal.subject, scopes, headers: native };
       } catch (error) {
         if (!discovery.has(method) || ConnectError.from(error).code !== Code.Unauthenticated)
           throw error;
-        const token = authorization.match(/^Bearer ([^\s,]+)$/)?.[1];
+        const token = bearerToken(authorization);
         if (!token) throw error;
         await review(token, "agentos-mcp-discovery", [controllerSubject]);
-        return {
-          clientId: controllerSubject,
-          scopes: ["list_role_tools", "prepare_role"],
-          headers: new Headers(),
-        };
+        return { clientId: controllerSubject, scopes, headers: new Headers() };
       }
     },
   );

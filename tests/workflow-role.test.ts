@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import { RoleDefinitionSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { roleCommands } from "../server/console/roles.js";
+import { toolMetadata } from "../server/kagent/tool-metadata.js";
 import { fakeKagent, testBindings } from "./harness.js";
 
 it("separates native workflows from editable roles", async () => {
@@ -23,10 +24,13 @@ it("separates native workflows from editable roles", async () => {
       },
     }),
   );
-  const commands = roleCommands(clients, "agentos", testBindings(fake), {
-    modelConfig: "default-model-config",
-    harness: "standard",
-  });
+  const commands = roleCommands(
+    clients,
+    "agentos",
+    testBindings(fake),
+    "standard",
+    toolMetadata(clients),
+  );
   const configuration = await commands.configuration();
   expect(configuration.roles.map((role) => role.name)).not.toContain("nightly-workflow");
   expect(configuration.roles.length).toBeGreaterThan(0);

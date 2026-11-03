@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ConnectionSchema } from "../gen/agentos/management/v1/management_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
-import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
+import { serverTargets } from "../server/governance/access-plans.js";
+import { ToolBindings } from "../server/governance/tool-bindings.js";
 import { ownIdentities, toolRequirements } from "../src/features/agents/mcp-services.js";
 import { newRole } from "../src/features/agents/role-draft.js";
-import { fixturePlans } from "./harness.js";
+import { fixturePlans } from "./fixtures/access-plans.js";
 
 const access = new ToolBindings(serverTargets(fixturePlans()));
 const tools = (name: string, names: string[]) =>

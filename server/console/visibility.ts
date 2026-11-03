@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
+import { roleBuilderAgent } from "../../shared/kagent-resources.js";
 import { can, isAdministrator } from "../../shared/permissions.js";
 import type { Viewer } from "../read-model/listings.js";
 import type { TaskQueries } from "../read-model/queries.js";
@@ -42,14 +43,15 @@ type AgentRef = Pick<ResourceReference, "namespace" | "name"> | undefined;
 
 const chatAgent = (namespace: string, entry: string, ref: AgentRef, identity: UserIdentity) =>
   ref?.namespace === namespace &&
-  (ref.name === entry || (ref.name === "role-builder" && can(identity, Capability.AGENTS_MANAGE)));
+  (ref.name === entry ||
+    (ref.name === roleBuilderAgent && can(identity, Capability.AGENTS_MANAGE)));
 
 /** A new execution uses the native Session's resource authorization and owner. */
 export function executionTarget(namespace: string, ref: AgentRef, identity: UserIdentity) {
   if (
     ref?.namespace !== namespace ||
     !ref.name ||
-    (ref.name === "role-builder" && !can(identity, Capability.AGENTS_MANAGE))
+    (ref.name === roleBuilderAgent && !can(identity, Capability.AGENTS_MANAGE))
   )
     throw notFound("chat.invalidConversation");
 }

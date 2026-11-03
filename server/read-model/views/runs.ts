@@ -1,13 +1,10 @@
 import { create } from "@bufbuild/protobuf";
-import { type Timestamp, timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { InteractionKind } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import { type TaskRun, TaskRunSchema } from "../../../gen/agentos/execution/v1/task_pb.js";
+import { stamp } from "../decode/messages.js";
 import type { TaskEntry } from "../entry.js";
 import { taskActivity } from "../state.js";
-
-export const stamp = (ms?: number): Timestamp | undefined =>
-  ms === undefined ? undefined : timestampFromMs(ms);
 
 export const pendingApproval = (entry: TaskEntry) =>
   entry.interactions.some(

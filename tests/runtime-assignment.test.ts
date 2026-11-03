@@ -1,7 +1,7 @@
 import { Code, ConnectError, createClient, createRouterTransport } from "@connectrpc/connect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
-import { object, text } from "../server/read-model/decode/messages.js";
+import { object, text } from "../shared/json.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
@@ -14,16 +14,12 @@ beforeEach(async () => {
     createRouterTransport((router) => router.service(ManagementService, env.service)),
   );
   for (const [name, provider, protocol] of [
-    [
-      "responses-model",
-      "OpenAI",
-      { openAI: { baseUrl: env.dependencies.gateway.url, apiFormat: "responses" } },
-    ],
+    ["responses-model", "OpenAI", { openAI: { baseUrl: env.url, apiFormat: "responses" } }],
     [
       "messages-model",
       "Anthropic",
       {
-        anthropic: { baseUrl: env.dependencies.gateway.url, cacheTTL: "5m", promptCaching: false },
+        anthropic: { baseUrl: env.url, cacheTTL: "5m", promptCaching: false },
       },
     ],
   ] as const)

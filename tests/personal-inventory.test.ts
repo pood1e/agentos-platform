@@ -7,7 +7,7 @@ import { ListAgentRunsRequestSchema } from "../gen/agentos/console/v1/console_se
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { RuntimeState } from "../gen/kagent/api/v1/runtime_pb.js";
 import { SessionSchema } from "../gen/kagent/api/v1/sessions_pb.js";
-import { agentRef } from "../server/read-model/agents.js";
+import { agentRef } from "../server/kagent/resources.js";
 import { fixtureExecution, fixtureIds } from "./fixtures/kagent.js";
 import { consoleClient, environment, operator } from "./harness.js";
 

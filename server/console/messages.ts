@@ -12,9 +12,8 @@ import {
   AskUserResponseSchema,
   ToolApprovalResponseSchema,
 } from "../../gen/kagent/api/v1/interactions_pb.js";
-import { shortTitle } from "../../shared/title.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentKey, agentRef } from "../read-model/agents.js";
+import { agentKey, agentRef } from "../kagent/resources.js";
 import { hitlExtension, hitlReply } from "../read-model/decode/hitl.js";
 import { timelineKey } from "../read-model/decode/messages.js";
 import { ingest } from "../read-model/entry.js";
@@ -22,6 +21,7 @@ import type { TaskQueries } from "../read-model/queries.js";
 import { awaiting } from "../read-model/state.js";
 import { fail, invalid, notFound, precondition, unavailable } from "../shared/errors.js";
 import { messageIdentity } from "../shared/idempotency.js";
+import { shortTitle } from "../shared/title.js";
 
 type Decision = RespondInteractionRequest["decision"];
 

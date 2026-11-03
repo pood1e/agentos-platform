@@ -3,7 +3,7 @@ import { Code, ConnectError, createClient, createRouterTransport } from "@connec
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ManagementService } from "../gen/agentos/management/v1/management_pb.js";
 import { HarnessSchema } from "../gen/kagent/api/v1/harnesses_pb.js";
-import { object, text } from "../server/read-model/decode/messages.js";
+import { object, text } from "../shared/json.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;

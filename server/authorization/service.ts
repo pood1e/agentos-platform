@@ -6,7 +6,8 @@ import type {
 } from "../../gen/kagent/api/v1/authorization_pb.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { credentialHeaders } from "../kagent/context.js";
-import { pageOf } from "../read-model/page.js";
+import { pageOf } from "../shared/page.js";
+import { directoryEntry } from "./workspaces.js";
 
 type Client = KagentClients["authorization"];
 
@@ -34,31 +35,15 @@ export function authorizationService(
   };
   async function listWorkspaces(request: ListWorkspacesRequest, context: HandlerContext) {
     if (request.workspace) {
-      const result = await target(request.workspace.namespace).listWorkspaces(
-        request,
-        options(context),
-      );
-      if (
-        result.workspaces.length > 1 ||
-        result.workspaces.some(
-          (item) =>
-            item.namespace !== request.workspace?.namespace ||
-            !item.uid ||
-            (request.workspace?.uid && item.uid !== request.workspace.uid),
-        )
-      )
-        throw new ConnectError("Invalid workspace directory response", Code.Unavailable);
+      const { namespace, uid } = request.workspace;
+      const result = await target(namespace).listWorkspaces(request, options(context));
+      directoryEntry(result.workspaces, namespace, uid);
       return result;
     }
     const found = await Promise.all(
       [...clients].map(async ([namespace, client]) => {
         const result = await client.listWorkspaces({ workspace: { namespace } }, options(context));
-        if (
-          result.workspaces.length > 1 ||
-          result.workspaces.some((item) => item.namespace !== namespace || !item.uid)
-        )
-          throw new ConnectError("Invalid workspace directory response", Code.Unavailable);
-        return result.workspaces[0];
+        return directoryEntry(result.workspaces, namespace);
       }),
     );
     const items = found

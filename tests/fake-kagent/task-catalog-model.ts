@@ -11,7 +11,8 @@ import {
   type TaskCatalogScope,
   TaskCatalogView,
 } from "../../gen/kagent/api/v1/task_catalog_pb.js";
-import { agentInfo, agentKey, sessionInfo } from "../../server/read-model/agents.js";
+import { agentKey } from "../../server/kagent/resources.js";
+import { agentInfo, sessionInfo } from "../../server/read-model/agents.js";
 import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { ingest, type TaskEntry } from "../../server/read-model/entry.js";
 import { TaskGraph } from "../../server/read-model/graph.js";

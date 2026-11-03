@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import { object, text } from "../../server/read-model/decode/messages.js";
+import { object, text } from "../../shared/json.js";
 import type { FakeResources } from "./resources.js";
 
 export function nativeWatch(resources: FakeResources, plural: string, response: ServerResponse) {

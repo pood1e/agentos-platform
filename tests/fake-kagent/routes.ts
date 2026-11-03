@@ -8,7 +8,7 @@ import { RuntimeState } from "../../gen/kagent/api/v1/runtime_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
-import { agentKey } from "../../server/read-model/agents.js";
+import { agentKey } from "../../server/kagent/resources.js";
 import { millis } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
 import type { FakeKagent } from "./kagent.js";

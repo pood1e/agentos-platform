@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { ApiException, type CoreV1Api, type CustomObjectsApi } from "@kubernetes/client-node";
 import { invalid } from "../../shared/errors.js";
-import { resourceError } from "../resources.js";
+import { resourceError } from "../../shared/kubernetes.js";
 import { workflowReferences } from "./references.js";
 
 const manager = "agentos-workflows";
@@ -13,6 +13,10 @@ export const documentDigest = (document: string) =>
 const ownerKey = (name: string) => documentDigest(name).slice(0, 32);
 
 export function workflowDocuments(core: CoreV1Api, custom: CustomObjectsApi, namespace: string) {
+  const source = (owner: string, document: string) => ({
+    name: `workflow-${ownerKey(owner)}-${documentDigest(document).slice(0, 20)}`,
+    key: workflowKey,
+  });
   return {
     async read(name: string, key: string) {
       try {
@@ -23,14 +27,9 @@ export function workflowDocuments(core: CoreV1Api, custom: CustomObjectsApi, nam
         return resourceError(error);
       }
     },
-    source(owner: string, document: string) {
-      return {
-        name: `workflow-${ownerKey(owner)}-${documentDigest(document).slice(0, 20)}`,
-        key: workflowKey,
-      };
-    },
+    source,
     async stage(owner: string, document: string) {
-      const { name } = this.source(owner, document);
+      const { name } = source(owner, document);
       try {
         await core.createNamespacedConfigMap({
           namespace,

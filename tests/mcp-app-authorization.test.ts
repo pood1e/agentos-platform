@@ -5,7 +5,8 @@ import { expect, it, vi } from "vitest";
 import { MessageSchema, Role, TaskState } from "../gen/a2a_pb.js";
 import { AppReferenceSchema } from "../gen/agentos/mcp/v1/app_pb.js";
 import { nativeSignal } from "../server/kagent/context.js";
-import { object, partTypeKey } from "../server/read-model/decode/messages.js";
+import { partTypeKey } from "../server/read-model/decode/messages.js";
+import { object } from "../shared/json.js";
 import { canonicalMcpAppsEnvironment as canonical } from "./fixtures/mcp-apps.js";
 import { publishTargets } from "./harness.js";
 

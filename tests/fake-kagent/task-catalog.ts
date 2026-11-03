@@ -2,7 +2,7 @@ import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import type { ConnectRouter } from "@connectrpc/connect";
 import { TaskState } from "../../gen/a2a_pb.js";
 import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
-import { agentKey } from "../../server/read-model/agents.js";
+import { agentKey } from "../../server/kagent/resources.js";
 import { terminal } from "../../server/read-model/state.js";
 import { taskTree } from "../../server/read-model/tree.js";
 import { pendingApproval, runState } from "../../server/read-model/views/runs.js";

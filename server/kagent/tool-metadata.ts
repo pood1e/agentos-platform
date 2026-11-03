@@ -7,7 +7,8 @@ import {
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { LRUCache } from "lru-cache";
 import type { MCPAppTool, ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
-import { type KagentClients, pool } from "./clients.js";
+import { pool } from "../shared/async.js";
+import type { KagentClients } from "./clients.js";
 
 export const appOnly = (tool: MCPAppTool) => {
   const ui = tool.meta?.value?.ui;
@@ -24,44 +25,26 @@ export const appVisible = (tool: MCPAppTool) => {
 };
 
 export function toolMetadata(clients: KagentClients) {
-  const cache = new LRUCache<string, MCPAppTool[]>({ max: 256, ttl: 60_000 });
-  const serverCache = new LRUCache<string, Promise<ToolServer[]>>({ max: 1, ttl: 5_000 });
-  async function servers() {
-    let request = serverCache.get("servers");
-    if (!request) {
-      request = clients.tools
-        .listToolServers({}, { timeoutMs: 5_000 })
-        .then((result) => result.toolServers)
-        .catch((error) => {
-          serverCache.delete("servers");
-          throw error;
-        });
-      serverCache.set("servers", request);
-    }
-    return request;
-  }
-  const pending = new Map<string, Promise<MCPAppTool[]>>();
   const reference = (server: ToolServer) => {
     const [namespace, name] = server.ref.split("/");
     return { ref: { namespace, name }, groupKind: server.groupKind };
   };
-  async function tools(server: ToolServer) {
-    const key = `${server.groupKind}:${server.ref}`;
-    const known = cache.get(key);
-    if (known) return known;
-    let request = pending.get(key);
-    if (!request) {
-      request = clients.tools
-        .listMCPAppTools({ server: reference(server) }, { timeoutMs: 10_000 })
-        .then(({ tools }) => {
-          cache.set(key, tools);
-          return tools;
-        })
-        .finally(() => pending.delete(key));
-      pending.set(key, request);
-    }
-    return request;
-  }
+  const toolCache = new LRUCache<string, MCPAppTool[], ToolServer>({
+    max: 256,
+    ttl: 60_000,
+    fetchMethod: async (_key, _stale, { context }) =>
+      (await clients.tools.listMCPAppTools({ server: reference(context) }, { timeoutMs: 10_000 }))
+        .tools,
+  });
+  const serverCache = new LRUCache<string, ToolServer[]>({
+    max: 1,
+    ttl: 5_000,
+    fetchMethod: async () =>
+      (await clients.tools.listToolServers({}, { timeoutMs: 5_000 })).toolServers,
+  });
+  const servers = async () => (await serverCache.fetch("servers")) ?? [];
+  const tools = async (server: ToolServer) =>
+    (await toolCache.fetch(`${server.groupKind}:${server.ref}`, { context: server })) ?? [];
   async function modelServers(
     servers: ToolServer[],
     source: (server: ToolServer) => ToolServer = (server) => server,

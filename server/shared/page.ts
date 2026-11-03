@@ -1,6 +1,8 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { type PageCursor, PageCursorSchema } from "../../gen/agentos/console/v1/page_pb.js";
-import { invalid } from "../shared/errors.js";
+import { invalid } from "./errors.js";
+
+export const defaultPageSize = 12;
 
 export interface PageRequest {
   pageSize: number;
@@ -50,7 +52,7 @@ export function pageOf<T>(
     });
     if (start < 0) start = items.length;
   }
-  const selected = items.slice(start, start + (request.pageSize || 12));
+  const selected = items.slice(start, start + (request.pageSize || defaultPageSize));
   const last = selected.at(-1);
   const position = last && start + selected.length < items.length ? key(last) : undefined;
   return {

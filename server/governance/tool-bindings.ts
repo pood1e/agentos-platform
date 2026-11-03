@@ -1,10 +1,15 @@
 import { create } from "@bufbuild/protobuf";
-import { type ToolBinding, ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
-import { ToolRequirementSchema } from "../gen/agentos/console/v1/tool_pb.js";
-import type { ToolServer } from "../gen/kagent/api/v1/tools_pb.js";
-import type { AccessPlanStatus } from "../gen/kubernetes.js";
+import { type ToolBinding, ToolBindingSchema } from "../../gen/agentos/console/v1/role_pb.js";
+import { ToolRequirementSchema } from "../../gen/agentos/console/v1/tool_pb.js";
+import type { ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
+import type { AccessPlanStatus } from "../../gen/kubernetes.js";
+import { toolServerName } from "../../shared/kagent-resources.js";
 
 export type Target = NonNullable<AccessPlanStatus["targets"]>[number];
+
+/** The gateway may qualify a tool with its service; decisions use the bare name. */
+export const unprefixedTool = (service: string, tool: string) =>
+  tool.startsWith(`${service}_`) ? tool.slice(service.length + 1) : tool;
 
 /** Runtime authorization consumes controller decisions without interpreting resource labels. */
 export class ToolBindings {
@@ -36,13 +41,12 @@ export class ToolBindings {
   }
 
   catalogServer(server: ToolServer, servers: ToolServer[]) {
-    const target = this.targets.get(server.ref.split("/").at(-1) ?? "");
-    if (target?.access === "write") return server;
+    if (this.targets.get(toolServerName(server))?.access === "write") return server;
     return this.metadataServer(server, servers);
   }
 
   metadataServer(server: ToolServer, servers: ToolServer[]) {
-    const target = this.targets.get(server.ref.split("/").at(-1) ?? "");
+    const target = this.targets.get(toolServerName(server));
     return (
       servers.find(
         (candidate) => candidate.ref === `${server.ref.split("/")[0]}/${target?.service}`,
@@ -62,10 +66,7 @@ export class ToolBindings {
   }
 
   private decision(target: Target | undefined, tool: string) {
-    const name =
-      target && tool.startsWith(`${target.service}_`)
-        ? tool.slice(target.service.length + 1)
-        : tool;
+    const name = target ? unprefixedTool(target.service, tool) : tool;
     return target?.tools?.find((entry) => entry.name === name);
   }
 
@@ -77,7 +78,7 @@ export class ToolBindings {
 
   private selectedTool(binding: ToolBinding, tool: string) {
     const service = this.targets.get(binding.server)?.service ?? binding.server;
-    const name = tool.startsWith(`${service}_`) ? tool.slice(service.length + 1) : tool;
+    const name = unprefixedTool(service, tool);
     return binding.tools.some((selected) => selected === name || selected === `${service}_${name}`);
   }
 

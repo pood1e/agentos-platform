@@ -8,7 +8,7 @@ import {
   ModelPurpose,
 } from "../gen/agentos/management/v1/management_pb.js";
 import { ModelConfigSchema } from "../gen/kagent/api/v1/models_pb.js";
-import { object, text } from "../server/read-model/decode/messages.js";
+import { object, text } from "../shared/json.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;

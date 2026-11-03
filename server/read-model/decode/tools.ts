@@ -11,7 +11,8 @@ import {
   ToolActivitySchema,
   type ToolResponse,
 } from "../../../gen/kagent/api/v1/interactions_pb.js";
-import { object, partTypeKey, text } from "./messages.js";
+import { object, text } from "../../../shared/json.js";
+import { partTypeKey } from "./messages.js";
 
 const lenient = { ignoreUnknownFields: true };
 

@@ -5,8 +5,8 @@ import { type JsonObject, create as makeMessage } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { parse } from "yaml";
 import { AgentSchema } from "../../gen/kagent/api/v1/agents_pb.js";
-import { object, text } from "../../server/read-model/decode/messages.js";
-import { fixturePlans } from "../harness.js";
+import { object, text } from "../../shared/json.js";
+import { fixturePlans } from "../fixtures/access-plans.js";
 import type { FakeKagent } from "./kagent.js";
 
 const harnesses = object(

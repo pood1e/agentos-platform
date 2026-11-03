@@ -8,8 +8,8 @@ import { AgentSchema, AgentService } from "../../gen/kagent/api/v1/agents_pb.js"
 import { HarnessSchema, HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelConfigSchema, ModelService } from "../../gen/kagent/api/v1/models_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
-import { agentKey } from "../../server/read-model/agents.js";
-import { object } from "../../server/read-model/decode/messages.js";
+import { agentKey } from "../../server/kagent/resources.js";
+import { object } from "../../shared/json.js";
 import { appHTML, appService, appTools, appUri } from "./apps.js";
 import type { FakeKagent } from "./kagent.js";
 

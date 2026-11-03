@@ -8,23 +8,23 @@ import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversa
 import { ExecutionGraphSchema } from "../../gen/agentos/console/v1/execution_pb.js";
 import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
 import { TaskCatalogView } from "../../gen/kagent/api/v1/task_catalog_pb.js";
-import { shortTitle } from "../../shared/title.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { type AgentInfo, agentKey, agentRef, systemTemplates } from "./agents.js";
+import { agentKey, agentRef, systemTemplates } from "../kagent/resources.js";
+import { defaultPageSize, type PageRequest } from "../shared/page.js";
+import { shortTitle } from "../shared/title.js";
+import type { AgentInfo } from "./agents.js";
 import { catalogGraph } from "./catalog-entries.js";
 import { activityFilters, catalogScope, catalogState, type Viewer } from "./catalog-state.js";
-import { millis } from "./decode/messages.js";
-import type { PageRequest } from "./page.js";
+import { millis, stamp } from "./decode/messages.js";
 import { agentSummaries } from "./views/agents.js";
 import { executionGraph } from "./views/execution.js";
 import { agentRun } from "./views/run.js";
-import { stamp } from "./views/runs.js";
 
 export type { Viewer } from "./catalog-state.js";
 
 const rpc = { timeoutMs: 10_000 };
 const page = (request: Pick<PageRequest, "pageSize" | "pageToken">) => ({
-  limit: request.pageSize || 12,
+  limit: request.pageSize || defaultPageSize,
   pageToken: request.pageToken,
 });
 const boundaries = (agents: AgentInfo[]) =>

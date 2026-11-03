@@ -1,7 +1,7 @@
 import { Code, ConnectError, type Interceptor } from "@connectrpc/connect";
 import type { FastifyBaseLogger } from "fastify";
 import { ErrorInfoSchema } from "../../gen/google/rpc/error_details_pb.js";
-import { fail } from "../shared/errors.js";
+import { fail } from "./errors.js";
 
 const invalidKeys: Record<string, string> = {
   SendMessage: "chat.invalidMessage",

@@ -1,57 +1,63 @@
-import { clone, create } from "@bufbuild/protobuf";
-import type { ServiceImpl } from "@connectrpc/connect";
+import { clone } from "@bufbuild/protobuf";
+import type { HandlerContext, ServiceImpl } from "@connectrpc/connect";
 import { AccessProfileSchema } from "../../gen/agentos/console/v1/access_pb.js";
-import {
-  type ConsoleService,
-  WatchConversationResponseSchema,
-} from "../../gen/agentos/console/v1/console_service_pb.js";
+import type { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import type { RoleDefinition } from "../../gen/agentos/console/v1/role_pb.js";
-import type { BindingView } from "../governance/bindings.js";
+import type { AppReference } from "../../gen/agentos/mcp/v1/app_pb.js";
+import type { BindingView } from "../governance/tool-bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { nativeSignal } from "../kagent/context.js";
+import { agentKey } from "../kagent/resources.js";
 import type { ToolMetadata } from "../kagent/tool-metadata.js";
 import type { McpApps } from "../mcp-apps/service.js";
 import { accessProfile, requestIdentity } from "../platform/access.js";
-import { agentKey } from "../read-model/agents.js";
-import { ingest } from "../read-model/entry.js";
-import { TaskGraph } from "../read-model/graph.js";
 import type { TaskQueries } from "../read-model/queries.js";
-import { TaskStreams } from "../read-model/streams.js";
-import { conversation, type FullTask } from "../read-model/views/conversation.js";
-import { invalid, notFound, precondition, unavailable } from "../shared/errors.js";
-import { type VoiceConsole, voiceDisabled } from "../voice/console.js";
+import { invalid, notFound, precondition } from "../shared/errors.js";
 import { cancellationCommands } from "./cancellation.js";
-import { conversationTranscript } from "./conversation-transcript.js";
+import { conversationWatch } from "./conversation-watch.js";
 import { conversationCommands } from "./conversations.js";
-import {
-  chatTarget,
-  conversationTarget,
-  executionTarget,
-  viewer,
-  visibleGraph,
-} from "./history.js";
-import { interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
-import { type RoleDefaults, roleCommands } from "./roles.js";
-import { watch } from "./watch.js";
+import { roleCommands } from "./roles.js";
+import { chatTarget, executionTarget, viewer, visibleGraph } from "./visibility.js";
+
+/** Speech RPCs, provided by the voice feature where the deployment enables it. */
+export type VoiceConsole = Pick<
+  ServiceImpl<typeof ConsoleService>,
+  "getSpeechCapabilities" | "startVoiceSession"
+>;
+
+const voiceDisabled: VoiceConsole = {
+  getSpeechCapabilities: () => ({}),
+  startVoiceSession: () => {
+    throw precondition("speech.unavailable");
+  },
+};
 
 export interface ConsoleDependencies {
-  apps?: McpApps;
-  metadata?: ToolMetadata;
+  apps: McpApps;
+  metadata: ToolMetadata;
   projection: TaskQueries;
   clients: KagentClients;
   namespace: string;
   access: BindingView;
-  roleDefaults: RoleDefaults;
+  defaultHarness: string;
   voice?: VoiceConsole;
-  entryAgent?: string;
+  entryAgent: string;
   /** Where browsers obtain the offline grant for background execution. */
-  delegationUrl?: string;
+  delegationUrl: string;
 }
 
 function required(role?: RoleDefinition): RoleDefinition {
   if (!role) throw invalid("configuration.invalidRole");
   return role;
+}
+
+const identityOf = (context: HandlerContext) => context.values.get(requestIdentity);
+
+/** An App reference is valid only inside the workspace that received the request. */
+function currentApp(reference: AppReference | undefined, context: HandlerContext) {
+  if (reference?.workspace?.uid !== context.values.get(accessProfile).workspace?.uid)
+    throw notFound("mcpApp.unavailable");
 }
 
 export function consoleService({
@@ -61,135 +67,79 @@ export function consoleService({
   clients,
   namespace,
   access,
-  roleDefaults,
+  defaultHarness,
   voice = voiceDisabled,
-  entryAgent = "assistant",
-  delegationUrl = "",
+  entryAgent,
+  delegationUrl,
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const cancel = cancellationCommands(projection, clients);
   const messages = messageCommands(projection, clients, namespace);
   const conversations = conversationCommands(projection, clients, namespace, entryAgent);
-  const roles = roleCommands(clients, namespace, access, roleDefaults, metadata);
-  const { canOperate, approvalsFor } = interactionPermissions(projection, clients);
-  const visible = async (identity: Parameters<typeof viewer>[0], taskId: string) =>
-    (await visibleGraph(projection, viewer(identity), { taskId }))?.entry(taskId);
+  const roles = roleCommands(clients, namespace, access, defaultHarness, metadata);
+  const watchConversation = conversationWatch({
+    projection,
+    clients,
+    apps,
+    namespace,
+    entryAgent,
+  });
+  const renewable = async () =>
+    (await clients.execution.getDelegationCredentialStatus({})).renewable;
   return {
     ...voice,
     getAppResource: (request, context) => {
-      if (!apps) throw unavailable();
-      if (request.app?.workspace?.uid !== context.values.get(accessProfile).workspace?.uid)
-        throw notFound("mcpApp.unavailable");
-      return apps.getResource(request, context.values.get(requestIdentity), context.signal);
+      currentApp(request.app, context);
+      return apps.getResource(request, identityOf(context), context.signal);
     },
     callAppTool: (request, context) => {
-      if (!apps) throw unavailable();
-      if (request.app?.workspace?.uid !== context.values.get(accessProfile).workspace?.uid)
-        throw notFound("mcpApp.unavailable");
-      return apps.callTool(request, context.values.get(requestIdentity), context.signal);
+      currentApp(request.app, context);
+      return apps.callTool(request, identityOf(context), context.signal);
     },
     async getAccessProfile(_request, context) {
       const profile = clone(AccessProfileSchema, context.values.get(accessProfile));
-      profile.delegated = (await clients.execution.getDelegationCredentialStatus({})).renewable;
+      profile.delegated = await renewable();
       profile.delegationUrl = delegationUrl;
       return { profile };
     },
-    async listAgents(request, context) {
-      return nativeSignal.run(context.signal, async () => ({
-        agents: await projection.agentSummaries(
-          viewer(context.values.get(requestIdentity), request.systemOnly),
-        ),
-      }));
-    },
-    async listAgentRuns(request, context) {
-      return nativeSignal.run(context.signal, () =>
-        projection.agentRuns(
-          viewer(context.values.get(requestIdentity), request.systemOnly),
-          request,
-        ),
-      );
-    },
-    async listTasks(request, context) {
-      const identity = context.values.get(requestIdentity);
-      return nativeSignal.run(context.signal, () =>
-        projection.operations(viewer(identity, request.systemOnly), request),
-      );
-    },
+    listAgents: (request, context) =>
+      nativeSignal.run(context.signal, async () => ({
+        agents: await projection.agentSummaries(viewer(identityOf(context), request.systemOnly)),
+      })),
+    listAgentRuns: (request, context) =>
+      nativeSignal.run(context.signal, () =>
+        projection.agentRuns(viewer(identityOf(context), request.systemOnly), request),
+      ),
+    listTasks: (request, context) =>
+      nativeSignal.run(context.signal, () =>
+        projection.operations(viewer(identityOf(context), request.systemOnly), request),
+      ),
     async cancelTask({ taskId }, context) {
-      await cancel(taskId, context.values.get(requestIdentity), context.signal);
+      await cancel(taskId, identityOf(context), context.signal);
       return {};
     },
-    async listConversations(request, context) {
-      const identity = context.values.get(requestIdentity);
+    listConversations(request, context) {
+      const identity = identityOf(context);
       chatTarget(namespace, entryAgent, request.agent, identity);
       return nativeSignal.run(context.signal, () =>
         projection.conversations(viewer(identity), agentKey(request.agent), request),
       );
     },
-    deleteSession: (request, context) =>
-      conversations.remove(request, context.values.get(requestIdentity)),
+    deleteSession: (request, context) => conversations.remove(request, identityOf(context)),
     async *watchConversation(request, context) {
-      const identity = context.values.get(requestIdentity);
-      conversationTarget(namespace, entryAgent, request.agent, identity, request.contextId);
-      const reader = viewer(identity);
-      let touch = () => {};
-      const streams = new TaskStreams(clients, context.signal, () => touch());
-      const fullTask: FullTask = async (entry) =>
-        streams.task(entry.id) ?? projection.fullTask(entry);
-      yield* watch(
-        projection,
-        WatchConversationResponseSchema,
-        context.signal,
-        async () => {
-          let graph: TaskGraph;
-          if (request.contextId) {
-            const tree = await visibleGraph(
-              projection,
-              reader,
-              { contextId: request.contextId },
-              context.signal,
-            );
-            if (tree?.session(request.contextId)?.agentId !== agentKey(request.agent))
-              throw notFound("chat.invalidConversation");
-            streams.follow(tree.all());
-            // Live streams are fresher than the projection while their tasks run.
-            graph = new TaskGraph(
-              tree.all().map((entry) => {
-                const task = streams.task(entry.id);
-                return task ? ingest(task, entry.agentId, entry.execution) : entry;
-              }),
-              tree.sessions(),
-              tree.agents(),
-            );
-          } else graph = new TaskGraph([], [], await projection.agents(context.signal));
-          const view = await conversation(graph, request.agent, request.contextId, fullTask);
-          await apps?.project(view, graph, fullTask);
-          view.operate =
-            !request.contextId || (await canOperate(request.contextId, identity.subject));
-          if (view.interactions.length)
-            await approvalsFor(view.interactions, identity.subject, view.operate);
-          return create(WatchConversationResponseSchema, {
-            conversation: conversationTranscript(view),
-          });
-        },
-        {
-          wakes: (wake) => {
-            touch = wake;
-            return () => streams.close();
-          },
-        },
-      );
+      yield* watchConversation(request, identityOf(context), context.signal);
     },
     async sendMessage(request, context) {
-      const identity = context.values.get(requestIdentity);
+      const identity = identityOf(context);
       if (request.contextId) chatTarget(namespace, entryAgent, request.agent, identity);
       else executionTarget(namespace, request.agent, identity);
-      if (!(await clients.execution.getDelegationCredentialStatus({})).renewable)
-        throw precondition("delegation.required");
+      if (!(await renewable())) throw precondition("delegation.required");
       return messages.send(request, identity);
     },
     async respondInteraction(request, context) {
-      const identity = context.values.get(requestIdentity);
-      if (!(await visible(identity, request.taskId))) throw notFound("task.notFound");
+      const graph = await visibleGraph(projection, viewer(identityOf(context)), {
+        taskId: request.taskId,
+      });
+      if (!graph?.entry(request.taskId)) throw notFound("task.notFound");
       return messages.respond(request);
     },
     getConfiguration: () => roles.configuration(),

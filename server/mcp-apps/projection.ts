@@ -5,11 +5,11 @@ import {
   type Conversation,
 } from "../../gen/agentos/console/v1/conversation_pb.js";
 import type { TaskRun, ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
-import { pool } from "../kagent/clients.js";
 import type { TaskGraph } from "../read-model/graph.js";
 import type { FullTask } from "../read-model/views/conversation.js";
 import { delegatedResults } from "../read-model/views/conversation-work.js";
 import { taskRun } from "../read-model/views/run.js";
+import { pool } from "../shared/async.js";
 
 export async function projectAppViews(
   graph: TaskGraph,

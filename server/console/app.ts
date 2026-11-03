@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
-import { consoleErrors } from "./interceptor.js";
+import { consoleErrors } from "../shared/rpc-errors.js";
 
 export interface ConsoleRoutes {
   service: ServiceImpl<typeof ConsoleService>;

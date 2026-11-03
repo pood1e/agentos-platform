@@ -1,25 +1,21 @@
 import { createHash } from "node:crypto";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { type KagentClients, pool } from "../kagent/clients.js";
+import { Code } from "@connectrpc/connect";
+import type { KagentClients } from "../kagent/clients.js";
 import { millis } from "../read-model/decode/messages.js";
-import { type PageRequest, pageOf } from "../read-model/page.js";
-import { conflict, fail, notFound } from "../shared/errors.js";
-
-export interface KnowledgeConfig {
-  namespace: string;
-  ttlDays: number;
-}
+import { pool } from "../shared/async.js";
+import { conflict, fail, hasCode, notFound, unlessMissing } from "../shared/errors.js";
+import { type PageRequest, pageOf } from "../shared/page.js";
 
 /** Team knowledge uses the native namespace scope and server-side embeddings. */
-export function knowledgeService(clients: KagentClients, config: KnowledgeConfig) {
+export function knowledgeService(clients: KagentClients, namespace: string, ttlDays: number) {
   const etag = (memories: { id: string }[]) =>
     createHash("sha256")
       .update(JSON.stringify(memories.map((item) => item.id).sort()))
       .digest("hex");
-  const scope = { target: { case: "teamNamespace" as const, value: config.namespace } };
-  const options = () => ({ timeoutMs: 60_000 });
+  const scope = { target: { case: "teamNamespace" as const, value: namespace } };
+  const options = { timeoutMs: 60_000 };
   async function list(request: PageRequest) {
-    const { memories } = await clients.memory.list({ scope }, options());
+    const { memories } = await clients.memory.list({ scope }, options);
     const query = request.query.toLowerCase().trim();
     const items = memories
       .filter((item) => item.content.toLowerCase().includes(query))
@@ -46,7 +42,7 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
         limit,
         minScore: 0.3,
       },
-      options(),
+      options,
     );
   }
   async function add(content: string) {
@@ -54,33 +50,28 @@ export function knowledgeService(clients: KagentClients, config: KnowledgeConfig
       {
         scope,
         memory: {
-          ttlDays: config.ttlDays,
+          ttlDays,
           content,
           metadata: { source: "console" },
         },
       },
-      options(),
+      options,
     );
   }
   async function clear(expected: string) {
-    const { memories } = await clients.memory.list({ scope }, options());
+    const { memories } = await clients.memory.list({ scope }, options);
     if (etag(memories) !== expected) throw conflict("management.knowledgeChanged");
     await pool(memories, 4, async ({ id }) => {
-      try {
-        await clients.memory.deleteEntry({ scope, id }, options());
-      } catch (error) {
-        if (!(error instanceof ConnectError && error.code === Code.NotFound)) throw error;
-      }
+      await unlessMissing(clients.memory.deleteEntry({ scope, id }, options));
     });
     return {};
   }
   async function remove(id: string) {
     try {
-      await clients.memory.deleteEntry({ scope, id }, options());
+      await clients.memory.deleteEntry({ scope, id }, options);
       return {};
     } catch (error) {
-      if (error instanceof ConnectError && error.code === Code.NotFound)
-        throw notFound("management.notFound");
+      if (hasCode(error, Code.NotFound)) throw notFound("management.notFound");
       throw fail(Code.Unavailable, "management.unavailable", error);
     }
   }

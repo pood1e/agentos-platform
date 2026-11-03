@@ -1,6 +1,7 @@
 import { Role, type Task, TaskState } from "../../../gen/a2a_pb.js";
+import { text } from "../../../shared/json.js";
 import { hitlPayload } from "./hitl.js";
-import { messageText, partTypeKey, text } from "./messages.js";
+import { messageText, partTypeKey } from "./messages.js";
 
 /** Keeps visible progress across tool calls while identifying the final response separately. */
 export function taskOutput(task: Task) {

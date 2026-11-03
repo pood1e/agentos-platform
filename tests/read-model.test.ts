@@ -6,7 +6,7 @@ import { InteractionKind } from "../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../gen/agentos/execution/v1/state_pb.js";
 import { AgentTemplateSchema } from "../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentSchema } from "../gen/kagent/api/v1/agents_pb.js";
-import { visibleGraph } from "../server/console/history.js";
+import { visibleGraph } from "../server/console/visibility.js";
 import { ingest } from "../server/read-model/entry.js";
 import { taskTree } from "../server/read-model/tree.js";
 import { agentSummary } from "../server/read-model/views/agents.js";

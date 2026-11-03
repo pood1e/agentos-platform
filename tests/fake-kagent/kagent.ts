@@ -24,10 +24,11 @@ import {
   TaskRelation,
 } from "../../gen/kagent/api/v1/execution_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { agentKey } from "../../server/read-model/agents.js";
-import { createdAtKey, object } from "../../server/read-model/decode/messages.js";
+import { agentKey } from "../../server/kagent/resources.js";
+import { createdAtKey } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
 import { conflict } from "../../server/shared/errors.js";
+import { object } from "../../shared/json.js";
 import { fixtureExecution } from "../fixtures/kagent.js";
 import { execute, reply } from "./behavior.js";
 import { templates, toolServers } from "./catalog.js";

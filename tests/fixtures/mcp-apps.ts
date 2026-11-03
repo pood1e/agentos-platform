@@ -7,7 +7,7 @@ import { consoleService } from "../../server/console/service.js";
 import { toolMetadata } from "../../server/kagent/tool-metadata.js";
 import { mcpApps } from "../../server/mcp-apps/service.js";
 import { appScenario } from "../fake-kagent/apps.js";
-import { environment, publishTargets, testBindings } from "../harness.js";
+import { consoleDependencies, environment, publishTargets, testBindings } from "../harness.js";
 import { allowWorkspace, testWorkspaceContext } from "../workspace-member.js";
 
 export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.example") {
@@ -41,14 +41,7 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     gatewayURL: "http://gateway.test:8080",
     invoke,
   });
-  const service = consoleService({
-    ...env,
-    namespace: "agentos",
-    access,
-    metadata,
-    apps,
-    roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-  });
+  const service = consoleService(consoleDependencies(env, { access, metadata, apps }));
   const client = createClient(
     ConsoleService,
     createRouterTransport((router) => router.service(ConsoleService, service), {

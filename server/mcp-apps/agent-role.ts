@@ -2,10 +2,9 @@ import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { AgentTemplateSchema } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { roleDefinition } from "../console/role-template.js";
+import { object, text } from "../../shared/json.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { agentInfo } from "../read-model/agents.js";
-import { object, text } from "../read-model/decode/messages.js";
+import { roleDefinition } from "../kagent/role-template.js";
 
 export function agentRoles(clients: KagentClients) {
   return async (session: Session) => {
@@ -19,7 +18,7 @@ export function agentRoles(clients: KagentClients) {
           value: { metadata: object(agent.resource?.value?.metadata), spec: object(source.inline) },
         },
       });
-      return { identity: agent.ref?.name ?? "", role: roleDefinition(template), agent };
+      return roleDefinition(template);
     }
     const reference = object(source.ref);
     const { agentTemplate } = await clients.templates.getAgentTemplate(
@@ -30,6 +29,6 @@ export function agentRoles(clients: KagentClients) {
     );
     if (!agentTemplate)
       throw new ConnectError("Execution template is unavailable", Code.PermissionDenied);
-    return { identity: agentInfo(agent).templateName, role: roleDefinition(agentTemplate), agent };
+    return roleDefinition(agentTemplate);
   };
 }

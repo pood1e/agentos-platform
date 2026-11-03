@@ -2,13 +2,17 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import type { ToolCall } from "../../gen/agentos/execution/v1/task_pb.js";
 import type { AppReference } from "../../gen/agentos/mcp/v1/app_pb.js";
-import { agentRoles } from "../authorization/agent-role.js";
-import type { BindingView, ToolBindings } from "../governance/bindings.js";
+import {
+  type BindingView,
+  type ToolBindings,
+  unprefixedTool,
+} from "../governance/tool-bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { appOnly, appResource, appVisible, type ToolMetadata } from "../kagent/tool-metadata.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import { taskRun } from "../read-model/views/run.js";
 import { notFound } from "../shared/errors.js";
+import { agentRoles } from "./agent-role.js";
 
 interface Dependencies {
   clients: KagentClients;
@@ -46,8 +50,7 @@ export function appAuthorization({
     );
     if (!server) return;
     const tools = await metadata.tools(server);
-    const unprefix = (value: string) =>
-      value.startsWith(`${target.service}_`) ? value.slice(target.service.length + 1) : value;
+    const unprefix = (value: string) => unprefixedTool(target.service, value);
     const tool = tools.find((tool) => unprefix(tool.name) === unprefix(call.name));
     if (!tool || appOnly(tool) || !appVisible(tool)) return;
     const uri = appResource(tool);
@@ -90,7 +93,7 @@ export function appAuthorization({
     const policy = await access();
     const origin = call && (await source(call, policy));
     if (!origin) throw notFound("mcpApp.unavailable");
-    const { role } = await agentRole(session);
+    const role = await agentRole(session);
     const binding = policy.appBinding(role.tools, origin.target.service, [origin.tool.name]);
     if (!binding) throw appDenied();
     const tools = origin.tools.filter(

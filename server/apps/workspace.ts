@@ -1,25 +1,39 @@
-import type { ServiceImpl } from "@connectrpc/connect";
 import { CoreV1Api, CustomObjectsApi, type KubeConfig } from "@kubernetes/client-node";
-import type { FastifyInstance } from "fastify";
-import type { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
-import type { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
+import type { FastifyBaseLogger, FastifyInstance } from "fastify";
+import { LRUCache } from "lru-cache";
 import { userIdentity } from "../authorization/identity.js";
+import { memberWorkspace } from "../authorization/workspaces.js";
 import { consoleService } from "../console/service.js";
-import { toolBindings } from "../governance/bindings.js";
+import { toolBindings } from "../governance/access-plans.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
 import { toolMetadata } from "../kagent/tool-metadata.js";
-import { knowledgeConfig } from "../knowledge/config.js";
 import { resourceStore } from "../management/resources.js";
 import { managementService } from "../management/service.js";
 import { workflowDocuments } from "../management/workflows/documents.js";
 import { mcpApps } from "../mcp-apps/service.js";
-import { memberWorkspace } from "../platform/access.js";
 import type { WorkspaceTarget } from "../platform/workspace-targets.js";
 import { taskQueries } from "../read-model/queries.js";
-import { roleDefaults } from "../shared/config.js";
 import { unavailable } from "../shared/errors.js";
 import { voiceFeature } from "../voice/feature.js";
 import { speechSettingsStore } from "../voice/settings.js";
+
+/** A Namespace UID changes only when the Namespace is recreated; session reads need it per call. */
+function namespaceUID(core: CoreV1Api, namespace: string, log: FastifyBaseLogger) {
+  const cache = new LRUCache<string, string>({
+    max: 1,
+    ttl: 30_000,
+    fetchMethod: async (name) => (await core.readNamespace({ name })).metadata?.uid ?? "",
+  });
+  return async () => {
+    try {
+      const uid = await cache.fetch(namespace);
+      if (uid) return uid;
+    } catch (error) {
+      log.warn({ err: error, namespace }, "Workspace Namespace UID unavailable");
+    }
+    throw unavailable();
+  };
+}
 
 export async function workspaceRuntime(
   target: WorkspaceTarget,
@@ -28,57 +42,31 @@ export async function workspaceRuntime(
     app: FastifyInstance;
     origin: string;
     writerRole: string;
+    /** The first configured workspace also hosts the optional voice feature. */
     home: boolean;
   },
 ) {
   const { kube, app, origin, writerRole, home } = options;
-  const namespace = target.namespace;
-  const release = target.release;
-  const clients = kagentClients(kagentTransport({ url: target.kagentURL, namespace }));
+  const { namespace, release, entryAgent, harness } = target;
+  const clients = kagentClients(kagentTransport(target.kagentURL));
   const access = await toolBindings(kube, namespace, app.log);
   const metadata = toolMetadata(clients);
   const core = kube.makeApiClient(CoreV1Api);
   const projection = taskQueries({
     workspace: namespace,
     clients,
-    workspaceUID: async () => {
-      try {
-        const uid = (await core.readNamespace({ name: namespace })).metadata?.uid;
-        if (uid) return uid;
-      } catch (error) {
-        app.log.warn({ err: error, namespace }, "Workspace Namespace UID unavailable");
-      }
-      throw unavailable();
-    },
+    workspaceUID: namespaceUID(core, namespace, app.log),
   });
-  const speech = speechSettingsStore(
-    core,
-    namespace,
-    home ? (process.env.AGENTOS_SPEECH_SECRET ?? `${release}-speech`) : `${release}-speech`,
-  );
+  const speech = speechSettingsStore(core, namespace, `${release}-speech`);
   const voice = home
     ? await voiceFeature(app, {
         kube,
         settings: speech.load,
         projection,
         clients,
-        agent: { namespace, name: target.entryAgent },
+        agent: { namespace, name: entryAgent },
       })
     : undefined;
-  const gatewayURL = home
-    ? (process.env.AGENTOS_GATEWAY_URL ??
-      `http://${release}-gateway.${namespace}.svc.cluster.local:8080`)
-    : `http://${release}-gateway.${namespace}.svc.cluster.local:8080`;
-  const gateway = {
-    namespace,
-    name: `${release}-gateway`,
-    url: gatewayURL,
-    mcpUrl: home
-      ? (process.env.AGENTOS_MCP_GATEWAY_URL ??
-        `http://${release}-mcp-gateway.${namespace}.svc.cluster.local:8080`)
-      : `http://${release}-mcp-gateway.${namespace}.svc.cluster.local:8080`,
-    nativeAuthorityBackend: `${release}-native-authority`,
-  };
   const apps = mcpApps({
     clients,
     projection,
@@ -86,40 +74,38 @@ export async function workspaceRuntime(
     access,
     metadata,
     sandboxOrigin: process.env.AGENTOS_SANDBOX_ORIGIN ?? "",
-    gatewayURL,
+    gatewayURL: `http://${release}-gateway.${namespace}.svc.cluster.local:8080`,
     log: app.log,
   });
-  const service: ServiceImpl<typeof ConsoleService> = consoleService({
-    metadata,
-    apps,
-    projection,
-    clients,
-    namespace,
-    access,
-    roleDefaults: roleDefaults(target.harness),
-    voice: voice?.console,
-    entryAgent: target.entryAgent,
-    delegationUrl: `${origin}/delegation/start`,
-  });
-  const management: ServiceImpl<typeof ManagementService> = managementService({
-    access,
-    documents: workflowDocuments(core, kube.makeApiClient(CustomObjectsApi), namespace),
-    clients,
-    store: resourceStore(kube, namespace, `${release}-skills`, clients),
-    gateway,
-    knowledge: knowledgeConfig({ namespace }),
-    speech,
-  });
   return {
-    target,
-    entryAgent: target.entryAgent,
+    entryAgent,
     clients,
     access,
     apps,
     identity: userIdentity(clients, writerRole),
     member: memberWorkspace(clients.authorization, namespace),
-    service,
-    management,
+    service: consoleService({
+      metadata,
+      apps,
+      projection,
+      clients,
+      namespace,
+      access,
+      defaultHarness: harness,
+      voice: voice?.console,
+      entryAgent,
+      delegationUrl: `${origin}/delegation/start`,
+    }),
+    management: managementService({
+      access,
+      documents: workflowDocuments(core, kube.makeApiClient(CustomObjectsApi), namespace),
+      clients,
+      store: resourceStore(kube, namespace, `${release}-skills`, clients),
+      namespace,
+      gatewayName: `${release}-gateway`,
+      knowledgeTtlDays: Number(process.env.AGENTOS_KNOWLEDGE_TTL_DAYS ?? "3650"),
+      speech,
+    }),
     voice,
   };
 }
