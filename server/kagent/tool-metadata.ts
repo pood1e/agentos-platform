@@ -6,7 +6,6 @@ import {
   McpUiToolMetaSchema,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { LRUCache } from "lru-cache";
-import type { ToolRequirement } from "../../gen/agentos/console/v1/tool_pb.js";
 import type { MCPAppTool, ToolServer } from "../../gen/kagent/api/v1/tools_pb.js";
 import { type KagentClients, pool } from "./clients.js";
 
@@ -100,34 +99,7 @@ export function toolMetadata(clients: KagentClients) {
     const hidden = new Set((await tools(server)).filter(appOnly).map((tool) => tool.name));
     return names.filter((name) => !hidden.has(name));
   }
-  async function appOnlyCalls(
-    references: Pick<ToolRequirement, "server" | "tool">[],
-    namespace: string,
-  ) {
-    if (!references.length) return false;
-    try {
-      const toolServers = await servers();
-      for (const reference of references) {
-        const server = toolServers.find(
-          (server) => server.ref === `${namespace}/${reference.server}`,
-        );
-        if (!server) throw new Error("MCP server metadata is missing");
-        const tool = (await tools(server)).find((tool) => tool.name === reference.tool);
-        if (!tool) throw new Error("MCP tool metadata is missing");
-        if (appOnly(tool)) return true;
-      }
-      return false;
-    } catch (cause) {
-      throw new ConnectError(
-        "MCP tool metadata unavailable",
-        Code.Unavailable,
-        undefined,
-        undefined,
-        cause,
-      );
-    }
-  }
-  return { tools, reference, modelServers, modelTools, appOnlyCalls, servers };
+  return { tools, reference, modelServers, modelTools, servers };
 }
 
 export type ToolMetadata = ReturnType<typeof toolMetadata>;

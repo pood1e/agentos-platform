@@ -30,7 +30,7 @@ import {
   viewer,
   visibleGraph,
 } from "./history.js";
-import { type AuthorizeTools, interactionPermissions } from "./interaction-permissions.js";
+import { interactionPermissions } from "./interaction-permissions.js";
 import { messageCommands } from "./messages.js";
 import { type RoleDefaults, roleCommands } from "./roles.js";
 import { watch } from "./watch.js";
@@ -45,7 +45,6 @@ export interface ConsoleDependencies {
   roleDefaults: RoleDefaults;
   voice?: VoiceConsole;
   entryAgent?: string;
-  authorizeTools?: AuthorizeTools;
   /** Where browsers obtain the offline grant for background execution. */
   delegationUrl?: string;
 }
@@ -65,14 +64,13 @@ export function consoleService({
   roleDefaults,
   voice = voiceDisabled,
   entryAgent = "assistant",
-  authorizeTools,
   delegationUrl = "",
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const cancel = cancellationCommands(projection, clients);
-  const messages = messageCommands(projection, clients, namespace, authorizeTools);
+  const messages = messageCommands(projection, clients, namespace);
   const conversations = conversationCommands(projection, clients, namespace, entryAgent);
   const roles = roleCommands(clients, namespace, access, roleDefaults, metadata);
-  const { canOperate, approvalsFor } = interactionPermissions(projection, clients, authorizeTools);
+  const { canOperate, approvalsFor } = interactionPermissions(projection, clients);
   const visible = async (identity: Parameters<typeof viewer>[0], taskId: string) =>
     (await visibleGraph(projection, viewer(identity), { taskId }))?.entry(taskId);
   return {

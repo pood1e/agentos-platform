@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { type ToolBinding, ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
-import { type ToolRequirement, ToolRequirementSchema } from "../gen/agentos/console/v1/tool_pb.js";
+import { ToolRequirementSchema } from "../gen/agentos/console/v1/tool_pb.js";
 import type { ToolServer } from "../gen/kagent/api/v1/tools_pb.js";
 import type { AccessPlanStatus } from "../gen/kubernetes.js";
 
@@ -9,13 +9,6 @@ export type Target = NonNullable<AccessPlanStatus["targets"]>[number];
 /** Runtime authorization consumes controller decisions without interpreting resource labels. */
 export class ToolBindings {
   constructor(private readonly targets: Map<string, Target>) {}
-
-  catalogs() {
-    return [...this.targets.values()].filter(
-      (target): target is Target & { environment: string; project: string } =>
-        Boolean(target.catalog && target.environment && target.project),
-    );
-  }
 
   appSources() {
     return [...this.targets.values()].filter((target) => target.catalog || !target.environment);
@@ -57,20 +50,6 @@ export class ToolBindings {
     );
   }
 
-  connection(services: string[], environment: string, identity: string) {
-    return (
-      services.length > 0 &&
-      services.every((service) =>
-        [...this.targets.values()].some(
-          (target) =>
-            target.service === service &&
-            target.environment === environment &&
-            (identity === "catalog" ? target.catalog : target.identity === identity),
-        ),
-      )
-    );
-  }
-
   usable(identity: string, server: string) {
     const target = this.targets.get(server);
     return Boolean(
@@ -96,56 +75,10 @@ export class ToolBindings {
       : name;
   }
 
-  tool(server: string, name: string) {
-    return this.decision(this.targets.get(server), name);
-  }
-
-  readOnlyTool(name: string) {
-    return [...this.targets.values()].some(
-      (target) => !target.environment && this.decision(target, name)?.write === false,
-    );
-  }
-
-  permitsCall(identity: string, services: string[], tool: string, write: boolean) {
-    return [...this.targets.values()].some((target) => {
-      if (target.catalog || target.identity !== identity || !services.includes(target.service))
-        return false;
-      const decision = this.decision(target, tool);
-      return Boolean(decision && (!decision.write || write));
-    });
-  }
-
-  selectedCall(bindings: ToolBinding[], services: string[], tool: string) {
-    return bindings.some((binding) => {
-      const target = this.targets.get(binding.server);
-      return target && services.includes(target.service) && this.selectedTool(binding, tool);
-    });
-  }
-
-  selectedTool(binding: ToolBinding, tool: string) {
+  private selectedTool(binding: ToolBinding, tool: string) {
     const service = this.targets.get(binding.server)?.service ?? binding.server;
     const name = tool.startsWith(`${service}_`) ? tool.slice(service.length + 1) : tool;
     return binding.tools.some((selected) => selected === name || selected === `${service}_${name}`);
-  }
-
-  environmentCalls(bindings: ToolBinding[], tool: string, services?: string[]) {
-    return bindings.flatMap((binding): Pick<ToolRequirement, "server" | "tool">[] => {
-      const target = this.targets.get(binding.server);
-      if (!target?.environment || (services && !services.includes(target.service))) return [];
-      return binding.tools
-        .filter((selected) => this.selectedTool({ ...binding, tools: [selected] }, tool))
-        .map((selected) => ({ server: binding.server, tool: selected }));
-    });
-  }
-
-  permitsTool(identity: string, server: string, tool: string, write: boolean) {
-    if (!this.usable(identity, server)) return false;
-    const decision = this.decision(this.targets.get(server), tool);
-    return Boolean(decision && (!decision.write || write));
-  }
-
-  requiresApproval(server: string, tool: string) {
-    return this.decision(this.targets.get(server), tool)?.requireApproval ?? true;
   }
 
   requirements(identity: string) {

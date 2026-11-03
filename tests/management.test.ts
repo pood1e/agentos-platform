@@ -12,6 +12,11 @@ import { object, text } from "../server/read-model/decode/messages.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
+
+const derivedResources = () =>
+  [...env.fake.resources.list("remotemcpservers"), ...env.fake.resources.list("httproutes")].filter(
+    (item) => ["new-mcp", "mcp-new-mcp"].includes(text(object(item.metadata).name)),
+  );
 let client: ReturnType<typeof createClient<typeof ManagementService>>;
 beforeEach(async () => {
   env = await managementEnvironment();
@@ -224,23 +229,13 @@ describe("native gateway connections", () => {
     expect(
       object(object(object(updated?.resource?.value?.spec).policies).mcp).authorization,
     ).toBeUndefined();
-    await expect(env.store.get("remoteMCPs", "new-mcp")).rejects.toMatchObject({
-      code: Code.NotFound,
-    });
-    await expect(env.store.get("routes", "mcp-new-mcp")).rejects.toMatchObject({
-      code: Code.NotFound,
-    });
+    expect(derivedResources()).toEqual([]);
     await client.deleteConnection({
       kind: ConnectionKind.MCP,
       name: "new-mcp",
       resourceVersion: text(object(updated?.resource?.value?.metadata).resourceVersion),
     });
-    await expect(env.store.get("remoteMCPs", "new-mcp")).rejects.toMatchObject({
-      code: Code.NotFound,
-    });
-    await expect(env.store.get("routes", "mcp-new-mcp")).rejects.toMatchObject({
-      code: Code.NotFound,
-    });
+    expect(derivedResources()).toEqual([]);
   });
   it("retains the committed parent for retry and leaves foreign credentials untouched", async () => {
     const foreign = await env.store.get("modelConfigs", "default-model-config");

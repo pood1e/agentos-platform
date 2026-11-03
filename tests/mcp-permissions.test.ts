@@ -54,61 +54,6 @@ describe("Agent tool access", () => {
     expect(access.bindings("remediation", merged ?? [], "normalize")).toEqual(merged);
   });
 
-  it("intersects the caller's write permission with the Agent's environment ceiling and denies unknown tools", () => {
-    expect(access.permitsCall("inspection", ["lab-kubernetes"], "pods_list", false)).toBe(true);
-    expect(
-      access.permitsCall("inspection", ["lab-kubernetes"], "resources_create_or_update", true),
-    ).toBe(false);
-    expect(
-      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", false),
-    ).toBe(false);
-    expect(
-      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", true),
-    ).toBe(true);
-    expect(access.permitsCall("remediation", ["lab-kubernetes"], "unknown", true)).toBe(false);
-    expect(access.permitsCall("remediation", ["unrelated"], "pods_list", true)).toBe(false);
-    expect(
-      access.permitsTool("remediation", "lab-kubernetes-remediation-changes", write, false),
-    ).toBe(false);
-    expect(access.permitsTool("inspection", "lab-kubernetes-inspection", write, true)).toBe(false);
-    expect(access.permitsTool("inspection", "kagent-collaboration", "create_session", false)).toBe(
-      true,
-    );
-  });
-  it("keeps identical tool names scoped to their own service", () => {
-    const policy = new ToolBindings(
-      new Map([
-        [
-          "reader",
-          {
-            server: "reader",
-            service: "reader",
-            catalog: false,
-            tools: [{ name: "get", write: false, requireApproval: false }],
-          },
-        ],
-        [
-          "writer",
-          {
-            server: "writer",
-            service: "writer",
-            catalog: false,
-            tools: [{ name: "get", write: true, requireApproval: true }],
-          },
-        ],
-      ]),
-    );
-    expect(policy.permitsTool("inspection", "reader", "get", false)).toBe(true);
-    expect(policy.permitsTool("inspection", "writer", "get", false)).toBe(false);
-    expect(policy.permitsTool("inspection", "unknown", "get", true)).toBe(false);
-    expect(
-      policy.selectedTool(
-        create(ToolBindingSchema, { server: "reader", tools: ["reader_get"] }),
-        "get",
-      ),
-    ).toBe(true);
-  });
-
   it("offers only the Agent's own identities and platform servers", () => {
     const permissions = access.requirements("inspection");
     const names = new Set(permissions.map((item) => item.server));

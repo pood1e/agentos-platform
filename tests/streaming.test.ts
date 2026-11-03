@@ -122,12 +122,9 @@ describe("streamed task content", () => {
       status: { state: TaskState.WORKING, timestamp: timestampFromMs(1000) },
       artifacts: [{ artifactId: "answer", parts: [{ content: { case: "text", value: "first" } }] }],
     });
-    const revision = () => ingest(task, "agentos/inspection").version;
-    const previous = revision();
+    expect(ingest(task, "agentos/inspection").answer).toBe("first");
     task.artifacts[0].parts[0].content = { case: "text", value: "updated" };
     expect(ingest(task, "agentos/inspection").answer).toBe("updated");
-    expect(revision()).not.toBe(previous);
-    expect(revision()).toBe(revision());
   });
 
   it("reads current native task payloads on demand", async () => {

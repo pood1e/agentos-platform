@@ -37,16 +37,10 @@ it("includes workflow Agents in the generic directory with their own execution i
   expect(info).toMatchObject({
     id: "workspace/nightly-runner",
     templateName: "nightly",
-    workflow: true,
   });
   expect(agentSummaries([info], new Map())).toMatchObject([
     { id: "workspace/nightly-runner", template: { namespace: "workspace", name: "nightly" } },
   ]);
-  if (!workflow.resource?.value) throw new Error("Agent fixture missing");
-  workflow.resource.value.spec = {
-    template: { inline: { workflowFrom: { name: "graphs", key: "inline.yaml" } } },
-  };
-  expect(agentInfo(workflow).workflow).toBe(true);
 });
 
 it("names shared-template Agents by their own identity", () => {

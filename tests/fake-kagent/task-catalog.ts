@@ -5,7 +5,6 @@ import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { agentKey } from "../../server/read-model/agents.js";
 import { terminal } from "../../server/read-model/state.js";
 import { taskTree } from "../../server/read-model/tree.js";
-import { conversationProgress } from "../../server/read-model/views/conversation-work.js";
 import { pendingApproval, runState } from "../../server/read-model/views/runs.js";
 import { taskSummary } from "../../server/read-model/views/task.js";
 import type { FakeKagent } from "./kagent.js";
@@ -14,6 +13,7 @@ import {
   catalogFixture,
   catalogPage,
   catalogRow,
+  conversationProgress,
   matchesActivity,
   nativeActivity,
   sortedFilters,
@@ -193,7 +193,7 @@ export function taskCatalogRoutes(fake: FakeKagent, router: ConnectRouter) {
       });
       return {
         agents: fixture.graph.agents().map((agent) => {
-          const entries = fixture.graph.agentEntries(agent.id),
+          const entries = fixture.graph.all().filter((entry) => entry.agentId === agent.id),
             active = entries.filter((entry) => !terminal(entry.state));
           return {
             agent: { namespace: agent.id.split("/")[0], name: agent.id.split("/")[1] },

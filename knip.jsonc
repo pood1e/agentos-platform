@@ -5,8 +5,7 @@
     "tests/fixtures/mcp-app-view.ts",
     "server/apps/*.ts",
     "contracts/*.{ts,mjs}",
-    "tests/proofs/*.ts",
-    "shared/digest.ts"
+    "tests/proofs/*.ts"
   ],
   "ignoreDependencies": ["@bufbuild/protoc-gen-es"],
   "ignoreBinaries": ["go"],

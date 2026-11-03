@@ -21,7 +21,6 @@ function group(entries: TaskEntry[], key: (entry: TaskEntry) => string) {
 export class TaskGraph {
   private entries: Map<string, TaskEntry>;
   private contexts: Map<string, TaskEntry[]>;
-  private byAgent: Map<string, TaskEntry[]>;
   private messages = new Map<string, string>();
   private sessionInfo: Map<string, SessionInfo>;
   private agentInfo: Map<string, AgentInfo>;
@@ -30,7 +29,6 @@ export class TaskGraph {
   constructor(entries: TaskEntry[] = [], sessions: SessionInfo[] = [], agents: AgentInfo[] = []) {
     this.entries = new Map(entries.map((entry) => [entry.id, entry]));
     this.contexts = group(entries, (entry) => entry.contextId);
-    this.byAgent = group(entries, (entry) => entry.agentId);
     for (const entry of entries) for (const id of entry.messageIds) this.messages.set(id, entry.id);
     this.sessionInfo = new Map(sessions.map((session) => [session.id, session]));
     this.agentInfo = new Map(agents.map((agent) => [agent.id, agent]));
@@ -43,7 +41,6 @@ export class TaskGraph {
   sessions = () => [...this.sessionInfo.values()];
   all = () => [...this.entries.values()];
   contextEntries = (contextId: string) => this.contexts.get(contextId) ?? [];
-  agentEntries = (agentId: string) => this.byAgent.get(agentId) ?? [];
   taskOfMessage = (messageId: string) => this.entries.get(this.messages.get(messageId) ?? "");
   templateOf = (agentId: string) => this.agentInfo.get(agentId)?.templateName ?? "";
 

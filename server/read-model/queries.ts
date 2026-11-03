@@ -130,12 +130,6 @@ export function taskQueries({
     async agent(id: string) {
       return (await agents()).find((value) => value.id === id);
     },
-    async graphOf(id: { taskId?: string; contextId?: string }, signal?: AbortSignal) {
-      const value = id.taskId
-        ? await entry(id.taskId, signal)
-        : await session(id.contextId ?? "", signal);
-      return value ? graph("contextId" in value ? value.contextId : value.id, signal) : undefined;
-    },
     async fullTask(value: { id: string; agentId: string }) {
       try {
         return await clients.a2a.getTask({ tenant: value.agentId, id: value.id }, rpc);

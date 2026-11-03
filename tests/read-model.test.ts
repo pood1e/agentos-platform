@@ -13,7 +13,7 @@ import { agentSummary } from "../server/read-model/views/agents.js";
 import { taskRun } from "../server/read-model/views/run.js";
 import { taskSummary } from "../server/read-model/views/task.js";
 import { fixtureGraph, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment, operator } from "./harness.js";
+import { environment, graphOf, operator } from "./harness.js";
 
 const fullTask = async ({ id }: { id: string }) => fixtureTasks().find((task) => task.id === id);
 
@@ -159,7 +159,7 @@ describe("listings", () => {
     try {
       expect(await env.projection.session(ids.chatContext)).toBeUndefined();
       expect(await env.projection.entry(ids.chat)).toBeUndefined();
-      expect(await env.projection.graphOf({ taskId: ids.chat })).toBeUndefined();
+      expect(await graphOf(env.projection, { taskId: ids.chat })).toBeUndefined();
       expect(await visibleGraph(env.projection, reader, { taskId: ids.chat })).toBeUndefined();
     } finally {
       session.authority.workspaceUid = "agentos-uid";
@@ -218,7 +218,7 @@ describe("listings", () => {
     const child = await env.projection.entry(ids.inspection);
     const [first] = (await env.projection.operations(reader, { ...page, pageSize: 1 })).tasks;
     expect(first?.updatedAt && timestampMs(first.updatedAt)).toBe(child?.statusAt);
-    const graph = await env.projection.graphOf({ taskId: first?.id ?? "" });
+    const graph = await graphOf(env.projection, { taskId: first?.id ?? "" });
     expect(graph && taskTree(graph, first?.id ?? "")?.entries.map((entry) => entry.id)).toContain(
       ids.inspection,
     );

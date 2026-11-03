@@ -13,7 +13,7 @@ import type { AccessPlan } from "../server/governance/access-plans.js";
 import { serverTargets, type Target, ToolBindings } from "../server/governance/bindings.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import { nativeCredentials } from "../server/kagent/context.js";
-import { taskQueries } from "../server/read-model/queries.js";
+import { type TaskQueries, taskQueries } from "../server/read-model/queries.js";
 import { allCapabilities } from "../shared/permissions.js";
 import { FakeKagent } from "./fake-kagent/kagent.js";
 import { kagentRoutes } from "./fake-kagent/routes.js";
@@ -74,6 +74,17 @@ export function publishTargets(fake: FakeKagent, targets: Target[]) {
 }
 
 export type Environment = Awaited<ReturnType<typeof environment>>;
+
+/** The execution tree around a task or conversation visible to the caller. */
+export async function graphOf(
+  projection: TaskQueries,
+  id: { taskId?: string; contextId?: string },
+) {
+  const value = id.taskId
+    ? await projection.entry(id.taskId)
+    : await projection.session(id.contextId ?? "");
+  return value ? projection.graph("contextId" in value ? value.contextId : value.id) : undefined;
+}
 
 /** Console API over the environment, called by the given identity. */
 export function consoleClient(

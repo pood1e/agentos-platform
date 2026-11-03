@@ -9,8 +9,8 @@ import {
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import type { HitlTool } from "../../gen/kagent/api/v1/interactions_pb.js";
 import type { Approval, CallEntry } from "./calls.js";
-import { type HitlPayload, hitlExtension, hitlPayload, isHitlResponse } from "./decode/hitl.js";
-import { millis, object, timeline } from "./decode/messages.js";
+import { type HitlPayload, hitlPayload } from "./decode/hitl.js";
+import { millis, timeline } from "./decode/messages.js";
 
 interface Request {
   message: Message;
@@ -156,16 +156,4 @@ export function interactions(task: Task, agentId: string, calls: CallEntry[]): I
       }),
     ];
   });
-}
-
-export interface Decision {
-  messageId: string;
-  payload: JsonValue;
-}
-
-export function latestDecision(task: Task): Decision | undefined {
-  const message = task.history.findLast(isHitlResponse);
-  return message
-    ? { messageId: message.messageId, payload: object(message.metadata?.[hitlExtension]) }
-    : undefined;
 }

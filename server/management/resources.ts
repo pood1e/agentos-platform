@@ -16,13 +16,10 @@ const resourceKinds = {
   accessPlans: ["agentos.dev", "v1alpha1", "accessplans"],
   models: ["agentgateway.dev", "v1alpha1", "agentgatewaymodels"],
   mcps: ["agentgateway.dev", "v1alpha1", "agentgatewaybackends"],
-  mcpPolicies: ["agentgateway.dev", "v1alpha1", "agentgatewaypolicies"],
-  routes: ["gateway.networking.k8s.io", "v1", "httproutes"],
   templates: ["api.kagent.dev", "v1alpha3", "agenttemplates"],
   agents: ["api.kagent.dev", "v1alpha3", "agents"],
   harnesses: ["api.kagent.dev", "v1alpha3", "harnesses"],
   modelConfigs: ["api.kagent.dev", "v1alpha3", "modelconfigs"],
-  remoteMCPs: ["api.kagent.dev", "v1alpha3", "remotemcpservers"],
 } as const;
 export type ResourceKind = keyof typeof resourceKinds;
 

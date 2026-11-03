@@ -127,8 +127,6 @@ export async function registerDelegation(
     } catch {
       return reply.code(401).send({ message: "Delegation failed" });
     }
-    return pending.returnTo
-      ? reply.redirect(pending.returnTo)
-      : reply.type("text/plain; charset=utf-8").send("Background execution is authorized.");
+    return reply.redirect(pending.returnTo);
   });
 }
