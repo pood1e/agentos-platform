@@ -40,7 +40,7 @@
 | `src/lib/workspace-*` | 工作空间路由、成员目录与浏览器切换 |
 | `src/features/workflows` | 独立工作流入口、AgentSystem 画布 / YAML 编辑、发布状态与执行历史 |
 | `src/features/agents` | 通用 Agent 目录、模板编辑、模型选择、工具绑定与方案业务全景 |
-| `src/features/authorization` | 原生角色目录、工作空间及单资源的直接绑定管理 |
+| `src/features/authorization` | 原生角色目录、按账号 / 组汇总的角色标签与资源直接授权管理 |
 | `src/{lib,i18n}`、`shared` | RPC、展示文案与平台内部共享代码 |
 | `web` | nginx、oauth2-proxy 与 MCP App 沙箱 |
 | `charts/agentos*` | 平台、控制器、环境网关与连接 Chart |

@@ -18,18 +18,27 @@ export function BindingSubject({
   if (value?.subject.case === "group")
     return (
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Badge variant="secondary">{t("authorization.group")}</Badge>
-          <span className="truncate font-medium">{value.subject.value.id}</span>
+          <span className="truncate font-medium" title={value.subject.value.id}>
+            {value.subject.value.id}
+          </span>
         </div>
-        <p className="mt-1 break-all text-xs text-muted-foreground">{value.subject.value.issuer}</p>
+        <p
+          className="mt-1 truncate text-xs text-muted-foreground"
+          title={value.subject.value.issuer}
+        >
+          {value.subject.value.issuer}
+        </p>
       </div>
     );
   const id = subjectName(value);
   return (
     <div className="min-w-0">
       {id === current && <p className="font-medium">{t("authorization.myAccount")}</p>}
-      <code className="block max-w-[30rem] break-all text-xs text-muted-foreground">{id}</code>
+      <code className="block truncate text-xs text-muted-foreground" title={id}>
+        {id}
+      </code>
     </div>
   );
 }
