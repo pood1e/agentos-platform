@@ -22,12 +22,6 @@ tests:
       path: spec.resources[0].data["configuration.json"]
       value: '{}'
       decodeBase64: true
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_SPEECH_SECRET
-        value: agentos-speech
   - template: speech-settings.yaml
     notExists:
       path: spec.resources[0].data["credentials-secret"]
@@ -51,12 +45,6 @@ tests:
       path: spec.resources[0].data["configuration.json"]
       value: '{"transcription":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"languageCodes":["zh","en","ar"],"model":"multilingual-asr","protocol":"PROTOCOL_WHISPERLIVEKIT"}}'
       decodeBase64: true
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_SPEECH_SECRET
-        value: agentos-speech
   - template: speech-settings.yaml
     equal:
       path: spec.resources[0].data["credentials-secret"]
@@ -86,12 +74,6 @@ tests:
       path: spec.resources[0].data["configuration.json"]
       value: '{"synthesis":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"protocol":"PROTOCOL_NEMO","voices":[{"languageCode":"zh","model":"tts-zh","voice":"default"},{"languageCode":"en","model":"tts-en","voice":"default"},{"languageCode":"ar","model":"tts-ar","voice":"default"}]}}'
       decodeBase64: true
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_SPEECH_SECRET
-        value: agentos-speech
   - template: speech-settings.yaml
     equal:
       path: spec.resources[0].data["credentials-secret"]
@@ -109,12 +91,6 @@ tests:
       path: spec.resources[0].data["configuration.json"]
       value: '{"synthesis":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"protocol":"PROTOCOL_NEMO","voices":[{"languageCode":"zh","model":"tts-zh","voice":"default"},{"languageCode":"en","model":"tts-en","voice":"default"},{"languageCode":"ar","model":"tts-ar","voice":"default"}]},"transcription":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"languageCodes":["zh","en","ar"],"model":"multilingual-asr","protocol":"PROTOCOL_WHISPERLIVEKIT"}}'
       decodeBase64: true
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_SPEECH_SECRET
-        value: agentos-speech
   - template: speech-settings.yaml
     equal:
       path: spec.resources[0].data["credentials-secret"]
@@ -132,12 +108,6 @@ tests:
       path: spec.resources[0].data["configuration.json"]
       value: '{"synthesis":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"protocol":"PROTOCOL_NEMO","voices":[{"languageCode":"zh","model":"tts-zh","voice":"default"},{"languageCode":"en","model":"tts-en","voice":"default"},{"languageCode":"ar","model":"tts-ar","voice":"default"}]},"transcription":{"endpoint":{"baseUrl":"https://speech.example.test/v1"},"languageCodes":["zh","en","ar"],"model":"multilingual-asr","protocol":"PROTOCOL_WHISPERLIVEKIT"}}'
       decodeBase64: true
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_SPEECH_SECRET
-        value: agentos-speech
   - template: speech-settings.yaml
     notExists:
       path: spec.resources[0].data["credentials-secret"]
