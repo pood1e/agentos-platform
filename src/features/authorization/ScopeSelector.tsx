@@ -48,7 +48,7 @@ export function ScopeSelector({
 
   return (
     <form
-      className="space-y-3 rounded-xl border bg-card p-4"
+      className="space-y-3 rounded-xl border bg-card p-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (kind === AuthorizationScopeKind.WORKSPACE)
@@ -99,12 +99,6 @@ export function ScopeSelector({
         );
       }}
     >
-      <div>
-        <h2 className="text-sm font-semibold">{t("authorization.chooseResource")}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("authorization.chooseResourceHint")}
-        </p>
-      </div>
       <div className="flex flex-wrap items-end gap-2">
         <label className="grid min-w-40 gap-1 text-xs text-muted-foreground">
           {t("authorization.scope")}
