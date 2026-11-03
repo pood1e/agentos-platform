@@ -40,6 +40,8 @@ function resourceName(resource: AuthorizationResource, workspace: string) {
       return resource.resource.value;
     case "task":
       return resource.resource.value.taskId;
+    case "mcpTool":
+      return `${resource.resource.value.server?.ref?.name ?? ""} / ${resource.resource.value.name}`;
     default:
       return "";
   }

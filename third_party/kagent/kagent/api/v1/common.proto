@@ -37,3 +37,11 @@ message PageRequest {
 message PageResponse {
   string next_page_token = 1;
 }
+
+message TaskReference {
+  string session_id = 1 [(buf.validate.field).string.uuid = true];
+  string task_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+}

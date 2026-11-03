@@ -434,7 +434,11 @@
       "2": "Agent",
       "3": "AgentTemplate",
       "4": "Session",
-      "5": "Task"
+      "5": "Task",
+      "6": "Harness",
+      "7": "Model connection",
+      "8": "MCP server",
+      "9": "MCP tool"
     },
     "roles": {
       "1": "Workspace member",
@@ -445,7 +449,10 @@
       "6": "Executor",
       "7": "Execution reader",
       "8": "Execution controller",
-      "9": "Access administrator"
+      "9": "Access administrator",
+      "10": "Dependency reader",
+      "11": "Dependency user",
+      "12": "Dependency manager"
     },
     "roleHelp": {
       "1": "Join the workspace; other resource roles require membership.",
@@ -456,7 +463,13 @@
       "6": "Run agents or workflows.",
       "7": "Read session or task execution content.",
       "8": "Control task execution, such as cancelling a task.",
-      "9": "View and manage resource grants."
-    }
+      "9": "View and manage resource grants.",
+      "10": "Read Harness, model connection, or MCP server definitions.",
+      "11": "Use a Harness, model connection, or MCP server; a tool-scoped grant permits only that exact tool.",
+      "12": "Read, use, and manage Harness, model connection, or MCP server definitions."
+    },
+    "mcpServer": "MCP server name",
+    "toolName": "Tool name",
+    "toolNameHint": "Use the exact, case-sensitive name. The grant applies to this tool on this MCP server."
   }
 }

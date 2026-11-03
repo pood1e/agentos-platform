@@ -4,7 +4,6 @@ package kagent.api.v1;
 
 import "buf/validate/validate.proto";
 import "kagent/api/v1/common.proto";
-import "kagent/api/v1/execution.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
 
@@ -44,6 +43,16 @@ enum Permission {
   PERMISSION_TASK_RESPOND = 22;
   PERMISSION_ACCESS_READ = 23;
   PERMISSION_ACCESS_MANAGE = 24;
+  PERMISSION_HARNESS_READ = 25;
+  PERMISSION_HARNESS_USE = 26;
+  PERMISSION_HARNESS_MANAGE = 27;
+  PERMISSION_MODEL_CONNECTION_READ = 28;
+  PERMISSION_MODEL_CONNECTION_USE = 29;
+  PERMISSION_MODEL_CONNECTION_MANAGE = 30;
+  PERMISSION_MCP_SERVER_READ = 31;
+  PERMISSION_MCP_SERVER_USE = 32;
+  PERMISSION_MCP_SERVER_MANAGE = 33;
+  PERMISSION_MCP_TOOL_CALL = 34;
 }
 
 enum AccessRole {
@@ -57,6 +66,9 @@ enum AccessRole {
   ACCESS_ROLE_EXECUTION_READER = 7;
   ACCESS_ROLE_EXECUTION_CONTROLLER = 8;
   ACCESS_ROLE_ACCESS_ADMIN = 9;
+  ACCESS_ROLE_DEPENDENCY_READER = 10;
+  ACCESS_ROLE_DEPENDENCY_USER = 11;
+  ACCESS_ROLE_DEPENDENCY_MANAGER = 12;
 }
 
 enum AuthorizationScopeKind {
@@ -66,6 +78,10 @@ enum AuthorizationScopeKind {
   AUTHORIZATION_SCOPE_KIND_AGENT_TEMPLATE = 3;
   AUTHORIZATION_SCOPE_KIND_SESSION = 4;
   AUTHORIZATION_SCOPE_KIND_TASK = 5;
+  AUTHORIZATION_SCOPE_KIND_HARNESS = 6;
+  AUTHORIZATION_SCOPE_KIND_MODEL_CONNECTION = 7;
+  AUTHORIZATION_SCOPE_KIND_MCP_SERVER = 8;
+  AUTHORIZATION_SCOPE_KIND_MCP_TOOL = 9;
 }
 
 message IdentityGroup {
@@ -98,11 +114,21 @@ message WorkspaceAuthorizationReference {
 
 message KubernetesAuthorizationReference {
   AuthorizationScopeKind kind = 1 [(buf.validate.field).enum = {
-    in: [2, 3]
+    in: [2, 3, 6, 7, 8]
   }];
   ResourceReference ref = 2 [(buf.validate.field).required = true];
   // When supplied, this must match the object's current UID.
   string uid = 3 [(buf.validate.field).string.max_len = 128];
+}
+
+message MCPToolAuthorizationReference {
+  option (buf.validate.message).cel = {
+    id: "mcp_tool.server_kind"
+    message: "MCP tool requires an MCP server"
+    expression: "this.server.kind == 8"
+  };
+  KubernetesAuthorizationReference server = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string = {min_len: 1, max_len: 128}];
 }
 
 message AuthorizationResource {
@@ -112,6 +138,7 @@ message AuthorizationResource {
     KubernetesAuthorizationReference kubernetes = 2;
     string session_id = 3 [(buf.validate.field).string.uuid = true];
     TaskReference task = 4;
+    MCPToolAuthorizationReference mcp_tool = 5;
   }
 }
 
@@ -130,10 +157,22 @@ message ResourceGrant {
   AuthorizationResource resource = 1 [(buf.validate.field).required = true];
   repeated Permission permissions = 2 [(buf.validate.field).repeated = {
     min_items: 1
-    max_items: 24
+    max_items: 34
     unique: true
     items: {enum: {defined_only: true, not_in: [0]}}
   }];
+}
+
+// ResourceGrantSet records exact resource identities and actions.
+message ResourceGrantSet {
+  repeated ResourceGrant grants = 1 [(buf.validate.field).repeated.max_items = 4096];
+}
+
+// ExecutionDependencyManifest separates direct runtime capabilities from
+// dependencies reachable only through explicitly configured Agent delegation.
+message ExecutionDependencyManifest {
+  ResourceGrantSet direct = 1 [(buf.validate.field).required = true];
+  ResourceGrantSet delegated = 2;
 }
 
 message ListAccessRolesRequest {}

@@ -13,19 +13,40 @@ import {
 const workspace = "team";
 const session = "73383ee6-c3b3-4f2a-a926-920d936e3a7a";
 
-function resource(caseName: "agent" | "template" | "session" | "task") {
+const kubernetesKinds = {
+  agent: AuthorizationScopeKind.AGENT,
+  template: AuthorizationScopeKind.AGENT_TEMPLATE,
+  harness: AuthorizationScopeKind.HARNESS,
+  model: AuthorizationScopeKind.MODEL_CONNECTION,
+  mcp: AuthorizationScopeKind.MCP_SERVER,
+};
+
+function resource(caseName: keyof typeof kubernetesKinds | "session" | "task" | "mcp-tool") {
   switch (caseName) {
     case "agent":
     case "template":
+    case "harness":
+    case "model":
+    case "mcp":
       return create(AuthorizationResourceSchema, {
         resource: {
           case: "kubernetes",
           value: {
-            kind:
-              caseName === "agent"
-                ? AuthorizationScopeKind.AGENT
-                : AuthorizationScopeKind.AGENT_TEMPLATE,
-            ref: { namespace: workspace, name: "assistant" },
+            kind: kubernetesKinds[caseName],
+            ref: { namespace: workspace, name: "assistant.v2" },
+          },
+        },
+      });
+    case "mcp-tool":
+      return create(AuthorizationResourceSchema, {
+        resource: {
+          case: "mcpTool",
+          value: {
+            server: {
+              kind: AuthorizationScopeKind.MCP_SERVER,
+              ref: { namespace: workspace, name: "tools.v2" },
+            },
+            name: "Search/Docs & status?+#工具 ",
           },
         },
       });
@@ -41,7 +62,7 @@ function resource(caseName: "agent" | "template" | "session" | "task") {
 }
 
 describe("authorization resource navigation", () => {
-  it.each(["agent", "template", "session", "task"] as const)(
+  it.each(["agent", "template", "session", "task", "harness", "model", "mcp", "mcp-tool"] as const)(
     "round-trips %s URLs within the active workspace",
     (kind) => {
       const scope = resource(kind);
@@ -56,6 +77,9 @@ describe("authorization resource navigation", () => {
       "type=session&session=not-a-uuid",
       `type=task&session=${session}`,
       "type=unknown&name=assistant",
+      "type=mcp-tool&name=tools",
+      `type=mcp-tool&name=tools&tool=${"x".repeat(129)}`,
+      "type=model&name=bad..name",
     ]) {
       expect(resourceFromSearch(workspace, new URLSearchParams(search))).toEqual(
         create(AuthorizationResourceSchema, {
@@ -63,5 +87,21 @@ describe("authorization resource navigation", () => {
         }),
       );
     }
+  });
+
+  it("uses the active workspace rather than URL-supplied namespaces", () => {
+    const search = resourceSearch(resource("mcp-tool"));
+    search.set("namespace", "forged");
+    const target = resourceFromSearch("other-team", search);
+    expect(target.resource.case).toBe("mcpTool");
+    if (target.resource.case === "mcpTool")
+      expect(target.resource.value.server?.ref?.namespace).toBe("other-team");
+  });
+
+  it("keeps Unicode tool identities intact at the native code-point limit", () => {
+    const search = new URLSearchParams({ type: "mcp-tool", name: "tools", tool: "🔧".repeat(128) });
+    expect(resourceFromSearch(workspace, search).resource.case).toBe("mcpTool");
+    search.set("tool", "🔧".repeat(129));
+    expect(resourceFromSearch(workspace, search).resource.case).toBe("workspace");
   });
 });

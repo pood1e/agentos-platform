@@ -10,6 +10,7 @@ import {
 import { authorizationScopeKind } from "../../lib/authorization.js";
 import { consoleClient } from "../../lib/console.js";
 import { agentName, roleLabel } from "../shared/agents.js";
+import { dependencyOptions } from "./dependency-options.js";
 import { resourceSearch } from "./resource-location.js";
 
 function option(resource: AuthorizationResource, label: string) {
@@ -30,10 +31,17 @@ export function useResourceOptions(
     queryFn: ({ signal }) => consoleClient.listAgents({}, { signal }),
     enabled: kind === AuthorizationScopeKind.AGENT,
   });
-  const templates = useQuery({
-    queryKey: ["authorization-catalog", subject, workspaceUID, "templates"],
+  const usesConfiguration = [
+    AuthorizationScopeKind.AGENT_TEMPLATE,
+    AuthorizationScopeKind.HARNESS,
+    AuthorizationScopeKind.MODEL_CONNECTION,
+    AuthorizationScopeKind.MCP_SERVER,
+    AuthorizationScopeKind.MCP_TOOL,
+  ].includes(kind);
+  const configuration = useQuery({
+    queryKey: ["authorization-catalog", subject, workspaceUID, "configuration"],
     queryFn: ({ signal }) => consoleClient.getConfiguration({}, { signal }),
-    enabled: kind === AuthorizationScopeKind.AGENT_TEMPLATE,
+    enabled: usesConfiguration,
   });
   const sessions = useQuery({
     queryKey: ["authorization-catalog", subject, workspaceUID, "sessions", entryAgent?.name],
@@ -64,7 +72,7 @@ export function useResourceOptions(
       );
     }
   if (kind === AuthorizationScopeKind.AGENT_TEMPLATE)
-    for (const template of templates.data?.roles ?? [])
+    for (const template of configuration.data?.roles ?? [])
       options.push(
         option(
           create(AuthorizationResourceSchema, {
@@ -78,6 +86,8 @@ export function useResourceOptions(
             : roleLabel(template.name),
         ),
       );
+  for (const item of dependencyOptions(workspace, kind, configuration.data))
+    options.push(option(item.resource, item.label));
   if (kind === AuthorizationScopeKind.SESSION)
     for (const session of sessions.data?.conversations ?? [])
       options.push(
@@ -110,8 +120,8 @@ export function useResourceOptions(
   const active =
     kind === AuthorizationScopeKind.AGENT
       ? agents
-      : kind === AuthorizationScopeKind.AGENT_TEMPLATE
-        ? templates
+      : usesConfiguration
+        ? configuration
         : kind === AuthorizationScopeKind.SESSION && entryAgent?.name
           ? sessions
           : kind === AuthorizationScopeKind.TASK

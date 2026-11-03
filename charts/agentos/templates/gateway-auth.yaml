@@ -103,7 +103,7 @@ spec:
             backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
             failureMode: FailClosed
             http:
-              path: "'/authorize/runtime'"
+              path: {{ printf "/authorize/runtime?workspace=%s" .Release.Namespace | toJson | quote }}
               allowedRequestHeaders: [x-substrate-actor-token]
               addRequestHeaders:
                 authorization: "request.headers['x-substrate-actor-token']"
