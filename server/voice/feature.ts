@@ -7,6 +7,7 @@ import { VoiceService } from "../../gen/agentos/voice/v1/voice_pb.js";
 import { serviceAccountTokens } from "../authorization/workloads.js";
 import { requiredEnv } from "../shared/config.js";
 import { consoleErrors } from "../shared/rpc-errors.js";
+import { rpcMetrics } from "../shared/telemetry.js";
 import { voiceConsole } from "./console.js";
 import { voiceTickets } from "./tickets.js";
 import { type VoiceWorkerDependencies, voiceService, voiceWorker } from "./worker.js";
@@ -40,6 +41,7 @@ export async function voiceFeature(
   });
   await server.register(fastifyConnectPlugin, {
     interceptors: [
+      rpcMetrics("server"),
       consoleErrors(app.log),
       voiceWorker(review, workerAudience, requiredEnv("AGENTOS_VOICE_SUBJECT")),
       createValidateInterceptor(),
