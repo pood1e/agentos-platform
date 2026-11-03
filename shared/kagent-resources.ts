@@ -8,3 +8,6 @@ export const roleBuilderAgent = "role-builder";
 /** Native tool server references are `namespace/name`. */
 export const toolServerName = (server: Pick<ToolServer, "ref">) =>
   server.ref.split("/").at(-1) ?? server.ref;
+
+/** Set on a workspace directory page when some native authorities could not answer. */
+export const partialDirectoryHeader = "x-agentos-directory-partial";

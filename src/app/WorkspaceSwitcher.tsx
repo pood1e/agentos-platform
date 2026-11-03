@@ -46,7 +46,10 @@ export function WorkspaceSwitcher() {
         {directory.isError && (
           <DropdownMenuItem disabled>{t("workspaces.failed")}</DropdownMenuItem>
         )}
-        {directory.data?.map((workspace) => (
+        {directory.data?.partial && (
+          <DropdownMenuItem disabled>{t("workspaces.partial")}</DropdownMenuItem>
+        )}
+        {directory.data?.workspaces.map((workspace) => (
           <DropdownMenuItem key={workspace.uid} asChild>
             <a
               href={workspaceURL(workspace)}

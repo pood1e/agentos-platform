@@ -23,6 +23,7 @@ import { kagentClients } from "../server/kagent/clients.js";
 import { accessProfile, workspaceContext } from "../server/platform/access.js";
 import { workspaceService } from "../server/platform/dispatch.js";
 import { workspaceTargets } from "../server/platform/workspace-targets.js";
+import { partialDirectoryHeader } from "../shared/kagent-resources.js";
 import { workspaceFromPath, workspaceURL } from "../src/lib/workspace-route.js";
 
 const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
@@ -86,7 +87,10 @@ function setup(betaMember = false) {
   const transport = createRouterTransport(
     (router) => {
       router.service(ConsoleService, workspaceService(ConsoleService, services));
-      router.service(AuthorizationService, authorizationService(authorities, "alpha"));
+      router.service(
+        AuthorizationService,
+        authorizationService(authorities, "alpha", { warn: vi.fn() }),
+      );
     },
     { router: { interceptors: [workspaceContext(identity, targets)] } },
   );
@@ -124,6 +128,86 @@ it("paginates memberships from separate native authorities", async () => {
   });
   expect(second.workspaces).toMatchObject([{ namespace: "beta", uid: "beta-uid" }]);
   expect(second.page?.nextPageToken).toBe("");
+});
+
+function directory(answers: Record<string, () => unknown>) {
+  const warn = vi.fn();
+  const authorities = new Map(
+    Object.entries(answers).map(
+      ([namespace, answer]) =>
+        [
+          namespace,
+          kagentClients(
+            createRouterTransport((router) =>
+              router.service(AuthorizationService, { listWorkspaces: () => answer() as never }),
+            ),
+          ).authorization,
+        ] as const,
+    ),
+  );
+  const [home = ""] = Object.keys(answers);
+  return {
+    warn,
+    client: createClient(
+      AuthorizationService,
+      createRouterTransport((router) =>
+        router.service(AuthorizationService, authorizationService(authorities, home, { warn })),
+      ),
+    ),
+  };
+}
+const member = (namespace: string) => () => ({
+  workspaces: [{ namespace, uid: `${namespace}-uid` }],
+});
+const failing = (code: Code) => () => {
+  throw new ConnectError("authority failed", code);
+};
+const partialHeader = (client: ReturnType<typeof directory>["client"]) =>
+  new Promise<boolean>((resolve, reject) => {
+    client
+      .listWorkspaces({}, { onHeader: (headers) => resolve(headers.has(partialDirectoryHeader)) })
+      .catch(reject);
+  });
+
+it("keeps reachable workspaces and reports the outage of another native authority", async () => {
+  const { client, warn } = directory({
+    alpha: member("alpha"),
+    beta: failing(Code.Unavailable),
+    gamma: member("gamma"),
+  });
+  const result = await client.listWorkspaces({});
+  expect(result.workspaces.map((item) => item.namespace)).toEqual(["alpha", "gamma"]);
+  expect(await partialHeader(client)).toBe(true);
+  expect(warn).toHaveBeenCalledWith(
+    expect.objectContaining({ namespace: "beta" }),
+    expect.any(String),
+  );
+});
+
+it("does not report a denied authority as an outage", async () => {
+  const { client, warn } = directory({
+    alpha: member("alpha"),
+    beta: failing(Code.PermissionDenied),
+  });
+  const result = await client.listWorkspaces({});
+  expect(result.workspaces.map((item) => item.namespace)).toEqual(["alpha"]);
+  expect(await partialHeader(client)).toBe(false);
+  expect(warn).not.toHaveBeenCalled();
+});
+
+it("fails the directory only when no native authority can answer", async () => {
+  const { client } = directory({
+    alpha: failing(Code.Unauthenticated),
+    beta: failing(Code.Unauthenticated),
+  });
+  await expect(client.listWorkspaces({})).rejects.toMatchObject({ code: Code.Unauthenticated });
+  const unreachable = directory({
+    alpha: failing(Code.Unavailable),
+    beta: failing(Code.PermissionDenied),
+  });
+  const empty = await unreachable.client.listWorkspaces({});
+  expect(empty.workspaces).toEqual([]);
+  expect(await partialHeader(unreachable.client)).toBe(true);
 });
 
 it("binds every console request to the selected namespace and current UID", async () => {

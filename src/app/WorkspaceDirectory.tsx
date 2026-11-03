@@ -41,14 +41,19 @@ export function WorkspaceDirectory() {
             <AlertDescription>{t("workspaces.failed")}</AlertDescription>
           </Alert>
         )}
-        {directory.isSuccess && directory.data.length === 0 && (
+        {directory.data?.partial && (
+          <Alert data-testid="workspaces-partial">
+            <AlertDescription>{t("workspaces.partial")}</AlertDescription>
+          </Alert>
+        )}
+        {directory.isSuccess && directory.data.workspaces.length === 0 && (
           <p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-            {t("workspaces.empty")}
+            {t(directory.data.partial ? "workspaces.partial" : "workspaces.empty")}
           </p>
         )}
-        {directory.isSuccess && directory.data.length > 0 && (
+        {directory.isSuccess && directory.data.workspaces.length > 0 && (
           <div className="overflow-hidden rounded-xl border bg-card">
-            {directory.data.map((workspace) => (
+            {directory.data.workspaces.map((workspace) => (
               <div
                 key={workspace.uid}
                 className="flex items-center justify-between gap-4 border-b px-5 py-4 last:border-b-0"

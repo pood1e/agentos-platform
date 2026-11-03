@@ -59,6 +59,7 @@ await registerConsole(app, {
   authorization: authorizationService(
     perWorkspace((runtime) => runtime.clients.authorization),
     homeNamespace,
+    app.log,
   ),
   context: workspaceContext(home.identity, runtimes),
   service: workspaceService(

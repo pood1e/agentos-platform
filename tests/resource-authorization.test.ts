@@ -34,7 +34,9 @@ function setup(implementation: Partial<ServiceImpl<typeof AuthorizationService>>
     createRouterTransport((router) => router.service(AuthorizationService, implementation)),
   );
   const principal = create(UserIdentitySchema, { subject: "oidc:alice" });
-  const service = authorizationService(new Map([["team", native.authorization]]), "team");
+  const service = authorizationService(new Map([["team", native.authorization]]), "team", {
+    warn: vi.fn(),
+  });
   const context = testWorkspaceContext("team", async () => principal, allowWorkspace("team"));
   const client = createClient(
     AuthorizationService,
