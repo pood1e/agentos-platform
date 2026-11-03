@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccess } from "../../lib/access.js";
 import { consoleClient, managementClient } from "../../lib/console.js";
+import { pageSize } from "../shared/paging.js";
 import { WorkflowFailure } from "./WorkflowFailure.js";
 
 export function WorkflowHistory() {
@@ -20,7 +21,7 @@ export function WorkflowHistory() {
     queryFn: () =>
       consoleClient.listAgentRuns({
         agent: { namespace, name },
-        pageSize: 12,
+        pageSize,
         pageToken: token,
       }),
     enabled: !!namespace,

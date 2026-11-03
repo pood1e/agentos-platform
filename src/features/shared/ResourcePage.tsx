@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { LoaderCircle, Plus, RefreshCw, Search } from "lucide-react";
-import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { errorKey } from "../../lib/errors.js";
 import { PageControl } from "./PageControl.js";
-import { pageSize } from "./paging.js";
+import { pageSize, usePaging } from "./paging.js";
 
 interface PageRequest {
   pageSize: number;
@@ -19,43 +19,37 @@ interface PageResult {
   nextPageToken: string;
 }
 
+/** One server-paged list; paging waits until the visible page and search have settled. */
 export function useManagementPage<T extends PageResult>(
   scope: string,
   fetch: (request: PageRequest, signal: AbortSignal) => Promise<T>,
   enabled = true,
 ) {
-  const [search, setSearch] = useState("");
-  const query = useDeferredValue(search);
-  const [tokens, setTokens] = useState([""]);
-  const [page, setPage] = useState(0);
+  const paging = usePaging(scope);
+  const { pageToken, query } = paging;
   const result = useQuery({
-    queryKey: ["management", scope, query, tokens[page]],
-    queryFn: ({ signal }) => fetch({ pageSize, pageToken: tokens[page], query }, signal),
+    queryKey: ["management", scope, query, pageToken],
+    queryFn: ({ signal }) => fetch({ pageSize, pageToken, query }, signal),
     placeholderData: (previous, previousQuery) =>
       previousQuery?.queryKey[1] === scope ? previous : undefined,
     enabled,
   });
+  const { page, search, onSearch, onPage } = paging.controls(result.data?.nextPageToken);
+  // Deleting the last rows can leave the selected page past the end of the list.
+  const lastPage =
+    result.data && !result.isPlaceholderData
+      ? Math.max(0, Math.ceil(result.data.totalSize / pageSize) - 1)
+      : page;
   useEffect(() => {
-    if (!result.data || result.isPlaceholderData) return;
-    const lastPage = Math.max(0, Math.ceil(result.data.totalSize / pageSize) - 1);
-    if (page > lastPage) setPage(lastPage);
-  }, [result.data, result.isPlaceholderData, page]);
+    if (page > lastPage) onPage(lastPage);
+  });
   return {
     ...result,
     search,
     page,
-    onSearch(value: string) {
-      setSearch(value);
-      setPage(0);
-      setTokens([""]);
-    },
+    onSearch,
     onPage(next: number) {
-      if (next < 0 || result.isPlaceholderData || search !== query) return;
-      if (next > page) {
-        if (!result.data?.nextPageToken) return;
-        setTokens((current) => [...current.slice(0, page + 1), result.data?.nextPageToken ?? ""]);
-      }
-      setPage(next);
+      if (!result.isPlaceholderData && search === query) onPage(next);
     },
   };
 }
