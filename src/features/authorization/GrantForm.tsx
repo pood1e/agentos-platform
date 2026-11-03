@@ -22,7 +22,7 @@ import {
   type WorkspaceAuthorizationReference,
 } from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { authorizationClient } from "../../lib/console.js";
-import { Failure } from "../management/ResourcePage.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { BindingSubject } from "./BindingSubject.js";
 
 export function GrantForm({

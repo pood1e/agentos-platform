@@ -1,7 +1,7 @@
 import type { SpeechSynthesisAdapter } from "@assistant-ui/react";
 import { DisconnectReason, RoomEvent, Track } from "livekit-client";
-import { VoiceMode } from "../../../gen/agentos/console/v1/speech_pb.js";
-import { errorKey } from "../../errors.js";
+import { VoiceMode } from "../../../../gen/agentos/console/v1/speech_pb.js";
+import { errorKey } from "../../../lib/errors.js";
 import { joinVoice, type VoiceClient, voiceRoom } from "./room.js";
 
 /** Reads answers aloud through a listen-only voice session per utterance. */

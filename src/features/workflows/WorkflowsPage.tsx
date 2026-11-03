@@ -22,7 +22,7 @@ import { useAccess, useCapability } from "../../lib/access.js";
 import { useAgentAccess } from "../../lib/authorization.js";
 import { managementClient } from "../../lib/console.js";
 import { authorizationHref } from "../authorization/resource-location.js";
-import { ResourcePage } from "../management/ResourcePage.js";
+import { ResourcePage } from "../shared/ResourcePage.js";
 
 export function WorkflowsPage() {
   const { t } = useTranslation();

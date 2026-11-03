@@ -1,8 +1,8 @@
 import { DisconnectReason, type Participant, type Room, RoomEvent } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GetSpeechCapabilitiesResponse } from "../../../gen/agentos/console/v1/speech_pb.js";
-import { VoiceMode } from "../../../gen/agentos/console/v1/speech_pb.js";
-import { errorKey } from "../../errors.js";
+import type { GetSpeechCapabilitiesResponse } from "../../../../gen/agentos/console/v1/speech_pb.js";
+import { VoiceMode } from "../../../../gen/agentos/console/v1/speech_pb.js";
+import { errorKey } from "../../../lib/errors.js";
 import {
   joinVoice,
   microphone,
@@ -160,5 +160,3 @@ export function useVoiceCall(options: {
     },
   };
 }
-
-export type VoiceCall = ReturnType<typeof useVoiceCall>;

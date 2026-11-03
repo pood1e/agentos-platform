@@ -10,13 +10,13 @@ import type { Agent } from "../../../gen/kagent/api/v1/agents_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
+import { object } from "../../../shared/json.js";
 import { useCapability } from "../../lib/access.js";
-import { ModelConfigSelect } from "../agents/ModelConfigSelect.js";
 import { runtimeName } from "../shared/HarnessIcon.js";
-import { object } from "./connection-schema.js";
-import { HarnessPicker } from "./HarnessPicker.js";
-import { Failure } from "./ResourcePage.js";
-import { languageModels, runtimeModel } from "./runtime-models.js";
+import { HarnessPicker } from "../shared/HarnessPicker.js";
+import { Failure } from "../shared/ResourcePage.js";
+import { languageModels, runtimeModel } from "../shared/runtime-models.js";
+import { ModelConfigSelect } from "./ModelConfigSelect.js";
 
 export function AgentRuntime({
   agent,

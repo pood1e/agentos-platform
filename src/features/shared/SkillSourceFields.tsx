@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GitSource, S3Source, Skill } from "../../../gen/agentos/console/v1/role_pb.js";
-import { editSkill } from "./role-draft.js";
+import { editSkill } from "./skill-draft.js";
 
 interface Field {
   key: string;

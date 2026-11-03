@@ -13,11 +13,11 @@ import {
   type AppReference,
   AppReferenceSchema,
 } from "../../../../gen/agentos/mcp/v1/app_pb.js";
-import { mountMcpApp } from "../../../../shared/browser/mcp-app-host.js";
 import { consoleClient } from "../../../lib/console.js";
 import { ToolIcon } from "../../shared/ToolIcon.js";
 import { useToolText } from "../../shared/use-tool-text.js";
 import { hostContext } from "./host-context.js";
+import { mountMcpApp } from "./mcp-app-host.js";
 import { useAppResource } from "./use-app-resource.js";
 
 export function AppView({

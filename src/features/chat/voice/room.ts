@@ -1,9 +1,9 @@
 import { fromBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import type { Client } from "@connectrpc/connect";
 import { type AudioCaptureOptions, Room, RoomEvent } from "livekit-client";
-import type { ConsoleService } from "../../../gen/agentos/console/v1/console_service_pb.js";
-import type { StartVoiceSessionRequestSchema } from "../../../gen/agentos/console/v1/speech_pb.js";
-import { type VoiceEvent, VoiceEventSchema } from "../../../gen/agentos/voice/v1/voice_pb.js";
+import type { ConsoleService } from "../../../../gen/agentos/console/v1/console_service_pb.js";
+import type { StartVoiceSessionRequestSchema } from "../../../../gen/agentos/console/v1/speech_pb.js";
+import { type VoiceEvent, VoiceEventSchema } from "../../../../gen/agentos/voice/v1/voice_pb.js";
 
 export type VoiceClient = Pick<Client<typeof ConsoleService>, "startVoiceSession">;
 

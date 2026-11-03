@@ -8,8 +8,8 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
-import { ResourceSheet } from "./ResourceDialog.js";
-import { Failure } from "./ResourcePage.js";
+import { ResourceSheet } from "../shared/ResourceDialog.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { SpeechEditor, type SpeechKind } from "./SpeechEditor.js";
 
 export function SpeechModelsPage() {

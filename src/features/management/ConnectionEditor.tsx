@@ -14,23 +14,18 @@ import {
   ConnectionSchema,
   ModelPurpose,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { object } from "../../../shared/json.js";
+import { kagentApiVersion } from "../../../shared/kagent-resources.js";
 import { modelPurposeAnnotation } from "../../../shared/model-purpose.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
+import { connectionLabel, connectionName, metadata, native } from "../shared/connection.js";
+import { SaveButton } from "../shared/ResourceDialog.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { ToolIcon } from "../shared/ToolIcon.js";
 import { toolText } from "../shared/tool-label.js";
-import {
-  connectionLabel,
-  connectionName,
-  connectionSchema,
-  metadata,
-  native,
-  object,
-  translateSchema,
-} from "./connection-schema.js";
+import { connectionSchema, translateSchema } from "./connection-schema.js";
 import { ModelRequestOptions } from "./ModelRequestOptions.js";
-import { SaveButton } from "./ResourceDialog.js";
-import { Failure } from "./ResourcePage.js";
 
 const Form = generateForm<Record<string, unknown>>();
 
@@ -151,7 +146,7 @@ export function ConnectionEditor({
         $typeName: "kagent.api.v1.ModelConfig",
         resource: {
           $typeName: "kagent.api.v1.StructuredObject",
-          apiVersion: "api.kagent.dev/v1alpha3",
+          apiVersion: kagentApiVersion,
           kind: "ModelConfig",
           value: {
             spec: request,

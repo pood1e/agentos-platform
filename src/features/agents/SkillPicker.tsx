@@ -11,8 +11,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { type Skill, SkillSchema } from "../../../gen/agentos/console/v1/role_pb.js";
 import { managementClient } from "../../lib/console.js";
-import { Failure, pageSize, useManagementPage } from "../management/ResourcePage.js";
 import { PageControl } from "../shared/PageControl.js";
+import { pageSize } from "../shared/paging.js";
+import { Failure, useManagementPage } from "../shared/ResourcePage.js";
 
 export function SkillPicker({
   selected,

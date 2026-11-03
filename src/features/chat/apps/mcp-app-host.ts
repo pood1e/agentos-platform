@@ -5,7 +5,7 @@ import {
   type McpUiHostContext,
   PostMessageTransport,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
-import { appResourcePolicy } from "../mcp-apps-policy.js";
+import { appResourcePolicy } from "./resource-policy.js";
 
 export interface AppHostSnapshot {
   input: { arguments: Record<string, unknown> };

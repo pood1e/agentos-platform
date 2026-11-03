@@ -5,10 +5,10 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { errorKey } from "../../../shared/errors.js";
-import { PageControl } from "../shared/PageControl.js";
+import { errorKey } from "../../lib/errors.js";
+import { PageControl } from "./PageControl.js";
+import { pageSize } from "./paging.js";
 
-export const pageSize = 12;
 interface PageRequest {
   pageSize: number;
   pageToken: string;

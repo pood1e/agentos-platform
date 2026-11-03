@@ -1,7 +1,7 @@
 import type { DictationAdapter } from "@assistant-ui/react";
 import { RoomEvent } from "livekit-client";
-import { VoiceMode } from "../../../gen/agentos/console/v1/speech_pb.js";
-import { errorKey } from "../../errors.js";
+import { VoiceMode } from "../../../../gen/agentos/console/v1/speech_pb.js";
+import { errorKey } from "../../../lib/errors.js";
 import {
   joinVoice,
   microphone,

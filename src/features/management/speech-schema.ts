@@ -1,7 +1,8 @@
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import type { RJSFSchema } from "@rjsf/utils";
 import type { TFunction } from "i18next";
-import { localizedSchema, object } from "./connection-schema.js";
+import { object } from "../../../shared/json.js";
+import { localizedSchema } from "./connection-schema.js";
 
 export function speechSchema(source: JsonObject, t: TFunction): RJSFSchema {
   const bundle = structuredClone(source);

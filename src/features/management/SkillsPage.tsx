@@ -1,6 +1,5 @@
 import { clone } from "@bufbuild/protobuf";
 import { useMutation } from "@tanstack/react-query";
-import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -28,12 +27,13 @@ import {
 } from "../../../gen/agentos/management/v1/management_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
-import { editSkill, newSkill, skillKinds, withKind } from "../agents/role-draft.js";
-import { SkillSourceFields } from "../agents/SkillSourceFields.js";
 import { roleLabel } from "../shared/agents.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
-import { ResourceSheet, SaveButton } from "./ResourceDialog.js";
-import { Failure, ResourcePage, useManagementPage } from "./ResourcePage.js";
+import { ResourceSheet, SaveButton } from "../shared/ResourceDialog.js";
+import { Failure, ResourcePage, useManagementPage } from "../shared/ResourcePage.js";
+import { RowActions } from "../shared/RowActions.js";
+import { SkillSourceFields } from "../shared/SkillSourceFields.js";
+import { editSkill, newSkill, skillKinds, withKind } from "../shared/skill-draft.js";
 
 function SkillEditor({ item, onSaved }: { item?: SkillItem; onSaved: () => void }) {
   const { t } = useTranslation();
@@ -169,24 +169,11 @@ export function SkillsPage() {
                   {item.usedBy.map(roleLabel).join("、") || "—"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t(editable ? "management.edit" : "management.view")}
-                    onClick={() => setEditing({ item })}
-                  >
-                    {editable ? <Pencil /> : <Eye />}
-                  </Button>
-                  {editable && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t("management.delete")}
-                      onClick={() => setDeleting(item)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
+                  <RowActions
+                    editable={editable}
+                    onOpen={() => setEditing({ item })}
+                    onDelete={() => setDeleting(item)}
+                  />
                 </TableCell>
               </TableRow>
             ))}

@@ -10,7 +10,7 @@ import {
   AuthorizationScopeKind,
 } from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { authorizationScopeKind } from "../../lib/authorization.js";
-import { Failure } from "../management/ResourcePage.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { resourceSearch } from "./resource-location.js";
 import { useResourceOptions } from "./useResourceOptions.js";
 

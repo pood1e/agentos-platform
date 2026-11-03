@@ -15,8 +15,8 @@ import {
 import { useAccess } from "../../lib/access.js";
 import { authorizationScopeKind, useResourceAccess } from "../../lib/authorization.js";
 import { authorizationClient } from "../../lib/console.js";
-import { Failure } from "../management/ResourcePage.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { subjectName } from "./BindingSubject.js";
 import { GrantForm } from "./GrantForm.js";
 import { RoleBindingsTable } from "./RoleBindingsTable.js";

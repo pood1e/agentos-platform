@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "../../lib/access.js";
-import { StopTask } from "../tasks/StopTask.js";
+import { StopTask } from "./StopTask.js";
 import { SpeechInput } from "./speech/SpeechControls.js";
 import type { Chat } from "./use-chat.js";
 

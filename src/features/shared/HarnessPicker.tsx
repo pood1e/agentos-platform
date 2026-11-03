@@ -8,8 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
-import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
-import { object } from "./connection-schema.js";
+import { object } from "../../../shared/json.js";
+import { HarnessIcon, runtimeName } from "./HarnessIcon.js";
 
 export const harnessName = (harness: Harness) => harness.ref?.name ?? "";
 export const harnessMetadata = (harness: Harness) => object(harness.resource?.value?.metadata);

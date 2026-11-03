@@ -1,4 +1,4 @@
-import { clone, create as createMessage } from "@bufbuild/protobuf";
+import { clone } from "@bufbuild/protobuf";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { Blocks, BookOpen, LoaderCircle, NotebookPen, Play, Save, X } from "lucide-react";
 import { type ChangeEvent, useCallback, useState } from "react";
@@ -25,11 +25,11 @@ import {
   type RoleDefinition,
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
-import { ResourceReferenceSchema } from "../../../gen/kagent/api/v1/common_pb.js";
-import { errorKey } from "../../../shared/errors.js";
+import { defaultModelConfig } from "../../../shared/kagent-resources.js";
 import { useCapability } from "../../lib/access.js";
-import { agentName } from "../shared/agents.js";
+import { errorKey } from "../../lib/errors.js";
 import { RoleBuilderPanel } from "./RoleBuilder.js";
+import { RoleIdentityFields } from "./RoleIdentityFields.js";
 import { RoleRuntime } from "./RoleRuntime.js";
 import { RoleSection as Section } from "./RoleSection.js";
 import { RoleSkills } from "./RoleSkills.js";
@@ -57,7 +57,7 @@ export function RoleEditor({
     if (role) return clone(RoleDefinitionSchema, role);
     const draft = newRole();
     draft.modelConfig = configuration.modelConfigs.find(
-      (item) => item.ref?.name === "default-model-config",
+      (item) => item.ref?.name === defaultModelConfig,
     )?.ref;
     return draft;
   });
@@ -146,42 +146,12 @@ export function RoleEditor({
         </SheetClose>
       </SheetHeader>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="grid shrink-0 gap-4 p-4 sm:grid-cols-2 sm:px-6">
-          <div className="space-y-2">
-            <Label htmlFor="role-label">{t("configuration.name")}</Label>
-            <Input
-              id="role-label"
-              form="role-form"
-              required={!role}
-              maxLength={80}
-              disabled={!!role}
-              value={draft.displayName}
-              placeholder={
-                role
-                  ? agentName({
-                      id: draft.name,
-                      name: "",
-                      template: createMessage(ResourceReferenceSchema, { name: draft.name }),
-                    })
-                  : undefined
-              }
-              onChange={field("displayName")}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role-id">{t("configuration.identifier")}</Label>
-            <Input
-              id="role-id"
-              form="role-form"
-              required
-              pattern="[a-z]([a-z0-9\-]{0,61}[a-z0-9])?"
-              maxLength={63}
-              disabled={!!role}
-              value={draft.name}
-              onChange={field("name")}
-            />
-          </div>
-        </div>
+        <RoleIdentityFields
+          draft={draft}
+          existing={!!role}
+          onDisplayName={field("displayName")}
+          onName={field("name")}
+        />
         <Tabs value={tab} onValueChange={setTab} className="min-h-0 flex-1 gap-0">
           <TabsList
             className="mx-4 mb-2 grid w-auto shrink-0 grid-cols-4 sm:mx-6"

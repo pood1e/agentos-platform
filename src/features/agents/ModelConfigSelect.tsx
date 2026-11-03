@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
 import type { ModelConfig } from "../../../gen/kagent/api/v1/models_pb.js";
-import { languageModels } from "../management/runtime-models.js";
+import { languageModels } from "../shared/runtime-models.js";
 
 export function ModelConfigSelect({
   value: selectedModel,
