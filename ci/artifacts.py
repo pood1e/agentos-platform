@@ -22,8 +22,6 @@ def images():
     registry = os.environ["CI_REGISTRY_IMAGE"]
     result = {}
     for metadata in sorted(Path(".cache").glob("*build-metadata.json")):
-        if metadata.name == "ci-tools-build-metadata.json":
-            continue
         tagged = metadata.with_suffix(".ref").read_text().strip()
         repository, tag = tagged.rsplit(":", 1)
         if tag != revision or not (repository == registry or repository.startswith(registry + "/")):

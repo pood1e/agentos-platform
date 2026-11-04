@@ -1,31 +1,24 @@
 #!/bin/sh
 set -eu
-umask 077
-export DOCKER_CONFIG="$CI_PROJECT_DIR/.cache/build-auth"
-mkdir -p "$DOCKER_CONFIG"
-auth=$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')
-printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$CI_REGISTRY" "$auth" > "$DOCKER_CONFIG/config.json"
-trap 'rm -rf "$DOCKER_CONFIG"' EXIT
-BUILDKITD_FLAGS=--oci-worker-no-process-sandbox
-if [ -n "${AGENTOS_REGISTRY_MIRROR:-}" ]; then
-  printf '[registry."docker.io"]\n  mirrors = ["%s"]\n' "$AGENTOS_REGISTRY_MIRROR" > "$CI_PROJECT_DIR/.cache/buildkit.toml"
-  BUILDKITD_FLAGS="$BUILDKITD_FLAGS --config $CI_PROJECT_DIR/.cache/buildkit.toml"
-fi
-export BUILDKITD_FLAGS
+. ci/registry-auth.sh
 set --
 if [ -n "${AGENTOS_HARNESS_IMAGE:-}" ]; then
-  set -- --opt "build-arg:HARNESS_IMAGE=$AGENTOS_HARNESS_IMAGE"
+  set -- --build-arg "HARNESS_IMAGE=$AGENTOS_HARNESS_IMAGE"
 fi
-buildctl-daemonless.sh build \
-  --frontend dockerfile.v0 \
-  --local context="${AGENTOS_BUILD_CONTEXT:-.}" --local dockerfile="${AGENTOS_DOCKERFILE_DIR:-.}" \
-  --opt platform=linux/amd64 \
-  --opt "label:org.opencontainers.image.revision=$CI_COMMIT_SHA" \
-  --opt "label:org.opencontainers.image.source=$CI_PROJECT_URL" \
-  "$@" \
-  --import-cache "type=registry,ref=$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:buildcache" \
-  --export-cache "type=registry,ref=$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:buildcache,mode=max" \
-  --output "type=image,name=$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:$CI_COMMIT_SHA,push=true" \
-  --metadata-file "${AGENTOS_BUILD_METADATA:-.cache/build-metadata.json}"
+image="$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}"
 metadata_file=${AGENTOS_BUILD_METADATA:-.cache/build-metadata.json}
-printf '%s\n' "$CI_REGISTRY_IMAGE${AGENTOS_IMAGE_SUFFIX:-}:$CI_COMMIT_SHA" > "${metadata_file%.json}.ref"
+mkdir -p "$(dirname "$metadata_file")"
+docker buildx build \
+  --platform linux/amd64 \
+  --file "${AGENTOS_DOCKERFILE_DIR:-.}/Dockerfile" \
+  --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+  --label "org.opencontainers.image.source=$CI_PROJECT_URL" \
+  "$@" \
+  --cache-from "type=registry,ref=$image:buildcache" \
+  --cache-to "type=registry,ref=$image:buildcache,mode=max" \
+  --provenance=false \
+  --tag "$image:$CI_COMMIT_SHA" \
+  --push \
+  --metadata-file "$metadata_file" \
+  "${AGENTOS_BUILD_CONTEXT:-.}"
+printf '%s\n' "$image:$CI_COMMIT_SHA" > "${metadata_file%.json}.ref"

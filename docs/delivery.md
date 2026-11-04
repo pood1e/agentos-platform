@@ -131,7 +131,7 @@ kagent 使用原生 `TelemetryConfig`，Collector 与遥测存储由站点提供
 | `verify`、`python-verify` | 生成、构建、静态检查与单元测试 |
 | `deployment-check` | Helm 单测与渲染、Conftest、kubeconform、制品验签 |
 | `platform-controller-verify` | 平台控制器 race、真实 API Server 回归与 vet |
-| `build-*`、`voice-verify` | rootless BuildKit 镜像、Node / Python 契约与按范围触发的语音验证 |
+| `build-*`、`voice-verify` | Docker Buildx 镜像、Node / Python 契约与按范围触发的语音验证 |
 | `package-check`、`release` | 校验源码提交，打包四个 Chart，发布并签名不可变摘要 |
 
 release-please 依据 Conventional Commits 维护版本 PR、变更记录和 tag，发布 PR 使用同一合并门禁。
@@ -145,14 +145,12 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 | Node / Python 契约 | 项目 npm / PyPI 注册表，分别用 `gitHead` / wheel `Project-URL: Source` 记录源码；包含角色目录 `authorization.json` |
 
 所有平台镜像从同一提交构建。打包替换镜像摘要并携带精确 `Chart.lock`，发布任务串行校验版本冲突，以 cosign 签名镜像与 Chart，公钥为 [`ci/cosign.pub`](../ci/cosign.pub)。
-部署方校验摘要及签名中的 `version` / `revision`，Chart 渲染后复验平台镜像。CI 镜像与工具来源见 [`ci/images/Dockerfile`](../ci/images/Dockerfile)和 [`ci/toolchain.gitlab-ci.yml`](../ci/toolchain.gitlab-ci.yml)。
+部署方校验摘要及签名中的 `version` / `revision`，Chart 渲染后复验平台镜像。编译、测试与打包作业运行在 shell runner，工具链由 `mise.lock` 锁定，入口为 [`ci/toolchain.sh`](../ci/toolchain.sh)；镜像构建与语音验证运行在 Docker runner，使用 Docker Buildx 与注册表构建缓存。
 
 | CI 变量 | 内容 |
 | --- | --- |
-| `AGENTOS_CI_RUNNER`、`AGENTOS_GO_RUNNER` | 普通与 Go runner，默认 `agentos-container` / `agentos-compiler` |
-| `AGENTOS_PLATFORM_REGISTRY` | 平台制品注册表路径，CI 工具镜像由此拉取 |
-| `AGENTOS_VOICE_RUNNER`、`AGENTOS_BUILDKIT_RUNNER` | 语音指令集与 rootless BuildKit runner |
-| `AGENTOS_BUILDKIT_IMAGE`、`AGENTOS_REGISTRY_MIRROR` | BuildKit 摘要与可选 Docker Hub 镜像源 |
+| `AGENTOS_CI_RUNNER` | shell runner 标签，默认 `agentos-shell` |
+| `AGENTOS_PACKAGE_RUNNER` | Docker runner 标签，默认 `agentos-docker`，需支持 AVX2 |
 | `COSIGN_PRIVATE_KEY`、`COSIGN_PASSWORD` | 受保护的签名私钥文件与隐藏密码 |
 
 契约包包含 proto、生成绑定、schema 与角色目录。Node 导出路径为 `gen/*`、`gen/schema/*`、`proto/*`、`third_party/*` 和 `authorization.json`，运行时依赖为官方 Protobuf 库。消费者通过 Kubernetes 官方客户端读取 `AccessPlan.status.targets` 的工具决策，同时校验 status 和 `Ready=True` condition 的 `observedGeneration` 与资源代际一致。

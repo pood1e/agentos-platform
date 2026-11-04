@@ -3,10 +3,7 @@
   retry:
     max: 2
     when: [runner_system_failure]
-  tags: [$AGENTOS_BUILDKIT_RUNNER]
-  image:
-    name: $AGENTOS_BUILDKIT_IMAGE
-    entrypoint: [""]
+  tags: [$AGENTOS_PACKAGE_RUNNER]
   resource_group: agentos-image${AGENTOS_IMAGE_SUFFIX}
   script: [ci/build-image.sh]
   artifacts:

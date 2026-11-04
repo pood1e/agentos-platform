@@ -8,11 +8,10 @@ variables:
 
 include:
   - local: ci/build.gitlab-ci.yml
-  - local: ci/images.gitlab-ci.yml
   - local: ci/python.gitlab-ci.yml
 
 verify:
-  extends: .agentos-node-go
+  extends: .agentos-node
   stage: verify
   script: [npm run verify]
   artifacts:
@@ -20,7 +19,7 @@ verify:
     expire_in: 1 day
 
 deployment-check:
-  extends: [.agentos-ci, .agentos-go-cache]
+  extends: .agentos-ci
   stage: verify
   script:
     - ci/check-charts.sh
@@ -31,6 +30,8 @@ platform-controller-verify:
   stage: verify
   needs: []
   script:
+    - KUBEBUILDER_ASSETS="$(flock "$HOME/.cache/envtest.lock" setup-envtest use 1.37 --bin-dir "$HOME/.cache/envtest" -p path)"
+    - export KUBEBUILDER_ASSETS
     - ci/generate-controller.sh
     - python ci/chart-schemas.py
     - go -C controller test -race -count=1 ./...
@@ -71,7 +72,7 @@ build-web:
     expire_in: 1 day
 
 build-contracts:
-  extends: .agentos-node-go
+  extends: .agentos-node
   stage: package
   needs: []
   script:

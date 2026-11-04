@@ -25,8 +25,7 @@ build-voice:
     expire_in: 7 days
 
 voice-verify:
-  extends: .agentos-ci
-  tags: [$AGENTOS_VOICE_RUNNER]
+  tags: [$AGENTOS_PACKAGE_RUNNER]
   stage: package
   needs: [build-voice]
   rules:
@@ -47,20 +46,10 @@ voice-verify:
           - ci/requirements.txt
           - ci/voice-test-requirements.txt
           - ci/python.gitlab-ci.yml
+          - ci/registry-auth.sh
           - ci/toolchain.gitlab-ci.yml
-          - ci/images/**/*
+          - ci/voice-verify.sh
           - .gitlab-ci.yml
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       changes: *voice-paths
-  image:
-    name: $CI_REGISTRY_IMAGE/voice:$CI_COMMIT_SHA
-    entrypoint: [""]
-    docker:
-      user: "0"
-  before_script:
-    - python -m venv --system-site-packages .cache/voice-venv
-    - .cache/voice-venv/bin/pip install -r ci/voice-test-requirements.txt
-  script:
-    - .cache/voice-venv/bin/ruff check voice
-    - .cache/voice-venv/bin/ruff format --check voice
-    - .cache/voice-venv/bin/pytest -o 'pythonpath=voice' voice/tests
+  script: [ci/voice-verify.sh]
