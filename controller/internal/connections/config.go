@@ -40,10 +40,6 @@ func Config(gateway platform.PlatformGateway) agentgateway.Config {
 				purpose = "language"
 			}
 			model.Annotations = map[string]string{"agentos.dev/model-purpose": purpose}
-			if purpose == "embedding" {
-				model.Spec.ActorJWT = nil
-				model.Spec.TokenPassthrough = ptr.To(true)
-			}
 			if purpose != "embedding" && model.Spec.Provider != kagent.ModelProviderAnthropic {
 				if model.Spec.OpenAI == nil {
 					model.Spec.OpenAI = &kagent.OpenAIConfig{}

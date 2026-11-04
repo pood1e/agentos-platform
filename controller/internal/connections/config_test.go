@@ -38,8 +38,11 @@ func TestModelSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model.Annotations["agentos.dev/model-purpose"] != "embedding" || model.Spec.OpenAI.APIFormat != nil || model.Spec.ActorJWT != nil || !ptr.Deref(model.Spec.TokenPassthrough, false) {
+	if model.Annotations["agentos.dev/model-purpose"] != "embedding" || model.Spec.OpenAI.APIFormat != nil {
 		t.Fatalf("embedding model gained a language API format: %+v", model)
+	}
+	if model.Spec.TokenPassthrough != nil || model.Spec.ActorJWT == nil || model.Spec.ActorJWT.Audiences[0] != "http://models.test:8080" {
+		t.Fatalf("embedding model left the runtime gateway credential: %+v", model.Spec)
 	}
 	delete(source.Annotations, "agentos.dev/model-config")
 	source.Spec.Provider = ptr.To(agw.ModelProviderAnthropic)
