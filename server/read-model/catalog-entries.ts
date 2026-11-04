@@ -35,7 +35,8 @@ export function catalogRevision({ tasks, sessions }: CatalogRows) {
 export function catalogGraph(namespace: string, rows: CatalogRows, agents: AgentInfo[]) {
   if (
     rows.sessions.some(
-      (session) => !session.id || !session.agent?.name || session.agent.namespace !== namespace,
+      (session) =>
+        !session.id || !session.agent?.ref?.name || session.agent.ref.namespace !== namespace,
     )
   )
     throw new ConnectError("Native session catalog unavailable", Code.FailedPrecondition);
@@ -44,13 +45,13 @@ export function catalogGraph(namespace: string, rows: CatalogRows, agents: Agent
     const session = task && sessions.get(task.contextId);
     if (
       !task?.id ||
-      !session?.agent?.name ||
-      session.agent.namespace !== namespace ||
+      !session?.agent?.ref?.name ||
+      session.agent.ref.namespace !== namespace ||
       execution?.task?.taskId !== task.id ||
       execution.task.sessionId !== task.contextId
     )
       throw new ConnectError("Native task relationship unavailable", Code.FailedPrecondition);
-    return { ...ingest(task, agentKey(session.agent), execution), prompt: initialPrompt };
+    return { ...ingest(task, agentKey(session.agent.ref), execution), prompt: initialPrompt };
   });
   if (new Set(entries.map((entry) => entry.id)).size !== entries.length)
     throw new ConnectError("Native task catalog contains duplicate tasks", Code.FailedPrecondition);

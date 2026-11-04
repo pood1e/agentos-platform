@@ -28,9 +28,6 @@ it("enforces each resource permission independently at every public mutation", a
         saveSpeechConfiguration: () => ({}),
         saveHarness: () => ({}),
         deleteHarness: () => ({}),
-        addKnowledge: () => ({}),
-        deleteKnowledge: () => ({}),
-        clearKnowledge: () => ({}),
       });
     },
     {
@@ -62,9 +59,6 @@ it("enforces each resource permission independently at every public mutation", a
     [Capability.MODELS_MANAGE, () => resources.saveSpeechConfiguration({})],
     [Capability.HARNESSES_MANAGE, () => resources.saveHarness({})],
     [Capability.HARNESSES_MANAGE, () => resources.deleteHarness({})],
-    [Capability.KNOWLEDGE_MANAGE, () => resources.addKnowledge({})],
-    [Capability.KNOWLEDGE_MANAGE, () => resources.deleteKnowledge({})],
-    [Capability.KNOWLEDGE_MANAGE, () => resources.clearKnowledge({})],
   ];
   for (const granted of [
     [],

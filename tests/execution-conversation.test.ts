@@ -15,8 +15,8 @@ afterEach(() => vi.restoreAllMocks());
 function executionSession(env: Environment) {
   const root = env.fake.task(ids.dispatchRoot);
   const session = env.fake.sessions.get(root.contextId);
-  assert(session?.agent);
-  return { agent: session.agent, contextId: session.id };
+  assert(session?.agent?.ref);
+  return { agent: session.agent.ref, contextId: session.id };
 }
 
 async function snapshot(

@@ -81,7 +81,7 @@ export function appAuthorization({
     ]);
     if (
       !session ||
-      session.agent?.namespace !== namespace ||
+      session.agent?.ref?.namespace !== namespace ||
       authority.revoked ||
       authority.authority?.initiatorId !== identity.subject ||
       authority.authority?.sessionId !== session.id ||

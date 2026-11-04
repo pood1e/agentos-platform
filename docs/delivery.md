@@ -63,7 +63,7 @@ api:
 ## 模型连接
 
 `gateway.models` 声明预置模型连接，`modelConfig.spec` 提供默认对话模型参数。
-团队知识与 `memory` Harness 使用站点提供的 `knowledge-embedding` 嵌入连接，模型需支持 768 维输出。
+`memory` Harness 使用站点提供的 `knowledge-embedding` 嵌入连接，模型需支持 768 维输出。
 覆盖列表时保留 `default-model-config`：
 
 ```yaml
@@ -82,7 +82,7 @@ gateway:
         baseURL: http://embedding.example.internal:11434/v1
 ```
 
-未配置嵌入连接时团队知识与记忆不可用。更换嵌入模型后，已有知识需清空后重新写入。
+未配置嵌入连接时 Agent 记忆不可用。更换嵌入模型后，已有记忆需清空后重新写入。
 
 ## 方案 Harness
 

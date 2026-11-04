@@ -6,16 +6,16 @@ sources="$task_root/.cache/runtime-sources"
 fetch() {
   rm -rf "$sources/$1"
   git init --quiet "$sources/$1"
-  git -C "$sources/$1" remote add origin "https://github.com/pood1e/$1.git"
-  git -C "$sources/$1" fetch --quiet --depth 1 origin "$2"
+  git -C "$sources/$1" remote add origin "https://github.com/$2.git"
+  git -C "$sources/$1" fetch --quiet --depth 1 origin "$3"
   git -C "$sources/$1" checkout --quiet --detach FETCH_HEAD
-  test "$(git -C "$sources/$1" rev-parse HEAD)" = "$2"
+  test "$(git -C "$sources/$1" rev-parse HEAD)" = "$3"
 }
-fetch kagent 21008c4c8b3f67f9feb80376538abed5639cead2
-fetch substrate dece7140130772d0ab4ad66fc000f88c2e2687a1
+fetch kagent pood1e/kagent fa97ae57a86c2c200e4ed7bbd094a96537191040
+fetch substrate kagent-dev/substrate 71b1f9ec80848f8fd46f5d5d7e6b84ba36a80966
 git ls-files 'third_party/kagent/**/*.proto' | while IFS= read -r proto; do
   cmp "$sources/kagent/proto/${proto#third_party/kagent/}" "$task_root/$proto"
 done
 cmp "$sources/kagent/helm/kagent-crds/templates/api.kagent.dev_harnesses.yaml" "$task_root/third_party/kagent-crds/harnesses.yaml"
 cmp "$sources/kagent/go/adk/pkg/declarative/schema.json" "$task_root/third_party/kagent-crds/workflow.schema.json"
-cmp "$sources/substrate/pkg/proto/ateapipb/ateapi.proto" "$task_root/third_party/substrate/ateapi.proto"
+cmp "$sources/substrate/api/ateapi/v1/ateapi.proto" "$task_root/third_party/substrate/api/ateapi/v1/ateapi.proto"

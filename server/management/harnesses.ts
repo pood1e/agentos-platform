@@ -13,15 +13,11 @@ import type { ResourceStore } from "./resources.js";
 
 function asHarness(value: JsonObject) {
   const spec = object(value.spec);
-  const conditions = object(value.status).conditions;
   return create(HarnessSchema, {
     ref: { namespace: text(meta(value).namespace), name: text(meta(value).name) },
     resource: resource(value),
     runtime: ["kagent", "codex", "claude", "byo"].find((key) => spec[key] !== undefined) ?? "",
     workloadImage: text(object(spec.workload).image),
-    ready:
-      Array.isArray(conditions) &&
-      conditions.some((item) => object(item).type === "Ready" && object(item).status === "True"),
   });
 }
 

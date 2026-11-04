@@ -21,7 +21,7 @@ it("starts the selected Agent directly with native identity and idempotency", as
     const result = await client.sendMessage(request);
     expect(await client.sendMessage(request)).toEqual(result);
     expect(createSession.mock.calls[0]?.[0]).toMatchObject({ agent: request.agent });
-    expect(env.fake.sessions.get(result.contextId)?.agent).toMatchObject(request.agent);
+    expect(env.fake.sessions.get(result.contextId)?.agent?.ref).toMatchObject(request.agent);
     expect(env.fake.received.every((message) => message.messageId === request.messageId)).toBe(
       true,
     );

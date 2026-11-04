@@ -2,12 +2,6 @@ import { fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { Part } from "../../../gen/a2a_pb.js";
 import {
-  type InvokeSessionInput,
-  InvokeSessionInputSchema,
-  type InvokeSessionOutput,
-  InvokeSessionOutputSchema,
-} from "../../../gen/kagent/api/v1/collaboration_pb.js";
-import {
   ToolActivitySchema,
   type ToolResponse,
 } from "../../../gen/kagent/api/v1/interactions_pb.js";
@@ -63,24 +57,26 @@ export function toolOutcome(response: ToolResponse | undefined): Outcome | undef
   return { kind: outcome.case, value: toJson(ValueSchema, outcome.value) };
 }
 
-export type DelegationRef = Pick<InvokeSessionOutput, "sessionId" | "taskId"> &
-  Pick<InvokeSessionInput, "messageId">;
+export interface DelegationRef {
+  sessionId: string;
+  messageId: string;
+  taskId: string;
+}
 
-/** Display anchors for native collaboration; TaskExecution establishes ancestry. */
+/**
+ * Display anchors from the native invoke_agent arguments and result, whose shapes kagent
+ * publishes as MCP tool schemas. TaskExecution establishes ancestry.
+ */
 export function delegationRef(
   event: Pick<ToolEvent, "name" | "args">,
   output?: JsonValue,
 ): DelegationRef | undefined {
-  if (event.name !== "invoke_session") return undefined;
-  try {
-    const input = fromJson(InvokeSessionInputSchema, object(event.args), lenient);
-    const result = fromJson(InvokeSessionOutputSchema, object(output), lenient);
-    return {
-      sessionId: result.sessionId || input.sessionId || "",
-      messageId: input.messageId,
-      taskId: result.taskId,
-    };
-  } catch {
-    return undefined;
-  }
+  if (event.name !== "invoke_agent") return undefined;
+  const input = object(event.args);
+  const result = object(output);
+  return {
+    sessionId: text(result.session_id) || text(input.session_id),
+    messageId: text(input.message_id),
+    taskId: text(result.task_id),
+  };
 }

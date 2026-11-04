@@ -74,12 +74,6 @@ const workspaceRoutes = [
             }),
           },
           {
-            path: "knowledge",
-            lazy: async () => ({
-              Component: (await import("../features/management/KnowledgePage.js")).KnowledgePage,
-            }),
-          },
-          {
             path: "skills",
             lazy: async () => ({
               Component: (await import("../features/management/SkillsPage.js")).SkillsPage,

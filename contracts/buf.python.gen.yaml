@@ -7,7 +7,6 @@ plugins:
     out: gen/python
     include_imports: true
     types:
-      - kagent.api.v1.InvokeSessionOutput
       - agentos.voice.v1.VoiceService
       - agentos.voice.v1.VoiceEvent
-      - ateapi.Control
+      - substrate.ateapi.v1.Control

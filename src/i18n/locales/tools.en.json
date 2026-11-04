@@ -2,15 +2,11 @@
   "catalog": {
     "list_agents": {
       "name": "Discover Agents",
-      "description": "Discover Agents, capabilities and readiness."
+      "description": "Discover the Agents visible in the workspace."
     },
-    "create_session": {
-      "name": "Create a collaboration session",
-      "description": "Create an independent task session for a selected Agent."
-    },
-    "invoke_session": {
+    "invoke_agent": {
       "name": "Delegate work",
-      "description": "Delegate a goal to a session, synchronously or in the background."
+      "description": "Start a session with an Agent or continue an existing one, and wait for the result."
     },
     "list_sessions": {
       "name": "List collaboration sessions",
@@ -143,10 +139,6 @@
     "grep_file": {
       "name": "Search workspace files",
       "description": "Search file contents in the Agent's workspace or skills directory."
-    },
-    "search_memory": {
-      "name": "Search team knowledge",
-      "description": "Search shared team experience and check applicability and sources."
     }
   },
   "servers": {

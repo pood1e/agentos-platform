@@ -6,7 +6,6 @@ import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
 import { serverTargets } from "../server/governance/access-plans.js";
 import { ToolBindings } from "../server/governance/tool-bindings.js";
 import { ownIdentities, toolRequirements } from "../src/features/agents/mcp-services.js";
-import { newRole } from "../src/features/agents/role-draft.js";
 import { fixturePlans } from "./fixtures/access-plans.js";
 
 const access = new ToolBindings(serverTargets(fixturePlans()));
@@ -23,15 +22,10 @@ const servers = [
   tools("lab-kubernetes-inspection", [read, write]),
   tools("lab-kubernetes-remediation", [read]),
   tools("lab-kubernetes-remediation-changes", [write, exec]),
-  tools("kagent-collaboration", ["search_memory"]),
+  tools("kagent-collaboration", ["list_agents"]),
 ];
 
 describe("Agent tool access", () => {
-  it("starts role drafts with available native team memory", () => {
-    const draft = newRole();
-    expect(access.bindings("inspection", draft.tools, "validate")).toEqual(draft.tools);
-  });
-
   it("merges overlapping identities without duplicate tools or weaker approval requirements", () => {
     const bindings = [
       create(ToolBindingSchema, {
@@ -110,7 +104,7 @@ describe("Agent tool access", () => {
 
   it("uses ready policy decisions for configuration while rejecting unknown tools", () => {
     const bindings = [
-      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
+      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["list_agents"] }),
       create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read, write] }),
     ];
     expect(access.requirements("remediation")).toContainEqual(
@@ -121,7 +115,7 @@ describe("Agent tool access", () => {
       }),
     );
     expect(access.bindings("remediation", bindings, "validate")).toEqual([
-      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
+      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["list_agents"] }),
       create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read] }),
       create(ToolBindingSchema, {
         server: "lab-kubernetes-remediation-changes",

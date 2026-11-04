@@ -15,7 +15,6 @@ import transcriptionSchema from "../../gen/schema/agentos.console.v1.SpeechTrans
 import harnessSchema from "../../gen/schema/kagent.harness.json" with { type: "json" };
 import type { BindingView } from "../governance/tool-bindings.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { knowledgeService } from "../knowledge/service.js";
 import { accessProfile } from "../platform/access.js";
 import { notFound } from "../shared/errors.js";
 import type { SpeechSettingsStore } from "../voice/settings.js";
@@ -45,7 +44,6 @@ export interface ManagementDependencies {
   clients: KagentClients;
   namespace: string;
   gatewayName: string;
-  knowledgeTtlDays: number;
   speech: SpeechSettingsStore;
 }
 
@@ -56,12 +54,10 @@ export function managementService({
   clients,
   namespace,
   gatewayName,
-  knowledgeTtlDays,
   speech,
 }: ManagementDependencies): ServiceImpl<typeof ManagementService> {
   const connections = connectionCommands(store, clients, namespace, gatewayName);
   const skills = skillCommands(store, clients, namespace);
-  const memories = knowledgeService(clients, namespace, knowledgeTtlDays);
   const harnesses = harnessCommands(store, namespace);
   const runtime = agentRuntime(store, clients, namespace);
   const workflows = workflowCommands(store, clients, documents, namespace, access);
@@ -73,7 +69,7 @@ export function managementService({
         clients.execution.getSessionAuthority({ sessionId: request.sessionId }),
       ]);
       if (
-        session?.agent?.namespace !== namespace ||
+        session?.agent?.ref?.namespace !== namespace ||
         authority?.workspaceUid !== context.values.get(accessProfile).workspace?.uid
       )
         throw notFound("workflow.invalidReference");
@@ -94,15 +90,6 @@ export function managementService({
     listSkills: (request) => skills.list(request),
     saveSkill: (request) => skills.save(request),
     deleteSkill: (request) => skills.remove(request.name, request.resourceVersion),
-    listKnowledge: (request) => memories.list(request),
-    searchKnowledge: async (request) => ({
-      memories: (await memories.search(request.query)).memories,
-    }),
-    addKnowledge: async (request) => ({
-      id: (await memories.add(request.content)).id,
-    }),
-    deleteKnowledge: (request) => memories.remove(request.id),
-    clearKnowledge: (request) => memories.clear(request.etag),
     listHarnesses: (request) => harnesses.list(request.namespace),
     saveHarness: (request) => harnesses.save(request),
     deleteHarness: (request) => harnesses.remove(request),

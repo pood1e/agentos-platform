@@ -27,7 +27,6 @@
 - name: LIVEKIT_API_SECRET
   valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-secret}}
 {{- end }}
-- {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
 {{- end -}}
 
 {{- define "agentos.apiRules" -}}

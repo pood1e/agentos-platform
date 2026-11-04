@@ -89,12 +89,6 @@ spec:
                (jwt.aud == 'agentos-mcp-discovery' || 'agentos-mcp-discovery' in jwt.aud) && request.method == 'POST' &&
                (json(request.body).method in ['initialize','notifications/initialized','ping','tools/list'] ||
                 (json(request.body).method == 'resources/read' && json(request.body).params.uri.startsWith('ui://'))))
-              {{- range .Values.gateway.models }}
-              {{- if eq .name "knowledge-embedding" }}
-              || (request.path == '/v1/embeddings' && request.method == 'POST' && jwt.sub == '{{ include "agentos.controllerSubject" $ }}' &&
-                  (jwt.aud == '{{ $models }}' || '{{ $models }}' in jwt.aud) && json(request.body).model == {{ .spec.match.model | toJson }})
-              {{- end }}
-              {{- end }}
             ))
     extAuth:
       conditional:

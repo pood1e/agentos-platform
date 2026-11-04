@@ -98,7 +98,7 @@ describe("console service", () => {
   it("loads a newly observed conversation before deciding that it is unavailable", async () => {
     const { client, fake, projection, close } = await workbench([]);
     const agent = { namespace: "agentos", name: "assistant" };
-    const session = create(SessionSchema, { id: "newly-observed", agent });
+    const session = create(SessionSchema, { id: "newly-observed", agent: { ref: agent } });
     const task = create(TaskSchema, {
       id: "new-task",
       contextId: session.id,

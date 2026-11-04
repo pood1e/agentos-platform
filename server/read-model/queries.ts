@@ -52,7 +52,7 @@ export function taskQueries({
     const session = (
       await unlessMissing(clients.sessions.getSession({ sessionId: id }, { ...rpc, signal }))
     )?.session;
-    if (session?.agent?.namespace !== workspace) return undefined;
+    if (session?.agent?.ref?.namespace !== workspace) return undefined;
     const uid = await workspaceUID();
     return uid !== "" && session.authority?.workspaceUid === uid ? sessionInfo(session) : undefined;
   }

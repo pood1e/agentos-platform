@@ -103,7 +103,6 @@ export async function workspaceRuntime(
       store: resourceStore(kube, namespace, `${release}-skills`, clients),
       namespace,
       gatewayName: `${release}-gateway`,
-      knowledgeTtlDays: Number(process.env.AGENTOS_KNOWLEDGE_TTL_DAYS ?? "3650"),
       speech,
     }),
     voice,
