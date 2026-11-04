@@ -1,8 +1,6 @@
 import { toJson } from "@bufbuild/protobuf";
-import { type Timestamp, timestampMs, type Value, ValueSchema } from "@bufbuild/protobuf/wkt";
+import { type Value, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { redact } from "./redact.js";
-
-export const millis = (timestamp?: Timestamp) => (timestamp ? timestampMs(timestamp) : undefined);
 
 /** JSON values, including JSON documents carried as text, formatted for reading. */
 export function pretty(value?: Value): string | undefined {

@@ -64,9 +64,9 @@ describe("task entries", () => {
     );
   });
 
-  it("reads invoke_session results and continuation metadata", () => {
+  it("reads invoke_agent results and continuation metadata", () => {
     const root = index.entry(ids.approvalRoot);
-    const invoke = root?.calls.find((call) => call.name === "invoke_session");
+    const invoke = root?.calls.find((call) => call.name === "invoke_agent");
     expect(invoke?.delegation).toMatchObject({
       taskId: ids.approved,
     });

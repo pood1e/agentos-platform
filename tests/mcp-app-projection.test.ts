@@ -153,7 +153,7 @@ it("retains a completed delegated App even when the child has no text answer", a
           case: "data" as const,
           value: fromJson(ValueSchema, {
             id: "delegate-app",
-            name: "invoke_session",
+            name: "invoke_agent",
             ...(kind === "function_call"
               ? {
                   args: {
@@ -181,7 +181,7 @@ it("retains a completed delegated App even when the child has no text answer", a
   if (!graph) throw new Error("Missing conversation tree");
   const view = await conversation(
     graph,
-    env.session.agent,
+    env.session.agent?.ref,
     env.session.id,
     env.projection.fullTask,
   );

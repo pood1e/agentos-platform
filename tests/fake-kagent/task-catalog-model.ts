@@ -79,7 +79,7 @@ export function catalogFixture(
   const sessions = [...fake.sessions.values()].filter(
     (session) =>
       session.state !== RuntimeState.DELETED &&
-      session.agent?.namespace === scope.namespace &&
+      session.agent?.ref?.namespace === scope.namespace &&
       (anchorId
         ? (session.authority?.rootSessionId || session.id) === root
         : scope.visibility.case === "otherInitiators"
@@ -90,7 +90,7 @@ export function catalogFixture(
   const entries = [...fake.tasks.values()].flatMap((task) => {
     const session = known.get(task.contextId),
       execution = fake.executions.get(task.id);
-    return session && execution ? [ingest(task, agentKey(session.agent), execution)] : [];
+    return session && execution ? [ingest(task, agentKey(session.agent?.ref), execution)] : [];
   });
   const templates = new Map(
     [...fake.templates.values()].map((template) => [agentKey(template.ref), template]),

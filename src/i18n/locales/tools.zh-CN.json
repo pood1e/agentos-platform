@@ -2,15 +2,11 @@
   "catalog": {
     "list_agents": {
       "name": "发现可用智能体",
-      "description": "查询智能体的职责、能力与就绪状态。"
+      "description": "查询工作空间中可见的智能体。"
     },
-    "create_session": {
-      "name": "创建协作会话",
-      "description": "为选定智能体创建独立的任务会话。"
-    },
-    "invoke_session": {
+    "invoke_agent": {
       "name": "委派任务",
-      "description": "将目标交给指定会话，等待结果或在后台执行。"
+      "description": "为智能体创建会话或继续已有会话，并等待结果。"
     },
     "list_sessions": {
       "name": "查看协作会话",
@@ -143,10 +139,6 @@
     "grep_file": {
       "name": "搜索工作文件",
       "description": "搜索智能体工作区或技能目录中的文件内容。"
-    },
-    "search_memory": {
-      "name": "检索团队知识",
-      "description": "直接检索团队共享的历史经验，核对适用条件和来源。"
     }
   },
   "servers": {

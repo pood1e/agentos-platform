@@ -4,10 +4,7 @@ import {
   RoleDefinitionSchema,
 } from "../../../gen/agentos/console/v1/role_pb.js";
 
-export const newRole = () =>
-  create(RoleDefinitionSchema, {
-    tools: [{ server: "kagent-collaboration", tools: ["search_memory"] }],
-  });
+export const newRole = () => create(RoleDefinitionSchema);
 
 export function editRole(role: RoleDefinition, change: (draft: RoleDefinition) => void) {
   const draft = clone(RoleDefinitionSchema, role);

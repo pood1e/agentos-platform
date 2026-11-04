@@ -105,7 +105,7 @@ export function messageCommands(
       { timeoutMs: 30_000 },
     );
     if (!session) throw unavailable();
-    return { agentId: agentKey(session.agent), contextId: session.id };
+    return { agentId: agentKey(session.agent?.ref), contextId: session.id };
   }
 
   async function send(request: SendMessageRequest, identity: UserIdentity) {

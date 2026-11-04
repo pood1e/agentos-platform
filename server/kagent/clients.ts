@@ -12,7 +12,6 @@ import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
 import { WorkflowService } from "../../gen/kagent/api/v1/workflows_pb.js";
-import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { rpcMetrics } from "../shared/telemetry.js";
 import { nativeCredentials } from "./context.js";
 
@@ -30,7 +29,6 @@ export function kagentClients(transport: Transport) {
     catalog: createClient(TaskCatalogService, transport),
     execution: createClient(ExecutionService, transport),
     system: createClient(SystemService, transport),
-    memory: createClient(MemoryService, transport),
     models: createClient(ModelService, transport),
     agents: createClient(AgentService, transport),
     harnesses: createClient(HarnessService, transport),

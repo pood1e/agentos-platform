@@ -10,7 +10,7 @@
     "updatedAt": "2026-10-12T15:04:50.575501127Z",
     "name": "验证独立测试环境审批和实际处置：请将 agentos-lab 中名为 approval-smoke 的 ConfigMap 创建为 data.status=verified，data.purpose=approval-smoke。根据需要自主委",
     "contextId": "01a130a5-207d-7734-842b-8c01a7b0a9e5",
-    "agent": { "namespace": "agentos", "name": "coordinator" }
+    "agent": { "ref": { "namespace": "agentos", "name": "coordinator" } }
   },
   {
     "id": "01a130a5-5f67-753b-934f-a90c7dd745a2",
@@ -23,7 +23,7 @@
     "updatedAt": "2026-10-12T15:05:06.677845226Z",
     "name": "approval-smoke 创建与审批验证",
     "contextId": "01a130a5-5f67-753b-934f-a90c7dd745a2",
-    "agent": { "namespace": "agentos", "name": "remediation" }
+    "agent": { "ref": { "namespace": "agentos", "name": "remediation" } }
   },
   {
     "id": "01a130a8-982b-7ef6-bc08-10e6b1088540",
@@ -36,7 +36,7 @@
     "updatedAt": "2026-10-12T15:08:37.819085506Z",
     "name": "approval-smoke 真实结果持久化",
     "contextId": "01a130a8-982b-7ef6-bc08-10e6b1088540",
-    "agent": { "namespace": "agentos", "name": "knowledge" }
+    "agent": { "ref": { "namespace": "agentos", "name": "knowledge" } }
   },
   {
     "id": "01a130bc-88a8-758e-a51c-14f94e4f97f1",
@@ -49,7 +49,7 @@
     "updatedAt": "2026-10-12T15:30:24.565840378Z",
     "name": "在独立测试环境创建 agentos-lab/approval-rejected-smoke ConfigMap，data.status=test。先读取现状，再调用 k8s_apply_manifest 提交原生工具审批，等待决定后执行或报告拒",
     "contextId": "01a130bc-88a8-758e-a51c-14f94e4f97f1",
-    "agent": { "namespace": "agentos", "name": "remediation" }
+    "agent": { "ref": { "namespace": "agentos", "name": "remediation" } }
   },
   {
     "id": "01a130dd-0bbf-731d-a11c-8ed241305659",
@@ -62,7 +62,7 @@
     "updatedAt": "2026-10-12T16:05:55.281923113Z",
     "name": "验证事后异步知识沉淀：只读核验 agentos-lab/approval-rag-smoke 的实际 data.status=verified、data.purpose=approval-rag，已有资源不修改。自主选择可用成员进行核验；核验完",
     "contextId": "01a130dd-0bbf-731d-a11c-8ed241305659",
-    "agent": { "namespace": "agentos", "name": "coordinator" }
+    "agent": { "ref": { "namespace": "agentos", "name": "coordinator" } }
   },
   {
     "id": "01a130dd-50c1-7abf-b922-1870b2958b6d",
@@ -75,7 +75,7 @@
     "updatedAt": "2026-10-12T16:06:12.941704926Z",
     "name": "只读核验 approval-rag-smoke",
     "contextId": "01a130dd-50c1-7abf-b922-1870b2958b6d",
-    "agent": { "namespace": "agentos", "name": "inspection" }
+    "agent": { "ref": { "namespace": "agentos", "name": "inspection" } }
   },
   {
     "id": "01a130de-172e-7c81-83b5-9407668dd87e",
@@ -88,7 +88,7 @@
     "updatedAt": "2026-10-12T16:07:03.738806747Z",
     "name": "事后异步沉淀 approval-rag-smoke",
     "contextId": "01a130de-172e-7c81-83b5-9407668dd87e",
-    "agent": { "namespace": "agentos", "name": "knowledge" }
+    "agent": { "ref": { "namespace": "agentos", "name": "knowledge" } }
   },
   {
     "id": "01a13307-bec0-770e-b5a5-f19651bbe3fc",
@@ -101,7 +101,7 @@
     "updatedAt": "2026-10-13T02:11:48.048386483Z",
     "name": "新增一个“服务健康工程师”",
     "contextId": "01a13307-bec0-770e-b5a5-f19651bbe3fc",
-    "agent": { "namespace": "agentos", "name": "role-builder" }
+    "agent": { "ref": { "namespace": "agentos", "name": "role-builder" } }
   },
   {
     "id": "01a13309-e1fc-7f0a-a274-21ac47fe36ca",
@@ -114,7 +114,7 @@
     "updatedAt": "2026-10-13T02:14:08.138948555Z",
     "name": "检查服务健康",
     "contextId": "01a13309-e1fc-7f0a-a274-21ac47fe36ca",
-    "agent": { "namespace": "agentos", "name": "assistant" }
+    "agent": { "ref": { "namespace": "agentos", "name": "assistant" } }
   },
   {
     "id": "01a1330a-23b5-76c9-b207-3c8f63a1121b",
@@ -127,7 +127,7 @@
     "updatedAt": "2026-10-13T02:14:24.965204632Z",
     "name": "agentos-lab 服务健康只读检查",
     "contextId": "01a1330a-23b5-76c9-b207-3c8f63a1121b",
-    "agent": { "namespace": "agentos", "name": "coordinator" }
+    "agent": { "ref": { "namespace": "agentos", "name": "coordinator" } }
   },
   {
     "id": "01a1330a-a623-7e70-9a4d-79beb189ba19",
@@ -140,7 +140,7 @@
     "updatedAt": "2026-10-13T02:14:58.354635162Z",
     "name": "agentos-lab服务健康历史只读检索",
     "contextId": "01a1330a-a623-7e70-9a4d-79beb189ba19",
-    "agent": { "namespace": "agentos", "name": "knowledge" }
+    "agent": { "ref": { "namespace": "agentos", "name": "knowledge" } }
   },
   {
     "id": "01a1330b-cf6b-74b8-b761-b69b5d7a3b9c",
@@ -153,6 +153,6 @@
     "updatedAt": "2026-10-13T02:16:14.458652567Z",
     "name": "agentos-lab服务健康只读检查",
     "contextId": "01a1330b-cf6b-74b8-b761-b69b5d7a3b9c",
-    "agent": { "namespace": "agentos", "name": "service-health" }
+    "agent": { "ref": { "namespace": "agentos", "name": "service-health" } }
   }
 ]

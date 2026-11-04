@@ -25,7 +25,7 @@ it("retains independent App instances when later calls share the same resource",
   const controller = new AbortController();
   try {
     for await (const { conversation } of env.client.watchConversation(
-      { agent: env.session.agent, contextId: env.session.id },
+      { agent: env.session.agent?.ref, contextId: env.session.id },
       { signal: controller.signal },
     )) {
       const calls =
@@ -53,7 +53,7 @@ it("projects an App from native metadata and reads only the original call's reso
   const controller = new AbortController();
   try {
     for await (const { conversation } of env.client.watchConversation(
-      { agent: env.session.agent, contextId: env.session.id },
+      { agent: env.session.agent?.ref, contextId: env.session.id },
       { signal: controller.signal },
     )) {
       const part = conversation?.messages

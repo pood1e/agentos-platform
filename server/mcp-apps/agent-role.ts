@@ -8,7 +8,10 @@ import { roleDefinition } from "../kagent/role-template.js";
 
 export function agentRoles(clients: KagentClients) {
   return async (session: Session) => {
-    const { agent } = await clients.agents.getAgent({ ref: session.agent }, { timeoutMs: 5_000 });
+    const { agent } = await clients.agents.getAgent(
+      { ref: session.agent?.ref },
+      { timeoutMs: 5_000 },
+    );
     if (!agent) throw new ConnectError("Execution Agent is unavailable", Code.PermissionDenied);
     const source = object(object(agent.resource?.value?.spec).template);
     if (source.inline !== undefined) {
@@ -23,7 +26,7 @@ export function agentRoles(clients: KagentClients) {
     const reference = object(source.ref);
     const { agentTemplate } = await clients.templates.getAgentTemplate(
       {
-        ref: { namespace: session.agent?.namespace, name: text(reference.name) },
+        ref: { namespace: session.agent?.ref?.namespace, name: text(reference.name) },
       },
       { timeoutMs: 5_000 },
     );

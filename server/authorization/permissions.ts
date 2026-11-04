@@ -22,9 +22,6 @@ const requirements = new Map<string, Capability>([
   [key(ManagementService.method.saveSpeechConfiguration), Capability.MODELS_MANAGE],
   [key(ManagementService.method.saveSkill), Capability.SKILLS_MANAGE],
   [key(ManagementService.method.deleteSkill), Capability.SKILLS_MANAGE],
-  [key(ManagementService.method.addKnowledge), Capability.KNOWLEDGE_MANAGE],
-  [key(ManagementService.method.deleteKnowledge), Capability.KNOWLEDGE_MANAGE],
-  [key(ManagementService.method.clearKnowledge), Capability.KNOWLEDGE_MANAGE],
   [key(ManagementService.method.saveHarness), Capability.HARNESSES_MANAGE],
   [key(ManagementService.method.deleteHarness), Capability.HARNESSES_MANAGE],
 ]);

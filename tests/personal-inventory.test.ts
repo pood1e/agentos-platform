@@ -32,7 +32,7 @@ async function scopedEnvironment() {
   if (unreadable.authority) unreadable.authority.rootSessionId = unreadableId;
   const outside = clone(SessionSchema, foreign);
   outside.id = outside.contextId = "44444444-4444-4444-8444-444444444444";
-  if (outside.agent) outside.agent.namespace = "other-workspace";
+  if (outside.agent?.ref) outside.agent.ref.namespace = "other-workspace";
   const task = clone(TaskSchema, env.fake.task(fixtureIds.approvalRoot));
   task.id = foreignTaskId;
   task.contextId = foreignId;
@@ -118,7 +118,7 @@ describe("personal native inventory", () => {
     if (task.status) task.status.state = TaskState.WORKING;
     env.fake.tasks.set(task.id, task);
     env.fake.executions.set(task.id, fixtureExecution(task));
-    const agentId = `${env.foreign.agent?.namespace}/${env.foreign.agent?.name}`;
+    const agentId = `${env.foreign.agent?.ref?.namespace}/${env.foreign.agent?.ref?.name}`;
     const client = consoleClient(env);
     try {
       const response = await client.listAgentRuns({

@@ -5,12 +5,12 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 
 - **控制台**：Agent 团队、聊天与执行历史、原生工具确认、MCP Apps。
 - **输入**：文本与可选的语音输入、朗读和实时通话。
-- **接入**：原生身份投影、模型和 MCP 配置、团队知识与 Skill 目录。
+- **接入**：原生身份投影、模型和 MCP 配置与 Skill 目录。
 
 ## 部署
 
 平台发布 Chart、镜像与契约，Chart 值与制品验签见[构建与配置](docs/delivery.md)。参考部署由 [agentos-deploy](https://github.com/pood1e/agentos-deploy) 固定平台版本后签名发布，安装 K3s、运行时与平台 Chart，运行节点需支持 KVM。
-目标系统接入见[环境接入](docs/environments.md)；kagent 与 Substrate 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/main) 与 [pood1e/substrate](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 的固定提交构建并发布镜像。
+目标系统接入见[环境接入](docs/environments.md)；kagent 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/main) 的固定提交构建并发布镜像，Substrate 使用 [kagent-dev/substrate `v1.0.0-rc1`](https://github.com/kagent-dev/substrate/releases/tag/v1.0.0-rc1)。
 
 ## 开发
 

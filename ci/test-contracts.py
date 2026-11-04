@@ -94,7 +94,7 @@ assert.ok(status.properties.status.properties.targets);
 assert.ok(Object.keys(roles).length);
 const proto = import.meta.resolve('@agentos/contracts/proto/agentos/console/v1/role.proto');
 assert.match(readFileSync(new URL(proto), 'utf8'), /message RoleDefinition/);
-const native = import.meta.resolve('@agentos/contracts/third_party/kagent/kagent/api/v1/collaboration.proto');
+const native = import.meta.resolve('@agentos/contracts/third_party/kagent/kagent/api/v1/interactions.proto');
 assert.match(readFileSync(new URL(native), 'utf8'), /package kagent.api.v1/);
 await assert.rejects(import('@agentos/contracts/shared/access-plans'),
   {code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
@@ -137,9 +137,9 @@ await assert.rejects(import('@agentos/contracts/shared/access-plans'),
 import sys
 sys.path.insert(0, sys.argv[1])
 from agentos.voice.v1 import voice_pb2
-from kagent.api.v1 import collaboration_pb2
+from api.ateapi.v1 import ateapi_pb2
 assert voice_pb2.DESCRIPTOR.package == 'agentos.voice.v1'
-assert collaboration_pb2.DESCRIPTOR.package == 'kagent.api.v1'
+assert ateapi_pb2.DESCRIPTOR.package == 'substrate.ateapi.v1'
 """,
                         directory,
                     ],

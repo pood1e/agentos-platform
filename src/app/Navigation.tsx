@@ -2,7 +2,6 @@ import { create } from "@bufbuild/protobuf";
 import {
   Blocks,
   BookOpen,
-  BrainCircuit,
   Cpu,
   GitBranch,
   MessageCircle,
@@ -24,11 +23,6 @@ const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
   { path: "/agents", label: "navigation.agents", icon: Users },
   { path: "/workflows", label: "workflow.title", icon: GitBranch },
-  {
-    path: "/agents/knowledge",
-    label: "management.tabs.knowledge",
-    icon: BrainCircuit,
-  },
 ];
 const settings = [
   { path: "/agents/models", label: "management.tabs.models", icon: Cpu },

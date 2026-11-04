@@ -29,7 +29,10 @@ it("anchors a readable child tree at its live session after the root was deleted
   const client = consoleClient(env),
     abort = new AbortController();
   const stream = client
-    .watchConversation({ agent: session.agent, contextId: session.id }, { signal: abort.signal })
+    .watchConversation(
+      { agent: session.agent?.ref, contextId: session.id },
+      { signal: abort.signal },
+    )
     [Symbol.asyncIterator]();
   const snapshot: WatchConversationResponse | undefined = (await stream.next()).value;
   expect(snapshot?.conversation?.runs.some((run) => run.taskId === child.id)).toBe(true);

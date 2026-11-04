@@ -2,7 +2,6 @@
   "sections": "Advanced settings",
   "tabs": {
     "team": "Team",
-    "knowledge": "Team knowledge",
     "skills": "Skills",
     "mcp": "MCP",
     "models": "Models",
@@ -35,16 +34,7 @@
   "tls": "Enable HTTPS",
   "discoveredTools": "Tools {{count}}",
   "modelConnection": "Model connection",
-  "semanticSearch": "Semantic search",
-  "allKnowledge": "All knowledge",
-  "knowledgeContent": "Knowledge content",
-  "accessCount": "Retrievals",
-  "createdAt": "Created",
   "expiresAt": "Expires",
-  "similarity": "Relevance",
-  "addKnowledge": "Add knowledge",
-  "clearKnowledge": "Clear knowledge",
-  "clearKnowledgeNotice": "Clear all {{count}} shared team knowledge records? This cannot be undone.",
   "addSkill": "Add skill",
   "editSkill": "Edit skill",
   "deleteSkillNotice": "Removes the shared catalog entry. Versions already bound to Agents are retained.",
@@ -61,7 +51,6 @@
   "secretReferenceRequired": "Enter the key in the access key field.",
   "skillExists": "The skill already exists or was removed. Refresh to continue.",
   "catalogFull": "The skill catalog has reached its storage limit.",
-  "knowledgeChanged": "Knowledge records changed. Refresh before confirming.",
   "embeddingFailed": "The embedding request failed. Check the model connection.",
   "invalidModel": "The selected model connection is no longer available.",
   "fields": {
@@ -79,8 +68,6 @@
     "path": "Service path",
     "protocol": "Transport"
   },
-  "deleteKnowledge": "Delete knowledge",
-  "deleteKnowledgeNotice": "This record will be removed from team knowledge and search results.",
   "singleMCP": "Each MCP connection must reference one service.",
   "requestOptions": "Request options",
   "maxTokens": "Maximum output tokens",
@@ -101,9 +88,6 @@
     "Yes": "Yes",
     "No": "No"
   },
-  "knowledgeEvidence": "Sources and execution evidence",
-  "viewEvidenceTask": "View execution task",
-  "knowledgePlaceholder": "# Short title\n\n## Finding\nOne verified conclusion.\n\n## Scope\nEnvironment and prerequisites.\n\n## Validation and limits\nHow it was verified and what remains untested.\n\n## Sources\nRelated task or documentation links.",
   "speech": {
     "languageModels": "Language models",
     "models": "Speech models",

@@ -39,7 +39,6 @@ export async function managementEnvironment() {
     clients: env.clients,
     namespace: "agentos",
     gatewayName: "agentos-gateway",
-    knowledgeTtlDays: 3650,
   };
   return {
     ...env,

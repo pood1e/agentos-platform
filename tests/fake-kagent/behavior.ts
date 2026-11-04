@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { create, fromJson, type JsonValue, toJson, toJsonString } from "@bufbuild/protobuf";
+import {
+  create,
+  enumToJson,
+  fromJson,
+  type JsonValue,
+  toJson,
+  toJsonString,
+} from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import {
@@ -12,9 +19,9 @@ import {
   type Task,
   TaskSchema,
   TaskState,
+  TaskStateSchema,
 } from "../../gen/a2a_pb.js";
 import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
-import { InvokeSessionOutputSchema } from "../../gen/kagent/api/v1/collaboration_pb.js";
 import { hitlPayload } from "../../server/read-model/decode/hitl.js";
 import { messageText, partTypeKey, timelineKey } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
@@ -108,29 +115,21 @@ async function knowledge(fake: FakeKagent, task: Task) {
   });
   const accepted = fake.accept(message);
   return activity(
-    "invoke_session",
+    "invoke_agent",
+    { session_id: session.id, message_id: message.messageId, message: messageText(message) },
     {
-      session_id: session.id,
-      message_id: message.messageId,
-      message: messageText(message),
-      background: true,
+      session_id: accepted.contextId,
+      context_id: accepted.contextId,
+      task_id: accepted.id,
+      state: enumToJson(TaskStateSchema, accepted.status?.state ?? TaskState.UNSPECIFIED),
     },
-    toJson(
-      InvokeSessionOutputSchema,
-      create(InvokeSessionOutputSchema, {
-        sessionId: accepted.contextId,
-        contextId: accepted.contextId,
-        taskId: accepted.id,
-        state: accepted.status?.state,
-      }),
-    ),
   );
 }
 
 /** Deterministic Agent behavior; every result is delivered through the native A2A protocol. */
 export async function execute(fake: FakeKagent, task: Task, message: Message) {
   if (fake.tasks.get(task.id) !== task || task.status?.state === TaskState.CANCELED) return;
-  const agentName = fake.sessions.get(task.contextId)?.agent?.name;
+  const agentName = fake.sessions.get(task.contextId)?.agent?.ref?.name;
   const text = messageText(message);
   if (agentName === "role-builder") {
     const draft = create(RoleDefinitionSchema, {
@@ -140,7 +139,7 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
       systemPrompt: "使用只读工具检查工作负载健康，报告证据与来源。",
       tools: [
         { server: "kagent-tool-server", tools: ["k8s_get_resources"], requireApproval: false },
-        { server: "kagent-collaboration", tools: ["search_memory"] },
+        { server: "kagent-collaboration", tools: ["list_agents"] },
       ],
     });
     return finish(
@@ -161,21 +160,21 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
   ) {
     const operation = await pausedOperation(fake, text, task.contextId);
     const user = operation.history.find((item) => item.role === Role.USER);
-    const output = create(InvokeSessionOutputSchema, {
-      sessionId: operation.contextId,
-      contextId: operation.contextId,
-      taskId: operation.id,
-      state: TaskState.INPUT_REQUIRED,
+    const output = {
+      session_id: operation.contextId,
+      context_id: operation.contextId,
+      task_id: operation.id,
+      state: enumToJson(TaskStateSchema, TaskState.INPUT_REQUIRED),
       text: "等待用户审批。",
-    });
+    };
     return finish(
       fake,
       task,
       "变更方案已交给团队，等待你的审批。",
       activity(
-        "invoke_session",
+        "invoke_agent",
         { session_id: operation.contextId, message_id: user?.messageId ?? "", message: text },
-        toJson(InvokeSessionOutputSchema, output),
+        output,
       ),
     );
   }

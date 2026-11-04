@@ -151,7 +151,7 @@ export function taskCatalogRoutes(fake: FakeKagent, router: ConnectRouter) {
       );
       const needle = request.query.trim().toLowerCase();
       const rows = fixture.sessions
-        .filter((session) => agentKey(session.agent) === agentKey(request.agent))
+        .filter((session) => agentKey(session.agent?.ref) === agentKey(request.agent))
         .filter((session) =>
           [session.name, ...fixture.graph.contextEntries(session.id).map((entry) => entry.prompt)]
             .join(" ")

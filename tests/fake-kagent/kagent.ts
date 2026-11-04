@@ -33,7 +33,6 @@ import { object } from "../../shared/json.js";
 import { fixtureExecution } from "../fixtures/kagent.js";
 import { execute, reply } from "./behavior.js";
 import { templates, toolServers } from "./catalog.js";
-import { FakeMemory } from "./memory.js";
 import { FakeResources } from "./resources.js";
 
 /** In-memory kagent with deterministic agent behavior for tests and local development. */
@@ -52,7 +51,6 @@ export class FakeKagent {
   readonly templates = new Map(templates().map((item) => [item.ref?.name ?? "", item]));
   readonly toolServers = toolServers();
   readonly resources: FakeResources;
-  readonly memory = new FakeMemory();
   readonly received: Message[] = [];
   readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
   readonly fetched: string[] = [];
@@ -93,7 +91,7 @@ export class FakeKagent {
         sessionId: session.id,
         initiatorId: session.creator,
         rootSessionId: execution?.root?.sessionId ?? session.id,
-        workspaceUid: `${session.agent?.namespace}-uid`,
+        workspaceUid: `${session.agent?.ref?.namespace}-uid`,
         scopeCeiling: { scopes: [] },
       });
     }
@@ -104,7 +102,7 @@ export class FakeKagent {
     return this.clock;
   }
 
-  tenantOf = (task: Task) => agentKey(this.sessions.get(task.contextId)?.agent);
+  tenantOf = (task: Task) => agentKey(this.sessions.get(task.contextId)?.agent?.ref);
 
   task(id: string): Task {
     const task = this.tasks.get(id);
@@ -145,7 +143,7 @@ export class FakeKagent {
     const session = create(SessionSchema, {
       id: randomUUID(),
       creator: "user:operator",
-      agent,
+      agent: { ref: agent },
       name,
       createdAt: timestampFromMs(this.now()),
       updatedAt: timestampFromMs(this.now()),

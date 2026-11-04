@@ -32,7 +32,7 @@ func Template(object *unstructured.Unstructured, plans []platform.AccessPlan) er
 				key := fmt.Sprintf("%s:%t", target.Server, tool.RequireApproval)
 				binding := groups[key]
 				if binding == nil {
-					binding = &kagent.MCPToolBinding{Server: core.TypedLocalObjectReference{Kind: "RemoteMCPServer", Name: target.Server}, RequireApproval: tool.RequireApproval}
+					binding = &kagent.MCPToolBinding{Server: core.TypedObjectReference{Kind: "RemoteMCPServer", Name: target.Server}, RequireApproval: tool.RequireApproval}
 					groups[key] = binding
 				}
 				name := target.Service + "_" + tool.Name

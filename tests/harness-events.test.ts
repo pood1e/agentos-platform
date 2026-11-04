@@ -34,7 +34,7 @@ function task(name: string, args: JsonValue, response: JsonValue) {
 describe("canonical native tool activity", () => {
   it("projects native delegation identities without harness-specific decoding", () => {
     const current = task(
-      "invoke_session",
+      "invoke_agent",
       { session_id: "child-session", message_id: "child-message" },
       {
         output: {
@@ -55,14 +55,13 @@ describe("canonical native tool activity", () => {
     });
   });
 
-  it("reads background delegation from the native invocation contract", () => {
+  it("anchors a delegation that starts a session from an Agent reference", () => {
     const current = task(
-      "invoke_session",
+      "invoke_agent",
       {
-        session_id: "child-session",
+        agent: { namespace: "agentos", name: "inspection" },
         message_id: "child-message",
         message: "Work",
-        background: true,
       },
       { output: { session_id: "child-session", task_id: "child-task" } },
     );
@@ -117,7 +116,7 @@ describe("canonical native tool activity", () => {
 
   it("keeps completed tasks available despite an untrusted invocation result", () => {
     const current = task(
-      "invoke_session",
+      "invoke_agent",
       { session_id: "other-session", message_id: "other-message" },
       { output: { task_id: "other-task", state: "TASK_STATE_INPUT_REQUIRED" } },
     );

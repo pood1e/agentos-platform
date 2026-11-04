@@ -54,7 +54,7 @@ export const sessionInfo = (session: Session) => ({
   root: session.authority?.rootSessionId || session.id,
   subject: session.authority?.initiatorId || session.creator,
   id: session.id,
-  agentId: agentKey(session.agent),
+  agentId: agentKey(session.agent?.ref),
   name: session.name,
   updatedAt: millis(session.updatedAt),
 });

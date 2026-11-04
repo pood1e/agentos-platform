@@ -62,7 +62,7 @@ export function listings({
       );
       return {
         conversations: result.sessions.map(({ session, activity }) => {
-          if (!session?.id || agentKey(session.agent) !== agentId)
+          if (!session?.id || agentKey(session.agent?.ref) !== agentId)
             throw new ConnectError("Native conversation unavailable", Code.FailedPrecondition);
           return create(ConversationSummarySchema, {
             contextId: session.id,

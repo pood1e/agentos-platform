@@ -14,7 +14,6 @@ import "kagent/api/v1/harnesses.proto";
 import "kagent/api/v1/models.proto";
 import "kagent/api/v1/tools.proto";
 import "kagent/api/v1/workflows.proto";
-import "kagent/runtime/v1/memory.proto";
 
 service ManagementService {
   // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
@@ -53,15 +52,6 @@ service ManagementService {
   }
   rpc SaveSkill(SaveSkillRequest) returns (SaveSkillResponse);
   rpc DeleteSkill(DeleteSkillRequest) returns (DeleteSkillResponse);
-  rpc ListKnowledge(ListKnowledgeRequest) returns (ListKnowledgeResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  rpc SearchKnowledge(SearchKnowledgeRequest) returns (SearchKnowledgeResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  rpc AddKnowledge(AddKnowledgeRequest) returns (AddKnowledgeResponse);
-  rpc DeleteKnowledge(DeleteKnowledgeRequest) returns (DeleteKnowledgeResponse);
-  rpc ClearKnowledge(ClearKnowledgeRequest) returns (ClearKnowledgeResponse);
   rpc ListHarnesses(kagent.api.v1.ListHarnessesRequest) returns (kagent.api.v1.ListHarnessesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -237,48 +227,3 @@ message DeleteSkillRequest {
   string resource_version = 2 [(buf.validate.field).string.min_len = 1];
 }
 message DeleteSkillResponse {}
-
-message ListKnowledgeRequest {
-  reserved 1;
-  int32 page_size = 2 [(buf.validate.field).int32 = {
-    gte: 0
-    lte: 100
-  }];
-  string page_token = 3 [(buf.validate.field).string.max_len = 2048];
-  string query = 4 [(buf.validate.field).string.max_len = 200];
-}
-message ListKnowledgeResponse {
-  repeated kagent.runtime.v1.MemorySummary memories = 1;
-  string next_page_token = 2;
-  int32 total_size = 3;
-  string etag = 4;
-}
-message SearchKnowledgeRequest {
-  reserved 1;
-  string query = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 8000
-  }];
-}
-message SearchKnowledgeResponse {
-  repeated kagent.runtime.v1.MemorySearchResult memories = 1;
-}
-message AddKnowledgeRequest {
-  reserved 1;
-  string content = 2 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 24000
-  }];
-}
-message AddKnowledgeResponse {
-  string id = 1;
-}
-message DeleteKnowledgeRequest {
-  string id = 1 [(buf.validate.field).string.uuid = true];
-}
-message DeleteKnowledgeResponse {}
-message ClearKnowledgeRequest {
-  reserved 1, 2;
-  string etag = 3 [(buf.validate.field).string.pattern = "^[a-f0-9]{64}$"];
-}
-message ClearKnowledgeResponse {}

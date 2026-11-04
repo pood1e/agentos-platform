@@ -28,9 +28,6 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.actorJWKSBackend" -}}
 {{- printf "%s-actor-jwks" (include "agentos.name" .) -}}
 {{- end -}}
-{{- define "agentos.controllerSubject" -}}
-{{- default (printf "system:serviceaccount:%s:kagent-controller" .Release.Namespace) .Values.kagent.controllerSubject -}}
-{{- end -}}
 {{- define "agentos.kagentEndpoint" -}}
 {{- $endpoint := urlParse (trimSuffix "/" .Values.kagent.endpoint) -}}
 {{- $hostname := regexFind "^\\[[^]]+\\]|^[^:]+" $endpoint.host -}}

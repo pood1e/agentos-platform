@@ -402,9 +402,6 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^https?://"
-        },
-        "controllerSubject": {
-          "type": "string"
         }
       },
       "required": ["endpoint"]
@@ -536,17 +533,6 @@
         }
       },
       "required": ["spec"]
-    },
-    "knowledgeMemory": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "ttlDays": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "required": ["ttlDays"]
     },
     "gateway": {
       "type": "object",
@@ -1038,7 +1024,6 @@
     "route",
     "modelConfig",
     "harnesses",
-    "knowledgeMemory",
     "gateway",
     "systemAgents",
     "pack",
@@ -1110,16 +1095,22 @@
                   "description": "Summarizer selects the model and prompt that write the summaries.\nOmitted summarizes with the agent's own model and the runtime's default\nprompt.",
                   "properties": {
                     "modelConfigRef": {
-                      "description": "ModelConfigRef references the ModelConfig in the Harness namespace that\nwrites the summaries. Omitted uses the agent's own model.",
+                      "description": "ModelConfigRef references the ModelConfig (defaulting to the Harness namespace) that\nwrites the summaries. Omitted uses the agent's own model.",
                       "properties": {
                         "name": {
-                          "default": "",
-                          "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "maxLength": 253,
+                          "minLength": 1,
+                          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "maxLength": 63,
+                          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                           "type": "string"
                         }
                       },
+                      "required": ["name"],
                       "type": "object",
-                      "x-kubernetes-map-type": "atomic",
                       "x-kubernetes-validations": [
                         {
                           "message": "name must not be empty",
@@ -1167,22 +1158,22 @@
               "description": "Memory enables long-term memory for agents using this Harness.",
               "properties": {
                 "modelConfigRef": {
-                  "description": "ModelConfigRef references the embedding ModelConfig in the Harness namespace.",
+                  "description": "ModelConfigRef references the embedding ModelConfig (defaulting to the Harness namespace).",
                   "properties": {
                     "name": {
-                      "default": "",
-                      "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+                      "type": "string"
+                    },
+                    "namespace": {
+                      "maxLength": 63,
+                      "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                       "type": "string"
                     }
                   },
-                  "type": "object",
-                  "x-kubernetes-map-type": "atomic"
-                },
-                "teamNamespace": {
-                  "description": "TeamNamespace selects the namespace-scoped shared collection.\nRuntime authorization confines access to the Agent namespace.",
-                  "maxLength": 63,
-                  "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
-                  "type": "string"
+                  "required": ["name"],
+                  "type": "object"
                 },
                 "ttlDays": {
                   "description": "TTLDays controls how many days a stored memory entry remains valid.",

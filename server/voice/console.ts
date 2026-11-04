@@ -58,8 +58,8 @@ export function voiceConsole(
         );
     if (
       !session ||
-      session.agent?.namespace !== agent.namespace ||
-      session.agent.name !== agent.name
+      session.agent?.ref?.namespace !== agent.namespace ||
+      session.agent.ref.name !== agent.name
     )
       throw fail(Code.PermissionDenied, "chat.executionDenied");
     const credential = await clients.execution.issueSessionCredential({

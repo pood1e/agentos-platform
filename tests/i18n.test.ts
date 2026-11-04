@@ -55,8 +55,8 @@ describe("localized user interface", () => {
     expect(keys("en")).toEqual(keys("zh"));
   });
   it("uses localized names and descriptions without changing native tool identifiers", async () => {
-    expect(toolText("invoke_session")).toMatchObject({ name: "委派任务" });
-    expect(toolText("mcp__kagent-collaboration__invoke_session").name).toBe("委派任务");
+    expect(toolText("invoke_agent")).toMatchObject({ name: "委派任务" });
+    expect(toolText("mcp__kagent-collaboration__invoke_agent").name).toBe("委派任务");
     expect(toolText("functions.ask_user").name).toBe("询问用户");
     expect(toolText("env-real_kubernetes_resources_list").name).toBe(
       "env-real_kubernetes_resources_list",
@@ -78,7 +78,7 @@ describe("localized user interface", () => {
       description: "",
     });
     await i18n.changeLanguage("en");
-    expect(toolText("invoke_session")).toMatchObject({ name: "Delegate work" });
+    expect(toolText("invoke_agent")).toMatchObject({ name: "Delegate work" });
     expect(toolText("env-sim_grafana_query_sql").name).toBe("Query SQL data");
     expect(toolText("env-sim-zammad_add_ticket_note").name).toBe("Add ticket note");
     expect(toolText("env-sim-keycloak_keycloak_identity_get").name).toBe("Get current identity");
