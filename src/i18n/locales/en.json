@@ -478,5 +478,10 @@
     "mcpServer": "MCP server name",
     "toolName": "Tool name",
     "toolNameHint": "Use the exact, case-sensitive name. The grant applies to this tool on this MCP server."
+  },
+  "executionScope": {
+    "label": "Execution scope",
+    "personal": "Mine",
+    "system": "System"
   }
 }

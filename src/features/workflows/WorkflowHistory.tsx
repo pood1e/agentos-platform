@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccess } from "../../lib/access.js";
 import { consoleClient, managementClient } from "../../lib/console.js";
+import { ExecutionScopeTabs, useExecutionScope } from "../shared/execution-scope.js";
 import { pageSize } from "../shared/paging.js";
 import { WorkflowFailure } from "./WorkflowFailure.js";
 
@@ -14,15 +15,21 @@ export function WorkflowHistory() {
   const { t } = useTranslation();
   const access = useAccess().data;
   const namespace = access?.workspace?.namespace ?? "";
-  const [token, setToken] = useState("");
+  const scope = useExecutionScope();
+  const { systemOnly } = scope;
+  // Page tokens are bound to the execution scope that issued them.
+  const [cursor, setCursor] = useState({ systemOnly, token: "" });
+  const token = cursor.systemOnly === systemOnly ? cursor.token : "";
+  const setToken = (next: string) => setCursor({ systemOnly, token: next });
   const [session, setSession] = useState("");
   const runs = useQuery({
-    queryKey: ["workflows", "history", namespace, access?.subject, name, token],
+    queryKey: ["workflows", "history", namespace, access?.subject, name, systemOnly, token],
     queryFn: () =>
       consoleClient.listAgentRuns({
         agent: { namespace, name },
         pageSize,
         pageToken: token,
+        systemOnly,
       }),
     enabled: !!namespace,
     refetchInterval: 5000,
@@ -38,6 +45,7 @@ export function WorkflowHistory() {
         <h1 className="flex-1 text-lg font-semibold">
           {name} · {t("workflow.history")}
         </h1>
+        <ExecutionScopeTabs scope={scope} />
         <Button asChild variant="outline">
           <Link to={`/workflows/${encodeURIComponent(name)}/edit`}>{t("workflow.back")}</Link>
         </Button>

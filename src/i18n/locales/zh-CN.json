@@ -477,5 +477,10 @@
     "mcpServer": "MCP 服务名称",
     "toolName": "工具名称",
     "toolNameHint": "填写精确名称，区分大小写；授权仅限当前 MCP 服务中的此工具。"
+  },
+  "executionScope": {
+    "label": "执行范围",
+    "personal": "我的",
+    "system": "系统"
   }
 }

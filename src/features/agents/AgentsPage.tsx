@@ -11,6 +11,7 @@ import type { RoleDefinition } from "../../../gen/agentos/console/v1/role_pb.js"
 import { useCapability } from "../../lib/access.js";
 import { errorKey } from "../../lib/errors.js";
 import { usePack } from "../../lib/pack.js";
+import { ExecutionScopeTabs, useExecutionScope } from "../shared/execution-scope.js";
 import { AgentDirectory } from "./AgentDirectory.js";
 import { RoleEditor } from "./RoleEditor.js";
 import { Workflows } from "./Workflows.js";
@@ -19,7 +20,12 @@ export function AgentsPage() {
   const { t } = useTranslation();
   const editable = useCapability(Capability.AGENTS_MANAGE);
   const pack = usePack();
-  const agents = useQuery(ConsoleService.method.listAgents, {}, { refetchInterval: 3_000 });
+  const scope = useExecutionScope();
+  const agents = useQuery(
+    ConsoleService.method.listAgents,
+    { systemOnly: scope.systemOnly },
+    { refetchInterval: 3_000 },
+  );
   const configuration = useQuery(ConsoleService.method.getConfiguration, {});
   const error = configuration.error ?? agents.error;
   const [editor, setEditor] = useState(false);
@@ -39,9 +45,10 @@ export function AgentsPage() {
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
       <div className="flex items-center justify-between gap-3 py-1">
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+        <h1 className="flex-1 text-xl font-semibold tracking-tight sm:text-2xl">
           {t("configuration.title")}
         </h1>
+        <ExecutionScopeTabs scope={scope} />
         {editable && (
           <Button
             disabled={!configuration.data}
