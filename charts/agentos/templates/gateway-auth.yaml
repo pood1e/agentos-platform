@@ -53,7 +53,7 @@ spec:
               jwksPath: /openid/v1/jwks
           validation: {requiredClaims: [sub, exp, aud]}
         - issuer: {{ .Values.runtime.kubernetesIssuer | quote }}
-          audiences: [{{ $models | quote }}, agentos-mcp-discovery]
+          audiences: [agentos-mcp-discovery]
           jwks:
             remote:
               backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-kubernetes-jwks}
