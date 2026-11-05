@@ -47,6 +47,7 @@
 | `src/features/workflows` | 独立工作流入口、AgentSystem 画布 / YAML 编辑、发布状态与执行历史 |
 | `src/features/agents` | 通用 Agent 目录、模板编辑、模型与运行时选择、工具绑定与方案业务全景 |
 | `src/features/chat` | 聊天、MCP App 宿主、听写、朗读与语音通话 |
+| `src/features/tasks` | 任务历史与只读执行记录 |
 | `src/features/authorization` | 原生角色目录、按账号 / 组汇总的角色标签与资源直接授权管理 |
 | `src/features/shared` | 跨功能的资源列表、对话框、运行时选择器、审批与工具展示 |
 | `src/{lib,i18n}` | RPC、连接状态与展示文案 |

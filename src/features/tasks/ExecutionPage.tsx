@@ -2,7 +2,7 @@ import { ThreadPrimitive } from "@assistant-ui/react";
 import { create } from "@bufbuild/protobuf";
 import { PanelRightClose, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,9 @@ const started = () => {};
 export function ExecutionPage() {
   const { agent = "", session = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Closing returns to the list that opened the execution; a direct visit has no such entry.
+  const close = () => void (location.key === "default" ? navigate("/chat") : navigate(-1));
   const { t } = useTranslation();
   const access = useAccess();
   const ref = { namespace: access.data?.workspace?.namespace ?? "", name: agent };
@@ -52,12 +55,7 @@ export function ExecutionPage() {
             </Link>
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t("common.close")}
-          onClick={() => void navigate("/chat")}
-        >
+        <Button variant="ghost" size="icon-sm" aria-label={t("common.close")} onClick={close}>
           <PanelRightClose />
         </Button>
       </div>

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdministrator } from "../../lib/access.js";
+import { useSearchParam } from "../../lib/use-search-param.js";
 
 export interface ExecutionScope {
   administrator: boolean;
@@ -12,18 +12,12 @@ export interface ExecutionScope {
 /** Personal executions, or for administrators those of other initiators, selected in the URL. */
 export function useExecutionScope(): ExecutionScope {
   const administrator = useAdministrator();
-  const [params, setParams] = useSearchParams();
-  const select = (systemOnly: boolean) =>
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        if (systemOnly) next.set("scope", "system");
-        else next.delete("scope");
-        return next;
-      },
-      { replace: true },
-    );
-  return { administrator, systemOnly: administrator && params.get("scope") === "system", select };
+  const [scope, setScope] = useSearchParam("scope");
+  return {
+    administrator,
+    systemOnly: administrator && scope === "system",
+    select: (systemOnly) => setScope(systemOnly ? "system" : ""),
+  };
 }
 
 export function ExecutionScopeTabs({ scope }: { scope: ExecutionScope }) {

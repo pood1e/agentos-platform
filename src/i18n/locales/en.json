@@ -108,12 +108,12 @@
     "customAnswerPlaceholder": "Enter your own answer…"
   },
   "task": {
-    "executionDetails": "View execution details for {{name}}",
-    "listTitle": "Tasks",
-    "searchLabel": "Search tasks",
-    "searchPlaceholder": "Search tasks…",
+    "listTitle": "Task history",
+    "name": "Task",
+    "agent": "Agent",
+    "state": "Status",
+    "updatedAt": "Updated",
     "noMatches": "No matching tasks",
-    "noTasks": "No tasks yet",
     "notFound": "This task does not exist or is no longer visible.",
     "stop": "Stop",
     "cancelHint": "Stop every unfinished task in this conversation, including background delegations. Verify any changes already executed.",
