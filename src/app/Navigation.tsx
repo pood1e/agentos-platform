@@ -4,6 +4,7 @@ import {
   BookOpen,
   Cpu,
   GitBranch,
+  ListChecks,
   MessageCircle,
   Play,
   ShieldCheck,
@@ -21,6 +22,7 @@ import {
 
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
+  { path: "/tasks", label: "task.listTitle", icon: ListChecks },
   { path: "/agents", label: "navigation.agents", icon: Users },
   { path: "/workflows", label: "workflow.title", icon: GitBranch },
 ];

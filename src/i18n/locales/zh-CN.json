@@ -108,12 +108,12 @@
     "customAnswerPlaceholder": "输入自定义回答…"
   },
   "task": {
-    "executionDetails": "查看{{name}}的执行详情",
-    "listTitle": "任务",
-    "searchLabel": "搜索任务",
-    "searchPlaceholder": "搜索任务…",
+    "listTitle": "任务历史",
+    "name": "任务",
+    "agent": "智能体",
+    "state": "状态",
+    "updatedAt": "更新时间",
     "noMatches": "没有匹配的任务",
-    "noTasks": "还没有任务",
     "notFound": "任务不存在或已不可见。",
     "stop": "停止",
     "cancelHint": "停止当前会话的全部任务，包含后台委派。已执行的变更仍需核验。",

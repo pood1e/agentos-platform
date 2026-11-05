@@ -26,6 +26,12 @@ const workspaceRoutes = [
         lazy: async () => ({ Component: (await import("../features/chat/ChatPage.js")).ChatPage }),
       },
       {
+        path: "tasks",
+        lazy: async () => ({
+          Component: (await import("../features/tasks/TasksPage.js")).TasksPage,
+        }),
+      },
+      {
         path: "executions/:agent/:session",
         lazy: async () => ({
           Component: (await import("../features/tasks/ExecutionPage.js")).ExecutionPage,
