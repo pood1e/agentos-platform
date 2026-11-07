@@ -20,14 +20,11 @@ build-voice:
     AGENTOS_DOCKERFILE_DIR: voice
     AGENTOS_IMAGE_SUFFIX: /voice
     AGENTOS_BUILD_METADATA: .cache/voice-build-metadata.json
-  artifacts:
-    paths: [.cache/voice-build-metadata.json, .cache/voice-build-metadata.ref]
-    expire_in: 7 days
 
 voice-verify:
-  tags: [$AGENTOS_PACKAGE_RUNNER]
+  tags: ["${AGENTOS_PACKAGE_RUNNER}-amd64"]
   stage: package
-  needs: [build-voice]
+  needs: [build-index]
   rules:
     - if: '$CI_COMMIT_TAG || $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
     - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
@@ -47,6 +44,9 @@ voice-verify:
           - ci/voice-test-requirements.txt
           - ci/python.gitlab-ci.yml
           - ci/registry-auth.sh
+          - ci/build-image.sh
+          - ci/merge-images.sh
+          - ci/build.gitlab-ci.yml
           - ci/toolchain.gitlab-ci.yml
           - ci/voice-verify.sh
           - .gitlab-ci.yml

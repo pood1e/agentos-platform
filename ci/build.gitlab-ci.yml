@@ -3,9 +3,12 @@
   retry:
     max: 2
     when: [runner_system_failure]
-  tags: [$AGENTOS_PACKAGE_RUNNER]
-  resource_group: agentos-image${AGENTOS_IMAGE_SUFFIX}
+  parallel:
+    matrix:
+      - AGENTOS_ARCH: [amd64, arm64]
+  tags: ["${AGENTOS_PACKAGE_RUNNER}-${AGENTOS_ARCH}"]
+  resource_group: agentos-image${AGENTOS_IMAGE_SUFFIX}-${AGENTOS_ARCH}
   script: [ci/build-image.sh]
   artifacts:
-    paths: [.cache/build-metadata.json, .cache/build-metadata.ref]
+    paths: [.cache/images/]
     expire_in: 1 day
