@@ -134,10 +134,10 @@ github.com/onsi/gomega v1.44.0/go.mod h1:e/C2HwaZ1DhvjzXXuFhcR7hY7Sh9pl7MmoWKEjz
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pood1e/kagent/go v0.0.0-20261104161150-2d5c4a62c06d h1:pw6D6QuG0oM/eNSOKSjyq4mZvWCHK4KZnXA9XIlIWNs=
-github.com/pood1e/kagent/go v0.0.0-20261104161150-2d5c4a62c06d/go.mod h1:fBsWtue662S3VUMubZdKNhXd98dNDPyakgjLZkAz0vU=
-github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261104161150-2d5c4a62c06d h1:taPYH3ji9cuM13C9ldN9VfRYAxy6vyuY8szC63ePqjc=
-github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261104161150-2d5c4a62c06d/go.mod h1:Y6qUq2CCRel3lXR8PtwnJQbtxxNM/es0kINJinkfURY=
+github.com/pood1e/kagent/go v0.0.0-20261107083453-0cab2df39925 h1:3wOEsadndIZXNgxmxSU5bvpBWklZkNp9ra4FPP5ufUA=
+github.com/pood1e/kagent/go v0.0.0-20261107083453-0cab2df39925/go.mod h1:fBsWtue662S3VUMubZdKNhXd98dNDPyakgjLZkAz0vU=
+github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261107083453-0cab2df39925 h1:KLKL/nacAryjMC3XCh612o/WWYwTPeEAk6T+vJxRBu8=
+github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261107083453-0cab2df39925/go.mod h1:Y6qUq2CCRel3lXR8PtwnJQbtxxNM/es0kINJinkfURY=
 github.com/prometheus/client_golang v1.25.0 h1:cDtW1TcFsMi1RJc8khwCKB4VhzwV04aKqbYtNOXuiK0=
 github.com/prometheus/client_golang v1.25.0/go.mod h1:j2X/4/kaQHLPnmyEU8zjmkndo1T317VpCIQEml8LTKk=
 github.com/prometheus/client_model v0.6.3 h1:O0jaTVAYNxTHYInEPFJt5I3+sN8zqBtVMPTB1qyxiEo=
