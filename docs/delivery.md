@@ -150,7 +150,7 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 | CI 变量 | 内容 |
 | --- | --- |
 | `AGENTOS_CI_RUNNER` | shell runner 标签，默认 `agentos-shell` |
-| `AGENTOS_PACKAGE_RUNNER` | Docker runner 标签，默认 `agentos-docker`，需支持 AVX2 |
+| `AGENTOS_PACKAGE_RUNNER` | Docker runner 标签前缀，默认 `agentos-docker`；镜像在 `<前缀>-amd64`（需支持 AVX2）与 `<前缀>-arm64` runner 按架构原生构建，由 `build-index` 合并为同一提交标签的多架构镜像 |
 | `COSIGN_PRIVATE_KEY`、`COSIGN_PASSWORD` | 受保护的签名私钥文件与隐藏密码 |
 
 契约包包含 proto、生成绑定、schema 与角色目录。Node 导出路径为 `gen/*`、`gen/schema/*`、`proto/*`、`third_party/*` 和 `authorization.json`，运行时依赖为官方 Protobuf 库。消费者通过 Kubernetes 官方客户端读取 `AccessPlan.status.targets` 的工具决策，同时校验 status 和 `Ready=True` condition 的 `observedGeneration` 与资源代际一致。
