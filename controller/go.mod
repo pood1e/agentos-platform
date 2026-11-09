@@ -7,7 +7,7 @@ require (
 	buf.build/go/protovalidate v1.4.0
 	cel.dev/cel-go v0.32.0
 	github.com/agentgateway/agentgateway v1.7.0
-	github.com/kagent-dev/kagent/go v0.0.0-20261103181048-e3b807935db5
+	github.com/kagent-dev/kagent/go v0.0.0-20261108141215-347acbe55041
 	github.com/kagent-dev/kagent/go/integrations/agentgateway v0.0.0-20261028095952-285b83638e97
 	google.golang.org/protobuf v1.36.12
 	k8s.io/api v0.37.2
@@ -86,10 +86,10 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )
 
-replace go.ate.dev/substrate => github.com/kagent-dev/substrate v1.0.0-rc1
+replace go.ate.dev/substrate => github.com/kagent-dev/substrate v1.0.0
 
 replace github.com/agentgateway/agentgateway/api => github.com/agentgateway/agentgateway/api v0.0.0-20261027162624-26f5aebe99a3
 
-replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261107083453-0cab2df39925
+replace github.com/kagent-dev/kagent/go => github.com/pood1e/kagent/go v0.0.0-20261109171343-ac8778aa0909
 
-replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261107083453-0cab2df39925
+replace github.com/kagent-dev/kagent/go/integrations/agentgateway => github.com/pood1e/kagent/go/integrations/agentgateway v0.0.0-20261109171343-ac8778aa0909
