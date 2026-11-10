@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.52.0](https://github.com/pood1e/agentos-platform/compare/v0.51.8...v0.52.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **kagent:** the kagent fork now builds on upstream v1.0.0-rc1; team knowledge leaves the console, the management API, the agentos-knowledge-manage role and the chart.
+
+### Features
+
+* **auth:** add Harness model and MCP tool access scopes ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **auth:** bind platform access to workspace UID ([#293](https://github.com/pood1e/agentos-platform/issues/293)) ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **auth:** expose native workspace directory ([#292](https://github.com/pood1e/agentos-platform/issues/292)) ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **authorization:** connect native resource role management ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **authorization:** guide resource access management ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **console:** add a task history page ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **console:** keep the workspace directory available during an authority outage ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **console:** let administrators view system executions in run history ([#297](https://github.com/pood1e/agentos-platform/issues/297)) ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **deploy:** install unsigned application charts ([d2badb8](https://github.com/pood1e/agentos-platform/commit/d2badb8f9f5428727b64661c9e81624c6c24f570))
+* **deploy:** reuse a site-provided CloudNativePG operator ([d2badb8](https://github.com/pood1e/agentos-platform/commit/d2badb8f9f5428727b64661c9e81624c6c24f570))
+* **deploy:** run Agent runtimes on gVisor where nodes lack KVM ([d2badb8](https://github.com/pood1e/agentos-platform/commit/d2badb8f9f5428727b64661c9e81624c6c24f570))
+* **web:** group scoped access roles by subject ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **workflow:** add native editor and generic Agent model ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+
+
+### Bug Fixes
+
+* accept parent-domain cookies on console origins ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **agentos:** route native MCP through qualified endpoint and subject auth ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **auth:** bind runtime model checks to the destination workspace ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **connections:** send runtime embeddings through Actor JWT ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **console:** explain denied requests instead of asking to retry ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **gateway:** read authorization decisions from response headers ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **kagent:** declare A2A 1.0 on native A2A calls ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **team-sessions:** advertise a static tool list ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **telemetry:** record inbound RPC durations ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+* **workflow:** pin dev runtime artifacts and contract type ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+
+
+### Performance Improvements
+
+* **console:** read conversation payloads only when they can change ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+
+
+### Build System
+
+* **kagent:** follow the kagent fork on upstream v1.0.0-rc1 ([eb4cc76](https://github.com/pood1e/agentos-platform/commit/eb4cc76a1e5ce6487525c4e8b50f4e8229db8059))
+
 ## [0.51.8](https://github.com/pood1e/agentos-platform/compare/v0.51.7...v0.51.8) (2026-11-02)
 
 
