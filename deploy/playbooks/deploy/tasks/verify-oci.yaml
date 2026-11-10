@@ -1,0 +1,56 @@
+- name: Require release identity and trust root
+  ansible.builtin.assert:
+    that:
+      - delivery_artifact.version | length > 0
+      - delivery_artifact.revision is match('^[0-9a-f]{40}$')
+      - delivery_artifact.reference | length > 0
+    quiet: true
+
+- name: Prepare private OCI authentication directory
+  ansible.builtin.file:
+    path: "{{ agentos_cache }}/registry"
+    state: directory
+    mode: "0700"
+
+- name: Configure native OCI registry credentials
+  ansible.builtin.copy:
+    src: "{{ registry_config_file }}"
+    dest: "{{ agentos_cache }}/registry/config.json"
+    mode: "0600"
+  when: registry_config_file | length > 0
+  no_log: true
+
+- name: Resolve the immutable OCI digest
+  ansible.builtin.command:
+    argv: [oras, resolve, "{{ delivery_artifact.reference }}"]
+  register: delivery_resolved
+  changed_when: false
+  check_mode: false
+  environment:
+    DOCKER_CONFIG: "{{ agentos_cache }}/registry"
+
+- name: Verify the signed version and source revision
+  ansible.builtin.command:
+    argv:
+      - cosign
+      - verify
+      - --key
+      - "{{ delivery_artifact.public_key }}"
+      - --insecure-ignore-tlog
+      - -a
+      - "version={{ delivery_artifact.version }}"
+      - -a
+      - "revision={{ delivery_artifact.revision }}"
+      - >-
+        {{ (delivery_artifact.reference.rsplit(':', 1)[0] if '@' not in delivery_artifact.reference
+            else delivery_artifact.reference.split('@')[0]) ~ '@' ~ delivery_resolved.stdout }}
+  changed_when: false
+  check_mode: false
+  environment:
+    DOCKER_CONFIG: "{{ agentos_cache }}/registry"
+
+- name: Record verified OCI coordinate
+  ansible.builtin.set_fact:
+    delivery_verified_ref: >-
+      {{ (delivery_artifact.reference.rsplit(':', 1)[0] if '@' not in delivery_artifact.reference
+          else delivery_artifact.reference.split('@')[0]) ~ '@' ~ delivery_resolved.stdout }}

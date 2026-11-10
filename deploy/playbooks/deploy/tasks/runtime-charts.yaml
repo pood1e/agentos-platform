@@ -1,0 +1,13 @@
+- name: Prepare the runtime chart cache
+  ansible.builtin.file:
+    path: "{{ agentos_cache }}/runtime"
+    state: directory
+    mode: "0700"
+
+- name: Fetch verified native runtime charts
+  ansible.builtin.get_url:
+    url: "https://github.com/pood1e/kagent/releases/download/v{{ kagent_runtime_version }}/{{ item.name }}-{{ kagent_runtime_version }}.tgz"
+    dest: "{{ agentos_cache }}/runtime/{{ item.name }}-{{ kagent_runtime_version }}.tgz"
+    checksum: "sha256:{{ item.checksum }}"
+    mode: "0600"
+  loop: "{{ kagent_charts }}"

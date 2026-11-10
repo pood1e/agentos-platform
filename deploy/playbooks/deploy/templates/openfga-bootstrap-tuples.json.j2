@@ -1,0 +1,16 @@
+{% set authority = ('oidc:' ~ site_identity.issuer) | b64encode | replace('+', '-') | replace('/', '_') | regex_replace('=+$', '') -%}
+{% set subject = openfga_bootstrap_subject | b64encode | replace('+', '-') | replace('/', '_') | regex_replace('=+$', '') -%}
+{% set principal = (authority ~ '.' ~ subject) | b64encode | replace('+', '-') | replace('/', '_') | regex_replace('=+$', '') -%}
+{% set user = 'principal:' ~ principal -%}
+{% set roles = ['member', 'access_admin'] -%}
+{% set tuples = [] -%}
+{% for workspace in openfga_workspaces.results -%}
+{% if workspace.resources[0].metadata.uid not in (openfga_excluded_workspaces | default([])) -%}
+{% for role in roles -%}
+{% if role in openfga_model_workspace_relations -%}
+{% set _ = tuples.append({'user': user, 'relation': role, 'object': 'workspace:' ~ workspace.resources[0].metadata.uid}) -%}
+{% endif -%}
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
+{{ tuples | to_json }}

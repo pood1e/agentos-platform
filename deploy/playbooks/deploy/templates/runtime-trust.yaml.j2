@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: substrate-service-dns-ca
+  namespace: {{ agentos_namespace }}
+data:
+  ca.crt: {{ service_dns_trust.resources | map(attribute='spec.trustBundle')
+             | unique(case_sensitive=true) | sort(case_sensitive=true) | join('\n') | to_json }}

@@ -19,7 +19,7 @@ verify:
     expire_in: 1 day
 
 deployment-check:
-  extends: .agentos-ci
+  extends: .agentos-collection
   stage: verify
   script:
     - ci/check-charts.sh
@@ -87,7 +87,7 @@ build-contracts:
     expire_in: 7 days
 
 package-check:
-  extends: .agentos-ci
+  extends: .agentos-collection
   stage: package
   needs:
     - build-contracts
@@ -99,7 +99,9 @@ package-check:
     - job: voice-verify
       artifacts: false
       optional: true
-  script: [python ci/package-chart.py]
+  script:
+    - python ci/package-chart.py
+    - python ci/package-collection.py
   artifacts:
     paths: [.cache/*-metadata.json, .cache/*-metadata.ref, dist/, gen/]
     expire_in: 1 day

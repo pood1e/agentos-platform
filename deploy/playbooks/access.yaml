@@ -1,0 +1,2 @@
+- name: AgentOS access
+  ansible.builtin.import_playbook: environments/deploy.yaml

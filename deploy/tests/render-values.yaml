@@ -1,0 +1,176 @@
+- name: Render native runtime values for validation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [../playbooks/deploy/vars.yaml]
+  vars:
+    agentos_namespace: agentos
+    app_release_name: agentos
+    agentos_image_registry: registry.example.com/agentos
+    harness_defaults: "{{ lookup('ansible.builtin.file', 'fixtures/harnesses.yaml') | from_yaml }}"
+    app_values:
+      identity: {issuer: 'https://identity.example.test', audience: agentos-api, clientId: agentos-web}
+      route: &route
+        parentRefs: [{name: agentos-public}]
+        hosts: {api: api.example.test}
+        from:
+          - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+            podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+    oidc_discovery:
+      json: {token_endpoint: 'https://identity.example.test/token'}
+    microvm_image_credentials:
+      auth: {registry.example.com: {}, harness.example.com: {}}
+    output: "{{ playbook_dir }}/../.cache/check"
+    agentos_cache: "{{ output }}"
+    openfga_postgres_ca_secret: openfga-postgres-ca
+  tasks:
+    - name: Use the controller Python environment
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+        agentos_cache: "{{ output }}"
+        kagent_execution_authorization: "{{ lookup('ansible.builtin.file', 'fixtures/execution-authorization.yaml') | from_yaml }}"
+
+    - name: Create the validation directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0700"
+      loop: ["{{ output }}", "{{ output }}/telemetry", "{{ output }}/private-identity", "{{ output }}/authorization", "{{ output }}/multi-workspace"]
+
+    - name: Cache verified OpenFGA chart for validation
+      ansible.builtin.include_tasks: ../playbooks/deploy/tasks/openfga-chart.yaml
+
+    - name: Render OpenFGA deployment values
+      ansible.builtin.template:
+        src: ../playbooks/deploy/values/openfga.yaml.j2
+        dest: "{{ output }}/openfga-values.yaml"
+        mode: "0600"
+
+    - name: Prepare native runtime charts
+      ansible.builtin.include_tasks: ../playbooks/deploy/tasks/runtime-charts.yaml
+
+    - name: Read packaged authorization model
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -xOzf
+          - "{{ output }}/runtime/kagent-{{ kagent_runtime_version }}.tgz"
+          - kagent/files/authorization-model.json
+      register: openfga_model
+      changed_when: false
+
+    - name: Prepare authorization bootstrap fixture
+      ansible.builtin.set_fact:
+        openfga_model_workspace_relations: >-
+          {{ ((openfga_model.stdout | from_json).type_definitions
+              | selectattr('type', 'equalto', 'workspace') | first).relations }}
+        openfga_workspaces:
+          results:
+            - resources: [{metadata: {uid: workspace-agentos}}]
+            - resources: [{metadata: {uid: workspace-team-a}}]
+
+    - name: Render authorization bootstrap bindings
+      ansible.builtin.template:
+        src: ../playbooks/deploy/templates/openfga-bootstrap-tuples.json.j2
+        dest: "{{ output }}/openfga-bootstrap-tuples.json"
+        mode: "0600"
+      vars:
+        openfga_bootstrap_subject: alice
+
+    - name: Render bootstrap bindings for a newly added workspace
+      ansible.builtin.template:
+        src: ../playbooks/deploy/templates/openfga-bootstrap-tuples.json.j2
+        dest: "{{ output }}/openfga-bootstrap-pending-tuples.json"
+        mode: "0600"
+      vars:
+        openfga_bootstrap_subject: alice
+        openfga_excluded_workspaces: [workspace-agentos]
+
+    - name: Render converged workspace bootstrap
+      ansible.builtin.template:
+        src: ../playbooks/deploy/templates/openfga-bootstrap-tuples.json.j2
+        dest: "{{ output }}/openfga-bootstrap-complete-tuples.json"
+        mode: "0600"
+      vars:
+        openfga_bootstrap_subject: alice
+        openfga_excluded_workspaces: [workspace-agentos, workspace-team-a]
+
+    - name: Render authorization bootstrap job
+      ansible.builtin.template:
+        src: ../playbooks/deploy/templates/openfga-bootstrap-job.yaml.j2
+        dest: "{{ output }}/openfga-bootstrap-job.yaml"
+        mode: "0600"
+      vars:
+        openfga_bootstrap_argv: [store, list, --name=agentos]
+
+    - name: Render native deployment values
+      ansible.builtin.template:
+        src: "../playbooks/deploy/values/{{ item }}.yaml.j2"
+        dest: "{{ output }}/{{ item }}-values.yaml"
+        mode: "0600"
+      loop: [kagent, substrate, atelet]
+
+    - name: Render multi-workspace native values
+      ansible.builtin.template:
+        src: ../playbooks/deploy/values/kagent.yaml.j2
+        dest: "{{ output }}/multi-workspace/kagent-values.yaml"
+        mode: "0600"
+      vars:
+        app_values:
+          identity: {issuer: 'https://identity.example.test', audience: agentos-api, clientId: agentos-web}
+          route: *route
+          api:
+            workspaces:
+              - namespace: team-a
+                release: agentos-team-a
+                entryAgent: assistant
+                harness: standard
+                kagentURL: http://kagent-controller.agentos.svc.cluster.local:8083
+
+    - name: Render native execution ingress
+      ansible.builtin.template:
+        src: ../playbooks/deploy/templates/runtime-ingress.yaml.j2
+        dest: "{{ output }}/runtime-ingress.yaml"
+        mode: "0600"
+
+    - name: Render enabled OTLP deployment values
+      ansible.builtin.template:
+        src: ../playbooks/deploy/values/kagent.yaml.j2
+        dest: "{{ output }}/telemetry/kagent-values.yaml"
+        mode: "0600"
+      vars:
+        kagent_telemetry: "{{ lookup('ansible.builtin.file', 'fixtures/telemetry.yaml') | from_yaml }}"
+
+    - name: Record immutable runtime pins
+      ansible.builtin.copy:
+        content: >-
+          {{ {'test': {'controllerImage': kagent_controller_image, 'microvmImage': substrate_microvm_image,
+                       'runtimeVersion': kagent_runtime_version}} | to_nice_json }}
+        dest: "{{ output }}/test-data.json"
+        mode: "0600"
+
+    - name: Render private identity trust
+      ansible.builtin.template:
+        src: ../playbooks/deploy/values/kagent.yaml.j2
+        dest: "{{ output }}/private-identity/kagent-values.yaml"
+        mode: "0600"
+      vars:
+        app_values:
+          route: *route
+          identity:
+            issuer: https://identity.example.test
+            audience: agentos-api
+            clientId: agentos-web
+            caCertificateRef: {name: identity-ca, key: issuer.pem}
+
+    - name: Render native resource authorization
+      ansible.builtin.template:
+        src: ../playbooks/deploy/values/kagent.yaml.j2
+        dest: "{{ output }}/authorization/kagent-values.yaml"
+        mode: "0600"
+      vars:
+        kagent_authorization:
+          apiUrl: https://openfga.example.test
+          storeId: 01HXYZ1234567890ABCDEFGHJK
+          authorizationModelId: 01HXYZ1234567890ABCDEFGHJL
+          groupClaim: roles

@@ -1,0 +1,29 @@
+preview: [GoldenEgressPolicy, PerTemplateSnapshotLocation]
+otel:
+  traces: {enabled: false}
+  metrics: {enabled: false}
+  logs: {enabled: false}
+objectStore:
+  backend: s3
+  endpoint: http://rustfs.ate-system.svc:9000
+  region: us-east-1
+  pathStyle: true
+  credentialsSecret: substrate-object-store
+atelet:
+  imageCredentialProviderBinDir: /var/lib/agentos/image-credential-provider/bin
+  imageCredentialProviderConfigYAML: |
+    apiVersion: kubelet.config.k8s.io/v1
+    kind: CredentialProviderConfig
+    providers:
+      - name: busybox
+        apiVersion: credentialprovider.kubelet.k8s.io/v1
+        matchImages: {{ (microvm_image_credentials | default({'auth': {agentos_image_registry.split('/')[0]: {}}})).auth.keys() | list | to_json }}
+        defaultCacheDuration: 0s
+        args: [cat, /run/image-credentials/response.json]
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi

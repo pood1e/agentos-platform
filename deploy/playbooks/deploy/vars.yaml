@@ -1,0 +1,84 @@
+# ci/package-collection.py sets the platform release, registry and public key of the source revision.
+agentos_cache: "{{ lookup('env', 'XDG_CACHE_HOME') | default(lookup('env', 'HOME') ~ '/.cache', true) }}/agentos"
+delivery_version: ""
+delivery_revision: ""
+agentos_image_registry: ""
+delivery_public_key: "{{ playbook_dir }}/../deploy/files/cosign.pub"
+# Defaults and pinned versions. Site variables (inventory, domain, credentials and application values) are
+# passed at deployment time; see README.md.
+agentos_namespace: agentos
+agentos_node: "{{ groups['agentos'][0] }}"
+node_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_architecture] }}"
+agentos_address: "{{ hostvars[agentos_node].ansible_host }}"
+node_hosts: []
+app_chart_repository: "oci://{{ agentos_image_registry }}/charts"
+app_chart: agentos
+app_release_name: agentos
+app_chart_version: "{{ delivery_version }}"
+app_chart_revision: "{{ delivery_revision }}"
+app_chart_public_key: "{{ delivery_public_key }}"
+cnpg_chart_version: 0.29.1
+openfga_chart_version: 0.3.19
+openfga_chart_checksum: 75b97b9b328b269c2f576b24ebaa9dd11e5909a57f4db5f53f0038c822639cb4
+openfga_image: docker.io/openfga/openfga:v1.22.1@sha256:b852071314f1fda1194d341a6ebac0a4f619b3cd87a6626d2ccc7048af4ec671
+openfga_cli_image: docker.io/openfga/cli:v0.8.2@sha256:31a565d14d1c5ca8170d3a2225eb66517d9f490539967bcb3421613c5e2538a4
+openfga_bootstrap_subject: ""
+postgres_image: ghcr.io/cloudnative-pg/postgresql:18.6-202610120828-standard-trixie@sha256:c7747d8d1049fff9cf30d9cd83d14d609c957afb5ffbcd114145f393ea1850e1
+kagent_postgres_resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {cpu: "1", memory: 1Gi}
+kagent_postgres_pool_max_conns: 16
+openfga_resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: "1", memory: 512Mi}
+k3s_version: v1.37.1+k3s1
+ingress_ports: {http: 80, https: 443}
+k3s_checksums:
+  amd64: sha256:92b94582eb7b34a8cf532e6006842b9ed215a6783cf56a3dd6271fd35243b2c0
+  arm64: sha256:a1561ca4aef8b99f5588a840d4468ac39c8c1cd92470bbcb9634823fa221741a
+k3s_install_checksum: sha256:ed01f89fd977bf20ac1516bbebf8370bf3ddbaa55dac8aba610956a4c78cc00b
+helm_version: v4.3.1
+helm_checksum: sha256:0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
+substrate_version: 1.0.0
+substrate_object_store: {access_key: rustfsadmin, secret_key: rustfsadmin}
+substrate_microvm_image: ghcr.io/kagent-dev/substrate/ateworker-microvm@sha256:5d30804e8c00e87dc26b99d88caac6d4a3d6edb63e4ebad25acb0739e0b078f9
+substrate_worker_resources:
+  requests: {cpu: 500m, memory: 4Gi}
+  limits: {cpu: "4", memory: 4Gi}
+kubectl_ate_checksums:
+  amd64: sha256:ee4e98780aa37453c2086e8d83b061d5780a97fdc4ac50849cc013aa5e58535a
+  arm64: sha256:a934f7be9df842be4e120d383e16ce8dcfe9dc42c4ae990eeb141437e66dfade
+kagent_runtime_version: 0.0.0-dev.gf86dfd5dea88c7438e9b63168055b50c768f52ac
+kagent_charts:
+  - name: kagent
+    checksum: d6bba5ae04918923713318d0713b268e4b7a2ae36e867100f65d47d0fe3a6062
+  - name: kagent-crds
+    checksum: 0fc772cb3b6824e1241947d18a691435a3d5d9a77d05f2915caeb51c6ea49e56
+kagent_controller_image: ghcr.io/pood1e/kagent/controller@sha256:9bca0b085ad54ab41a6be22bf4c129c6005eedc8217b63c36ef8f7b4514ff311
+kubeconfig_path: "{{ agentos_cache }}/kubeconfig.yaml"
+helm_binary: "{{ agentos_cache }}/helm/linux-amd64/helm"
+cert_manager_version: v1.21.2
+cloudflare_token_file: ""
+model_key_file: ""
+identity_client_secret_file: ""
+registry_config_file: ""
+agentgateway_version: v1.7.0
+helm_diff_version: v3.15.15
+helm_diff_checksum: sha256:504e99410611daa70702362e1b10dc74929df8a912cb3f6b5d21d1ee9d0cb7d9
+gateway_api_version: v1.6.1
+kagent_telemetry: {}
+kagent_authorization: {}
+kagent_authorization_api_token_secret: {name: openfga-auth, key: keys}
+kagent_authorization_ca_secret: {name: openfga-ca, key: tls.crt}
+kagent_execution_authorization:
+  scopeClaim: roles
+  rules: []
+site_platform_values: "{{ (app_values | default({})).get('agentos', app_values | default({})) }}"
+site_workspace_namespaces: >-
+  {{ ([agentos_namespace] + (site_platform_values.get('api', {}).get('workspaces', [])
+     | map(attribute='namespace') | list)) | unique | list }}
+site_gateway_peers: >-
+  {{ site_platform_values.route.get('from', [{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'kube-system'}},
+                                            'podSelector': {'matchLabels': {'app.kubernetes.io/name': 'traefik'}}}]) }}
+site_identity: "{{ site_platform_values.get('identity', {}) }}"
+site_identity_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"

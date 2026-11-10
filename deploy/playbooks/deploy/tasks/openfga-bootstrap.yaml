@@ -1,0 +1,211 @@
+- name: Require initial authorization administrator
+  ansible.builtin.assert:
+    that:
+      - openfga_bootstrap_subject | length > 0
+      - site_identity.issuer | default('') | length > 0
+    fail_msg: Set openfga_bootstrap_subject to the initial administrator's OIDC subject.
+
+- name: Cache verified native charts
+  ansible.builtin.include_tasks: runtime-charts.yaml
+
+- name: Read native authorization model
+  ansible.builtin.command:
+    argv:
+      - tar
+      - -xOzf
+      - "{{ agentos_cache }}/runtime/kagent-{{ kagent_runtime_version }}.tgz"
+      - kagent/files/authorization-model.json
+  register: openfga_model
+  changed_when: false
+
+- name: Read workspace identities
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+  loop: "{{ site_workspace_namespaces }}"
+  register: openfga_workspaces
+
+- name: Require stable workspace identities
+  ansible.builtin.assert:
+    that: item.resources | length == 1 and item.resources[0].metadata.uid | default('') | length > 0
+  loop: "{{ openfga_workspaces.results }}"
+  loop_control: {label: "{{ item.item }}"}
+
+- name: Prepare authorization bootstrap inputs
+  ansible.builtin.set_fact:
+    openfga_current_workspace_uids: "{{ openfga_workspaces.results | map(attribute='resources') | flatten | map(attribute='metadata.uid') | list }}"
+    openfga_model_digest: "{{ openfga_model.stdout | hash('sha256') }}"
+    openfga_model_workspace_relations: >-
+      {{ ((openfga_model.stdout | from_json).type_definitions
+          | selectattr('type', 'equalto', 'workspace') | first).relations }}
+
+- name: Require administrator roles in native model
+  ansible.builtin.assert:
+    that: "'member' in openfga_model_workspace_relations and 'access_admin' in openfga_model_workspace_relations"
+
+- name: Prepare workspace bootstrap bindings
+  ansible.builtin.set_fact:
+    openfga_bootstrap_tuples: "{{ lookup('template', 'templates/openfga-bootstrap-tuples.json.j2') }}"
+  vars:
+    openfga_excluded_workspaces: []
+  no_log: true
+
+- name: Select initial administrator principal
+  ansible.builtin.set_fact:
+    openfga_bootstrap_principal: "{{ (openfga_bootstrap_tuples | from_json | first).user }}"
+  no_log: true
+
+- name: Read authorization store state
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    name: openfga-state
+    namespace: "{{ agentos_namespace }}"
+  register: openfga_state
+
+- name: Select authorization store state
+  ansible.builtin.set_fact:
+    openfga_store_id: "{{ openfga_state.resources[0].data.storeId | default('') if openfga_state.resources | length else '' }}"
+    openfga_model_id: "{{ openfga_state.resources[0].data.modelId | default('') if openfga_state.resources | length else '' }}"
+    openfga_previous_model_digest: "{{ openfga_state.resources[0].data.modelDigest | default('') if openfga_state.resources | length else '' }}"
+    openfga_previous_workspace_uids: >-
+      {{ ((openfga_state.resources[0].data.workspaceUIDs | default('[]'))
+          if openfga_state.resources | length else '[]') | from_json }}
+    openfga_previous_bootstrap_principal: "{{ openfga_state.resources[0].data.bootstrapPrincipal | default('') if openfga_state.resources | length else '' }}"
+
+- name: Preserve initial administrator identity
+  ansible.builtin.assert:
+    that: openfga_previous_bootstrap_principal in ['', openfga_bootstrap_principal]
+    fail_msg: Rotate authorization administrators through resource bindings.
+  no_log: true
+
+- name: Select new workspace bootstrap bindings
+  ansible.builtin.set_fact:
+    openfga_pending_bootstrap_tuples: "{{ lookup('template', 'templates/openfga-bootstrap-tuples.json.j2') | from_json }}"
+  vars:
+    openfga_excluded_workspaces: "{{ openfga_previous_workspace_uids }}"
+  no_log: true
+
+- name: Publish authorization bootstrap inputs
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata: {name: openfga-bootstrap-input, namespace: "{{ agentos_namespace }}"}
+      data:
+        model.json: "{{ openfga_model.stdout }}"
+        tuples.json: "{{ openfga_pending_bootstrap_tuples | to_json }}"
+  when: openfga_model_id | length == 0 or openfga_previous_model_digest != openfga_model_digest or openfga_pending_bootstrap_tuples | length > 0
+  no_log: true
+
+- name: Resolve initial authorization store
+  when: openfga_store_id | length == 0
+  block:
+    - name: Discover native authorization store
+      ansible.builtin.include_tasks: openfga-bootstrap-job.yaml
+      vars:
+        openfga_bootstrap_argv: [store, list, --name=agentos]
+
+    - name: Select existing authorization store
+      ansible.builtin.set_fact:
+        openfga_discovered_stores: "{{ (openfga_bootstrap_log.log | from_json).stores }}"
+
+    - name: Require an unambiguous authorization store
+      ansible.builtin.assert:
+        that:
+          - openfga_discovered_stores | length <= 1
+          - (openfga_bootstrap_log.log | from_json).continuation_token | default('') | length == 0
+
+    - name: Record existing authorization store
+      ansible.builtin.set_fact:
+        openfga_store_id: "{{ openfga_discovered_stores[0].id }}"
+      when: openfga_discovered_stores | length == 1
+
+    - name: Create initial authorization store
+      when: openfga_discovered_stores | length == 0
+      block:
+        - name: Create native authorization store
+          ansible.builtin.include_tasks: openfga-bootstrap-job.yaml
+          vars:
+            openfga_bootstrap_argv: [store, create, --name=agentos]
+
+        - name: Record new authorization store
+          ansible.builtin.set_fact:
+            openfga_store_id: "{{ (openfga_bootstrap_log.log | from_json).store.id }}"
+
+- name: Update native authorization model
+  when: openfga_model_id | length == 0 or openfga_previous_model_digest != openfga_model_digest
+  block:
+    - name: Write updated authorization model
+      ansible.builtin.include_tasks: openfga-bootstrap-job.yaml
+      vars:
+        openfga_bootstrap_argv:
+          - model
+          - write
+          - "--store-id={{ openfga_store_id }}"
+          - --file=/etc/openfga/input/model.json
+
+    - name: Record updated authorization model
+      ansible.builtin.set_fact:
+        openfga_model_id: "{{ (openfga_bootstrap_log.log | from_json).authorization_model_id }}"
+
+- name: Require complete authorization store state
+  ansible.builtin.assert:
+    that: openfga_store_id | length > 0 and openfga_model_id | length > 0
+
+- name: Persist authorization store identity
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata: {name: openfga-state, namespace: "{{ agentos_namespace }}"}
+      data:
+        storeId: "{{ openfga_store_id }}"
+        modelId: "{{ openfga_model_id }}"
+        modelDigest: "{{ openfga_model_digest }}"
+        workspaceUIDs: "{{ openfga_previous_workspace_uids | to_json }}"
+        bootstrapPrincipal: "{{ openfga_bootstrap_principal }}"
+
+- name: Bootstrap workspace administrator
+  when: openfga_pending_bootstrap_tuples | length > 0
+  block:
+    - name: Write initial workspace bindings
+      ansible.builtin.include_tasks: openfga-bootstrap-job.yaml
+      vars:
+        openfga_bootstrap_argv:
+          - tuple
+          - write
+          - "--store-id={{ openfga_store_id }}"
+          - "--model-id={{ openfga_model_id }}"
+          - --file=/etc/openfga/input/tuples.json
+          - --on-duplicate=ignore
+
+    - name: Require complete workspace bootstrap
+      ansible.builtin.assert:
+        that: (openfga_bootstrap_log.log | from_json).failed_count | int == 0
+      no_log: true
+
+    - name: Record workspace bootstrap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata: {name: openfga-state, namespace: "{{ agentos_namespace }}"}
+          data:
+            storeId: "{{ openfga_store_id }}"
+            modelId: "{{ openfga_model_id }}"
+            modelDigest: "{{ openfga_model_digest }}"
+            workspaceUIDs: "{{ (openfga_previous_workspace_uids + openfga_current_workspace_uids) | unique | sort | to_json }}"
+            bootstrapPrincipal: "{{ openfga_bootstrap_principal }}"
+
+- name: Configure native resource authorization
+  ansible.builtin.set_fact:
+    kagent_authorization:
+      apiUrl: "https://openfga.{{ agentos_namespace }}.svc:8080"
+      storeId: "{{ openfga_store_id }}"
+      authorizationModelId: "{{ openfga_model_id }}"
+      groupClaim: roles

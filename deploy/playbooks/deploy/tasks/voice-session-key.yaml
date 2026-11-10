@@ -1,0 +1,31 @@
+- name: Provision API voice session signing key
+  no_log: true
+  diff: false
+  block:
+    - name: Discover API voice session signing key
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ voice_configuration.get('sessionSecretRef', 'agentos-voice-sessions') }}"
+        namespace: "{{ agentos_namespace }}"
+      register: voice_session_key
+
+    - name: Validate API voice session signing key
+      ansible.builtin.assert:
+        that:
+          - voice_session_key.resources[0].get('data', {}).get('key', '') | b64decode | length >= 32
+        fail_msg: API voice session signing key requires at least 32 bytes
+      when: voice_session_key.resources | length > 0
+
+    - name: Create API voice session signing key
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ voice_configuration.get('sessionSecretRef', 'agentos-voice-sessions') }}"
+            namespace: "{{ agentos_namespace }}"
+          type: Opaque
+          stringData:
+            key: "{{ lookup('ansible.builtin.password', '/dev/null', length=64, chars=['ascii_letters', 'digits']) }}"
+      when: voice_session_key.resources | length == 0

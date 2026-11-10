@@ -54,7 +54,8 @@
 | `shared` | 浏览器与服务端共用的 JSON、权限、模型用途与原生标识 |
 | `web` | nginx、oauth2-proxy 与 MCP App 沙箱 |
 | `charts/agentos*` | 平台、控制器、环境网关与连接 Chart |
-| `.github`、`ci` | 检查、镜像、契约与 Chart 发布 |
+| `deploy` | 参考部署 Ansible collection `agentos.platform`：节点、运行时、平台应用与环境接入剧本 |
+| `.github`、`ci` | 检查、镜像、契约、Chart 与 collection 发布 |
 | `tests` | 平台边界回归、原生客户端替身与真实组件验证 |
 
-校验入口为 `npm run verify`、`ci/check-charts.sh`、`ci/contracts.py` 和 `go -C controller test -race ./...`。站点安装与签名 collection 见 [agentos-deploy](https://github.com/pood1e/agentos-deploy)。
+校验入口为 `npm run verify`、`ci/check-charts.sh`、`ci/check-collection.sh`、`ci/contracts.py` 和 `go -C controller test -race ./...`。

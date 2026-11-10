@@ -1,0 +1,30 @@
+scopeClaim: roles
+gatewayAudiences:
+  - http://agentos-gateway.agentos.svc.cluster.local:8080
+  - http://agentos-mcp-gateway.agentos.svc.cluster.local:8080
+rules:
+  - {resourceType: Session, verbs: [get, list]}
+  - {resourceType: Session, verbs: [create, update, delete], anyScope: [agentos-writer]}
+  - resourceType: SessionAllCreators
+    verbs: [get, list]
+    anyScope: [agentos-agents-manage, agentos-skills-manage, agentos-mcp-manage, agentos-models-manage, agentos-harnesses-manage]
+  - {resourceType: Checkpoint, verbs: [get]}
+  - {resourceType: Agent, verbs: [get, list]}
+  - {resourceType: Agent, verbs: [create, update, delete], anyScope: [agentos-agents-manage]}
+  - {resourceType: AgentTemplate, verbs: [get, list]}
+  - {resourceType: AgentTemplate, verbs: [create, update, delete], anyScope: [agentos-agents-manage]}
+  - {resourceType: Harness, verbs: [get, list]}
+  - {resourceType: Harness, verbs: [create, update, delete], anyScope: [agentos-harnesses-manage]}
+  - {resourceType: ModelConfig, verbs: [get, list]}
+  - {resourceType: ModelConfig, verbs: [create, update, delete], anyScope: [agentos-models-manage]}
+  - {resourceType: ModelProviderConfig, verbs: [get, list]}
+  - {resourceType: ModelProviderConfig, verbs: [create, update, delete], anyScope: [agentos-models-manage]}
+  - {resourceType: ToolServer, verbs: [get, list]}
+  - {resourceType: ToolServer, verbs: [create, update, delete], anyScope: [agentos-mcp-manage]}
+  - {resourceType: SystemNamespaces, verbs: [get]}
+  - {resourceType: SystemSummary, verbs: [get]}
+  - {resourceType: Substrate, verbs: [get]}
+  - {resourceType: WorkerPool, verbs: [get, list]}
+  - {resourceType: TaskStore, verbs: [get, list, create, update]}
+  - {resourceType: ToolInventory, verbs: [update]}
+  - {resourceType: Memory, verbs: [get, list, create, delete], anyScope: [agentos-writer]}
