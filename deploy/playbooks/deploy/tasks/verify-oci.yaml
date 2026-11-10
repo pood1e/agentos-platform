@@ -48,6 +48,7 @@
   check_mode: false
   environment:
     DOCKER_CONFIG: "{{ agentos_cache }}/registry"
+  when: delivery_artifact.public_key | length > 0
 
 - name: Record verified OCI coordinate
   ansible.builtin.set_fact:
