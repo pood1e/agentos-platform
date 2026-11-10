@@ -9,7 +9,7 @@ import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { convertMessage } from "../src/features/chat/runtime-message.js";
 import { fixtureGraph, fixtureTasks, fixtureIds as ids } from "./fixtures/kagent.js";
-import { environment } from "./harness.js";
+import { environment, graphOf } from "./harness.js";
 
 const event = (kind: string, response?: JsonValue) =>
   create(PartSchema, {
@@ -51,7 +51,7 @@ it("projects calls without narration while running, then reloads their native re
     }
     const env = await environment([task]);
     try {
-      const graph = await env.projection.graphOf({ contextId: ids.chatContext });
+      const graph = await graphOf(env.projection, { contextId: ids.chatContext });
       if (!graph) throw new Error("Missing conversation tree");
       const chat = await conversation(graph, undefined, ids.chatContext, env.projection.fullTask);
       const reply = chat.messages.find((message) => message.role === Role.AGENT);

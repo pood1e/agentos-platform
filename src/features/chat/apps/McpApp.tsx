@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ActivityState } from "../../../../gen/agentos/execution/v1/state_pb.js";
 import type { ToolCall } from "../../../../gen/agentos/execution/v1/task_pb.js";
 import { AppReferenceSchema, AppViewSchema } from "../../../../gen/agentos/mcp/v1/app_pb.js";
+import { useAccess } from "../../../lib/access.js";
 import { ToolIcon } from "../../shared/ToolIcon.js";
 import { useToolText } from "../../shared/use-tool-text.js";
 import { active, awaiting } from "../../status/activity.js";
@@ -19,6 +20,7 @@ import { appResult } from "./result.js";
 const View = lazy(() => import("./AppView.js").then((module) => ({ default: module.AppView })));
 export function McpApp({ call }: { call: ToolCall }) {
   const { t } = useTranslation();
+  const workspace = useAccess().data?.workspace;
   const label = useToolText()(call.name);
   const aui = useAui();
   const onMessage = useCallback(
@@ -36,6 +38,7 @@ export function McpApp({ call }: { call: ToolCall }) {
   const reference = create(AppReferenceSchema, {
     taskId: call.taskId,
     callId: call.id,
+    workspace,
   });
   const [open, setOpen] = useState(false);
   return (
@@ -60,15 +63,17 @@ export function McpApp({ call }: { call: ToolCall }) {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <Suspense fallback={<div className="h-48 animate-pulse bg-muted" />}>
-            <View
-              reference={reference}
-              input={input}
-              result={active(call.state) || awaiting(call.state) ? undefined : appResult(call)}
-              canceled={call.state === ActivityState.CANCELED}
-              onMessage={onMessage}
-            />
-          </Suspense>
+          {workspace && (
+            <Suspense fallback={<div className="h-48 animate-pulse bg-muted" />}>
+              <View
+                reference={reference}
+                input={input}
+                result={active(call.state) || awaiting(call.state) ? undefined : appResult(call)}
+                canceled={call.state === ActivityState.CANCELED}
+                onMessage={onMessage}
+              />
+            </Suspense>
+          )}
         </CollapsibleContent>
       </Card>
     </Collapsible>

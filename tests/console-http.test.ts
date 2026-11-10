@@ -6,21 +6,16 @@ import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js"
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb.js";
 import { registerConsole } from "../server/console/app.js";
 import { consoleService } from "../server/console/service.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { registerHealth } from "../server/shared/health.js";
-import { environment, operator, testBindings } from "./harness.js";
+import { consoleDependencies, environment, operator } from "./harness.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 it("serves typed RPC errors and separates liveness from subscribed readiness", async () => {
   const env = await environment();
   const app = Fastify();
   await registerConsole(app, {
-    context: workspaceContext("agentos", "assistant", async () => operator),
-    service: consoleService({
-      ...env,
-      namespace: "agentos",
-      access: testBindings(env.fake),
-      roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-    }),
+    context: testWorkspaceContext("agentos", async () => operator, allowWorkspace("agentos")),
+    service: consoleService(consoleDependencies(env)),
   });
   let ready = true;
   registerHealth(app, () => ready);

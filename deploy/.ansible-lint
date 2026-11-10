@@ -1,0 +1,6 @@
+exclude_paths: [.cache/]
+skip_list:
+  # The rule only knows ansible-core releases up to 2.19; the collection is tested with 2.21.
+  - meta-runtime[unsupported-version]
+  # The collection is versioned with the platform; changes are recorded in the platform CHANGELOG.
+  - galaxy[no-changelog]

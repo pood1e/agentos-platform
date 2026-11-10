@@ -8,11 +8,10 @@ variables:
 
 include:
   - local: ci/build.gitlab-ci.yml
-  - local: ci/images.gitlab-ci.yml
   - local: ci/python.gitlab-ci.yml
 
 verify:
-  extends: .agentos-node-go
+  extends: .agentos-node
   stage: verify
   script: [npm run verify]
   artifacts:
@@ -20,7 +19,7 @@ verify:
     expire_in: 1 day
 
 deployment-check:
-  extends: [.agentos-ci, .agentos-go-cache]
+  extends: .agentos-collection
   stage: verify
   script:
     - ci/check-charts.sh
@@ -31,12 +30,13 @@ platform-controller-verify:
   stage: verify
   needs: []
   script:
+    - KUBEBUILDER_ASSETS="$(flock "$HOME/.cache/envtest.lock" setup-envtest use 1.37 --bin-dir "$HOME/.cache/envtest" -p path)"
+    - export KUBEBUILDER_ASSETS
     - ci/generate-controller.sh
     - python ci/chart-schemas.py
     - go -C controller test -race -count=1 ./...
     - go -C controller vet ./...
-    - mkdir -p .cache/platform-controller-image
-    - CGO_ENABLED=0 go -C controller build -trimpath -ldflags='-s -w' -o ../.cache/platform-controller-image/agentos-controller ./cmd/controller
+    - for arch in amd64 arm64; do CGO_ENABLED=0 GOOS=linux GOARCH=$arch go -C controller build -trimpath -ldflags='-s -w' -o ../.cache/platform-controller-image/linux/$arch/agentos-controller ./cmd/controller; done
   artifacts:
     paths: [.cache/platform-controller-image/]
     expire_in: 1 day
@@ -49,9 +49,6 @@ build-platform-controller:
     AGENTOS_DOCKERFILE_DIR: controller
     AGENTOS_IMAGE_SUFFIX: /platform-controller
     AGENTOS_BUILD_METADATA: .cache/platform-controller-build-metadata.json
-  artifacts:
-    paths: [.cache/platform-controller-build-metadata.json, .cache/platform-controller-build-metadata.ref]
-    expire_in: 1 day
 
 build-image:
   extends: .build-image
@@ -66,12 +63,19 @@ build-web:
     AGENTOS_DOCKERFILE_DIR: web
     AGENTOS_IMAGE_SUFFIX: /web
     AGENTOS_BUILD_METADATA: .cache/web-build-metadata.json
+
+build-index:
+  stage: package
+  tags: ["${AGENTOS_PACKAGE_RUNNER}-amd64"]
+  needs: [build-image, build-web, build-voice, build-platform-controller]
+  resource_group: agentos-image-index
+  script: [ci/merge-images.sh]
   artifacts:
-    paths: [.cache/web-build-metadata.json, .cache/web-build-metadata.ref]
-    expire_in: 1 day
+    paths: [.cache/*build-metadata.json, .cache/*build-metadata.ref]
+    expire_in: 7 days
 
 build-contracts:
-  extends: .agentos-node-go
+  extends: .agentos-node
   stage: package
   needs: []
   script:
@@ -83,14 +87,11 @@ build-contracts:
     expire_in: 7 days
 
 package-check:
-  extends: .agentos-ci
+  extends: .agentos-collection
   stage: package
   needs:
     - build-contracts
-    - build-image
-    - build-web
-    - build-voice
-    - build-platform-controller
+    - build-index
     - job: verify
       artifacts: false
     - job: deployment-check
@@ -98,7 +99,9 @@ package-check:
     - job: voice-verify
       artifacts: false
       optional: true
-  script: [python ci/package-chart.py]
+  script:
+    - python ci/package-chart.py
+    - python ci/package-collection.py
   artifacts:
     paths: [.cache/*-metadata.json, .cache/*-metadata.ref, dist/, gen/]
     expire_in: 1 day

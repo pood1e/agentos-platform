@@ -72,7 +72,7 @@ export function appScenario(fake: FakeKagent) {
     {
       metadata: {
         name: `${appService}-coordinator`,
-        labels: { "agentos.dev/engineer": "assistant", "agentos.dev/tool-access": "readOnly" },
+        labels: { "agentos.dev/identity": "assistant", "agentos.dev/tool-access": "readOnly" },
       },
       spec: { mcp: { targets: [{ name: appService }] } },
     },

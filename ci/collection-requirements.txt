@@ -1,0 +1,3 @@
+-r ../deploy/requirements.txt
+ansible-lint==26.8.0
+distlib==0.4.4

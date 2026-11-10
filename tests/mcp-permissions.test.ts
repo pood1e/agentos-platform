@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { ToolBindingSchema } from "../gen/agentos/console/v1/role_pb.js";
 import { ConnectionSchema } from "../gen/agentos/management/v1/management_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
-import { serverTargets, ToolBindings } from "../server/governance/bindings.js";
-import { ownIdentities, toolRequirements } from "../src/features/engineers/mcp-services.js";
-import { newRole } from "../src/features/engineers/role-draft.js";
-import { fixturePlans } from "./harness.js";
+import { serverTargets } from "../server/governance/access-plans.js";
+import { ToolBindings } from "../server/governance/tool-bindings.js";
+import { ownIdentities, toolRequirements } from "../src/features/agents/mcp-services.js";
+import { fixturePlans } from "./fixtures/access-plans.js";
 
 const access = new ToolBindings(serverTargets(fixturePlans()));
 const tools = (name: string, names: string[]) =>
@@ -22,15 +22,10 @@ const servers = [
   tools("lab-kubernetes-inspection", [read, write]),
   tools("lab-kubernetes-remediation", [read]),
   tools("lab-kubernetes-remediation-changes", [write, exec]),
-  tools("kagent-collaboration", ["search_memory"]),
+  tools("kagent-collaboration", ["list_agents"]),
 ];
 
-describe("engineer tool access", () => {
-  it("starts role drafts with available native team memory", () => {
-    const draft = newRole();
-    expect(access.bindings("inspection", draft.tools, "validate")).toEqual(draft.tools);
-  });
-
+describe("Agent tool access", () => {
   it("merges overlapping identities without duplicate tools or weaker approval requirements", () => {
     const bindings = [
       create(ToolBindingSchema, {
@@ -54,62 +49,7 @@ describe("engineer tool access", () => {
     expect(access.bindings("remediation", merged ?? [], "normalize")).toEqual(merged);
   });
 
-  it("intersects the caller's write permission with the Agent's environment ceiling and denies unknown tools", () => {
-    expect(access.permitsCall("inspection", ["lab-kubernetes"], "pods_list", false)).toBe(true);
-    expect(
-      access.permitsCall("inspection", ["lab-kubernetes"], "resources_create_or_update", true),
-    ).toBe(false);
-    expect(
-      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", false),
-    ).toBe(false);
-    expect(
-      access.permitsCall("remediation", ["lab-kubernetes"], "resources_create_or_update", true),
-    ).toBe(true);
-    expect(access.permitsCall("remediation", ["lab-kubernetes"], "unknown", true)).toBe(false);
-    expect(access.permitsCall("remediation", ["unrelated"], "pods_list", true)).toBe(false);
-    expect(
-      access.permitsTool("remediation", "lab-kubernetes-remediation-changes", write, false),
-    ).toBe(false);
-    expect(access.permitsTool("inspection", "lab-kubernetes-inspection", write, true)).toBe(false);
-    expect(access.permitsTool("inspection", "kagent-collaboration", "create_session", false)).toBe(
-      true,
-    );
-  });
-  it("keeps identical tool names scoped to their own service", () => {
-    const policy = new ToolBindings(
-      new Map([
-        [
-          "reader",
-          {
-            server: "reader",
-            service: "reader",
-            catalog: false,
-            tools: [{ name: "get", write: false, requireApproval: false }],
-          },
-        ],
-        [
-          "writer",
-          {
-            server: "writer",
-            service: "writer",
-            catalog: false,
-            tools: [{ name: "get", write: true, requireApproval: true }],
-          },
-        ],
-      ]),
-    );
-    expect(policy.permitsTool("inspection", "reader", "get", false)).toBe(true);
-    expect(policy.permitsTool("inspection", "writer", "get", false)).toBe(false);
-    expect(policy.permitsTool("inspection", "unknown", "get", true)).toBe(false);
-    expect(
-      policy.selectedTool(
-        create(ToolBindingSchema, { server: "reader", tools: ["reader_get"] }),
-        "get",
-      ),
-    ).toBe(true);
-  });
-
-  it("offers only the engineer's own identities and platform servers", () => {
+  it("offers only the Agent's own identities and platform servers", () => {
     const permissions = access.requirements("inspection");
     const names = new Set(permissions.map((item) => item.server));
     expect(names.has("lab-kubernetes-inspection")).toBe(true);
@@ -164,7 +104,7 @@ describe("engineer tool access", () => {
 
   it("uses ready policy decisions for configuration while rejecting unknown tools", () => {
     const bindings = [
-      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
+      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["list_agents"] }),
       create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read, write] }),
     ];
     expect(access.requirements("remediation")).toContainEqual(
@@ -175,7 +115,7 @@ describe("engineer tool access", () => {
       }),
     );
     expect(access.bindings("remediation", bindings, "validate")).toEqual([
-      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["search_memory"] }),
+      create(ToolBindingSchema, { server: "kagent-collaboration", tools: ["list_agents"] }),
       create(ToolBindingSchema, { server: "lab-kubernetes-remediation", tools: [read] }),
       create(ToolBindingSchema, {
         server: "lab-kubernetes-remediation-changes",
@@ -274,11 +214,36 @@ describe("engineer tool access", () => {
     expect(lookup("s", "t")).toBe(true);
     expect(lookup("s", "other")).toBeUndefined();
     const service = create(ConnectionSchema, {
-      credentialBindings: [{ engineer: "inspection", server: servers[1] }],
+      credentialBindings: [{ identity: "inspection", server: servers[1] }],
     });
     expect(ownIdentities("inspection", service).map((item) => item.ref)).toEqual([
       "agentos/lab-kubernetes-inspection",
     ]);
     expect(ownIdentities("diagnosis", service)).toEqual([]);
   });
+});
+
+it("requires an explicit execution identity for environment tool bindings", () => {
+  const policy = new ToolBindings(
+    new Map([
+      [
+        "ownerless",
+        {
+          server: "ownerless",
+          service: "ops",
+          environment: "lab",
+          catalog: false,
+          tools: [{ name: "inspect", write: false, requireApproval: false }],
+        },
+      ],
+    ]),
+  );
+  expect(policy.usable("analysis", "ownerless")).toBe(false);
+  expect(
+    policy.bindings(
+      "analysis",
+      [create(ToolBindingSchema, { server: "ownerless", tools: ["ops_inspect"] })],
+      "validate",
+    ),
+  ).toBeUndefined();
 });

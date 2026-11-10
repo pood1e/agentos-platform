@@ -1,0 +1,50 @@
+replicaCount: 1
+image:
+  repository: {{ openfga_image.split(':', 1)[0] }}
+  tag: {{ openfga_image.split(':', 1)[1] | to_json }}
+  pullPolicy: IfNotPresent
+datastore:
+  engine: postgres
+  uriSecret: openfga-postgres
+  maxOpenConns: 16
+  applyMigrations: true
+  waitForMigrations: true
+  migrationType: initContainer
+  migrations:
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 256Mi}
+authn:
+  method: preshared
+  preshared: {keysSecret: openfga-auth}
+http:
+  enabled: true
+  tls:
+    enabled: true
+    cert: /etc/openfga/tls/tls.crt
+    key: /etc/openfga/tls/tls.key
+playground: {enabled: false}
+profiler: {enabled: false}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  seccompProfile: {type: RuntimeDefault}
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: {drop: [ALL]}
+resources: {{ openfga_resources | to_json }}
+extraVolumes:
+  - name: tls
+    secret: {secretName: openfga-tls}
+  - name: postgres-ca
+    secret:
+      secretName: {{ openfga_postgres_ca_secret }}
+      items: [{key: ca.crt, path: ca.crt}]
+extraVolumeMounts:
+  - {name: tls, mountPath: /etc/openfga/tls, readOnly: true}
+  - {name: postgres-ca, mountPath: /etc/openfga/postgres, readOnly: true}
+migrate:
+  extraVolumeMounts:
+    - {name: postgres-ca, mountPath: /etc/openfga/postgres, readOnly: true}

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package agentos.execution.v1;
 
-// Display state shared by tasks, calls, delegations, interactions and engineers.
+// Display state shared by tasks, calls, delegations, interactions and Agents.
 enum ActivityState {
   ACTIVITY_STATE_UNSPECIFIED = 0;
   ACTIVITY_STATE_SUBMITTED = 1;

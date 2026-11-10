@@ -13,11 +13,11 @@ import {
   type AppReference,
   AppReferenceSchema,
 } from "../../../../gen/agentos/mcp/v1/app_pb.js";
-import { mountMcpApp } from "../../../../shared/browser/mcp-app-host.js";
 import { consoleClient } from "../../../lib/console.js";
 import { ToolIcon } from "../../shared/ToolIcon.js";
 import { useToolText } from "../../shared/use-tool-text.js";
 import { hostContext } from "./host-context.js";
+import { mountMcpApp } from "./mcp-app-host.js";
 import { useAppResource } from "./use-app-resource.js";
 
 export function AppView({
@@ -76,6 +76,7 @@ export function AppView({
     const app = create(AppReferenceSchema, {
       taskId,
       callId,
+      workspace: reference.workspace,
     });
     const element = frame.current;
     if (!element) return;
@@ -127,7 +128,15 @@ export function AppView({
       deliver.current = () => {};
       bridge.current = undefined;
     };
-  }, [taskId, callId, canMessage, resource.data, resource.dataUpdatedAt, resource.isError]);
+  }, [
+    taskId,
+    callId,
+    reference.workspace,
+    canMessage,
+    resource.data,
+    resource.dataUpdatedAt,
+    resource.isError,
+  ]);
   const failed = error || resource.isError;
   return (
     <div

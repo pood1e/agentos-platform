@@ -16,3 +16,16 @@ export const notFound = (key: string) => fail(Code.NotFound, key);
 export const invalid = (key: string) => fail(Code.InvalidArgument, key);
 export const conflict = (key: string) => fail(Code.Aborted, key);
 export const precondition = (key: string) => fail(Code.FailedPrecondition, key);
+
+export const hasCode = (error: unknown, ...codes: Code[]) =>
+  error instanceof ConnectError && codes.includes(error.code);
+
+/** The native resource, or undefined when it no longer exists. */
+export async function unlessMissing<T>(read: Promise<T>): Promise<T | undefined> {
+  try {
+    return await read;
+  } catch (error) {
+    if (hasCode(error, Code.NotFound)) return undefined;
+    throw error;
+  }
+}

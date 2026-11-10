@@ -12,12 +12,11 @@ import {
 import { speechText } from "../../shared/speech-text.js";
 import type { serviceAccountTokens } from "../authorization/workloads.js";
 import { messageCommands } from "../console/messages.js";
-import { watch } from "../console/watch.js";
+import { watchLive } from "../console/watch.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { nativeHeaders } from "../kagent/context.js";
+import { bearerToken, nativeHeaders } from "../kagent/context.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import { terminal } from "../read-model/state.js";
-import { TaskStreams } from "../read-model/streams.js";
 import { speechLanguage } from "./language.js";
 import type { SpeechSource } from "./settings.js";
 import type { VoiceTickets } from "./tickets.js";
@@ -31,7 +30,7 @@ export function voiceWorker(
   subject: string,
 ): Interceptor {
   return (next) => async (request) => {
-    const token = request.header.get("authorization")?.match(/^Bearer ([^\s,]+)$/)?.[1];
+    const token = bearerToken(request.header.get("authorization"));
     if (!token)
       throw new ConnectError("A signed workload identity is required", Code.Unauthenticated);
     await review(token, audience, [subject]);
@@ -71,6 +70,7 @@ export function voiceService({
     return nativeHeaders.run(
       new Headers({ authorization: `Bearer ${value.nativeSessionCredential}` }),
       async () => {
+        if (!(await projection.session(value.contextId))) throw denied();
         const { session } = await clients.sessions.getSession({ sessionId: value.contextId });
         if (!session || session.authority?.initiatorId !== value.subject) throw denied();
         return run();
@@ -116,14 +116,13 @@ export function voiceService({
       return within(value, async () => {
         const entry = await turn(value, taskId);
         const signal = AbortSignal.any([context.signal, AbortSignal.timeout(20_000)]);
-        let touch = () => {};
-        const streams = new TaskStreams(clients, signal, () => touch());
         let answer = create(GetVoiceAnswerResponseSchema);
-        for await (answer of watch(
+        for await (answer of watchLive(
           projection,
+          clients,
           GetVoiceAnswerResponseSchema,
           signal,
-          async () => {
+          async (streams) => {
             const current = (await projection.entry(taskId)) ?? entry;
             if (!terminal(current.state)) {
               streams.follow([current]);
@@ -136,12 +135,6 @@ export function voiceService({
                 ? { text, languageCode: speechLanguage(text, await voices()) }
                 : undefined,
             });
-          },
-          {
-            wakes: (wake) => {
-              touch = wake;
-              return () => streams.close();
-            },
           },
         ))
           if (answer.done) break;

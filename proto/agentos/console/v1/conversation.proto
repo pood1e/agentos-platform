@@ -4,7 +4,7 @@ package agentos.console.v1;
 
 import "a2a.proto";
 import "agentos/console/v1/role.proto";
-import "agentos/console/v1/engineer.proto";
+import "agentos/console/v1/agent.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/execution/v1/state.proto";
 import "agentos/execution/v1/task.proto";
@@ -56,5 +56,5 @@ message Conversation {
   string title = 8;
   bool operate = 9;
   repeated agentos.execution.v1.TaskRun runs = 10;
-  repeated Engineer participants = 11;
+  repeated AgentSummary participants = 11;
 }

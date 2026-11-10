@@ -13,21 +13,13 @@ export interface TaskTree {
   updatedAt?: number;
 }
 
-function children(graph: TaskGraph, entry: TaskEntry): string[] {
-  const relations = graph.relations();
-  return [...relations.parents.entries()].flatMap(([child, parent]) =>
-    parent === entry.id ? [child] : [],
-  );
-}
-
 function reach(graph: TaskGraph, start: string[]): Set<string> {
   const seen = new Set<string>();
+  const { children } = graph.relations();
   for (let pending = [...start], id = pending.pop(); id; id = pending.pop()) {
-    if (seen.has(id)) continue;
-    const entry = graph.entry(id);
-    if (!entry) continue;
+    if (seen.has(id) || !graph.entry(id)) continue;
     seen.add(id);
-    pending.push(...children(graph, entry));
+    pending.push(...(children.get(id) ?? []));
   }
   return seen;
 }

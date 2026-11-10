@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package kagent.api.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "kagent/api/v1/common.proto";
+
+option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/api/v1;apiv1";
+
+// WorkflowService exposes the native declarative document and compiler.
+service WorkflowService {
+  rpc GetWorkflowSchema(GetWorkflowSchemaRequest) returns (GetWorkflowSchemaResponse);
+  rpc GetWorkflowRevision(GetWorkflowRevisionRequest) returns (GetWorkflowRevisionResponse);
+  rpc ValidateWorkflow(ValidateWorkflowRequest) returns (ValidateWorkflowResponse);
+  rpc GetSessionWorkflow(GetSessionWorkflowRequest) returns (GetSessionWorkflowResponse);
+}
+
+message GetWorkflowSchemaRequest {}
+message GetWorkflowSchemaResponse {
+  google.protobuf.Struct schema = 1;
+}
+
+message GetWorkflowRevisionRequest {
+  ResourceReference ref = 1 [(buf.validate.field).required = true];
+}
+message GetWorkflowRevisionResponse {
+  // Compiled identity of the currently persisted Agent and all its dependencies.
+  string prepared_revision = 1;
+}
+
+message ValidateWorkflowRequest {
+  ResourceReference ref = 1 [(buf.validate.field).required = true];
+  // Candidate Agent with inline or referenced behavior. Its source is overlaid
+  // in the compilation snapshot, retaining other referenced ConfigMap keys.
+  StructuredObject resource = 2 [(buf.validate.field).required = true];
+  bytes document = 3 [(buf.validate.field).bytes = {min_len: 1, max_len: 65536}];
+  StructuredObject agent_template = 4;
+}
+message ValidateWorkflowResponse {
+  string prepared_revision = 1;
+}
+
+message GetSessionWorkflowRequest {
+  string session_id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetSessionWorkflowResponse {
+  // Canonical document pinned when this authorized Session was created.
+  bytes document = 1;
+  string sha256 = 2;
+  string prepared_revision = 3;
+}

@@ -1,0 +1,21 @@
+- name: Require an HTTPS identity issuer
+  ansible.builtin.assert:
+    that: oidc_issuer is match('^https://')
+    quiet: true
+
+- name: Discover identity provider metadata
+  ansible.builtin.uri:
+    url: "{{ oidc_issuer | regex_replace('/$', '') }}/.well-known/openid-configuration"
+    return_content: true
+    follow_redirects: none
+    timeout: 10
+  register: oidc_discovery
+  check_mode: false
+
+- name: Verify identity provider endpoints
+  ansible.builtin.assert:
+    that:
+      - oidc_discovery.json.issuer == oidc_issuer
+      - oidc_discovery.json.jwks_uri is match('^https://[^/?#@]+(/[^?#]*)?$')
+      - oidc_discovery.json.token_endpoint is match('^https://[^/?#@]+(/[^?#]*)?$')
+    quiet: true

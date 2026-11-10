@@ -1,35 +1,35 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import type {
-  ListEngineerRunsRequest,
+  ListAgentRunsRequest,
   ListTasksRequest,
 } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ConversationSummarySchema } from "../../gen/agentos/console/v1/conversation_pb.js";
 import { ExecutionGraphSchema } from "../../gen/agentos/console/v1/execution_pb.js";
 import { TaskSummarySchema } from "../../gen/agentos/console/v1/task_pb.js";
 import { TaskCatalogView } from "../../gen/kagent/api/v1/task_catalog_pb.js";
-import { shortTitle } from "../../shared/title.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { type AgentInfo, agentKey, agentRef, systemRoles } from "./agents.js";
+import { agentKey, agentRef, systemTemplates } from "../kagent/resources.js";
+import { defaultPageSize, type PageRequest } from "../shared/page.js";
+import { shortTitle } from "../shared/title.js";
+import type { AgentInfo } from "./agents.js";
 import { catalogGraph } from "./catalog-entries.js";
 import { activityFilters, catalogScope, catalogState, type Viewer } from "./catalog-state.js";
-import { millis } from "./decode/messages.js";
-import type { PageRequest } from "./page.js";
-import { engineers } from "./views/engineers.js";
+import { millis, stamp } from "./decode/messages.js";
+import { agentSummaries } from "./views/agents.js";
 import { executionGraph } from "./views/execution.js";
-import { engineerRun } from "./views/run.js";
-import { stamp } from "./views/runs.js";
+import { agentRun } from "./views/run.js";
 
 export type { Viewer } from "./catalog-state.js";
 
 const rpc = { timeoutMs: 10_000 };
 const page = (request: Pick<PageRequest, "pageSize" | "pageToken">) => ({
-  limit: request.pageSize || 12,
+  limit: request.pageSize || defaultPageSize,
   pageToken: request.pageToken,
 });
 const boundaries = (agents: AgentInfo[]) =>
   agents
-    .filter((agent) => systemRoles.has(agent.role))
+    .filter((agent) => systemTemplates.has(agent.templateName))
     .map((agent) => agent.id)
     .sort()
     .map(agentRef);
@@ -62,7 +62,7 @@ export function listings({
       );
       return {
         conversations: result.sessions.map(({ session, activity }) => {
-          if (!session?.id || agentKey(session.agent) !== agentId)
+          if (!session?.id || agentKey(session.agent?.ref) !== agentId)
             throw new ConnectError("Native conversation unavailable", Code.FailedPrecondition);
           return create(ConversationSummarySchema, {
             contextId: session.id,
@@ -78,11 +78,11 @@ export function listings({
     async operations(
       viewer: Viewer,
       request: PageRequest &
-        Partial<Pick<ListTasksRequest, "states" | "engineer" | "includeExecutionGraph">>,
+        Partial<Pick<ListTasksRequest, "states" | "agent" | "includeExecutionGraph">>,
     ) {
       const scope = catalogScope(workspace, viewer);
       const activities = activityFilters(request.states ?? []);
-      const selectedAgent = request.engineer ? agentRef(request.engineer) : undefined;
+      const selectedAgent = request.agent;
       const empty = () => ({
         tasks: [],
         totalSize: 0,
@@ -91,8 +91,7 @@ export function listings({
       });
       if (
         (request.states?.length && !activities.length) ||
-        (selectedAgent &&
-          (selectedAgent.namespace !== workspace || agentKey(selectedAgent) !== request.engineer))
+        (selectedAgent && (selectedAgent.namespace !== workspace || !selectedAgent.name))
       )
         return empty();
       const members = await agents();
@@ -147,12 +146,12 @@ export function listings({
           : undefined,
       };
     },
-    async engineers(viewer: Viewer) {
+    async agentSummaries(viewer: Viewer) {
       const [members, result] = await Promise.all([
         agents(),
         clients.catalog.listAgentActivity({ scope: catalogScope(workspace, viewer) }, rpc),
       ]);
-      return engineers(
+      return agentSummaries(
         members,
         new Map(
           result.agents.map((activity) => [
@@ -168,11 +167,16 @@ export function listings({
         ),
       );
     },
-    async engineerRuns(viewer: Viewer, request: ListEngineerRunsRequest) {
+    async agentRuns(viewer: Viewer, request: ListAgentRunsRequest) {
       const scope = catalogScope(workspace, viewer);
-      const ref = agentRef(request.engineer);
+      const ref = request.agent;
       const activities = activityFilters(request.states);
-      if (ref.namespace !== workspace || !ref.name || (request.states.length && !activities.length))
+      if (
+        !ref ||
+        ref.namespace !== workspace ||
+        !ref.name ||
+        (request.states.length && !activities.length)
+      )
         return { runs: [], nextPageToken: "" };
       const members = await agents();
       const result = await clients.catalog.listTaskRecords(
@@ -190,9 +194,9 @@ export function listings({
       return {
         runs: result.tasks.map((row) => {
           const entry = row.task && graph.entry(row.task.id);
-          if (!entry || entry.agentId !== request.engineer)
-            throw new ConnectError("Native engineer record unavailable", Code.FailedPrecondition);
-          return engineerRun(entry, row.background);
+          if (!entry || entry.agentId !== agentKey(ref))
+            throw new ConnectError("Native Agent record unavailable", Code.FailedPrecondition);
+          return agentRun(entry, row.background);
         }),
         nextPageToken: result.page?.nextPageToken ?? "",
       };

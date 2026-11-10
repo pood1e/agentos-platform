@@ -24,6 +24,7 @@ class ContractsTest(unittest.TestCase):
                     name in {"package.json", "LICENSE", "buf.lock", "authorization.json"}
                     or (path.parts[0] in {"proto", "third_party"} and name.endswith(".proto"))
                     or (path.parts[:2] == ("gen", "schema") and name.endswith(".json"))
+                    or name in {"gen/kagent/workflow.js", "gen/kagent/workflow.d.ts"}
                     or (
                         path.parts[0] == "gen"
                         and name.endswith(
@@ -54,6 +55,8 @@ class ContractsTest(unittest.TestCase):
             )
             Path(directory, "consumer.ts").write_text("""
 import type {AccessPlanStatus} from '@agentos/contracts/gen/kubernetes';
+import type {AgentSystem} from '@agentos/contracts/gen/kagent/workflow';
+export type {AgentSystem};
 const status: AccessPlanStatus = {observedGeneration: 1, targets: [
   {server: 'tools', service: 'tools', catalog: false, tools: [{name: 'read', write: false, requireApproval: false}]}]};
 export default status;
@@ -91,7 +94,7 @@ assert.ok(status.properties.status.properties.targets);
 assert.ok(Object.keys(roles).length);
 const proto = import.meta.resolve('@agentos/contracts/proto/agentos/console/v1/role.proto');
 assert.match(readFileSync(new URL(proto), 'utf8'), /message RoleDefinition/);
-const native = import.meta.resolve('@agentos/contracts/third_party/kagent/kagent/api/v1/collaboration.proto');
+const native = import.meta.resolve('@agentos/contracts/third_party/kagent/kagent/api/v1/interactions.proto');
 assert.match(readFileSync(new URL(native), 'utf8'), /package kagent.api.v1/);
 await assert.rejects(import('@agentos/contracts/shared/access-plans'),
   {code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
@@ -134,9 +137,9 @@ await assert.rejects(import('@agentos/contracts/shared/access-plans'),
 import sys
 sys.path.insert(0, sys.argv[1])
 from agentos.voice.v1 import voice_pb2
-from kagent.api.v1 import collaboration_pb2
+from api.ateapi.v1 import ateapi_pb2
 assert voice_pb2.DESCRIPTOR.package == 'agentos.voice.v1'
-assert collaboration_pb2.DESCRIPTOR.package == 'kagent.api.v1'
+assert ateapi_pb2.DESCRIPTOR.package == 'substrate.ateapi.v1'
 """,
                         directory,
                     ],

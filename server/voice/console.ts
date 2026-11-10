@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { Code, type ServiceImpl } from "@connectrpc/connect";
+import { Code } from "@connectrpc/connect";
 import {
   AccessToken,
   RoomAgentDispatch,
   type RoomServiceClient,
   TrackSource,
 } from "livekit-server-sdk";
-import type { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { VoiceMode } from "../../gen/agentos/console/v1/speech_pb.js";
 import { speechText } from "../../shared/speech-text.js";
+import type { VoiceConsole } from "../console/service.js";
 import type { KagentClients } from "../kagent/clients.js";
 import { requestIdentity } from "../platform/access.js";
 import { fail, invalid, precondition, unavailable } from "../shared/errors.js";
@@ -24,18 +24,6 @@ export interface VoiceRooms {
   agent: string;
   createRoom: RoomServiceClient["createRoom"];
 }
-
-export type VoiceConsole = Pick<
-  ServiceImpl<typeof ConsoleService>,
-  "getSpeechCapabilities" | "startVoiceSession"
->;
-
-export const voiceDisabled: VoiceConsole = {
-  getSpeechCapabilities: () => ({}),
-  startVoiceSession: () => {
-    throw precondition("speech.unavailable");
-  },
-};
 
 export function voiceConsole(
   settings: SpeechSource,
@@ -58,6 +46,31 @@ export function voiceConsole(
     });
     return token.toJwt();
   };
+  /** A call binds the room to one native session; its credential bounds the ticket lifetime. */
+  async function callSession(requested: string, requestId: string) {
+    if (!(await clients.execution.getDelegationCredentialStatus({})).renewable)
+      throw precondition("delegation.required");
+    const { session } = requested
+      ? await clients.sessions.getSession({ sessionId: requested })
+      : await clients.sessions.createSession(
+          { agent, requestId, name: "Voice conversation" },
+          { timeoutMs: 30_000 },
+        );
+    if (
+      !session ||
+      session.agent?.ref?.namespace !== agent.namespace ||
+      session.agent.ref.name !== agent.name
+    )
+      throw fail(Code.PermissionDenied, "chat.executionDenied");
+    const credential = await clients.execution.issueSessionCredential({
+      sessionId: session.id,
+      ttl: { seconds: 1800n },
+    });
+    const deadline = Number(credential.expiresAt?.seconds);
+    if (!credential.credential || !deadline) throw unavailable();
+    return { contextId: session.id, nativeSessionCredential: credential.credential, deadline };
+  }
+
   return {
     async getSpeechCapabilities() {
       const { transcription, synthesis } = (await settings()).configuration;
@@ -89,33 +102,7 @@ export function voiceConsole(
       } else if (languageCode && !transcription?.languageCodes.includes(languageCode))
         throw invalid("speech.requestRejected");
       const id = randomUUID();
-      let contextId = mode === VoiceMode.CALL ? request.contextId : "";
-      let nativeSessionCredential = "";
-      let deadline: number | undefined;
-      if (mode === VoiceMode.CALL) {
-        if (!(await clients.execution.getDelegationCredentialStatus({})).renewable)
-          throw precondition("delegation.required");
-        const { session } = contextId
-          ? await clients.sessions.getSession({ sessionId: contextId })
-          : await clients.sessions.createSession(
-              { agent, requestId: id, name: "Voice conversation" },
-              { timeoutMs: 30_000 },
-            );
-        if (
-          !session ||
-          session.agent?.namespace !== agent.namespace ||
-          session.agent.name !== agent.name
-        )
-          throw fail(Code.PermissionDenied, "chat.executionDenied");
-        contextId = session.id;
-        const credential = await clients.execution.issueSessionCredential({
-          sessionId: contextId,
-          ttl: { seconds: 1800n },
-        });
-        nativeSessionCredential = credential.credential;
-        deadline = Number(credential.expiresAt?.seconds);
-        if (!nativeSessionCredential || !deadline) throw unavailable();
-      }
+      const call = mode === VoiceMode.CALL ? await callSession(request.contextId, id) : undefined;
       const { token } = await tickets.create(
         {
           id,
@@ -123,10 +110,10 @@ export function voiceConsole(
           mode,
           languageCode,
           text,
-          contextId,
-          nativeSessionCredential,
+          contextId: call?.contextId ?? "",
+          nativeSessionCredential: call?.nativeSessionCredential ?? "",
         },
-        deadline,
+        call?.deadline,
       );
       try {
         await rooms.createRoom({

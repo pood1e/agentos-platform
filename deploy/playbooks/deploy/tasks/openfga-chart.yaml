@@ -1,0 +1,12 @@
+- name: Prepare OpenFGA chart cache
+  ansible.builtin.file:
+    path: "{{ agentos_cache }}/runtime"
+    state: directory
+    mode: "0700"
+
+- name: Cache verified OpenFGA chart
+  ansible.builtin.get_url:
+    url: "https://github.com/openfga/helm-charts/releases/download/openfga-{{ openfga_chart_version }}/openfga-{{ openfga_chart_version }}.tgz"
+    dest: "{{ agentos_cache }}/runtime/openfga-{{ openfga_chart_version }}.tgz"
+    checksum: "sha256:{{ openfga_chart_checksum }}"
+    mode: "0600"

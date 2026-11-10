@@ -5,14 +5,15 @@ import {
   ToolCallSchema,
 } from "../../../gen/agentos/execution/v1/task_pb.js";
 import { toolCalls } from "../calls.js";
+import { stamp } from "../decode/messages.js";
 import type { TaskEntry } from "../entry.js";
 import { approvals } from "../interactions.js";
 import { terminal } from "../state.js";
 import type { FullTask } from "./conversation.js";
-import { runState, runSummary, stamp } from "./runs.js";
+import { runState, runSummary } from "./runs.js";
 
-/** Compact engineer work record with the latest narration and call status. */
-export function engineerRun(entry: TaskEntry, background: boolean): TaskRun {
+/** Compact Agent execution record with the latest narration and call status. */
+export function agentRun(entry: TaskEntry, background: boolean): TaskRun {
   const run = runSummary(entry, background);
   run.prompt = entry.prompt;
   run.output = terminal(entry.state) ? entry.answer : "";

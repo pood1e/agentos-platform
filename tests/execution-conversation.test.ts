@@ -15,8 +15,8 @@ afterEach(() => vi.restoreAllMocks());
 function executionSession(env: Environment) {
   const root = env.fake.task(ids.dispatchRoot);
   const session = env.fake.sessions.get(root.contextId);
-  assert(session?.agent);
-  return { agent: session.agent, contextId: session.id };
+  assert(session?.agent?.ref);
+  return { agent: session.agent.ref, contextId: session.id };
 }
 
 async function snapshot(
@@ -34,7 +34,7 @@ async function snapshot(
 }
 
 it.each([false, true])(
-  "reads a caller-owned engineer session with administrator=%s",
+  "reads a caller-owned Agent session with administrator=%s",
   async (administrator) => {
     const env = await environment();
     const identity = create(UserIdentitySchema, {
@@ -50,7 +50,7 @@ it.each([false, true])(
       await expect(
         client.sendMessage({
           ...request,
-          messageId: "direct-engineer-write",
+          messageId: "direct-agent-write",
           text: "Run another task",
         }),
       ).rejects.toMatchObject({ code: Code.NotFound });

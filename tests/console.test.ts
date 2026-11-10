@@ -98,7 +98,7 @@ describe("console service", () => {
   it("loads a newly observed conversation before deciding that it is unavailable", async () => {
     const { client, fake, projection, close } = await workbench([]);
     const agent = { namespace: "agentos", name: "assistant" };
-    const session = create(SessionSchema, { id: "newly-observed", agent });
+    const session = create(SessionSchema, { id: "newly-observed", agent: { ref: agent } });
     const task = create(TaskSchema, {
       id: "new-task",
       contextId: session.id,
@@ -128,7 +128,7 @@ describe("console service", () => {
 
   it("derives tool confirmation requirements when saving", async () => {
     const { client, close } = await workbench();
-    const { requirements } = await client.explainTools({ engineer: "service-health" });
+    const { requirements } = await client.explainTools({ identity: "service-health" });
     expect(requirements).toContainEqual(
       expect.objectContaining({
         server: "kagent-tool-server",
@@ -165,7 +165,7 @@ describe("console service", () => {
     const configuration = await client.getConfiguration({});
     const inspection = configuration.roles.find((role) => role.name === "inspection");
     if (!inspection) throw new Error("inspection role missing");
-    const { requirements } = await client.explainTools({ engineer: "inspection" });
+    const { requirements } = await client.explainTools({ identity: "inspection" });
     expect(requirements).toContainEqual(
       expect.objectContaining({
         server: "kagent-tool-server",
@@ -208,9 +208,7 @@ describe("console service", () => {
     const { client, fake, close } = await workbench();
     const configuration = await client.getConfiguration({});
     expect(configuration.roles.map((role) => role.name)).toContain("inspection");
-    const knowledge = configuration.engineerTools.find(
-      (item) => item.engineer?.name === "knowledge",
-    );
+    const knowledge = configuration.agentTools.find((item) => item.agent?.name === "knowledge");
     expect(knowledge?.builtinCatalog).toBeUndefined();
     expect(configuration.roles.find((role) => role.name === "knowledge")?.tools).toEqual([]);
     const role = {

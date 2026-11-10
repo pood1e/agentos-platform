@@ -17,9 +17,9 @@ import {
 import type { GetSpeechConfigurationResponse } from "../../../gen/agentos/management/v1/management_pb.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
+import { SaveButton } from "../shared/ResourceDialog.js";
+import { Failure } from "../shared/ResourcePage.js";
 import { translateSchema } from "./connection-schema.js";
-import { SaveButton } from "./ResourceDialog.js";
-import { Failure } from "./ResourcePage.js";
 import { speechSchema } from "./speech-schema.js";
 
 export type SpeechKind = "transcription" | "synthesis";

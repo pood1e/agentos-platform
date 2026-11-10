@@ -1,8 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { compile } from "json-schema-to-typescript";
 import { parse } from "yaml";
 
 mkdirSync("gen/schema", { recursive: true });
+const workflow = JSON.parse(readFileSync("third_party/kagent-crds/workflow.schema.json", "utf8"));
+writeFileSync(
+  "gen/kagent/workflow.ts",
+  await compile(workflow, "AgentSystem", {
+    bannerComment: "/* Generated from the pinned kagent declarative schema. */",
+    additionalProperties: false,
+  }),
+);
 for (const [file, name] of [
   ["models", "model"],
   ["backends", "mcp"],

@@ -1,32 +1,17 @@
-import { create } from "@bufbuild/protobuf";
 import type { AgentTemplate } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import type { Agent } from "../../gen/kagent/api/v1/agents_pb.js";
-import {
-  type ResourceReference,
-  ResourceReferenceSchema,
-} from "../../gen/kagent/api/v1/common_pb.js";
 import type { Session } from "../../gen/kagent/api/v1/sessions_pb.js";
-import { isWorkflowTemplate } from "../kagent/templates.js";
-import { millis, object, text } from "./decode/messages.js";
-
-export const systemRoles = new Set(["assistant", "role-builder"]);
-
-export const agentKey = (ref?: Pick<ResourceReference, "namespace" | "name">) =>
-  ref ? `${ref.namespace}/${ref.name}` : "";
-
-export function agentRef(id: string) {
-  const [namespace = "", name = ""] = id.split("/");
-  return create(ResourceReferenceSchema, { namespace, name });
-}
+import { object, text } from "../../shared/json.js";
+import { displayNameAnnotation } from "../../shared/kagent-resources.js";
+import { agentKey } from "../kagent/resources.js";
+import { millis } from "./decode/messages.js";
 
 export interface AgentInfo {
   id: string;
-  role: string;
+  templateName: string;
   displayName: string;
   description: string;
   ready: boolean;
-  sessionTasks?: boolean;
-  workflow?: boolean;
   reason: string;
   message: string;
 }
@@ -45,19 +30,14 @@ export function agentInfo(agent: Agent, templates?: ReadonlyMap<string, AgentTem
   const readiness = conditions.find((condition) => condition.type === "Ready");
   const ready = readiness?.status === "True";
   const blocking = conditions.find((condition) => condition.status === "False") ?? readiness;
-  const workflow = isWorkflowTemplate(
-    template?.spec ?? object(object(object(resource?.spec).template).inline),
-  );
   return {
     id: agentKey(agent.ref),
-    role: workflow ? "" : text(templateRef.name),
-    workflow,
-    displayName: text(annotations["agentos.dev/display-name"]),
+    templateName: text(templateRef.name),
+    displayName: text(annotations[displayNameAnnotation]),
     description: template
       ? text(object(template.spec).description)
       : text(annotations["agentos.dev/description"]),
     ready,
-    sessionTasks: object(metadata.annotations)["agentos.dev/task-scope"] === "session",
     reason: ready ? "" : text(blocking?.reason),
     message: ready ? "" : text(blocking?.message),
   };
@@ -74,7 +54,7 @@ export const sessionInfo = (session: Session) => ({
   root: session.authority?.rootSessionId || session.id,
   subject: session.authority?.initiatorId || session.creator,
   id: session.id,
-  agentId: agentKey(session.agent),
+  agentId: agentKey(session.agent?.ref),
   name: session.name,
   updatedAt: millis(session.updatedAt),
 });

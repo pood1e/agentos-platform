@@ -121,10 +121,6 @@ deny contains "OIDC requires native client and delegation secret references" if 
 	object.get(object.get(object.get(object.get(api_environment, name, {}), "valueFrom", {}), "secretKeyRef", {}), "key", "") != key
 }
 
-deny contains "speech configuration must remain in the managed Secret" if {
-	api_environment.AGENTOS_SPEECH_SECRET.value != sprintf("%s-speech", [trim_suffix(api.metadata.name, "-api")])
-}
-
 deny contains "speech credentials are projected into a platform process" if {
 	some workload in workloads
 	some volume in workload.spec.template.spec.volumes
@@ -133,7 +129,7 @@ deny contains "speech credentials are projected into a platform process" if {
 
 deny contains sprintf("required %s environment %s is absent", [component, name]) if {
 	some component, names in {
-		"api": {"AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_GATEWAY_URL", "AGENTOS_MCP_GATEWAY_URL", "AGENTOS_SPEECH_SECRET"},
+		"api": {"AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_WORKSPACES"},
 		"dataplane": {"KAGENT_URL", "AGENTOS_CONTROLLER_SUBJECT"},
 	}
 	some name in names
@@ -159,7 +155,14 @@ deny contains "native collaboration endpoint differs from the native control pla
 	some remote in objects
 	remote.kind == "RemoteMCPServer"
 	remote.metadata.name == "kagent-collaboration"
-	remote.spec.url != concat("", [api_environment.KAGENT_URL.value, "/mcp"])
+	remote.spec.url != concat("", [dataplane_environment.KAGENT_URL.value, "/mcp"])
+}
+
+deny contains "native collaboration lacks runtime caller credentials" if {
+	some remote in objects
+	remote.kind == "RemoteMCPServer"
+	remote.metadata.name == "kagent-collaboration"
+	remote.spec.tokenPassthrough != true
 }
 
 deny contains sprintf("%s lacks native discovery credentials", [remote.metadata.name]) if {

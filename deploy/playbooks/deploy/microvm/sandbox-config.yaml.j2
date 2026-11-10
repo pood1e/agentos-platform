@@ -1,0 +1,17 @@
+apiVersion: ate.dev/v1
+kind: SandboxConfig
+metadata:
+  name: microvm
+spec:
+  sandboxClass: microvm
+  defaultVersion: v1
+  versions:
+    - name: v1
+      state: Enabled
+      assets:
+        {{ microvm_arch }}:
+{% for asset, digest in (lookup('file', 'microvm/assets.json') | from_json)[microvm_arch].sha256.items() %}
+          {{ asset }}:
+            url: s3://ate-snapshots/kata-assets/{{ microvm_arch }}/{{ asset }}
+            sha256: {{ digest }}
+{% endfor %}

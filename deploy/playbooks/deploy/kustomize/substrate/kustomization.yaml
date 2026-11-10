@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [resources.yaml]
+replacements:
+  - sourceValue: 2m
+    targets:
+      - select: {kind: ConfigMap, name: atenet-router-agentgateway-config}
+        fieldPaths:
+          - data.config\.yaml.routes.[name=^substrate-actors$].policies.substrateIngress.requestParking.budget
+        options: {create: true}

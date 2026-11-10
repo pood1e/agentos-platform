@@ -25,7 +25,7 @@ func environmentTransport(environment platform.Environment, target platform.Comp
 		transport.Auth = &agw.BackendAuth{OAuthTokenExchange: &agw.OAuthTokenExchange{
 			PolicyBackendEndpoint: backendReference(target.Service + "-oauth"), Path: ptr.To(endpoint.RequestURI()),
 			Audiences: []string{environment.Resource}, RequestedTokenType: ptr.To(agw.OAuthTokenTypeAccessToken),
-			ClientAuth: &agw.OAuthClientAuth{ClientID: "agentos-" + target.Engineer, SecretRef: &agw.LocalSecretKeyRef{Name: gw.ObjectName(environment.Name + "-" + target.Engineer), Key: ptr.To("client-secret")}},
+			ClientAuth: &agw.OAuthClientAuth{ClientID: "agentos-" + target.Identity, SecretRef: &agw.LocalSecretKeyRef{Name: gw.ObjectName(environment.Name + "-" + target.Identity), Key: ptr.To("client-secret")}},
 		}}
 	}
 	return transport

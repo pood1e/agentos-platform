@@ -4,9 +4,10 @@ import {
   type ChatMessagePart,
   ChatMessagePartSchema,
 } from "../../../gen/agentos/console/v1/conversation_pb.js";
+import { text } from "../../../shared/json.js";
 import { toolCalls } from "../calls.js";
 import { hitlPayload } from "../decode/hitl.js";
-import { messageText, partTypeKey, taskSources, text } from "../decode/messages.js";
+import { messageText, partTypeKey, taskSources } from "../decode/messages.js";
 import { toolEvent, toolEventId } from "../decode/tools.js";
 import { approvals } from "../interactions.js";
 

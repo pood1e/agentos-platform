@@ -5,8 +5,8 @@ import { UserIdentitySchema } from "../gen/agentos/authorization/v1/identity_pb.
 import { Capability } from "../gen/agentos/authorization/v1/permission_pb.js";
 import { ConsoleService } from "../gen/agentos/console/v1/console_service_pb.js";
 import { ConnectionKind, ManagementService } from "../gen/agentos/management/v1/management_pb.js";
-import { workspaceContext } from "../server/platform/access.js";
 import { allCapabilities, capabilityRole, roleCapabilities } from "../shared/permissions.js";
+import { allowWorkspace, testWorkspaceContext } from "./workspace-member.js";
 
 it("enforces each resource permission independently at every public mutation", async () => {
   const principal = create(UserIdentitySchema, { subject: "user:alice", write: true });
@@ -20,7 +20,7 @@ it("enforces each resource permission independently at every public mutation", a
         respondInteraction: () => ({}),
       });
       router.service(ManagementService, {
-        setEngineerRuntime: () => ({}),
+        setAgentRuntime: () => ({}),
         saveSkill: () => ({}),
         deleteSkill: () => ({}),
         saveConnection: () => ({}),
@@ -28,13 +28,14 @@ it("enforces each resource permission independently at every public mutation", a
         saveSpeechConfiguration: () => ({}),
         saveHarness: () => ({}),
         deleteHarness: () => ({}),
-        addKnowledge: () => ({}),
-        deleteKnowledge: () => ({}),
-        clearKnowledge: () => ({}),
       });
     },
     {
-      router: { interceptors: [workspaceContext("workspace", "assistant", async () => principal)] },
+      router: {
+        interceptors: [
+          testWorkspaceContext("workspace", async () => principal, allowWorkspace("workspace")),
+        ],
+      },
     },
   );
   const agents = createClient(ConsoleService, transport),
@@ -42,7 +43,7 @@ it("enforces each resource permission independently at every public mutation", a
   const mutations: [Capability, () => Promise<unknown>][] = [
     [Capability.AGENTS_MANAGE, () => agents.createRole({})],
     [Capability.AGENTS_MANAGE, () => agents.updateRole({})],
-    [Capability.AGENTS_MANAGE, () => resources.setEngineerRuntime({})],
+    [Capability.AGENTS_MANAGE, () => resources.setAgentRuntime({})],
     [Capability.SKILLS_MANAGE, () => resources.saveSkill({})],
     [Capability.SKILLS_MANAGE, () => resources.deleteSkill({})],
     [
@@ -58,9 +59,6 @@ it("enforces each resource permission independently at every public mutation", a
     [Capability.MODELS_MANAGE, () => resources.saveSpeechConfiguration({})],
     [Capability.HARNESSES_MANAGE, () => resources.saveHarness({})],
     [Capability.HARNESSES_MANAGE, () => resources.deleteHarness({})],
-    [Capability.KNOWLEDGE_MANAGE, () => resources.addKnowledge({})],
-    [Capability.KNOWLEDGE_MANAGE, () => resources.deleteKnowledge({})],
-    [Capability.KNOWLEDGE_MANAGE, () => resources.clearKnowledge({})],
   ];
   for (const granted of [
     [],

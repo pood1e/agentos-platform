@@ -4,6 +4,7 @@ package render
 import (
 	"fmt"
 	"io"
+	"slices"
 
 	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
 	"github.com/kagent-dev/kagent/go/integrations/agentgateway"
@@ -39,28 +40,55 @@ func Read(reader io.Reader) ([]*unstructured.Unstructured, error) {
 
 // Expand uses the same compiler as reconciliation, without a Kubernetes cluster.
 func Expand(objects []*unstructured.Unstructured, scheme *runtime.Scheme, namespace string, gateway platform.PlatformGateway) ([]*unstructured.Unstructured, error) {
-	result := append([]*unstructured.Unstructured{}, objects...)
-	var plans []platform.AccessPlan
-	appendObject := func(object client.Object) error {
-		gvk, err := apiutil.GVKForObject(object, scheme)
-		if err != nil {
-			return err
-		}
-		value, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
-		if err != nil {
-			return err
-		}
-		delete(value, "status")
-		native := &unstructured.Unstructured{Object: value}
-		native.SetGroupVersionKind(gvk)
-		result = append(result, native)
-		return nil
-	}
 	for _, object := range objects {
 		if object.GetNamespace() == "" && namespaced(object.GetKind()) {
 			object.SetNamespace(namespace)
 		}
-		if object.GetAPIVersion() != platform.GroupVersion.String() || object.GetKind() != "AccessPlan" {
+	}
+	expanded := expansion{scheme: scheme, result: slices.Clone(objects)}
+	plans, err := expanded.accessPlans(objects)
+	if err != nil {
+		return nil, err
+	}
+	if err := expanded.presets(objects, plans); err != nil {
+		return nil, err
+	}
+	if err := expanded.connections(connections.Config(gateway)); err != nil {
+		return nil, err
+	}
+	return expanded.result, expanded.unique()
+}
+
+type expansion struct {
+	scheme *runtime.Scheme
+	result []*unstructured.Unstructured
+}
+
+func (e *expansion) add(object client.Object) error {
+	gvk, err := apiutil.GVKForObject(object, e.scheme)
+	if err != nil {
+		return err
+	}
+	value, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
+	if err != nil {
+		return err
+	}
+	delete(value, "status")
+	native := &unstructured.Unstructured{Object: value}
+	native.SetGroupVersionKind(gvk)
+	e.result = append(e.result, native)
+	return nil
+}
+
+func isPlatformKind(object *unstructured.Unstructured, kind string) bool {
+	return object.GetAPIVersion() == platform.GroupVersion.String() && object.GetKind() == kind
+}
+
+// accessPlans records compiled status on each plan and adds its derived resources.
+func (e *expansion) accessPlans(objects []*unstructured.Unstructured) ([]platform.AccessPlan, error) {
+	var plans []platform.AccessPlan
+	for _, object := range objects {
+		if !isPlatformKind(object, "AccessPlan") {
 			continue
 		}
 		var plan platform.AccessPlan
@@ -80,73 +108,86 @@ func Expand(objects []*unstructured.Unstructured, scheme *runtime.Scheme, namesp
 		object.Object["status"] = value["status"]
 		plans = append(plans, plan)
 		for _, native := range compiled.Resources {
-			if err := appendObject(native); err != nil {
+			if err := e.add(native); err != nil {
 				return nil, err
 			}
 		}
 	}
+	return plans, nil
+}
+
+func (e *expansion) presets(objects []*unstructured.Unstructured, plans []platform.AccessPlan) error {
 	for _, object := range objects {
-		if object.GetAPIVersion() != platform.GroupVersion.String() || object.GetKind() != "Preset" {
+		if !isPlatformKind(object, "Preset") {
 			continue
 		}
 		var preset platform.Preset
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &preset); err != nil {
-			return nil, err
+			return err
 		}
 		for _, raw := range preset.Spec.Resources {
 			native := &unstructured.Unstructured{}
 			if err := native.UnmarshalJSON(raw.Raw); err != nil {
-				return nil, err
+				return err
 			}
 			native.SetNamespace(preset.Namespace)
 			if err := compile.Template(native, plans); err != nil {
-				return nil, err
+				return err
 			}
-			result = append(result, native)
+			e.result = append(e.result, native)
 		}
 	}
-	parents := append([]*unstructured.Unstructured{}, result...)
-	connectionConfig := connections.Config(gateway)
-	for _, object := range parents {
+	return nil
+}
+
+// connections derives gateway children of every annotated connection found so far.
+func (e *expansion) connections(config agentgateway.Config) error {
+	for _, object := range slices.Clone(e.result) {
 		if object.GetAnnotations()[agentgateway.ConnectionAnnotation] != "true" {
 			continue
 		}
-		var children []client.Object
-		var err error
-		switch object.GetKind() {
-		case "AgentgatewayModel":
-			var model agw.AgentgatewayModel
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &model); err != nil {
-				return nil, err
-			}
-			var child client.Object
-			child, err = connectionConfig.Model(&model)
-			children = []client.Object{child}
-		case "AgentgatewayBackend":
-			var backend agw.AgentgatewayBackend
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &backend); err != nil {
-				return nil, err
-			}
-			children, err = connectionConfig.MCP(&backend)
-		}
+		children, err := connectionChildren(object, config)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for _, child := range children {
-			if err := appendObject(child); err != nil {
-				return nil, err
+			if err := e.add(child); err != nil {
+				return err
 			}
 		}
 	}
+	return nil
+}
+
+func connectionChildren(object *unstructured.Unstructured, config agentgateway.Config) ([]client.Object, error) {
+	switch object.GetKind() {
+	case "AgentgatewayModel":
+		var model agw.AgentgatewayModel
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &model); err != nil {
+			return nil, err
+		}
+		child, err := config.Model(&model)
+		return []client.Object{child}, err
+	case "AgentgatewayBackend":
+		var backend agw.AgentgatewayBackend
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, &backend); err != nil {
+			return nil, err
+		}
+		return config.MCP(&backend)
+	}
+	return nil, nil
+}
+
+func (e *expansion) unique() error {
 	seen := make(map[string]bool)
-	for _, object := range result {
+	for _, object := range e.result {
 		key := object.GetAPIVersion() + "/" + object.GetKind() + "/" + object.GetNamespace() + "/" + object.GetName()
 		if seen[key] {
-			return nil, fmt.Errorf("duplicate resource %s", key)
+			return fmt.Errorf("duplicate resource %s", key)
 		}
 		seen[key] = true
 	}
-	return result, nil
+	return nil
 }
 
 func namespaced(kind string) bool {

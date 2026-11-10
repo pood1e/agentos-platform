@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { appResourcePolicy } from "../shared/mcp-apps-policy.js";
+import { appResourcePolicy } from "../src/features/chat/apps/resource-policy.js";
 
 it("accepts only explicit HTTPS image origins and data resources", () => {
   expect(

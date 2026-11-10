@@ -5,12 +5,12 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 
 - **控制台**：Agent 团队、聊天与执行历史、原生工具确认、MCP Apps。
 - **输入**：文本与可选的语音输入、朗读和实时通话。
-- **接入**：原生身份投影、模型和 MCP 配置、团队知识与 Skill 目录。
+- **接入**：原生身份投影、模型和 MCP 配置与 Skill 目录。
 
 ## 部署
 
-平台发布 Chart、镜像与契约，Chart 值与制品验签见[构建与配置](docs/delivery.md)。参考部署由 [agentos-deploy](https://github.com/pood1e/agentos-deploy) 固定平台版本后签名发布，安装 K3s、运行时与平台 Chart，运行节点需支持 KVM。
-目标系统接入见[环境接入](docs/environments.md)；kagent 与 Substrate 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/main) 与 [pood1e/substrate](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 的固定提交构建并发布镜像。
+平台发布 Chart、镜像、契约与参考部署 collection，Chart 值与制品验签见[构建与配置](docs/delivery.md)。[参考部署](deploy/README.md)安装 K3s、运行时与同版本平台 Chart，运行节点需支持 KVM。
+目标系统接入见[环境接入](docs/environments.md)；kagent 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/main) 的固定提交构建并发布镜像，Substrate 使用 [kagent-dev/substrate `v1.0.0`](https://github.com/kagent-dev/substrate/releases/tag/v1.0.0)。
 
 ## 开发
 
@@ -22,7 +22,7 @@ mise exec -- npm ci
 mise exec -- npm run verify
 ```
 
-`npm run verify` 执行生成、构建、静态检查与单元测试。
+`npm run verify` 执行生成、构建、静态检查与单元测试。`gen/` 不入库，`proto` 或 `third_party` 变更后先执行 `npm run generate`。
 
 前端开发连接已部署的平台 API。复制 [`.env.example`](.env.example) 为 `.env`，设置 API 地址与 Bearer 令牌后启动：
 
@@ -40,7 +40,7 @@ mise exec -- npm run dev
 | 主题 | 文档 |
 | --- | --- |
 | 架构与源码 | [架构](docs/architecture.md)、[代码导航](docs/code-navigation.md)、[Kubernetes 控制器](docs/kubernetes-controller.md) |
-| 构建与配置 | [构建、发布与 Chart 配置](docs/delivery.md)、[参考部署](https://github.com/pood1e/agentos-deploy) |
+| 构建与配置 | [构建、发布与 Chart 配置](docs/delivery.md)、[参考部署](deploy/README.md) |
 | 授权与环境 | [执行授权](docs/execution-authorization.md)、[环境接入](docs/environments.md) |
 | 业务扩展 | [扩展契约](docs/extension.md)、[MCP Apps](docs/mcp-app.md) |
 | 语音 | [听写、朗读与 LiveKit 通话](docs/speech.md) |

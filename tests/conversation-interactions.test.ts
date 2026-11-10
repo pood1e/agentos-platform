@@ -28,7 +28,7 @@ it("keeps a delegated approval before a later user message as its state changes"
     kind: InteractionKind.APPROVAL,
     state: ActivityState.AWAITING_APPROVAL,
   });
-  index.upsert({ ...child, interactions: [request], version: "pending" });
+  index.upsert({ ...child, interactions: [request] });
   index.upsert({
     ...root,
     id: "next-turn",
@@ -36,7 +36,6 @@ it("keeps a delegated approval before a later user message as its state changes"
     calls: [],
     interactions: [],
     userMessages: [{ id: "new-user-message", text: "Another question" }],
-    version: "next-turn",
   });
   const fullTask = async ({ id }: { id: string }) =>
     id === "next-turn"
@@ -122,7 +121,7 @@ it("anchors a reused worker's new approval to the later delegation without movin
   if (!root || !child) throw new Error("Missing conversation fixtures");
   const first = create(InteractionSchema, { id: "first", requestedAt: timestampFromMs(200) });
   const second = create(InteractionSchema, { id: "second", requestedAt: timestampFromMs(400) });
-  index.upsert({ ...child, interactions: [first, second], version: "reviews" });
+  index.upsert({ ...child, interactions: [first, second] });
   const call = root.calls[0];
   const earlier = { ...root, calls: [{ ...call, id: "first-call", startedAt: 100 }] };
   const later = {

@@ -20,7 +20,7 @@ const parent = (returned = false) =>
         parts: [
           {
             data: {
-              name: "invoke_session",
+              name: "invoke_agent",
               id: "delegate-1",
               args: {
                 session_id: "coordinator-context",
@@ -40,7 +40,7 @@ const parent = (returned = false) =>
             parts: [
               {
                 data: {
-                  name: "invoke_session",
+                  name: "invoke_agent",
                   id: "delegate-1",
                   response: {
                     output: {

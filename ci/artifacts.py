@@ -22,8 +22,6 @@ def images():
     registry = os.environ["CI_REGISTRY_IMAGE"]
     result = {}
     for metadata in sorted(Path(".cache").glob("*build-metadata.json")):
-        if metadata.name == "ci-tools-build-metadata.json":
-            continue
         tagged = metadata.with_suffix(".ref").read_text().strip()
         repository, tag = tagged.rsplit(":", 1)
         if tag != revision or not (repository == registry or repository.startswith(registry + "/")):
@@ -49,13 +47,11 @@ def replace_images(value, built):
         return {key: replace_images(item, built) for key, item in value.items()}
     if isinstance(value, list):
         return [replace_images(item, built) for item in value]
-    if isinstance(value, str):
-        for prefix in (PLACEHOLDER, "{{ agentos_image_registry }}"):
-            if value.startswith(prefix + "/"):
-                suffix = value.removeprefix(prefix).split("@", 1)[0].split(":", 1)[0]
-                if suffix not in built:
-                    raise ValueError(f"Missing current-source image: {suffix}")
-                return built[suffix]
+    if isinstance(value, str) and value.startswith(PLACEHOLDER + "/"):
+        suffix = value.removeprefix(PLACEHOLDER).split("@", 1)[0].split(":", 1)[0]
+        if suffix not in built:
+            raise ValueError(f"Missing current-source image: {suffix}")
+        return built[suffix]
     return value
 
 

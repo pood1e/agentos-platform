@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -14,15 +12,16 @@ import {
 } from "@/components/ui/table";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import type { Harness } from "../../../gen/kagent/api/v1/harnesses_pb.js";
+import { object } from "../../../shared/json.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
-import { object } from "./connection-schema.js";
+import { harnessMetadata, harnessName } from "../shared/HarnessPicker.js";
+import { ResourceSheet } from "../shared/ResourceDialog.js";
+import { ResourcePage } from "../shared/ResourcePage.js";
+import { RowActions } from "../shared/RowActions.js";
 import { HarnessEditor } from "./HarnessEditor.js";
-import { harnessMetadata, harnessName } from "./HarnessPicker.js";
-import { ResourceSheet } from "./ResourceDialog.js";
-import { ResourcePage } from "./ResourcePage.js";
 
 export function HarnessesPage() {
   const { t } = useTranslation();
@@ -94,28 +93,16 @@ export function HarnessesPage() {
                   {item.workloadImage}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t(editable ? "configuration.configure" : "management.view")}
-                    onClick={() => edit(item)}
-                  >
-                    {editable ? <Pencil /> : <Eye />}
-                  </Button>
-                  {editable && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t("management.delete")}
-                      disabled={
-                        object(harnessMetadata(item).labels)["app.kubernetes.io/managed-by"] ===
-                        "Helm"
-                      }
-                      onClick={() => setRemoving(item)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
+                  <RowActions
+                    editable={editable}
+                    editLabel="configuration.configure"
+                    deleteDisabled={
+                      object(harnessMetadata(item).labels)["app.kubernetes.io/managed-by"] ===
+                      "Helm"
+                    }
+                    onOpen={() => edit(item)}
+                    onDelete={() => setRemoving(item)}
+                  />
                 </TableCell>
               </TableRow>
             ))}

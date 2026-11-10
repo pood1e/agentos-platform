@@ -3,7 +3,7 @@ import { Code, createClient, createRouterTransport } from "@connectrpc/connect";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConnectionKind, ManagementService } from "../gen/agentos/management/v1/management_pb.js";
 import { ToolServerSchema } from "../gen/kagent/api/v1/tools_pb.js";
-import { object, text } from "../server/read-model/decode/messages.js";
+import { object, text } from "../shared/json.js";
 import { managementEnvironment } from "./management-harness.js";
 
 let env: Awaited<ReturnType<typeof managementEnvironment>>;
@@ -25,7 +25,7 @@ beforeEach(async () => {
         name,
         labels:
           name === profile
-            ? { "agentos.dev/engineer": "inspection" }
+            ? { "agentos.dev/identity": "inspection" }
             : { "agentos.dev/project": "grafana" },
         annotations: { "agentos.dev/system-connection": "false" },
       },
@@ -106,7 +106,7 @@ describe("MCP services and credential bindings", () => {
     }
   });
 
-  it("keeps an unavailable service in use while its engineer binding exists", async () => {
+  it("keeps an unavailable service in use while its Agent binding exists", async () => {
     env.fake.toolServers.splice(0, env.fake.toolServers.length);
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
     const connection = connections.find(
@@ -132,7 +132,7 @@ describe("MCP services and credential bindings", () => {
     expect(connection?.systemManaged).toBe(true);
     expect(connection?.tools).toHaveLength(1);
     expect(connection?.usedBy).toEqual(["inspection"]);
-    expect(connection?.credentialBindings.map((binding) => binding.engineer)).toEqual([
+    expect(connection?.credentialBindings.map((binding) => binding.identity)).toEqual([
       "catalog",
       "assistant",
       "coordinator",
@@ -159,17 +159,17 @@ describe("MCP services and credential bindings", () => {
 
   it("ignores forged identity labels and reads profiles from compiled status", async () => {
     const backend = await env.store.get("mcps", profile);
-    object(object(backend.metadata).labels)["agentos.dev/engineer"] = "borrowed";
+    object(object(backend.metadata).labels)["agentos.dev/identity"] = "borrowed";
     await env.store.save("mcps", backend, false);
     const { connections } = await client.listConnections({ kind: ConnectionKind.MCP });
     const connection = connections.find(
       (item) => object(item.resource?.value?.metadata).name === service,
     );
-    expect(connection?.credentialBindings.some((binding) => binding.engineer === "borrowed")).toBe(
+    expect(connection?.credentialBindings.some((binding) => binding.identity === "borrowed")).toBe(
       false,
     );
     expect(
-      connection?.credentialBindings.some((binding) => binding.engineer === "inspection"),
+      connection?.credentialBindings.some((binding) => binding.identity === "inspection"),
     ).toBe(true);
   });
 });

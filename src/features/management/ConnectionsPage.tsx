@@ -1,5 +1,5 @@
 import { cn } from "cn";
-import { CircleCheck, Clock, Eye, Pencil, Trash2 } from "lucide-react";
+import { CircleCheck, Clock } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
@@ -18,12 +18,11 @@ import {
   ConnectionKind,
   ModelPurpose,
 } from "../../../gen/agentos/management/v1/management_pb.js";
+import { object } from "../../../shared/json.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
+import { roleLabel } from "../shared/agents.js";
 import { ConfirmDelete } from "../shared/ConfirmDelete.js";
-import { roleLabel } from "../shared/engineers.js";
-import { ToolIcon } from "../shared/ToolIcon.js";
-
 import {
   connectionEnvironment,
   connectionLabel,
@@ -32,10 +31,11 @@ import {
   endpoint,
   metadata,
   native,
-  object,
-} from "./connection-schema.js";
-import { ResourceSheet } from "./ResourceDialog.js";
-import { ResourcePage, useManagementPage } from "./ResourcePage.js";
+} from "../shared/connection.js";
+import { ResourceSheet } from "../shared/ResourceDialog.js";
+import { ResourcePage, useManagementPage } from "../shared/ResourcePage.js";
+import { RowActions } from "../shared/RowActions.js";
+import { ToolIcon } from "../shared/ToolIcon.js";
 
 const ConnectionEditor = lazy(() =>
   import("./ConnectionEditor.js").then((module) => ({ default: module.ConnectionEditor })),
@@ -169,25 +169,12 @@ export function ConnectionsPage({
                     </TableCell>
                   )}
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t(editable ? "management.edit" : "management.view")}
-                      onClick={() => setEditing({ connection })}
-                    >
-                      {editable ? <Pencil /> : <Eye />}
-                    </Button>
-                    {editable && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={t("management.delete")}
-                        disabled={connection.systemManaged || !!connection.usedBy.length}
-                        onClick={() => setDeleting(connection)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    )}
+                    <RowActions
+                      editable={editable}
+                      deleteDisabled={connection.systemManaged || !!connection.usedBy.length}
+                      onOpen={() => setEditing({ connection })}
+                      onDelete={() => setDeleting(connection)}
+                    />
                   </TableCell>
                 </TableRow>
               );

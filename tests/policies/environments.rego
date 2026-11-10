@@ -39,7 +39,7 @@ deny contains sprintf("%s must authenticate every upstream transport", [backend.
 	some backend in resources
 	backend.kind == "AgentgatewayBackend"
 	object.get(backend.metadata.labels, "agentos.dev/environment", "") != ""
-	backend.metadata.labels["agentos.dev/engineer"]
+	backend.metadata.labels["agentos.dev/identity"]
 	not native_runtime_authentication(backend.metadata.name)
 }
 
@@ -55,7 +55,7 @@ native_runtime_authentication(server) if {
 deny contains sprintf("%s lacks native runtime token exchange", [backend.metadata.name]) if {
 	some backend in resources
 	backend.kind == "AgentgatewayBackend"
-	backend.metadata.labels["agentos.dev/engineer"]
+	backend.metadata.labels["agentos.dev/identity"]
 	backend.metadata.labels["agentos.dev/environment"]
 	not backend.spec.mcp.targets[0].static.policies.auth.oauthTokenExchange
 }
@@ -71,12 +71,12 @@ deny contains sprintf("%s trusts an unexpected environment TLS identity", [backe
 deny contains sprintf("%s exposes tools beyond its identity view", [backend.metadata.name]) if {
 	some backend in resources
 	backend.kind == "AgentgatewayBackend"
-	engineer := backend.metadata.labels["agentos.dev/engineer"]
+	identity := backend.metadata.labels["agentos.dev/identity"]
 	some plan in resources
 	plan.kind == "AccessPlan"
 	some target in plan.status.targets
 	target.server == backend.metadata.name
-	target.engineer == engineer
+	target.identity == identity
 	expected := [tool.name | some tool in target.tools]
 	expression := backend.spec.policies.mcp.authorization.policy.matchExpressions[0]
 	actual := json.unmarshal(trim_prefix(expression, "mcp.tool.name in "))

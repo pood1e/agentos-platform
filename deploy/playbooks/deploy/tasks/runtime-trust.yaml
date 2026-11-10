@@ -1,0 +1,20 @@
+- name: Read live Substrate Service DNS trust bundles
+  kubernetes.core.k8s_info:
+    api_version: certificates.k8s.io/v1
+    kind: ClusterTrustBundle
+    label_selectors: [podcert.ate.dev/canarying=live]
+    field_selectors: [spec.signerName=servicedns.podcert.ate.dev/identity]
+  register: service_dns_trust
+
+- name: Require Substrate Service DNS trust
+  ansible.builtin.assert:
+    that: >-
+      service_dns_trust.resources
+      | map(attribute='spec.trustBundle') | join('') | trim | length > 0
+    fail_msg: Live Substrate Service DNS trust is required before application deployment.
+    quiet: true
+
+- name: Publish gateway trust for Substrate Service DNS
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('ansible.builtin.template', '../templates/runtime-trust.yaml.j2') | from_yaml }}"

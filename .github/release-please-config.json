@@ -54,6 +54,11 @@
         },
         {
           "type": "yaml",
+          "path": "deploy/galaxy.yml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
           "path": "charts/agentos-environment/Chart.yaml",
           "jsonpath": "$.dependencies[0].version"
         }

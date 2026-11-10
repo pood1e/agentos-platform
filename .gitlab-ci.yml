@@ -16,10 +16,11 @@ workflow:
           - .github/**/*
           - .dockerignore
           - .env.example
-          - compose.yaml
           - mise.*
           - package*.json
           - '*config*.*'
+          - biome*.json
+          - knip.jsonc
           - buf.*
           - index.html
           - LICENSE
@@ -27,7 +28,7 @@ workflow:
           - contracts/**/*
           - controller/**/*
           - ci/**/*
-          - automation/**/*
+          - deploy/**/*
           - proto/**/*
           - server/**/*
           - shared/**/*

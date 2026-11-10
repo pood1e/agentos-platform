@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
-import { errorKey, unreachable } from "../../shared/errors.js";
-import { can } from "../../shared/permissions.js";
+import { can, isAdministrator } from "../../shared/permissions.js";
 import { connection } from "./connection.js";
 import { consoleClient } from "./console.js";
+import { errorKey, unreachable } from "./errors.js";
 
 export function useAccess({ poll = false }: { poll?: boolean } = {}) {
   return useQuery({
@@ -28,4 +28,9 @@ export function useAccess({ poll = false }: { poll?: boolean } = {}) {
 
 export function useCapability(capability: Capability) {
   return can(useAccess().data, capability);
+}
+
+/** Holders of any platform capability may read other initiators' executions. */
+export function useAdministrator() {
+  return isAdministrator(useAccess().data);
 }

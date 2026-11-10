@@ -52,9 +52,9 @@ func appViews(plan *platform.AccessPlan, targets []platform.CompiledTarget) ([]c
 			ExtAuth: &agw.ExtAuthOrConditional{ExtAuth: agw.ExtAuth{
 				PolicyBackendEndpoint: backendReference(gateway.AppAuthorityBackend), FailureMode: agw.FailClosed,
 				HTTP: &agw.AgentExtAuthHTTP{
-					Path:                  ptr.To(literal("/authorize/mcp-app?server=" + url.QueryEscape(target.Server))),
+					Path:                  ptr.To(literal("/authorize/mcp-app?server=" + url.QueryEscape(target.Server) + "&workspace=" + url.QueryEscape(plan.Namespace))),
 					AllowedRequestHeaders: []string{"authorization", "x-agentos-app-reference"},
-					ResponseMetadata:      map[string]agw.CELExpression{"selection": "json(response.body).selection"},
+					ResponseMetadata:      map[string]agw.CELExpression{"selection": "json(response.headers['x-agentos-selection'])"},
 				},
 			}},
 			Authorization: authorization(appRequest(target.Server)),

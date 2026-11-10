@@ -13,9 +13,10 @@ pack:
   image: ""
 kagent:
   endpoint: http://kagent-controller:8083
-  controllerSubject: ""
 api:
   replicas: 2
+  workspaces: []
+  delegates: []
   resources:
     requests:
       cpu: 100m
@@ -105,7 +106,7 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:6012f406898673124d74d905ce2e5e444b40c6bd772a2b21362df0f1facc417c
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:f9ad2d358ecd5f38316bc2f9a3e2ca73bb07e3dcbd1c5a84d3bbe586865af29d
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -121,7 +122,7 @@ harnesses:
           name: knowledge-embedding
         ttlDays: 3650
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:6012f406898673124d74d905ce2e5e444b40c6bd772a2b21362df0f1facc417c
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:f9ad2d358ecd5f38316bc2f9a3e2ca73bb07e3dcbd1c5a84d3bbe586865af29d
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -133,7 +134,7 @@ harnesses:
   codex:
     codex: {}
     workload:
-      image: ghcr.io/pood1e/kagent/codex-harness@sha256:ea4ee35d0e97aec4af6f97c5b85c5fe36d74a3a964a79204a444701ee40030ad
+      image: ghcr.io/pood1e/kagent/codex-harness@sha256:0090ee7a57b36e47da224c7b910859e95cf59d5427b02c15457fa93b3bdb830c
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -145,7 +146,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: ghcr.io/pood1e/kagent/claude-harness@sha256:14da376c6bb11a68ba9f7341ddb4c9e2fbdaa94f66dabd3b97e7e8b5bd03475c
+      image: ghcr.io/pood1e/kagent/claude-harness@sha256:e9d2b22738215bdb799a0bc8e70d2ecd037478c1ff40ba0dffad0ce366924940
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -154,8 +155,6 @@ harnesses:
         name: kagent-default
       snapshotPolicy:
         location: s3://ate-snapshots/kagent/
-knowledgeMemory:
-  ttlDays: 3650
 systemAgents:
   assistant:
     systemPrompt: ""
@@ -228,9 +227,6 @@ gateway:
                   http:
                     requestTimeout: 10m
                 protocol: StreamableHTTP
-        policies:
-          auth:
-            passthrough: {}
 controller:
   image: registry.example.com/agentos/platform-controller:0.39.0
   imagePullSecrets: []

@@ -1,11 +1,11 @@
-import { create, fromJson, type JsonValue } from "@bufbuild/protobuf";
-import { timestampFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
+import { create, type JsonValue } from "@bufbuild/protobuf";
 import type { Task } from "../../gen/a2a_pb.js";
 import { ActivityState } from "../../gen/agentos/execution/v1/state_pb.js";
 import { type ToolCall, ToolCallSchema } from "../../gen/agentos/execution/v1/task_pb.js";
 import type { ToolResponse } from "../../gen/kagent/api/v1/interactions_pb.js";
+import { text } from "../../shared/json.js";
 import { hitlPayload } from "./decode/hitl.js";
-import { intentKey, taskSources, text, timeline } from "./decode/messages.js";
+import { intentKey, protoValue, stamp, taskSources, timeline } from "./decode/messages.js";
 import {
   type DelegationRef,
   delegationRef,
@@ -123,10 +123,6 @@ export function callEntries(task: Task, approvals: Map<string, Approval>): CallE
   });
 }
 
-const value = (json: JsonValue | undefined) =>
-  json === undefined ? undefined : fromJson(ValueSchema, json);
-const stamp = (ms?: number) => (ms === undefined ? undefined : timestampFromMs(ms));
-
 /** Calls with arguments and results for one run's detail view. */
 export function toolCalls(
   task: Task,
@@ -145,8 +141,8 @@ export function toolCalls(
       state,
       startedAt: stamp(call.startedAt),
       endedAt: stamp(call.endedAt),
-      args: value(call.args),
-      output: value(outcome?.value),
+      args: protoValue(call.args),
+      output: protoValue(outcome?.value),
     });
   });
 }

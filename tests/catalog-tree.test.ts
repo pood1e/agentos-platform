@@ -6,7 +6,7 @@ import type { WatchConversationResponse } from "../gen/agentos/console/v1/consol
 import { TaskExecutionSchema } from "../gen/kagent/api/v1/execution_pb.js";
 import { RuntimeState } from "../gen/kagent/api/v1/runtime_pb.js";
 import { fixtureIds as ids } from "./fixtures/kagent.js";
-import { consoleClient, environment } from "./harness.js";
+import { consoleClient, environment, graphOf } from "./harness.js";
 
 it("anchors a readable child tree at its live session after the root was deleted", async () => {
   const env = await environment(),
@@ -18,7 +18,7 @@ it("anchors a readable child tree at its live session after the root was deleted
   root.state = RuntimeState.DELETED;
   const list = vi.spyOn(env.clients.sessions, "listSessions"),
     catalog = vi.spyOn(env.clients.catalog, "listTaskRecords");
-  const graph = await env.projection.graphOf({ contextId: session.id });
+  const graph = await graphOf(env.projection, { contextId: session.id });
   expect(graph?.entry(child.id)?.execution).toEqual(execution);
   expect(graph?.session(root.id)).toBeUndefined();
   expect(catalog.mock.calls[0]?.[0].scope?.visibility).toEqual({
@@ -29,7 +29,10 @@ it("anchors a readable child tree at its live session after the root was deleted
   const client = consoleClient(env),
     abort = new AbortController();
   const stream = client
-    .watchConversation({ agent: session.agent, contextId: session.id }, { signal: abort.signal })
+    .watchConversation(
+      { agent: session.agent?.ref, contextId: session.id },
+      { signal: abort.signal },
+    )
     [Symbol.asyncIterator]();
   const snapshot: WatchConversationResponse | undefined = (await stream.next()).value;
   expect(snapshot?.conversation?.runs.some((run) => run.taskId === child.id)).toBe(true);
@@ -44,7 +47,7 @@ it("retains the authorized empty anchor without creating synthetic runs", async 
     "empty-anchor",
     "Empty",
   );
-  const graph = await env.projection.graphOf({ contextId: session.id });
+  const graph = await graphOf(env.projection, { contextId: session.id });
   expect(graph?.session(session.id)?.id).toBe(session.id);
   expect(graph?.all()).toEqual([]);
 });
@@ -67,7 +70,7 @@ it("reads complete paginated authority trees through catalog pages and rejects r
       }),
     );
   }
-  expect((await env.projection.graphOf({ contextId: source.contextId }))?.all()).toHaveLength(205);
+  expect((await graphOf(env.projection, { contextId: source.contextId }))?.all()).toHaveLength(205);
   expect(env.fake.catalogReads).toHaveLength(18);
   expect(env.fake.listed).toEqual([]);
   expect(env.fake.fetched).toEqual([]);

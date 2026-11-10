@@ -15,8 +15,7 @@ helm dependency update tests/fixtures/solution-chart --skip-refresh
 helm lint charts/agentos -f tests/fixtures/chart-values.yaml --strict
 helm lint tests/fixtures/solution-chart --strict
 helm template agentos charts/agentos -n agentos -f tests/fixtures/chart-values.yaml > .cache/chart-check/platform.yaml
-helm template agentos charts/agentos -n operations -f tests/fixtures/chart-values.yaml \
-  --set-string kagent.controllerSubject=system:serviceaccount:operations:kagent-controller > .cache/chart-check/alternate.yaml
+helm template agentos charts/agentos -n operations -f tests/fixtures/chart-values.yaml > .cache/chart-check/alternate.yaml
 helm template agentos tests/fixtures/solution-chart -n agentos > .cache/chart-check/solution.yaml
 helm template agentos tests/fixtures/solution-chart -n agentos -f .cache/chart-check/direct-values.json > .cache/chart-check/direct-only.yaml
 for name in platform alternate solution direct-only; do

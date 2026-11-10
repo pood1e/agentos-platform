@@ -6,9 +6,9 @@ import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.
 import { consoleService } from "../../server/console/service.js";
 import { toolMetadata } from "../../server/kagent/tool-metadata.js";
 import { mcpApps } from "../../server/mcp-apps/service.js";
-import { workspaceContext } from "../../server/platform/access.js";
 import { appScenario } from "../fake-kagent/apps.js";
-import { environment, testBindings } from "../harness.js";
+import { consoleDependencies, environment, publishTargets, testBindings } from "../harness.js";
+import { allowWorkspace, testWorkspaceContext } from "../workspace-member.js";
 
 export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.example") {
   const env = await environment([]);
@@ -41,14 +41,7 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
     gatewayURL: "http://gateway.test:8080",
     invoke,
   });
-  const service = consoleService({
-    ...env,
-    namespace: "agentos",
-    access,
-    metadata,
-    apps,
-    roleDefaults: { modelConfig: "default-model-config", harness: "standard" },
-  });
+  const service = consoleService(consoleDependencies(env, { access, metadata, apps }));
   const client = createClient(
     ConsoleService,
     createRouterTransport((router) => router.service(ConsoleService, service), {
@@ -60,11 +53,19 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
           },
         ],
       },
-      router: { interceptors: [workspaceContext("agentos", "assistant", async () => caller)] },
+      router: {
+        interceptors: [
+          testWorkspaceContext("agentos", async () => caller, allowWorkspace("agentos")),
+        ],
+      },
     }),
   );
   const request = {
-    app: { taskId: scenario.task.id, callId: scenario.callId },
+    app: {
+      taskId: scenario.task.id,
+      callId: scenario.callId,
+      workspace: { namespace: "agentos", uid: "agentos-uid" },
+    },
   };
   return {
     ...env,
@@ -82,4 +83,28 @@ export async function mcpAppsEnvironment(sandboxOrigin = "https://sandbox.exampl
       caller = value;
     },
   };
+}
+
+/** MCP Apps whose bindings name their source server directly. */
+export async function canonicalMcpAppsEnvironment() {
+  const env = await mcpAppsEnvironment();
+  publishTargets(env.fake, [
+    {
+      server: "lab-views",
+      service: "lab-views",
+      catalog: true,
+      access: "readOnly",
+      tools: [
+        { name: "show_topology", write: false, requireApproval: false },
+        { name: "graph_data", write: false, requireApproval: false },
+        { name: "destroy", write: true, requireApproval: true },
+      ],
+    },
+  ]);
+  const template = env.fake.templates.get("assistant");
+  const spec = template?.resource?.value?.spec as {
+    tools: { mcp: { server: { name: string }; tools: string[] } }[];
+  };
+  spec.tools[0].mcp.server.name = "lab-views";
+  return { ...env, binding: spec.tools[0].mcp };
 }

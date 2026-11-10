@@ -14,22 +14,23 @@ import {
 } from "../../../gen/agentos/console/v1/role_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
-import { pool } from "../../kagent/clients.js";
-import { agentKey } from "../agents.js";
+import { object } from "../../../shared/json.js";
+import { roleBuilderAgent } from "../../../shared/kagent-resources.js";
+import { agentKey } from "../../kagent/resources.js";
+import { pool } from "../../shared/async.js";
 import { toolCalls } from "../calls.js";
-import { object } from "../decode/messages.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { approvals } from "../interactions.js";
 import { busy, taskTree } from "../tree.js";
+import { agentSummary } from "./agents.js";
 import { chatParts } from "./chat-parts.js";
 import { conversationParts, conversationWork } from "./conversation-work.js";
-import { engineer } from "./engineers.js";
 import { interactionAnchors } from "./interaction-anchors.js";
 import { runState } from "./runs.js";
 import { taskSummary } from "./task.js";
 
-/** Operations this conversation turn started: its own root or those it delegated to engineers. */
+/** Operations this conversation turn started: its own root or those it delegated to Agents. */
 function operations(graph: TaskGraph, entry: TaskEntry) {
   const { roots, parents } = graph.relations();
   return roots
@@ -146,12 +147,13 @@ export async function conversation(
     ],
     runs,
     participants: members.map((id) =>
-      engineer(
+      agentSummary(
         graph,
         id,
         runs.filter((run) => run.agentId === id).flatMap((run) => graph.entry(run.taskId) ?? []),
       ),
     ),
-    roleDraft: member?.role === "role-builder" ? await roleDraft(fullTask, latest) : undefined,
+    roleDraft:
+      member?.templateName === roleBuilderAgent ? await roleDraft(fullTask, latest) : undefined,
   });
 }

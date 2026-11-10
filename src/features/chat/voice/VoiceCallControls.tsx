@@ -4,10 +4,10 @@ import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useVoiceCall } from "../../../../shared/browser/voice/use-voice-call.js";
 import { useAccess } from "../../../lib/access.js";
 import { consoleClient } from "../../../lib/console.js";
 import { useSpeechCapabilities } from "../../../lib/speech.js";
+import { useVoiceCall } from "./use-voice-call.js";
 
 export function VoiceCallControls({
   contextId,
@@ -27,7 +27,7 @@ export function VoiceCallControls({
   const call = useVoiceCall({
     client: consoleClient,
     contextId,
-    scope: JSON.stringify([access.data?.workspace, access.data?.subject]),
+    scope: JSON.stringify([access.data?.workspace?.uid, access.data?.subject]),
     language: localStorage.getItem("speech-language") ?? i18n.resolvedLanguage?.split("-")[0] ?? "",
     capabilities: capabilities.data,
     report,

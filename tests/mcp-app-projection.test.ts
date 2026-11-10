@@ -15,7 +15,7 @@ import { partTypeKey } from "../server/read-model/decode/messages.js";
 import { TaskGraph } from "../server/read-model/graph.js";
 import { conversation } from "../server/read-model/views/conversation.js";
 import { mcpAppsEnvironment } from "./fixtures/mcp-apps.js";
-import { publishTargets } from "./harness.js";
+import { graphOf, publishTargets } from "./harness.js";
 
 it("resolves an App by the exact discovered tool name", async () => {
   const env = await mcpAppsEnvironment();
@@ -153,7 +153,7 @@ it("retains a completed delegated App even when the child has no text answer", a
           case: "data" as const,
           value: fromJson(ValueSchema, {
             id: "delegate-app",
-            name: "invoke_session",
+            name: "invoke_agent",
             ...(kind === "function_call"
               ? {
                   args: {
@@ -177,11 +177,11 @@ it("retains a completed delegated App even when the child has no text answer", a
     }),
   ];
   env.fake.update(root, TaskState.COMPLETED);
-  const graph = await env.projection.graphOf({ contextId: env.session.id });
+  const graph = await graphOf(env.projection, { contextId: env.session.id });
   if (!graph) throw new Error("Missing conversation tree");
   const view = await conversation(
     graph,
-    env.session.agent,
+    env.session.agent?.ref,
     env.session.id,
     env.projection.fullTask,
   );
@@ -207,7 +207,7 @@ it("keeps Apps from an earlier native run when a child conversation continues", 
   latest.artifacts = [];
   latest.history = [];
   env.fake.update(latest, TaskState.COMPLETED);
-  const graph = await env.projection.graphOf({ contextId: env.session.id });
+  const graph = await graphOf(env.projection, { contextId: env.session.id });
   if (!graph) throw new Error("Missing conversation tree");
   const view = create(ConversationSchema, {
     contextId: "parent",

@@ -45,16 +45,20 @@ func (r *Speech) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, er
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	// Invalid settings withdraw derived routes instead of leaving stale credentials reachable.
+	withdraw := func(cause error) (ctrl.Result, error) {
+		if err := prune(ctx, r.Client, &settings, previous, nil); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, cause
+	}
 	configuration := &console.SpeechConfiguration{}
 	data := settings.Data["configuration.json"]
 	if len(data) == 0 {
 		data = []byte("{}")
 	}
 	if err := protojson.Unmarshal(data, configuration); err != nil {
-		if pruneErr := prune(ctx, r.Client, &settings, previous, nil); pruneErr != nil {
-			return ctrl.Result{}, pruneErr
-		}
-		return ctrl.Result{}, fmt.Errorf("decode speech configuration: %w", err)
+		return withdraw(fmt.Errorf("decode speech configuration: %w", err))
 	}
 	if configuration.Transcription == nil && configuration.Synthesis == nil {
 		err := prune(ctx, r.Client, &settings, previous, nil)
@@ -66,10 +70,7 @@ func (r *Speech) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, er
 	needsExternal := (configuration.Transcription != nil && !localTranscription) || (configuration.Synthesis != nil && !localSynthesis)
 	if name := string(settings.Data["credentials-secret"]); name != "" && needsExternal {
 		if err := r.Get(ctx, types.NamespacedName{Namespace: settings.Namespace, Name: name}, &external); err != nil {
-			if pruneErr := prune(ctx, r.Client, &settings, previous, nil); pruneErr != nil {
-				return ctrl.Result{}, pruneErr
-			}
-			return ctrl.Result{}, err
+			return withdraw(err)
 		}
 	}
 	credential := func(kind string) *agw.LocalSecretKeyRef {
@@ -92,10 +93,7 @@ func (r *Speech) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, er
 	}
 	objects, err := speech.Compile(gateway, settings.Name, configuration, speech.Credentials{Transcription: credential("transcription"), Synthesis: credential("synthesis")})
 	if err != nil {
-		if pruneErr := prune(ctx, r.Client, &settings, previous, nil); pruneErr != nil {
-			return ctrl.Result{}, pruneErr
-		}
-		return ctrl.Result{}, err
+		return withdraw(err)
 	}
 	var desired []platform.ResourceReference
 	for _, object := range objects {

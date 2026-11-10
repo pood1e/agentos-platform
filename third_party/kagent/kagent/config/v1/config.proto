@@ -4,7 +4,6 @@ package kagent.config.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/duration.proto";
-import "kagent/api/v1/common.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/config/v1;configv1";
 
@@ -16,6 +15,20 @@ message CLIConfig {
   LoggingConfig logging = 3;
   InstallConfig install = 4;
   DatabaseConfig database = 5;
+  TUIConfig tui = 6;
+}
+
+// TUIConfig sets how the interactive workspace starts.
+message TUIConfig {
+  // sidebar is whether the Namespaces, Agents and Sessions panels show at start; /sidebar toggles them for the run. Default "shown".
+  optional string sidebar = 1 [(buf.validate.field).string = {
+    in: [
+      "shown",
+      "hidden"
+    ]
+  }];
+  // bell rings the terminal bell when a turn finishes or waits for input while the terminal window is unfocused; needs a terminal that reports focus. Default true.
+  optional bool bell = 2;
 }
 
 message ConnectionConfig {
@@ -77,6 +90,7 @@ message InstallConfig {
   ChartConfig substrate = 3;
   ChartConfig pod_certificate = 4;
   optional string bundled_postgres_image = 5 [(buf.validate.field).string.min_len = 1];
+  ChartConfig atelet = 6;
 }
 
 message ChartConfig {
@@ -88,6 +102,11 @@ message ChartConfig {
 // ControllerConfig configures one controller process. Runtime defaults are
 // compiled into the ADK protobuf contract or native Harness configuration.
 message ControllerConfig {
+  option (buf.validate.message).cel = {
+    id: "controller.resource_authentication"
+    message: "authorization requires server.auth.mode oidc"
+    expression: "!has(this.authorization) || this.server.auth.mode == 'oidc'"
+  };
   option (buf.validate.message).cel = {
     id: "controller.execution_authentication"
     message: "execution_authorization requires server.auth.mode oidc"
@@ -118,8 +137,21 @@ message ControllerConfig {
   RuntimeDefaultsConfig runtime_defaults = 13;
   HarnessImagesConfig harness_images = 14;
   PushConfig push = 15;
-  MemoryConfig memory = 16;
   ExecutionAuthorizationConfig execution_authorization = 17;
+  OpenFGAConfig authorization = 18;
+}
+
+// OpenFGAConfig selects the immutable resource authorization model.
+message OpenFGAConfig {
+  string api_url = 1 [(buf.validate.field).string = {
+    uri: true
+    pattern: "^https?://[^/?#@]+$"
+  }];
+  string store_id = 2 [(buf.validate.field).string.pattern = "^[0-9A-HJKMNP-TV-Z]{26}$"];
+  string authorization_model_id = 3 [(buf.validate.field).string.pattern = "^[0-9A-HJKMNP-TV-Z]{26}$"];
+  string api_token_file = 4;
+  string ca_file = 5;
+  string group_claim = 6 [(buf.validate.field).string.max_bytes = 128];
 }
 
 // ExecutionAuthorizationConfig enables native scope policy and a durable
@@ -178,14 +210,6 @@ message OAuthCredentialConfig {
   string client_id = 2 [(buf.validate.field).string.min_len = 1];
   string client_secret_file = 3;
   string ca_file = 4;
-}
-
-// MemoryConfig selects the control-plane embedding integration.
-message MemoryConfig {
-  // OpenAI-compatible embedding model. Credentials come from its Secret reference.
-  kagent.api.v1.ResourceReference model_config = 1;
-  // Projected service credential for ModelConfigs using tokenPassthrough.
-  string bearer_token_file = 2;
 }
 
 // HarnessImagesConfig supplies release defaults for built-in Harnesses. Empty
@@ -349,6 +373,13 @@ message PushConfig {
     gt: {}
     lte: {seconds: 9223372036}
   }];
+  // Maximum concurrent callback deliveries per controller replica. Defaults to 10.
+  optional int32 max_concurrency = 6 [(buf.validate.field).int32.gt = 0];
+  // Timeout for each callback attempt. Defaults to 5s.
+  google.protobuf.Duration send_timeout = 7 [(buf.validate.field).duration = {
+    gt: {}
+    lte: {seconds: 9223372036}
+  }];
 }
 
 message SandboxConfig {
@@ -455,11 +486,13 @@ message RuntimeDefaultsConfig {
   optional string memory = 9 [(buf.validate.field).string.min_len = 1];
 }
 
-// BuiltinToolsConfig configures the built-in filesystem and shell tools, independently of skills.
+// BuiltinToolsConfig configures built-in tools independently of skills.
 message BuiltinToolsConfig {
   bool disable_file_search = 1;
   string bash_venv_path = 2;
   bool disable_bash = 3;
+  // Omitted or false keeps the built-in question tool enabled.
+  bool disable_ask_user = 4;
 }
 
 message TokenPropagationConfig {

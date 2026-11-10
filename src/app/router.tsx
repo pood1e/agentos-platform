@@ -3,7 +3,9 @@ import { ConnectionKind } from "../../gen/agentos/management/v1/management_pb.js
 import { lastConversation } from "../features/chat/conversation-storage.js";
 import { AdvancedLayout } from "../features/management/AdvancedLayout.js";
 import { useAccess } from "../lib/access.js";
+import { currentWorkspace, workspaceBase } from "../lib/workspace-route.js";
 import { Layout, PendingLayout } from "./Layout.js";
+import { WorkspaceDirectory } from "./WorkspaceDirectory.js";
 
 const home = () => {
   const access = useAccess();
@@ -12,7 +14,7 @@ const home = () => {
   return <Navigate to={contextId || "/chat"} replace />;
 };
 
-export const router = createBrowserRouter([
+const workspaceRoutes = [
   {
     path: "/",
     element: <Layout />,
@@ -24,25 +26,57 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import("../features/chat/ChatPage.js")).ChatPage }),
       },
       {
+        path: "tasks",
+        lazy: async () => ({
+          Component: (await import("../features/tasks/TasksPage.js")).TasksPage,
+        }),
+      },
+      {
         path: "executions/:agent/:session",
         lazy: async () => ({
           Component: (await import("../features/tasks/ExecutionPage.js")).ExecutionPage,
         }),
       },
       {
-        path: "engineers",
+        path: "workflows",
+        lazy: async () => ({
+          Component: (await import("../features/workflows/WorkflowsPage.js")).WorkflowsPage,
+        }),
+      },
+      {
+        path: "workflows/new",
+        lazy: async () => {
+          const { WorkflowPage } = await import("../features/workflows/WorkflowPage.js");
+          return { element: <WorkflowPage isNew /> };
+        },
+      },
+      {
+        path: "workflows/:name/edit",
+        lazy: async () => ({
+          Component: (await import("../features/workflows/WorkflowPage.js")).WorkflowPage,
+        }),
+      },
+      {
+        path: "workflows/:name/history",
+        lazy: async () => ({
+          Component: (await import("../features/workflows/WorkflowHistory.js")).WorkflowHistory,
+        }),
+      },
+      {
+        path: "authorization",
+        lazy: async () => ({
+          Component: (await import("../features/authorization/AuthorizationPage.js"))
+            .AuthorizationPage,
+        }),
+      },
+      {
+        path: "agents",
         element: <AdvancedLayout />,
         children: [
           {
             index: true,
             lazy: async () => ({
-              Component: (await import("../features/engineers/EngineersPage.js")).EngineersPage,
-            }),
-          },
-          {
-            path: "knowledge",
-            lazy: async () => ({
-              Component: (await import("../features/management/KnowledgePage.js")).KnowledgePage,
+              Component: (await import("../features/agents/AgentsPage.js")).AgentsPage,
             }),
           },
           {
@@ -75,4 +109,11 @@ export const router = createBrowserRouter([
       { path: "*", element: <Navigate to="/chat" replace /> },
     ],
   },
-]);
+] satisfies Parameters<typeof createBrowserRouter>[0];
+
+export const router = currentWorkspace
+  ? createBrowserRouter(workspaceRoutes, { basename: workspaceBase(currentWorkspace) })
+  : createBrowserRouter([
+      { path: "/", Component: WorkspaceDirectory },
+      { path: "*", element: <Navigate to="/" replace /> },
+    ]);

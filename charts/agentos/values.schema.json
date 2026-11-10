@@ -402,9 +402,6 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^https?://"
-        },
-        "controllerSubject": {
-          "type": "string"
         }
       },
       "required": ["endpoint"]
@@ -413,6 +410,62 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "workspaces": {
+          "type": "array",
+          "maxItems": 31,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "release", "entryAgent", "harness", "kagentURL"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "release": {
+                "type": "string",
+                "maxLength": 44,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "entryAgent": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "harness": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "kagentURL": {
+                "type": "string",
+                "pattern": "^https?://[^/]+(:[0-9]+)?$"
+              }
+            }
+          }
+        },
+        "delegates": {
+          "type": "array",
+          "maxItems": 31,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "release"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "release": {
+                "type": "string",
+                "maxLength": 44,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            }
+          }
+        },
         "replicas": {
           "type": "integer",
           "minimum": 1
@@ -427,7 +480,7 @@
           }
         }
       },
-      "required": ["replicas", "resources"]
+      "required": ["replicas", "resources", "workspaces", "delegates"]
     },
     "dataplane": {
       "type": "object",
@@ -480,17 +533,6 @@
         }
       },
       "required": ["spec"]
-    },
-    "knowledgeMemory": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "ttlDays": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "required": ["ttlDays"]
     },
     "gateway": {
       "type": "object",
@@ -982,7 +1024,6 @@
     "route",
     "modelConfig",
     "harnesses",
-    "knowledgeMemory",
     "gateway",
     "systemAgents",
     "pack",
@@ -1054,16 +1095,22 @@
                   "description": "Summarizer selects the model and prompt that write the summaries.\nOmitted summarizes with the agent's own model and the runtime's default\nprompt.",
                   "properties": {
                     "modelConfigRef": {
-                      "description": "ModelConfigRef references the ModelConfig in the Harness namespace that\nwrites the summaries. Omitted uses the agent's own model.",
+                      "description": "ModelConfigRef references the ModelConfig (defaulting to the Harness namespace) that\nwrites the summaries. Omitted uses the agent's own model.",
                       "properties": {
                         "name": {
-                          "default": "",
-                          "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "maxLength": 253,
+                          "minLength": 1,
+                          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "maxLength": 63,
+                          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                           "type": "string"
                         }
                       },
+                      "required": ["name"],
                       "type": "object",
-                      "x-kubernetes-map-type": "atomic",
                       "x-kubernetes-validations": [
                         {
                           "message": "name must not be empty",
@@ -1111,22 +1158,22 @@
               "description": "Memory enables long-term memory for agents using this Harness.",
               "properties": {
                 "modelConfigRef": {
-                  "description": "ModelConfigRef references the embedding ModelConfig in the Harness namespace.",
+                  "description": "ModelConfigRef references the embedding ModelConfig (defaulting to the Harness namespace).",
                   "properties": {
                     "name": {
-                      "default": "",
-                      "description": "Name of the referent.\nThis field is effectively required, but due to backwards compatibility is\nallowed to be empty. Instances of this type with an empty value here are\nalmost certainly wrong.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+                      "type": "string"
+                    },
+                    "namespace": {
+                      "maxLength": 63,
+                      "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                       "type": "string"
                     }
                   },
-                  "type": "object",
-                  "x-kubernetes-map-type": "atomic"
-                },
-                "teamNamespace": {
-                  "description": "TeamNamespace selects the namespace-scoped shared collection.\nRuntime authorization confines access to the Agent namespace.",
-                  "maxLength": 63,
-                  "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
-                  "type": "string"
+                  "required": ["name"],
+                  "type": "object"
                 },
                 "ttlDays": {
                   "description": "TTLDays controls how many days a stored memory entry remains valid.",
@@ -1140,6 +1187,50 @@
                 {
                   "message": "modelConfigRef name must not be empty",
                   "rule": "self.modelConfigRef.name.size() > 0"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "resources": {
+          "description": "Resources overrides the controller's runtimeDefaults CPU and memory limits\nfor runtimes started from this Harness.",
+          "properties": {
+            "cpu": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "CPU limits the CPU of each runtime. Omitted uses runtimeDefaults.cpu.",
+              "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+              "x-kubernetes-int-or-string": true,
+              "x-kubernetes-validations": [
+                {
+                  "message": "cpu must be positive",
+                  "rule": "quantity(string(self)).isGreaterThan(quantity('0'))"
+                }
+              ]
+            },
+            "memory": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "Memory limits the memory of each runtime. Omitted uses\nruntimeDefaults.memory.",
+              "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+              "x-kubernetes-int-or-string": true,
+              "x-kubernetes-validations": [
+                {
+                  "message": "memory must be positive",
+                  "rule": "quantity(string(self)).isGreaterThan(quantity('0'))"
                 }
               ]
             }

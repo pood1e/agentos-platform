@@ -1,13 +1,11 @@
-import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
-import { type Timestamp, timestampMs } from "@bufbuild/protobuf/wkt";
+import { fromJson, type JsonObject, type JsonValue } from "@bufbuild/protobuf";
+import { type Timestamp, timestampFromMs, timestampMs, ValueSchema } from "@bufbuild/protobuf/wkt";
 import { type Message, type Part, Role, type Task } from "../../../gen/a2a_pb.js";
 
 export const timelineKey = "kagent.dev/a2a/timeline-position";
 export const partTypeKey = "kagent.dev/a2a/part-type";
 export const createdAtKey = "kagent.dev/a2a/task-created-at";
 export const intentKey = "agentos.dev/intent";
-
-export { object, text } from "../../../shared/json.js";
 
 function partsText(parts: Part[]): string {
   return parts
@@ -26,6 +24,12 @@ function isoMillis(value: JsonValue | undefined): number | undefined {
 export const timeline = (metadata?: JsonObject) => isoMillis(metadata?.[timelineKey]);
 
 export const millis = (timestamp?: Timestamp) => (timestamp ? timestampMs(timestamp) : undefined);
+
+export const stamp = (ms?: number): Timestamp | undefined =>
+  ms === undefined ? undefined : timestampFromMs(ms);
+
+export const protoValue = (json: JsonValue | undefined) =>
+  json === undefined ? undefined : fromJson(ValueSchema, json);
 
 export const statusMillis = (task: Task) => millis(task.status?.timestamp);
 

@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Namespace }}.{{ include "agentos.name" . }}-api-namespaces
+  labels: {{ include "agentos.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ['']
+    resources: [namespaces]
+    resourceNames:
+      {{- $names := list .Release.Namespace -}}
+      {{- range .Values.api.workspaces }}
+      {{- $names = append $names .namespace -}}
+      {{- end }}
+      {{- toYaml (uniq $names) | nindent 6 }}
+    verbs: [get]

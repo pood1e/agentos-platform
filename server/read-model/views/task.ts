@@ -5,13 +5,14 @@ import {
   TaskSummarySchema,
 } from "../../../gen/agentos/console/v1/task_pb.js";
 import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
-import { shortTitle } from "../../../shared/title.js";
-import { agentRef, systemRoles } from "../agents.js";
+import { agentRef, systemTemplates } from "../../kagent/resources.js";
+import { shortTitle } from "../../shared/title.js";
+import { stamp } from "../decode/messages.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
 import { awaiting, taskActivity, terminal } from "../state.js";
 import { busy, foreground, outcomeState, type TaskTree } from "../tree.js";
-import { runState, stamp } from "./runs.js";
+import { runState } from "./runs.js";
 
 function treeState(tree: TaskTree): ActivityState {
   const active = foreground(tree);
@@ -33,7 +34,7 @@ function treeState(tree: TaskTree): ActivityState {
 /** The chat request that started this operation, when it was delegated from a conversation. */
 function initiator(graph: TaskGraph, root: TaskEntry): TaskEntry | undefined {
   const parent = graph.entry(graph.relations().parents.get(root.id) ?? "");
-  return parent && systemRoles.has(graph.roleOf(parent.agentId)) ? parent : undefined;
+  return parent && systemTemplates.has(graph.templateOf(parent.agentId)) ? parent : undefined;
 }
 
 export function taskSummary(graph: TaskGraph, tree: TaskTree): TaskSummary {

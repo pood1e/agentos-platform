@@ -44,6 +44,9 @@ tests:
       pattern: 'uri: http://agentos-api:8080'
   - matchRegex:
       path: data["oauth2-proxy.yaml"]
+      pattern: 'path: /kagent\.api\.v1\.AuthorizationService/'
+  - matchRegex:
+      path: data["oauth2-proxy.yaml"]
       pattern: 'claim: access_token\s+prefix: "Bearer "'
   - matchRegex:
       path: data["oauth2-proxy.yaml"]

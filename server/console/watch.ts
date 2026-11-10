@@ -1,6 +1,8 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { type DescMessage, equals, type MessageShape } from "@bufbuild/protobuf";
+import type { KagentClients } from "../kagent/clients.js";
 import type { TaskQueries } from "../read-model/queries.js";
+import { TaskStreams } from "../read-model/streams.js";
 
 const settle = 250;
 const healthCheck = 5_000;
@@ -64,4 +66,22 @@ export async function* watch<Desc extends DescMessage>(
     unsubscribe();
     release?.();
   }
+}
+
+/** `watch` over a view that also follows live task streams; stream events wake it. */
+export function watchLive<Desc extends DescMessage>(
+  projection: Pick<TaskQueries, "onChange">,
+  clients: Pick<KagentClients, "a2a">,
+  schema: Desc,
+  signal: AbortSignal,
+  view: (streams: TaskStreams) => MessageShape<Desc> | Promise<MessageShape<Desc>>,
+) {
+  let touch = () => {};
+  const streams = new TaskStreams(clients, signal, () => touch());
+  return watch(projection, schema, signal, () => view(streams), {
+    wakes: (wake) => {
+      touch = wake;
+      return () => streams.close();
+    },
+  });
 }

@@ -1,0 +1,28 @@
+- name: Install certificate controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  environment:
+    HELM_PLUGINS: "{{ agentos_cache }}/helm-plugins"
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: Install cert-manager
+      kubernetes.core.helm:
+        name: cert-manager
+        binary_path: "{{ helm_binary }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+        chart_ref: oci://quay.io/jetstack/charts/cert-manager
+        chart_version: "{{ cert_manager_version }}"
+        release_namespace: cert-manager
+        create_namespace: true
+        reset_values: true
+        wait: true
+        timeout: 10m
+        release_values:
+          crds:
+            enabled: true
+          extraArgs:
+            - --dns01-recursive-nameservers-only
+            - "--dns01-recursive-nameservers={{ agentos_address }}:53"

@@ -53,7 +53,7 @@ spec:
               jwksPath: /openid/v1/jwks
           validation: {requiredClaims: [sub, exp, aud]}
         - issuer: {{ .Values.runtime.kubernetesIssuer | quote }}
-          audiences: [{{ $models | quote }}, agentos-mcp-discovery]
+          audiences: [agentos-mcp-discovery]
           jwks:
             remote:
               backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-kubernetes-jwks}
@@ -89,12 +89,6 @@ spec:
                (jwt.aud == 'agentos-mcp-discovery' || 'agentos-mcp-discovery' in jwt.aud) && request.method == 'POST' &&
                (json(request.body).method in ['initialize','notifications/initialized','ping','tools/list'] ||
                 (json(request.body).method == 'resources/read' && json(request.body).params.uri.startsWith('ui://'))))
-              {{- range .Values.gateway.models }}
-              {{- if eq .name "knowledge-embedding" }}
-              || (request.path == '/v1/embeddings' && request.method == 'POST' && jwt.sub == '{{ include "agentos.controllerSubject" $ }}' &&
-                  (jwt.aud == '{{ $models }}' || '{{ $models }}' in jwt.aud) && json(request.body).model == {{ .spec.match.model | toJson }})
-              {{- end }}
-              {{- end }}
             ))
     extAuth:
       conditional:
@@ -103,12 +97,12 @@ spec:
             backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
             failureMode: FailClosed
             http:
-              path: "'/authorize/runtime'"
+              path: {{ printf "/authorize/runtime?workspace=%s" .Release.Namespace | toJson | quote }}
               allowedRequestHeaders: [x-substrate-actor-token]
               addRequestHeaders:
                 authorization: "request.headers['x-substrate-actor-token']"
               responseMetadata:
-                models: json(response.body)
+                models: "json(response.headers['x-kagent-selection'])"
         - condition: "request.path == '/mcp/team-sessions' && 'x-substrate-actor-token' in request.headers"
           policy:
             backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
@@ -118,4 +112,4 @@ spec:
               allowedRequestHeaders: [x-substrate-actor-token]
               addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
               allowedResponseHeaders: [authorization]
-              responseMetadata: {selection: json(response.body), scopes: "json(response.headers['x-kagent-scopes'])"}
+              responseMetadata: {selection: "json(response.headers['x-kagent-selection'])", scopes: "json(response.headers['x-kagent-scopes'])"}

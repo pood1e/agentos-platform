@@ -4,7 +4,7 @@ package agentos.console.v1;
 
 import "agentos/console/v1/access.proto";
 import "agentos/console/v1/conversation.proto";
-import "agentos/console/v1/engineer.proto";
+import "agentos/console/v1/agent.proto";
 import "agentos/console/v1/execution.proto";
 import "agentos/console/v1/role.proto";
 import "agentos/console/v1/speech.proto";
@@ -32,11 +32,11 @@ service ConsoleService {
   }
   // Issues a LiveKit token for a dictation, read-aloud or call session.
   rpc StartVoiceSession(StartVoiceSessionRequest) returns (StartVoiceSessionResponse);
-  rpc ListEngineers(ListEngineersRequest) returns (ListEngineersResponse) {
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Lists the caller's individual engineer executions, including background work.
-  rpc ListEngineerRuns(ListEngineerRunsRequest) returns (ListEngineerRunsResponse) {
+  // Lists authorized executions for any native Agent, including workflows and background work.
+  rpc ListAgentRuns(ListAgentRunsRequest) returns (ListAgentRunsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
@@ -91,27 +91,23 @@ message CallAppToolResponse {
   .kagent.api.v1.StructuredObject result = 1;
 }
 
-message ListEngineersRequest {
+message ListAgentsRequest {
   // Activity from other authorized initiators; requires platform administration access.
   bool system_only = 1;
 }
 
-message ListEngineersResponse {
-  repeated Engineer engineers = 1;
+message ListAgentsResponse {
+  repeated AgentSummary agents = 1;
 }
 
-message ListEngineerRunsRequest {
-  // Engineer identified by namespace/name.
-  string engineer = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 128
-  }];
+message ListAgentRunsRequest {
+  .kagent.api.v1.ResourceReference agent = 1 [(buf.validate.field).required = true];
   int32 page_size = 2 [(buf.validate.field).int32 = {
     gte: 0
     lte: 100
   }];
   string page_token = 3 [(buf.validate.field).string.max_len = 2048];
-  // Filters the engineer's own execution state.
+  // Filters the Agent's own execution state.
   repeated agentos.execution.v1.ActivityState states = 4 [(buf.validate.field).repeated = {
     unique: true
     items: {
@@ -125,7 +121,7 @@ message ListEngineerRunsRequest {
   bool system_only = 5;
 }
 
-message ListEngineerRunsResponse {
+message ListAgentRunsResponse {
   // Active runs include call names, intent, state and timing.
   repeated agentos.execution.v1.TaskRun runs = 1;
   string next_page_token = 2;
@@ -147,7 +143,7 @@ message ListTasksRequest {
       }
     }
   }];
-  string engineer = 5 [(buf.validate.field).string.max_len = 128];
+  .kagent.api.v1.ResourceReference agent = 5;
   // Only service-owned executions; requires platform administration access.
   bool system_only = 7;
   // Includes the page's compact current execution topology.
@@ -233,7 +229,7 @@ message GetConfigurationResponse {
   repeated .kagent.api.v1.ToolServer tool_servers = 2;
   reserved 3;
   repeated .kagent.api.v1.ModelConfig model_configs = 4;
-  repeated EngineerTools engineer_tools = 5;
+  repeated AgentTools agent_tools = 5;
   repeated .kagent.api.v1.Agent agents = 6;
   repeated .kagent.api.v1.Harness harnesses = 7;
   .kagent.api.v1.ResourceReference default_harness = 8;
@@ -262,7 +258,8 @@ message UpdateRoleResponse {
 }
 
 message ExplainToolsRequest {
-  string engineer = 1 [(buf.validate.field).string = {
+  // Native template execution identity within the workspace.
+  string identity = 1 [(buf.validate.field).string = {
     min_len: 1
     max_len: 63
   }];

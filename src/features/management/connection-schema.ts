@@ -1,32 +1,13 @@
-import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
+import type { JsonObject } from "@bufbuild/protobuf";
 import type { RJSFSchema, TranslatableString } from "@rjsf/utils";
 import type { TFunction } from "i18next";
-import {
-  type Connection,
-  ConnectionKind,
-} from "../../../gen/agentos/management/v1/management_pb.js";
-import { toolServerLabel } from "../shared/tool-label.js";
+import { ConnectionKind } from "../../../gen/agentos/management/v1/management_pb.js";
 
-export const object = (value: JsonValue | undefined): JsonObject =>
-  value && typeof value === "object" && !Array.isArray(value) ? value : {};
 export const translateSchema = (t: TFunction) => (key: TranslatableString, params?: string[]) =>
   t(`management.schemaLabels.${key}`, { defaultValue: key }).replace(
     /%(\d+)/g,
     (match, index) => params?.[Number(index) - 1] ?? match,
   );
-export const native = (connection: Connection) => connection.resource?.value ?? {};
-export const metadata = (connection: Connection) => object(native(connection).metadata);
-export const connectionName = (connection: Connection) => String(metadata(connection).name ?? "");
-export const connectionLabel = (connection: Connection) =>
-  String(
-    object(metadata(connection).annotations)["agentos.dev/display-name"] ??
-      toolServerLabel(connectionName(connection)),
-  );
-export const connectionProject = (connection: Connection) =>
-  String(object(metadata(connection).labels)["agentos.dev/project"] ?? connectionName(connection));
-export const connectionEnvironment = (connection: Connection) =>
-  String(object(metadata(connection).labels)["agentos.dev/environment"] ?? "");
-
 function pick(schema: RJSFSchema, keys: string[]): RJSFSchema {
   return {
     ...schema,
@@ -39,32 +20,39 @@ function pick(schema: RJSFSchema, keys: string[]): RJSFSchema {
   };
 }
 
+/** Labels resolve `<name>_<parent>` before `<name>`, so a field name reused under another parent gets its own label. */
 export function localizedSchema(
   schema: RJSFSchema,
   t: TFunction,
   name = "",
   prefix = "management.fields",
+  parent = "",
 ): RJSFSchema {
   const next: RJSFSchema = {
     ...schema,
-    title: t(`${prefix}.${name}`, { defaultValue: name }),
+    title: t(`${prefix}.${name}`, { context: parent || undefined, defaultValue: name }),
     description: undefined,
   };
   if (next.format && !["uri", "email", "date", "date-time"].includes(next.format))
     delete next.format;
   // Kubernetes patterns use Go's POSIX space class; AJV compiles ECMAScript patterns.
   if (next.pattern) next.pattern = next.pattern.replaceAll("[:space:]", "\\t\\n\\v\\f\\r ");
+  // Quantities are patterned int-or-string values, entered as text such as 500m or 4Gi.
+  if (next["x-kubernetes-int-or-string"] && next.pattern) {
+    delete next.anyOf;
+    next.type = "string";
+  }
   for (const key of Object.keys(next))
     if (key.startsWith("x-")) delete (next as Record<string, unknown>)[key];
   if (next.properties)
     next.properties = Object.fromEntries(
       Object.entries(next.properties).map(([key, value]) => [
         key,
-        typeof value === "object" ? localizedSchema(value, t, key, prefix) : value,
+        typeof value === "object" ? localizedSchema(value, t, key, prefix, name) : value,
       ]),
     );
   if (typeof next.items === "object" && !Array.isArray(next.items))
-    next.items = localizedSchema(next.items, t, "target", prefix);
+    next.items = localizedSchema(next.items, t, "target", prefix, name);
   return next;
 }
 
@@ -110,18 +98,4 @@ export function connectionSchema(
     schema.properties = { mcp };
   }
   return localizedSchema(schema, t);
-}
-
-export function endpoint(connection: Connection): string {
-  const spec = object(native(connection).spec);
-  if (connection.kind === ConnectionKind.MODEL) return String(spec.baseURL ?? "");
-  const targets = object(spec.mcp).targets;
-  return Array.isArray(targets)
-    ? targets
-        .map((target) => {
-          const value = object(object(target).static);
-          return `${value.host ?? ""}:${value.port ?? ""}${value.path ?? "/mcp"}`;
-        })
-        .join(", ")
-    : "";
 }

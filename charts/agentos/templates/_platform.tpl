@@ -23,8 +23,6 @@ app.kubernetes.io/component: {{ .component }}
 {{- $identity := $root.Values.identity -}}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
-- {name: KAGENT_URL, value: {{ $root.Values.kagent.endpoint | quote }}}
-- {name: KAGENT_NAMESPACE, value: {{ $root.Release.Namespace | quote }}}
 {{- if eq .component "api" }}
 {{- with $identity.caCertificateRef }}
 - {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos/identity/ca.crt}
@@ -38,11 +36,6 @@ app.kubernetes.io/component: {{ .component }}
     secretKeyRef: {name: {{ $identity.secretRef }}, key: client-secret}
 {{- end }}
 {{ include "agentos.telemetryEnv" . }}
-{{- end -}}
-
-{{- define "agentos.knowledgeEnv" -}}
-- {name: AGENTOS_GATEWAY_URL, value: {{ printf "http://%s-gateway.%s.svc.cluster.local:8080" (include "agentos.name" .) .Release.Namespace | quote }}}
-- {name: AGENTOS_KNOWLEDGE_TTL_DAYS, value: {{ .Values.knowledgeMemory.ttlDays | quote }}}
 {{- end -}}
 
 {{- define "agentos.platformDeployment" -}}
@@ -161,6 +154,13 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "agentos.name" .root }}-{{ .component }}
     namespace: {{ .root.Release.Namespace }}
+{{- if eq .component "api" }}
+{{- range .root.Values.api.delegates }}
+  - kind: ServiceAccount
+    name: {{ .release }}-api
+    namespace: {{ .namespace }}
+{{- end }}
+{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

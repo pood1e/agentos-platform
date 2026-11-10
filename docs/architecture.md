@@ -29,32 +29,36 @@ flowchart LR
 | web | React 控制台、oauth2-proxy 登录与 MCP App 沙箱 |
 | 平台控制器 | AccessPlan / Preset 收敛、原生模型与 MCP 连接配置 |
 | agentgateway | 原生 JWT、模型与 MCP 路由、已选工具授权、目标凭据交换与 TLS |
-| kagent | 身份验证、资源准入、Session/Task 归属、并发派发、委派树与取消、持久凭据、团队记忆 |
+| kagent | 身份验证、资源准入、Session/Task 归属、并发派发、委派树与取消、持久凭据、Agent 记忆 |
 | Substrate / Harness | Actor 隔离、原生出站策略、运行时执行和统一工具事件 |
 | voice worker | 可选 LiveKit Agents 输入、朗读与通话 |
 
 api 与 dataplane 使用独立 ServiceAccount 和 NetworkPolicy。平台业务配置存于 Kubernetes；执行状态、授权上限和加密 OAuth2 凭据存于 kagent PostgreSQL。
-运行时由 [kagent fork](https://github.com/pood1e/kagent/tree/main) 与 [Substrate fork](https://github.com/pood1e/substrate/tree/agentos/v0.6.0-alpha3) 发布，Chart 固定镜像摘要。
+运行时由 [kagent fork](https://github.com/pood1e/kagent/tree/main) 发布并依赖 [Substrate `v1.0.0`](https://github.com/kagent-dev/substrate/releases/tag/v1.0.0)，Chart 固定镜像摘要。
 
 ## 原生执行与投影
 
 API 将请求的 Bearer 凭据传给 kagent。kagent 返回规范主体、能力和 Session 授权，并在资源读取、执行、HITL 续接和运行时凭据出口重新校验。
+控制台首页汇总已配置原生实例中的成员工作空间；目录仅用于导航，某实例不可达时隐藏该实例并提示列表不完整，全部不可达时才失败。`/w/<namespace>/<uid>` 路由携带稳定工作空间身份；API 按 namespace 选择对应原生实例、Kubernetes 资源目录和 AccessPlan 视图，并逐请求以当前 UID 校验成员资格。切换工作空间重新装载浏览器页面，服务端投影与浏览器查询分别按工作空间隔离。
+各工作空间由独立命名空间的 AgentOS 与 kagent release 承载；中心 API 使用目标 release 授予的命名空间 RoleBinding 访问资源。离线委托登记到所选原生实例，MCP App 回调以工作空间身份重新校验。
+`/authorization` 使用原生 `AuthorizationService` 的资源动作及角色绑定契约。API 转发当前凭据、目标工作空间与请求取消；kagent 基于当前 namespace UID 列出成员工作空间，解析真实资源身份、计算权限并管理 OpenFGA 绑定。控制台根据原生 `allowed_actions` 展示授权入口和授予、撤销操作，查询按主体、工作空间与作用域隔离。
 控制台直接消费原生分页、A2A 流与可信 `TaskExecution` 的根、父、关系和续接引用。停止只提交一次原生取消请求，子任务传播由 kagent 持久化推进。
-工具状态读取统一 `ToolResponse`，执行状态读取原生 Task；后台委派使用 `invoke_session(background=true)`。
+工具状态读取统一 `ToolResponse`，执行状态读取原生 Task；委派使用原生 `invoke_agent`。
 
-任务列表先读取原生授权的轻量目录，智能体工作记录按 Agent 过滤并在分页后加载详情。终态投影使用按主体、会话和原生元数据版本隔离的 LRU 缓存，容量为 32 MiB、1024 项，保留 60 秒；每次查询重新读取原生可见目录，活动任务实时加载。后台状态沿原生执行关系解析，复用任务内容读取与关系读取的独立边界。
+任务列表与智能体工作记录直接查询原生 `TaskCatalogService`：kagent 按主体与工作空间授权、过滤和分页，平台逐请求投影当前页。后台状态沿原生执行关系解析。
 
-工程师会话通过 `WatchConversation` 提供只读执行快照，供协作图与执行详情消费。个人账号读取本人发起的会话，管理员可读取原生授权允许的其他发起方会话；`SendMessage` 省略 `context_id` 时，可直启同工作空间内已获原生授权的工程师根任务；已有会话发送沿用聊天角色准入。
+Agent 会话通过 `WatchConversation` 提供只读执行快照，供协作图与执行详情消费。任务运行时文本增量来自原生任务流，原生目录最多每 2 秒读取一次；全部任务静止后只轮询原生目录摘要，Agent 元数据每 30 秒刷新。个人账号读取本人发起的会话，管理员可读取原生授权允许的其他发起方会话；`SendMessage` 省略 `context_id` 时，可直启同工作空间内已获原生授权的 Agent 根任务；已有会话发送沿用聊天角色准入。
 `TaskRun.execution` 复用原生 `TaskExecution`，统一提供模型委派、声明式工作流与续接的持久父子关系。
 
 Agent 以 `harnessRef` 与可选 `modelConfigRef` 选择运行时；单次原生 CAS 更新同时切换两者，共享 AgentTemplate 维护可复用行为。实际内置工具、兼容性与依赖就绪状态由原生编译结果提供。
 
 `standard` Harness 执行 `AgentTemplate.workflowFrom` 引用的声明式工作流。文档中的 `template:model` 与 `template:tools` 分别使用模板模型及已授权 MCP 绑定；CEL、并行分析与工具调用由原生运行时编排。工作流与指令通过方案 Preset 中同命名空间的 ConfigMap 发布。
-团队成员与角色编辑展示指令型 AgentTemplate 对应的工程师；声明式工作流以独立流程入口呈现，方案协作图的 `agent` 引用绑定原生运行记录。会话、任务及执行关系统一沿用原生 Agent 身份。
-协作 MCP 直接连接 kagent `/mcp`；角色起草使用平台业务 MCP。团队知识通过原生 `MemoryService` 的团队范围和服务端嵌入读写。
+`/agents` 目录展示原生授权可见的各种 Agent，模板和 Harness 决定其能力。角色编辑管理指令型 AgentTemplate，声明式工作流使用 `/workflows` 独立入口；方案协作图的 `agent` 引用绑定原生运行记录。会话、任务及执行参与者统一采用原生 Agent 身份。
+工作流作为独立自动化能力提供编辑、候选编译和不可变发布；原生 Agent 提供执行身份，工程师是可选参与者。定义、运行及 Temporal 分层见[工作流](workflows.md)。
+协作 MCP 直接连接 kagent `/mcp`；角色起草使用平台业务 MCP。
 
 环境连接、MCP Apps 与语音分别见[环境接入](environments.md)、[MCP Apps](mcp-app.md)和[语音](speech.md)。执行身份见[执行授权](execution-authorization.md)，源码入口见[代码导航](code-navigation.md)。
 
 ## 实时执行总览
 
-`ListTasks.includeExecutionGraph` 将当前页的原生执行关系、Agent 与人工交互元数据一并返回。已结束执行使用经当前用户重新授权的元数据和有界原生关系缓存；会话正文、工具参数与结果由详情读取。总览与明细分别按各自的数据量查询。
+`ListTasks.includeExecutionGraph` 将当前页的原生执行关系、Agent 与人工交互元数据一并返回；会话正文、工具参数与结果由详情读取。总览与明细分别按各自的数据量查询。

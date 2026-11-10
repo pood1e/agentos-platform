@@ -1,6 +1,9 @@
 {{- define "agentos.apiEnv" -}}
 {{- $origins := include "agentos.origins" . | fromJson -}}
 {{- $name := include "agentos.name" . -}}
+{{- $home := dict "namespace" .Release.Namespace "release" $name "entryAgent" .Values.entryAgent "harness" .Values.defaultHarness "kagentURL" (include "agentos.kagentEndpoint" .) -}}
+- name: AGENTOS_WORKSPACES
+  value: {{ concat (list $home) .Values.api.workspaces | toJson | quote }}
 - {name: AGENTOS_API_ORIGIN, value: {{ $origins.api | quote }}}
 - name: AGENTOS_DELEGATION_ORIGINS
   value: {{ prepend .Values.identity.returnOrigins $origins.console | uniq | toJson | quote }}
@@ -10,9 +13,6 @@
 {{- with $origins.sandbox }}
 - {name: AGENTOS_SANDBOX_ORIGIN, value: {{ . | quote }}}
 {{- end }}
-- {name: AGENTOS_ENTRY_AGENT, value: {{ .Values.entryAgent | quote }}}
-- {name: AGENTOS_RELEASE, value: {{ $name }}}
-- {name: AGENTOS_SPEECH_SECRET, value: {{ $name }}-speech}
 {{- if .Values.voice.enabled }}
 - {name: AGENTOS_VOICE_GATEWAY_URL, value: "http://{{ $name }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080"}
 - {name: AGENTOS_VOICE_AGENT, value: {{ $name }}-voice}
@@ -27,11 +27,6 @@
 - name: LIVEKIT_API_SECRET
   valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-secret}}
 {{- end }}
-- {name: AGENTOS_HARNESS, value: {{ .Values.defaultHarness | quote }}}
-- {name: AGENTOS_GATEWAY_NAME, value: {{ printf "%s-gateway" $name | quote }}}
-- {name: AGENTOS_MCP_GATEWAY_URL, value: "http://{{ $name }}-mcp-gateway.{{ .Release.Namespace }}.svc.cluster.local:8080"}
-- {name: AGENTOS_SKILL_CATALOG, value: {{ printf "%s-skills" $name | quote }}}
-{{ include "agentos.knowledgeEnv" . }}
 {{- end -}}
 
 {{- define "agentos.apiRules" -}}
@@ -58,10 +53,12 @@
   verbs: [get, create, update, delete]
 - apiGroups: ['']
   resources: [configmaps]
-  verbs: [get, create, update, patch]
+  verbs: [get, list, create, update, patch, delete]
 {{- end -}}
 
 {{- define "agentos.dataplaneEnv" -}}
+- {name: KAGENT_URL, value: {{ include "agentos.kagentEndpoint" . | quote }}}
+- {name: KAGENT_NAMESPACE, value: {{ .Release.Namespace | quote }}}
 - {name: AGENTOS_CONTROLLER_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ include "agentos.name" . }}-discovery"}
 {{- end -}}
 

@@ -1,0 +1,29 @@
+otel:
+  traces: {enabled: false}
+  metrics: {enabled: false}
+  logs: {enabled: false}
+postgres:
+  readWriteConnectionStringSecretRef:
+    name: substrate-postgres
+    key: connectionString
+  ownerConnectionStringSecretRef:
+    name: substrate-postgres
+    key: connectionString
+  readWriteRole: kagent_owner
+  ownerRole: kagent_owner
+  schema: substrate
+preview: [GoldenEgressPolicy, PerTemplateSnapshotLocation]
+ateApi:
+  authorization:
+    bootstrapOwners: [system:serviceaccount:ate-system:agentos-substrate-operator]
+atenetRouter:
+  ingressAllowedSPIFFEIDs: ["spiffe://cluster.local/ns/{{ agentos_namespace }}/sa/kagent-controller"]
+credentialProvider:
+  namespacePolicies:
+    - atespace: "{{ agentos_namespace }}"
+      allowedNamespaces: ["{{ agentos_namespace }}"]
+rustfs:
+  accessKey: "{{ substrate_object_store.access_key }}"
+  secretKey: "{{ substrate_object_store.secret_key }}"
+atelet:
+  enabled: false

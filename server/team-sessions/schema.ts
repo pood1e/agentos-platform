@@ -1,7 +1,7 @@
 import { type DescMessage, type JsonValue, type Message, toJson } from "@bufbuild/protobuf";
 import { createValidator } from "@bufbuild/protovalidate";
 import { fromJsonSchema } from "@modelcontextprotocol/server";
-import { object } from "../read-model/decode/messages.js";
+import { object } from "../../shared/json.js";
 
 interface SchemaBundle {
   $ref: string;

@@ -119,7 +119,7 @@
                 "session_id": "01a130a5-5f67-753b-934f-a90c7dd745a2",
                 "message": "请用中文执行独立测试审批与处置。目标仅限 ConfigMap agentos-lab/approval-smoke，创建 data.status=verified、data.purpose=approval-smoke。可先只读检查；所有写操作必须通过处置工具原生审批暂停等待用户决定，未批准不得执行。不要创建命名空间或修改任何其他资源；知识资源由后续知识成员负责。如已存在请报告并在审批范围明确采用更新使两个字段符合目标，不删除其他字段。批准后实际执行，并用独立重新读取验证 namespace/name 和这两个 data 值；返回审批决定、操作真实结果、读取证据（UID/resourceVersion 如有）、Session/Task 标识。若拒绝或失败明确报告，不宣称完成。"
               },
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_MEJHSayznYaFHpYToAVEf885"
             },
             "metadata": {
@@ -141,7 +141,7 @@
         "parts": [
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "response": {
                 "output": {
                   "task_id": "01a130a5-965c-73ec-8feb-0213f1e52dd5",
@@ -267,7 +267,7 @@
           },
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_qVSCqsaM4fICLNJjHpgY4YdP",
               "args": {
                 "message": "用中文将已核验真实结果持久化至 agentos-knowledge/knowledge-approval-smoke（知识存储资源，使用你的持久化工具，明确返回资源类型）。唯一允许写入此资源，不创建命名空间、不改其他资源。写前必须使用原生工具审批等待用户决定；批准后写入并重新读取验证存储内容，返回准确存储引用及UID/resourceVersion如可用。事实与来源：处置 Session=01a130a5-5f67-753b-934f-a90c7dd745a2，Task=01a130a5-965c-73ec-8feb-0213f1e52dd5，状态COMPLETED。平台后续通知明确用户决定 approved=true，审批ID=adk-3610e10e-2dda-4012-a7ab-b3a1066f727e（该审批记录由协调者收到，处置成员工具自身未返回审批明细，区分来源）。处置前直接GET失败不能断言不存在；随后成功列出agentos-lab ConfigMap确认目标不存在。经原生k8s_apply_manifest批准执行返回 configmap/approval-smoke created。随后独立k8s_get_resource_yaml重新读取确认 kind=ConfigMap namespace=agentos-lab name=approval-smoke data.status=verified data.purpose=approval-smoke；UID=aa846b62-c21f-4fd3-a9e3-425fa8323277 resourceVersion=33647 creationTimestamp=2026-10-12T15:07:57Z。处置仅创建该ConfigMap，无其他资源变更，无回退。请存储真实操作、审批来源、验证结果及Session/Task来源，勿虚构；知识会话Session=01a130a8-982b-7ef6-bc08-10e6b1088540。若失败或拒绝如实返回，不声称持久化成功。",
@@ -294,7 +294,7 @@
         "parts": [
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "response": {
                 "output": {
                   "text": "是否批准通过 k8s_apply_manifest 仅创建 agentos-knowledge/knowledge-approval-smoke（资源类型 ConfigMap，标签 agentos.dev/kind: knowledge），将您提供的已核验处置事实写入 data.record.md，并随后读取验证？记录将包含：处置 Session/Task 及 COMPLETED；先前直接 GET 失败不证明不存在，随后成功列表确认目标不存在；经批准 apply 返回 configmap/approval-smoke created；独立读取验证 agentos-lab/approval-smoke 的 status、purpose、UID、resourceVersion、creationTimestamp；历史 approved=true 及审批ID明确注明来源为协调者收到的平台后续通知，而非处置成员工具返回；仅创建该 ConfigMap、无其他变更、未执行回退；知识会话 Session，以及适用条件与回退说明。不会创建命名空间、修改其他资源或写入敏感凭据。此审批仅用于本次知识存储，不以历史审批替代。我将先检索 agentos-knowledge 中已有的 ConfigMap 知识记录，确认是否存在目标记录或相关经验，全程仅允许写入 knowledge-approval-smoke。\n检索结果显示 agentos-knowledge 中只有 kube-root-ca.crt，没有目标知识记录；我将通过原生审批工具请求您决定是否创建指定 ConfigMap，历史处置事实会明确标注为您提供的 Session/Task 结果，而非本知识会话重新核验。\n",
@@ -2108,7 +2108,7 @@
           },
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_PcN157OvwOi7Y5gtyYdBhe2M",
               "args": {
                 "session_id": "01a130dd-50c1-7abf-b922-1870b2958b6d",
@@ -2144,7 +2144,7 @@
                 }
               },
               "id": "call_PcN157OvwOi7Y5gtyYdBhe2M",
-              "name": "invoke_session"
+              "name": "invoke_agent"
             },
             "metadata": {
               "kagent.dev/a2a/part-type": "function_response"
@@ -2233,12 +2233,12 @@
           },
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_Bico3vzuZll1XIIbgPRUU6jG",
               "args": {
                 "session_id": "01a130de-172e-7c81-83b5-9407668dd87e",
                 "message_id": "341ca5b4-e06d-48f1-af67-27f05d48f7dd",
-                "message": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_session 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。",
+                "message": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_agent 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。",
                 "background": true
               }
             },
@@ -2262,7 +2262,7 @@
           {
             "data": {
               "id": "call_Bico3vzuZll1XIIbgPRUU6jG",
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "response": {
                 "output": {
                   "session_id": "01a130de-172e-7c81-83b5-9407668dd87e",
@@ -2305,7 +2305,7 @@
         "role": "ROLE_USER",
         "parts": [
           {
-            "text": "验证事后异步知识沉淀：只读核验 agentos-lab/approval-rag-smoke 的实际 data.status=verified、data.purpose=approval-rag，已有资源不修改。自主选择可用成员进行核验；核验完成后，为知识成员创建独立会话，用 invoke_session(background=true) 将简洁结论、实际来源 Session/Task 和资源路径提交后台入库与语义回查。收到后台 Task 标识就结束主任务，不等待知识成员完成，不查询后台结果。最终只回复两句话：已核验的资源结论，以及后台知识 Task 标识和正在沉淀的状态。全程只读 Kubernetes。"
+            "text": "验证事后异步知识沉淀：只读核验 agentos-lab/approval-rag-smoke 的实际 data.status=verified、data.purpose=approval-rag，已有资源不修改。自主选择可用成员进行核验；核验完成后，为知识成员创建独立会话，用 invoke_agent(background=true) 将简洁结论、实际来源 Session/Task 和资源路径提交后台入库与语义回查。收到后台 Task 标识就结束主任务，不等待知识成员完成，不查询后台结果。最终只回复两句话：已核验的资源结论，以及后台知识 Task 标识和正在沉淀的状态。全程只读 Kubernetes。"
           }
         ],
         "extensions": ["https://kagent.dev/extensions/hitl/v1"]
@@ -2475,7 +2475,7 @@
                         "role": "user",
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——读取失败停止写入，完整验证未完成，零写入。\n唯一可复用结论：读取失败时停止写入；修复连接/权限后应重新读取现状、走原生审批、执行及回读验证。此为后续处置流程，不表示已修复；连接或权限不是本次已确定根因。\n已核验操作事实：证据仅为用户提供的实际网关及工具事件，本知识成员未另行读取集群。用户仅授权独立测试集群 ConfigMap agentos-lab/approval-rag-smoke，路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。期望 data.status=verified、data.purpose=approval-rag；两者仅为目标值，未生效验证，不能记为实际字段结果或创建成功。处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff（create_session 与 invoke_session 网关返回）。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：读取 node JSON 和 namespace agentos-lab YAML 均返回通用 exit status 1。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：读取 agentos-lab/approval-rag-smoke ConfigMap YAML 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；原生审批未触发、写工具未调用、回读验证未完成，零写入。未得到明确 NotFound；资源现状及连接集群身份未知。不存在本次创建成功或字段 verified 已生效的证据。\n适用条件：本次独立测试集群该 ConfigMap 及读取失败的同类处置；用户授权不等于原生审批已发生，不扩展至其他资源或生产环境。后续重试仍须读现状、原生审批、执行及回读。本次零写入，无本次写入需要回退，不能据此推断现有资源不存在。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——读取失败停止写入，完整验证未完成，零写入。\n唯一可复用结论：读取失败时停止写入；修复连接/权限后应重新读取现状、走原生审批、执行及回读验证。此为后续处置流程，不表示已修复；连接或权限不是本次已确定根因。\n已核验操作事实：证据仅为用户提供的实际网关及工具事件，本知识成员未另行读取集群。用户仅授权独立测试集群 ConfigMap agentos-lab/approval-rag-smoke，路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。期望 data.status=verified、data.purpose=approval-rag；两者仅为目标值，未生效验证，不能记为实际字段结果或创建成功。处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff（create_session 与 invoke_agent 网关返回）。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：读取 node JSON 和 namespace agentos-lab YAML 均返回通用 exit status 1。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：读取 agentos-lab/approval-rag-smoke ConfigMap YAML 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；原生审批未触发、写工具未调用、回读验证未完成，零写入。未得到明确 NotFound；资源现状及连接集群身份未知。不存在本次创建成功或字段 verified 已生效的证据。\n适用条件：本次独立测试集群该 ConfigMap 及读取失败的同类处置；用户授权不等于原生审批已发生，不扩展至其他资源或生产环境。后续重试仍须读现状、原生审批、执行及回读。本次零写入，无本次写入需要回退，不能据此推断现有资源不存在。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。"
                           }
                         ]
                       }
@@ -2499,7 +2499,7 @@
                         "role": "user",
                         "parts": [
                           {
-                            "text": "主题：approval-rag-smoke 原生审批、真实创建及独立回读成功——2026-10-12 时点证据。\n唯一可复用结论：审批批准、写入成功、独立回读验证是三个独立证据阶段，不能仅以 Task COMPLETED 代替业务验证；完整知识持久化验证还须实际 save_memory 成功后 load_memory 回查。本条保存时不预先宣称入库回查成功。\n证据来源：用户本次沉淀任务提供的已核验事实与协调者运行时事件；本知识成员未操作或另行读取 Kubernetes。管理员已核验工具仅连接独立测试集群 agentos-01，节点 192.0.2.10，不连接生产。\n实际操作：唯一变更为 ConfigMap agentos-lab/approval-rag-smoke。先调用 k8s_get_resource_yaml 返回 exit status 1，该错误本身不能证明不存在；随后只读 k8s_get_resources 列表确认目标不存在。k8s_apply_manifest 原生审批返回 TASK_STATE_INPUT_REQUIRED。运行时续办通知明确用户 decision={\"type\":\"tool_approval_response\",\"approvals\":[{\"approved\":true,\"id\":\"adk-274fe884-b377-4134-9e3d-ac67e335f61d\"}]}；最终 Task COMPLETED。批准后写工具实际返回 configmap/approval-rag-smoke created。未创建命名空间，未修改其他对象。\n独立只读回读验证全部通过：apiVersion=v1；kind=ConfigMap；metadata.name=approval-rag-smoke；metadata.namespace=agentos-lab；data.status=verified；data.purpose=approval-rag；metadata.uid=0babdf3c-270d-4e02-a56a-a3890d0519b3；metadata.resourceVersion=36911；metadata.creationTimestamp=2026-10-12T15:50:09Z。\n真实来源 Session：01a130c2-1fd8-701f-85b5-38f0009e89ca；真实来源 Task：01a130cd-13c4-727c-a053-22c690c49bfc。二者来自协调者 invoke_session 返回的运行时元数据，并非推测。审批 ID：adk-274fe884-b377-4134-9e3d-ac67e335f61d，来自原生 input_required 响应及运行时续办通知。\n证据可见性区分：处置成员工具响应本身没有审批 ID 和 Task 元数据，其报告仍保留局部可见性限制；协调者已从原生 input_required 响应、运行时续办通知及 invoke_session 元数据补齐真实审批和 Session/Task，因此本次汇总记录不得写为审批未知。\n知识 Session：01a130cf-7d47-789f-92f4-9505081f8586；知识 Task：用户未提供，待协调者返回真实元数据补充，不虚构。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab…[truncated]"
+                            "text": "主题：approval-rag-smoke 原生审批、真实创建及独立回读成功——2026-10-12 时点证据。\n唯一可复用结论：审批批准、写入成功、独立回读验证是三个独立证据阶段，不能仅以 Task COMPLETED 代替业务验证；完整知识持久化验证还须实际 save_memory 成功后 load_memory 回查。本条保存时不预先宣称入库回查成功。\n证据来源：用户本次沉淀任务提供的已核验事实与协调者运行时事件；本知识成员未操作或另行读取 Kubernetes。管理员已核验工具仅连接独立测试集群 agentos-01，节点 192.0.2.10，不连接生产。\n实际操作：唯一变更为 ConfigMap agentos-lab/approval-rag-smoke。先调用 k8s_get_resource_yaml 返回 exit status 1，该错误本身不能证明不存在；随后只读 k8s_get_resources 列表确认目标不存在。k8s_apply_manifest 原生审批返回 TASK_STATE_INPUT_REQUIRED。运行时续办通知明确用户 decision={\"type\":\"tool_approval_response\",\"approvals\":[{\"approved\":true,\"id\":\"adk-274fe884-b377-4134-9e3d-ac67e335f61d\"}]}；最终 Task COMPLETED。批准后写工具实际返回 configmap/approval-rag-smoke created。未创建命名空间，未修改其他对象。\n独立只读回读验证全部通过：apiVersion=v1；kind=ConfigMap；metadata.name=approval-rag-smoke；metadata.namespace=agentos-lab；data.status=verified；data.purpose=approval-rag；metadata.uid=0babdf3c-270d-4e02-a56a-a3890d0519b3；metadata.resourceVersion=36911；metadata.creationTimestamp=2026-10-12T15:50:09Z。\n真实来源 Session：01a130c2-1fd8-701f-85b5-38f0009e89ca；真实来源 Task：01a130cd-13c4-727c-a053-22c690c49bfc。二者来自协调者 invoke_agent 返回的运行时元数据，并非推测。审批 ID：adk-274fe884-b377-4134-9e3d-ac67e335f61d，来自原生 input_required 响应及运行时续办通知。\n证据可见性区分：处置成员工具响应本身没有审批 ID 和 Task 元数据，其报告仍保留局部可见性限制；协调者已从原生 input_required 响应、运行时续办通知及 invoke_agent 元数据补齐真实审批和 Session/Task，因此本次汇总记录不得写为审批未知。\n知识 Session：01a130cf-7d47-789f-92f4-9505081f8586；知识 Task：用户未提供，待协调者返回真实元数据补充，不虚构。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab…[truncated]"
                           }
                         ]
                       },
@@ -2513,7 +2513,7 @@
                       "Content": {
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——通用读取错误不能证明资源不存在。\n唯一可复用结论：读取工具仅返回通用 exit status 1、未明确返回 NotFound 时，不能判断资源不存在，也不能推断具体根因。\n已核验操作事实（证据为用户提供的实际网关及工具事件，本知识成员未另行读取集群）：处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff，由 create_session 与 invoke_session 网关返回。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：k8s_get_resources(resource_type=node,output=json) 返回 '[Kubernetes] get node -o json failed: exit status 1'；k8s_get_resource_yaml(resource_type=namespace,resource_name=agentos-lab) 返回 '[Kubernetes] get namespace agentos-lab -o yaml failed: exit status 1'。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：k8s_get_resource_yaml(namespace=agentos-lab,resource_name=approval-rag-smoke,resource_type=configmap) 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；未得到明确 NotFound，资源现状与连接集群身份未知。不得将 Task 完成状态视为业务成功，不得推断连接或权限是已确定根因。\n适用条件：本次独立测试集群读取失败事件及只返回通用错误的同类读取场景；不表示资源不存在，不表示创建成功。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。辅助读取对象：node（集群级）、namespace agentos-lab。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——通用读取错误不能证明资源不存在。\n唯一可复用结论：读取工具仅返回通用 exit status 1、未明确返回 NotFound 时，不能判断资源不存在，也不能推断具体根因。\n已核验操作事实（证据为用户提供的实际网关及工具事件，本知识成员未另行读取集群）：处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff，由 create_session 与 invoke_agent 网关返回。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：k8s_get_resources(resource_type=node,output=json) 返回 '[Kubernetes] get node -o json failed: exit status 1'；k8s_get_resource_yaml(resource_type=namespace,resource_name=agentos-lab) 返回 '[Kubernetes] get namespace agentos-lab -o yaml failed: exit status 1'。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：k8s_get_resource_yaml(namespace=agentos-lab,resource_name=approval-rag-smoke,resource_type=configmap) 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；未得到明确 NotFound，资源现状与连接集群身份未知。不得将 Task 完成状态视为业务成功，不得推断连接或权限是已确定根因。\n适用条件：本次独立测试集群读取失败事件及只返回通用错误的同类读取场景；不表示资源不存在，不表示创建成功。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。辅助读取对象：node（集群级）、namespace agentos-lab。"
                           }
                         ],
                         "role": "user"
@@ -2546,7 +2546,7 @@
           {
             "data": {
               "args": {
-                "content": "主题：agentos-lab/approval-rag-smoke 独立只读巡检核验通过，已有资源未修改。\n唯一可复用结论：本次巡检仅执行一次 Kubernetes 只读查询，返回实际 YAML 确认已有 ConfigMap 的 data.status=verified、data.purpose=approval-rag，核验通过；未修改目标资源。\n实际操作及证据：巡检成员调用 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\")，返回实际 YAML；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。以上为用户提供的已核验来源事实，本知识成员未调用 Kubernetes 工具，仅执行知识检索与沉淀。\n来源 Session：01a130dd-50c1-7abf-b922-1870b2958b6d；来源 Task：01a130dd-8a0c-7e3a-b122-4a7f18df2e4c。标识由协调者从 invoke_session 返回取得。\n实际资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。\n适用条件：仅代表该来源只读巡检时点的资源快照，不保证未来状态，不扩展其他资源或生产授权。本次为独立巡检，不是历史创建操作，不覆盖历史创建或读取失败记录。无 Kubernetes 写操作，无本次变更需要回退。\n入库验证边界：本条保存时尚未宣称 save_memory 后的语义回查成功，须以随后实际 load_memory 结果为准。"
+                "content": "主题：agentos-lab/approval-rag-smoke 独立只读巡检核验通过，已有资源未修改。\n唯一可复用结论：本次巡检仅执行一次 Kubernetes 只读查询，返回实际 YAML 确认已有 ConfigMap 的 data.status=verified、data.purpose=approval-rag，核验通过；未修改目标资源。\n实际操作及证据：巡检成员调用 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\")，返回实际 YAML；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。以上为用户提供的已核验来源事实，本知识成员未调用 Kubernetes 工具，仅执行知识检索与沉淀。\n来源 Session：01a130dd-50c1-7abf-b922-1870b2958b6d；来源 Task：01a130dd-8a0c-7e3a-b122-4a7f18df2e4c。标识由协调者从 invoke_agent 返回取得。\n实际资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。\n适用条件：仅代表该来源只读巡检时点的资源快照，不保证未来状态，不扩展其他资源或生产授权。本次为独立巡检，不是历史创建操作，不覆盖历史创建或读取失败记录。无 Kubernetes 写操作，无本次变更需要回退。\n入库验证边界：本条保存时尚未宣称 save_memory 后的语义回查成功，须以随后实际 load_memory 结果为准。"
               },
               "name": "save_memory",
               "id": "call_3tVTGfmRxh1Y1kOTH6Y4fcP2"
@@ -2628,7 +2628,7 @@
                       "Content": {
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 独立只读巡检核验通过，已有资源未修改。\n唯一可复用结论：本次巡检仅执行一次 Kubernetes 只读查询，返回实际 YAML 确认已有 ConfigMap 的 data.status=verified、data.purpose=approval-rag，核验通过；未修改目标资源。\n实际操作及证据：巡检成员调用 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\")，返回实际 YAML；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。以上为用户提供的已核验来源事实，本知识成员未调用 Kubernetes 工具，仅执行知识检索与沉淀。\n来源 Session：01a130dd-50c1-7abf-b922-1870b2958b6d；来源 Task：01a130dd-8a0c-7e3a-b122-4a7f18df2e4c。标识由协调者从 invoke_session 返回取得。\n实际资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。\n适用条件：仅代表该来源只读巡检时点的资源快照，不保证未来状态，不扩展其他资源或生产授权。本次为独立巡检，不是历史创建操作，不覆盖历史创建或读取失败记录。无 Kubernetes 写操作，无本次变更需要回退。\n入库验证边界：本条保存时尚未宣称 save_memory 后的语义回查成功，须以随后实际 load_memory 结果为准。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 独立只读巡检核验通过，已有资源未修改。\n唯一可复用结论：本次巡检仅执行一次 Kubernetes 只读查询，返回实际 YAML 确认已有 ConfigMap 的 data.status=verified、data.purpose=approval-rag，核验通过；未修改目标资源。\n实际操作及证据：巡检成员调用 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\")，返回实际 YAML；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。以上为用户提供的已核验来源事实，本知识成员未调用 Kubernetes 工具，仅执行知识检索与沉淀。\n来源 Session：01a130dd-50c1-7abf-b922-1870b2958b6d；来源 Task：01a130dd-8a0c-7e3a-b122-4a7f18df2e4c。标识由协调者从 invoke_agent 返回取得。\n实际资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。\n适用条件：仅代表该来源只读巡检时点的资源快照，不保证未来状态，不扩展其他资源或生产授权。本次为独立巡检，不是历史创建操作，不覆盖历史创建或读取失败记录。无 Kubernetes 写操作，无本次变更需要回退。\n入库验证边界：本条保存时尚未宣称 save_memory 后的语义回查成功，须以随后实际 load_memory 结果为准。"
                           }
                         ],
                         "role": "user"
@@ -2658,7 +2658,7 @@
                         "role": "user",
                         "parts": [
                           {
-                            "text": "主题：approval-rag-smoke 原生审批、真实创建及独立回读成功——2026-10-12 时点证据。\n唯一可复用结论：审批批准、写入成功、独立回读验证是三个独立证据阶段，不能仅以 Task COMPLETED 代替业务验证；完整知识持久化验证还须实际 save_memory 成功后 load_memory 回查。本条保存时不预先宣称入库回查成功。\n证据来源：用户本次沉淀任务提供的已核验事实与协调者运行时事件；本知识成员未操作或另行读取 Kubernetes。管理员已核验工具仅连接独立测试集群 agentos-01，节点 192.0.2.10，不连接生产。\n实际操作：唯一变更为 ConfigMap agentos-lab/approval-rag-smoke。先调用 k8s_get_resource_yaml 返回 exit status 1，该错误本身不能证明不存在；随后只读 k8s_get_resources 列表确认目标不存在。k8s_apply_manifest 原生审批返回 TASK_STATE_INPUT_REQUIRED。运行时续办通知明确用户 decision={\"type\":\"tool_approval_response\",\"approvals\":[{\"approved\":true,\"id\":\"adk-274fe884-b377-4134-9e3d-ac67e335f61d\"}]}；最终 Task COMPLETED。批准后写工具实际返回 configmap/approval-rag-smoke created。未创建命名空间，未修改其他对象。\n独立只读回读验证全部通过：apiVersion=v1；kind=ConfigMap；metadata.name=approval-rag-smoke；metadata.namespace=agentos-lab；data.status=verified；data.purpose=approval-rag；metadata.uid=0babdf3c-270d-4e02-a56a-a3890d0519b3；metadata.resourceVersion=36911；metadata.creationTimestamp=2026-10-12T15:50:09Z。\n真实来源 Session：01a130c2-1fd8-701f-85b5-38f0009e89ca；真实来源 Task：01a130cd-13c4-727c-a053-22c690c49bfc。二者来自协调者 invoke_session 返回的运行时元数据，并非推测。审批 ID：adk-274fe884-b377-4134-9e3d-ac67e335f61d，来自原生 input_required 响应及运行时续办通知。\n证据可见性区分：处置成员工具响应本身没有审批 ID 和 Task 元数据，其报告仍保留局部可见性限制；协调者已从原生 input_required 响应、运行时续办通知及 invoke_session 元数据补齐真实审批和 Session/Task，因此本次汇总记录不得写为审批未知。\n知识 Session：01a130cf-7d47-789f-92f4-9505081f8586；知识 Task：用户未提供，待协调者返回真实元数据补充，不虚构。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab…[truncated]"
+                            "text": "主题：approval-rag-smoke 原生审批、真实创建及独立回读成功——2026-10-12 时点证据。\n唯一可复用结论：审批批准、写入成功、独立回读验证是三个独立证据阶段，不能仅以 Task COMPLETED 代替业务验证；完整知识持久化验证还须实际 save_memory 成功后 load_memory 回查。本条保存时不预先宣称入库回查成功。\n证据来源：用户本次沉淀任务提供的已核验事实与协调者运行时事件；本知识成员未操作或另行读取 Kubernetes。管理员已核验工具仅连接独立测试集群 agentos-01，节点 192.0.2.10，不连接生产。\n实际操作：唯一变更为 ConfigMap agentos-lab/approval-rag-smoke。先调用 k8s_get_resource_yaml 返回 exit status 1，该错误本身不能证明不存在；随后只读 k8s_get_resources 列表确认目标不存在。k8s_apply_manifest 原生审批返回 TASK_STATE_INPUT_REQUIRED。运行时续办通知明确用户 decision={\"type\":\"tool_approval_response\",\"approvals\":[{\"approved\":true,\"id\":\"adk-274fe884-b377-4134-9e3d-ac67e335f61d\"}]}；最终 Task COMPLETED。批准后写工具实际返回 configmap/approval-rag-smoke created。未创建命名空间，未修改其他对象。\n独立只读回读验证全部通过：apiVersion=v1；kind=ConfigMap；metadata.name=approval-rag-smoke；metadata.namespace=agentos-lab；data.status=verified；data.purpose=approval-rag；metadata.uid=0babdf3c-270d-4e02-a56a-a3890d0519b3；metadata.resourceVersion=36911；metadata.creationTimestamp=2026-10-12T15:50:09Z。\n真实来源 Session：01a130c2-1fd8-701f-85b5-38f0009e89ca；真实来源 Task：01a130cd-13c4-727c-a053-22c690c49bfc。二者来自协调者 invoke_agent 返回的运行时元数据，并非推测。审批 ID：adk-274fe884-b377-4134-9e3d-ac67e335f61d，来自原生 input_required 响应及运行时续办通知。\n证据可见性区分：处置成员工具响应本身没有审批 ID 和 Task 元数据，其报告仍保留局部可见性限制；协调者已从原生 input_required 响应、运行时续办通知及 invoke_agent 元数据补齐真实审批和 Session/Task，因此本次汇总记录不得写为审批未知。\n知识 Session：01a130cf-7d47-789f-92f4-9505081f8586；知识 Task：用户未提供，待协调者返回真实元数据补充，不虚构。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab…[truncated]"
                           }
                         ]
                       },
@@ -2670,7 +2670,7 @@
                       "Content": {
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——读取失败停止写入，完整验证未完成，零写入。\n唯一可复用结论：读取失败时停止写入；修复连接/权限后应重新读取现状、走原生审批、执行及回读验证。此为后续处置流程，不表示已修复；连接或权限不是本次已确定根因。\n已核验操作事实：证据仅为用户提供的实际网关及工具事件，本知识成员未另行读取集群。用户仅授权独立测试集群 ConfigMap agentos-lab/approval-rag-smoke，路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。期望 data.status=verified、data.purpose=approval-rag；两者仅为目标值，未生效验证，不能记为实际字段结果或创建成功。处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff（create_session 与 invoke_session 网关返回）。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：读取 node JSON 和 namespace agentos-lab YAML 均返回通用 exit status 1。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：读取 agentos-lab/approval-rag-smoke ConfigMap YAML 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；原生审批未触发、写工具未调用、回读验证未完成，零写入。未得到明确 NotFound；资源现状及连接集群身份未知。不存在本次创建成功或字段 verified 已生效的证据。\n适用条件：本次独立测试集群该 ConfigMap 及读取失败的同类处置；用户授权不等于原生审批已发生，不扩展至其他资源或生产环境。后续重试仍须读现状、原生审批、执行及回读。本次零写入，无本次写入需要回退，不能据此推断现有资源不存在。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——读取失败停止写入，完整验证未完成，零写入。\n唯一可复用结论：读取失败时停止写入；修复连接/权限后应重新读取现状、走原生审批、执行及回读验证。此为后续处置流程，不表示已修复；连接或权限不是本次已确定根因。\n已核验操作事实：证据仅为用户提供的实际网关及工具事件，本知识成员未另行读取集群。用户仅授权独立测试集群 ConfigMap agentos-lab/approval-rag-smoke，路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。期望 data.status=verified、data.purpose=approval-rag；两者仅为目标值，未生效验证，不能记为实际字段结果或创建成功。处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff（create_session 与 invoke_agent 网关返回）。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：读取 node JSON 和 namespace agentos-lab YAML 均返回通用 exit status 1。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：读取 agentos-lab/approval-rag-smoke ConfigMap YAML 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；原生审批未触发、写工具未调用、回读验证未完成，零写入。未得到明确 NotFound；资源现状及连接集群身份未知。不存在本次创建成功或字段 verified 已生效的证据。\n适用条件：本次独立测试集群该 ConfigMap 及读取失败的同类处置；用户授权不等于原生审批已发生，不扩展至其他资源或生产环境。后续重试仍须读现状、原生审批、执行及回读。本次零写入，无本次写入需要回退，不能据此推断现有资源不存在。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。"
                           }
                         ],
                         "role": "user"
@@ -2732,7 +2732,7 @@
         "role": "ROLE_USER",
         "parts": [
           {
-            "text": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_session 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。"
+            "text": "请用中文后台沉淀以下已核验事实：ConfigMap agentos-lab/approval-rag-smoke 实际 data.status=verified、data.purpose=approval-rag，核验通过；仅执行一次 Kubernetes 只读查询，已有资源未修改。实际资源路径 /api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。证据为巡检成员 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\") 返回实际 YAML。实际来源 Session=01a130dd-50c1-7abf-b922-1870b2958b6d，Task=01a130dd-8a0c-7e3a-b122-4a7f18df2e4c（由协调者从 invoke_agent 返回标识取得）。请自行 save_memory 后用 load_memory 语义回查验证，并保留独立进度与结果。禁止任何 Kubernetes 写操作，不修改目标资源。主任务收到本后台 Task 标识即结束，不等待也不查询你的后台结果。"
           }
         ],
         "extensions": ["https://kagent.dev/extensions/hitl/v1"]
@@ -2847,7 +2847,7 @@
                           "name": "fork_session"
                         },
                         {
-                          "name": "invoke_session",
+                          "name": "invoke_agent",
                           "description": "Invoke a Session through the public A2A gateway"
                         },
                         {
@@ -2949,7 +2949,7 @@
                           "name": "get_sandbox_process"
                         },
                         {
-                          "name": "invoke_session",
+                          "name": "invoke_agent",
                           "description": "Invoke a Session through the public A2A gateway"
                         },
                         {
@@ -2994,7 +2994,7 @@
                         },
                         {
                           "name": "create_session",
-                          "description": "Create an independent conversation with a chosen Agent. Generate a fresh random UUID for requestId for each new conversation; reuse that UUID with identical inputs only for retries of that creation. Use the returned session.id with invoke_session. Create conversations only for work you choose to delegate."
+                          "description": "Create an independent conversation with a chosen Agent. Generate a fresh random UUID for requestId for each new conversation; reuse that UUID with identical inputs only for retries of that creation. Use the returned session.id with invoke_agent. Create conversations only for work you choose to delegate."
                         },
                         {
                           "name": "list_agents",
@@ -4333,7 +4333,7 @@
                 "session_id": "01a1330a-23b5-76c9-b207-3c8f63a1121b",
                 "message": "请用中文完成用户目标：检查服务健康。先调度 knowledge 知识工程师只读检索 agentos-lab 服务健康相关历史经验作为参考（提供来源，若无则如实说明），然后必须调度刚新增且 Ready 的 service-health 服务健康工程师（agentos/service-health，已发现）只读列出 agentos-lab 命名空间的 Deployment 与 Service，报告实际数量、资源名称和 Deployment 期望/ready/available 副本及就绪情况。Service 没有原生 Ready 状态，请依据授权读取范围说明可核验的服务状态与局限，勿臆断应用可达性。严格仅读取环境与知识，不执行任何变更、不执行命令、不创建探测资源、不新增或更新知识。资源不存在时如实报告为空；读取失败不可当作零资源。不要因旧 delegates 注解未列 service-health 就忽略新增工程师，请实际发现并调度；若调度受限如实报告。环境已由管理员核验为独立测试集群 agentos-01，不需要额外集群身份查询。操作范围仅 agentos-lab。最终给出相关历史经验参考与实时检查证据、实际数量、就绪结论和未能验证项。"
               },
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_imiahreChP9b4bs7zp3rfKdF"
             },
             "metadata": {
@@ -4356,7 +4356,7 @@
           {
             "data": {
               "id": "call_imiahreChP9b4bs7zp3rfKdF",
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "response": {
                 "output": {
                   "session_id": "01a1330a-23b5-76c9-b207-3c8f63a1121b",
@@ -5464,7 +5464,7 @@
           },
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_Ec0bs7i38xBw59aZwEp0gat7",
               "args": {
                 "session_id": "01a1330a-a623-7e70-9a4d-79beb189ba19",
@@ -5501,7 +5501,7 @@
                 }
               },
               "id": "call_Ec0bs7i38xBw59aZwEp0gat7",
-              "name": "invoke_session"
+              "name": "invoke_agent"
             },
             "metadata": {
               "kagent.dev/a2a/part-type": "function_response"
@@ -5591,7 +5591,7 @@
           },
           {
             "data": {
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "id": "call_0ZQhAr6IBUWyRdLwfzEzHzI8",
               "args": {
                 "session_id": "01a1330b-cf6b-74b8-b761-b69b5d7a3b9c",
@@ -5619,7 +5619,7 @@
           {
             "data": {
               "id": "call_0ZQhAr6IBUWyRdLwfzEzHzI8",
-              "name": "invoke_session",
+              "name": "invoke_agent",
               "response": {
                 "output": {
                   "state": "TASK_STATE_COMPLETED",
@@ -5766,7 +5766,7 @@
                       "Content": {
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——通用读取错误不能证明资源不存在。\n唯一可复用结论：读取工具仅返回通用 exit status 1、未明确返回 NotFound 时，不能判断资源不存在，也不能推断具体根因。\n已核验操作事实（证据为用户提供的实际网关及工具事件，本知识成员未另行读取集群）：处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff，由 create_session 与 invoke_session 网关返回。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：k8s_get_resources(resource_type=node,output=json) 返回 '[Kubernetes] get node -o json failed: exit status 1'；k8s_get_resource_yaml(resource_type=namespace,resource_name=agentos-lab) 返回 '[Kubernetes] get namespace agentos-lab -o yaml failed: exit status 1'。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：k8s_get_resource_yaml(namespace=agentos-lab,resource_name=approval-rag-smoke,resource_type=configmap) 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；未得到明确 NotFound，资源现状与连接集群身份未知。不得将 Task 完成状态视为业务成功，不得推断连接或权限是已确定根因。\n适用条件：本次独立测试集群读取失败事件及只返回通用错误的同类读取场景；不表示资源不存在，不表示创建成功。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。辅助读取对象：node（集群级）、namespace agentos-lab。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——通用读取错误不能证明资源不存在。\n唯一可复用结论：读取工具仅返回通用 exit status 1、未明确返回 NotFound 时，不能判断资源不存在，也不能推断具体根因。\n已核验操作事实（证据为用户提供的实际网关及工具事件，本知识成员未另行读取集群）：处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff，由 create_session 与 invoke_agent 网关返回。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：k8s_get_resources(resource_type=node,output=json) 返回 '[Kubernetes] get node -o json failed: exit status 1'；k8s_get_resource_yaml(resource_type=namespace,resource_name=agentos-lab) 返回 '[Kubernetes] get namespace agentos-lab -o yaml failed: exit status 1'。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：k8s_get_resource_yaml(namespace=agentos-lab,resource_name=approval-rag-smoke,resource_type=configmap) 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；未得到明确 NotFound，资源现状与连接集群身份未知。不得将 Task 完成状态视为业务成功，不得推断连接或权限是已确定根因。\n适用条件：本次独立测试集群读取失败事件及只返回通用错误的同类读取场景；不表示资源不存在，不表示创建成功。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。辅助读取对象：node（集群级）、namespace agentos-lab。"
                           }
                         ],
                         "role": "user"
@@ -5873,7 +5873,7 @@
                       "Content": {
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——通用读取错误不能证明资源不存在。\n唯一可复用结论：读取工具仅返回通用 exit status 1、未明确返回 NotFound 时，不能判断资源不存在，也不能推断具体根因。\n已核验操作事实（证据为用户提供的实际网关及工具事件，本知识成员未另行读取集群）：处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff，由 create_session 与 invoke_session 网关返回。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：k8s_get_resources(resource_type=node,output=json) 返回 '[Kubernetes] get node -o json failed: exit status 1'；k8s_get_resource_yaml(resource_type=namespace,resource_name=agentos-lab) 返回 '[Kubernetes] get namespace agentos-lab -o yaml failed: exit status 1'。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：k8s_get_resource_yaml(namespace=agentos-lab,resource_name=approval-rag-smoke,resource_type=configmap) 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；未得到明确 NotFound，资源现状与连接集群身份未知。不得将 Task 完成状态视为业务成功，不得推断连接或权限是已确定根因。\n适用条件：本次独立测试集群读取失败事件及只返回通用错误的同类读取场景；不表示资源不存在，不表示创建成功。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。辅助读取对象：node（集群级）、namespace agentos-lab。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 受阻/失败案例——通用读取错误不能证明资源不存在。\n唯一可复用结论：读取工具仅返回通用 exit status 1、未明确返回 NotFound 时，不能判断资源不存在，也不能推断具体根因。\n已核验操作事实（证据为用户提供的实际网关及工具事件，本知识成员未另行读取集群）：处置实际 Session 01a130bc-d1e1-77b6-b730-e2063b60a3ff，由 create_session 与 invoke_agent 网关返回。第一实际 Task 01a130bd-0f25-7cec-8712-780404f990c0：k8s_get_resources(resource_type=node,output=json) 返回 '[Kubernetes] get node -o json failed: exit status 1'；k8s_get_resource_yaml(resource_type=namespace,resource_name=agentos-lab) 返回 '[Kubernetes] get namespace agentos-lab -o yaml failed: exit status 1'。第二实际 Task 01a130bd-ddfc-721e-8a4f-2255cbf9ca12：k8s_get_resource_yaml(namespace=agentos-lab,resource_name=approval-rag-smoke,resource_type=configmap) 返回 'Tool execution failed. Details: [Kubernetes] get configmap approval-rag-smoke -o yaml -n agentos-lab failed: exit status 1'。\n验证结果：两 Task 均 TASK_STATE_COMPLETED，但业务验证失败；未得到明确 NotFound，资源现状与连接集群身份未知。不得将 Task 完成状态视为业务成功，不得推断连接或权限是已确定根因。\n适用条件：本次独立测试集群读取失败事件及只返回通用错误的同类读取场景；不表示资源不存在，不表示创建成功。\n来源 Session：01a130bc-d1e1-77b6-b730-e2063b60a3ff。来源 Task：01a130bd-0f25-7cec-8712-780404f990c0、01a130bd-ddfc-721e-8a4f-2255cbf9ca12。知识 Session：01a130be-88a9-709b-abc3-b3e639b06d55。\n资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke；k8s://agentos-lab/configmaps/approval-rag-smoke。辅助读取对象：node（集群级）、namespace agentos-lab。"
                           }
                         ],
                         "role": "user"
@@ -5897,7 +5897,7 @@
                       "Content": {
                         "parts": [
                           {
-                            "text": "主题：agentos-lab/approval-rag-smoke 独立只读巡检核验通过，已有资源未修改。\n唯一可复用结论：本次巡检仅执行一次 Kubernetes 只读查询，返回实际 YAML 确认已有 ConfigMap 的 data.status=verified、data.purpose=approval-rag，核验通过；未修改目标资源。\n实际操作及证据：巡检成员调用 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\")，返回实际 YAML；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。以上为用户提供的已核验来源事实，本知识成员未调用 Kubernetes 工具，仅执行知识检索与沉淀。\n来源 Session：01a130dd-50c1-7abf-b922-1870b2958b6d；来源 Task：01a130dd-8a0c-7e3a-b122-4a7f18df2e4c。标识由协调者从 invoke_session 返回取得。\n实际资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。\n适用条件：仅代表该来源只读巡检时点的资源快照，不保证未来状态，不扩展其他资源或生产授权。本次为独立巡检，不是历史创建操作，不覆盖历史创建或读取失败记录。无 Kubernetes 写操作，无本次变更需要回退。\n入库验证边界：本条保存时尚未宣称 save_memory 后的语义回查成功，须以随后实际 load_memory 结果为准。"
+                            "text": "主题：agentos-lab/approval-rag-smoke 独立只读巡检核验通过，已有资源未修改。\n唯一可复用结论：本次巡检仅执行一次 Kubernetes 只读查询，返回实际 YAML 确认已有 ConfigMap 的 data.status=verified、data.purpose=approval-rag，核验通过；未修改目标资源。\n实际操作及证据：巡检成员调用 k8s_get_resource_yaml(namespace=\"agentos-lab\", resource_name=\"approval-rag-smoke\", resource_type=\"configmap\")，返回实际 YAML；resourceVersion=36911，UID=0babdf3c-270d-4e02-a56a-a3890d0519b3。以上为用户提供的已核验来源事实，本知识成员未调用 Kubernetes 工具，仅执行知识检索与沉淀。\n来源 Session：01a130dd-50c1-7abf-b922-1870b2958b6d；来源 Task：01a130dd-8a0c-7e3a-b122-4a7f18df2e4c。标识由协调者从 invoke_agent 返回取得。\n实际资源路径：/api/v1/namespaces/agentos-lab/configmaps/approval-rag-smoke。\n适用条件：仅代表该来源只读巡检时点的资源快照，不保证未来状态，不扩展其他资源或生产授权。本次为独立巡检，不是历史创建操作，不覆盖历史创建或读取失败记录。无 Kubernetes 写操作，无本次变更需要回退。\n入库验证边界：本条保存时尚未宣称 save_memory 后的语义回查成功，须以随后实际 load_memory 结果为准。"
                           }
                         ],
                         "role": "user"

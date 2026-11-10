@@ -6,8 +6,9 @@ metadata:
     agentos.dev/system-connection: 'true'
   labels: {{ include "agentos.labels" . | nindent 4 }}
 spec:
-  description: Native kagent collaboration and team memory
-  url: {{ printf "%s/mcp" (trimSuffix "/" .Values.kagent.endpoint) | quote }}
+  description: Native kagent collaboration
+  url: {{ printf "%s/mcp" (include "agentos.kagentEndpoint" .) | quote }}
+  tokenPassthrough: true
   protocol: STREAMABLE_HTTP
   timeout: 10m
   discoveryAuth:

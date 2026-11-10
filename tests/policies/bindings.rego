@@ -29,7 +29,7 @@ deny contains "the assistant lacks its native collaboration binding" if {
 	some template in templates
 	template.metadata.name == "assistant"
 	bindings := [binding.mcp | some binding in template.spec.tools; binding.mcp.server.name == "kagent-collaboration"]
-	bindings != [{"server": {"kind": "RemoteMCPServer", "name": "kagent-collaboration"}, "tools": ["list_agents", "create_session", "list_sessions", "invoke_session", "search_memory"], "requireApproval": false}]
+	bindings != [{"server": {"kind": "RemoteMCPServer", "name": "kagent-collaboration"}, "tools": ["list_agents", "list_sessions", "invoke_agent"], "requireApproval": false}]
 }
 
 actual_bindings(template) := [binding | some group in template.spec.tools; not group.mcp.server.name in {"team-sessions", "kagent-collaboration"}; some tool in group.mcp.tools; binding := {"server": group.mcp.server.name, "tool": tool, "review": group.mcp.requireApproval}]
@@ -38,7 +38,7 @@ expected_bindings(template) := {binding |
 	some plan in objects
 	plan.kind == "AccessPlan"
 	some target in plan.status.targets
-	target.engineer == template.metadata.name
+	target.identity == template.metadata.name
 	target.environment
 	some tool in target.tools
 	binding := {"server": target.server, "tool": sprintf("%s_%s", [target.service, tool.name]), "review": tool.requireApproval}

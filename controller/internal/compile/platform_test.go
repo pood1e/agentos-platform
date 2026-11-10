@@ -91,8 +91,8 @@ func TestEnvironmentGatewayCredentialIsolation(t *testing.T) {
 			if !slices.Contains(removed, "x-substrate-actor-token") || !slices.Contains(removed, "cookie") {
 				t.Fatalf("%s forwards runtime credentials: %v", object.Name, removed)
 			}
-			engineer := object.Labels["agentos.dev/engineer"]
-			if engineer == "" {
+			identity := object.Labels["agentos.dev/identity"]
+			if identity == "" {
 				catalog++
 				if transport.Auth != nil {
 					t.Fatal("catalog discovery gained runtime token exchange")
@@ -104,7 +104,7 @@ func TestEnvironmentGatewayCredentialIsolation(t *testing.T) {
 				t.Fatalf("%s lacks native token exchange", object.Name)
 			}
 			exchange := transport.Auth.OAuthTokenExchange
-			if *exchange.Path != "/token" || exchange.Audiences[0] != "https://tools.test/mcp" || exchange.ClientAuth.ClientID != "agentos-"+engineer || string(exchange.ClientAuth.SecretRef.Name) != "lab-"+engineer || exchange.BackendRef.Name != "lab-ops-oauth" {
+			if *exchange.Path != "/token" || exchange.Audiences[0] != "https://tools.test/mcp" || exchange.ClientAuth.ClientID != "agentos-"+identity || string(exchange.ClientAuth.SecretRef.Name) != "lab-"+identity || exchange.BackendRef.Name != "lab-ops-oauth" {
 				t.Fatalf("%s has incorrect exchange credentials: %+v", object.Name, exchange)
 			}
 		}

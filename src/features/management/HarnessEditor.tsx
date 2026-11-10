@@ -16,13 +16,15 @@ import {
 } from "@/components/ui/select";
 import { Capability } from "../../../gen/agentos/authorization/v1/permission_pb.js";
 import { type Harness, HarnessSchema } from "../../../gen/kagent/api/v1/harnesses_pb.js";
+import { object } from "../../../shared/json.js";
+import { kagentApiVersion } from "../../../shared/kagent-resources.js";
 import { useCapability } from "../../lib/access.js";
 import { managementClient } from "../../lib/console.js";
 import { HarnessIcon, runtimeName } from "../shared/HarnessIcon.js";
-import { localizedSchema, object, translateSchema } from "./connection-schema.js";
-import { harnessName } from "./HarnessPicker.js";
-import { SaveButton } from "./ResourceDialog.js";
-import { Failure } from "./ResourcePage.js";
+import { harnessName } from "../shared/HarnessPicker.js";
+import { SaveButton } from "../shared/ResourceDialog.js";
+import { Failure } from "../shared/ResourcePage.js";
+import { localizedSchema, translateSchema } from "./connection-schema.js";
 
 const Form = generateForm<Record<string, unknown>>();
 const runtimes = ["kagent", "codex", "claude", "byo"];
@@ -65,7 +67,7 @@ export function HarnessEditor({
         create: !harness,
         harness: create(HarnessSchema, {
           ref: { name, namespace: harness?.ref?.namespace ?? defaults?.ref?.namespace ?? "" },
-          resource: { apiVersion: "api.kagent.dev/v1alpha3", kind: "Harness", value },
+          resource: { apiVersion: kagentApiVersion, kind: "Harness", value },
         }),
       }),
     onSuccess: onSaved,
@@ -89,7 +91,7 @@ export function HarnessEditor({
     if (!editable) return;
     const value: JsonObject = harness
       ? structuredClone(harness.resource?.value ?? {})
-      : { apiVersion: "api.kagent.dev/v1alpha3", kind: "Harness", metadata: { name } };
+      : { apiVersion: kagentApiVersion, kind: "Harness", metadata: { name } };
     const next = { ...data };
     for (const key of runtimes) delete next[key];
     next[runtime] = object(data[runtime]);

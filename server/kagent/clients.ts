@@ -1,8 +1,9 @@
-import { createClient, type Transport } from "@connectrpc/connect";
+import { createClient, type Interceptor, type Transport } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { A2AService } from "../../gen/a2a_pb.js";
 import { AgentTemplateService } from "../../gen/kagent/api/v1/agent_templates_pb.js";
 import { AgentService } from "../../gen/kagent/api/v1/agents_pb.js";
+import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
 import { ExecutionService } from "../../gen/kagent/api/v1/execution_pb.js";
 import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelService } from "../../gen/kagent/api/v1/models_pb.js";
@@ -10,24 +11,30 @@ import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
-import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
-import type { KagentConfig } from "../shared/config.js";
+import { WorkflowService } from "../../gen/kagent/api/v1/workflows_pb.js";
 import { rpcMetrics } from "../shared/telemetry.js";
 import { nativeCredentials } from "./context.js";
 
-export function kagentTransport(config: KagentConfig): Transport {
+/** kagent serves A2A 1.0 and treats an A2A call without A2A-Version as 0.3, which it rejects. */
+export const a2aVersion: Interceptor = (next) => (request) => {
+  if (request.service.typeName === A2AService.typeName) request.header.set("a2a-version", "1.0");
+  return next(request);
+};
+
+export function kagentTransport(baseUrl: string): Transport {
   return createGrpcTransport({
-    baseUrl: config.url,
-    interceptors: [rpcMetrics("client"), nativeCredentials],
+    baseUrl,
+    interceptors: [rpcMetrics("client"), nativeCredentials, a2aVersion],
   });
 }
 
 export function kagentClients(transport: Transport) {
   return {
+    authorization: createClient(AuthorizationService, transport),
+    workflows: createClient(WorkflowService, transport),
     catalog: createClient(TaskCatalogService, transport),
     execution: createClient(ExecutionService, transport),
     system: createClient(SystemService, transport),
-    memory: createClient(MemoryService, transport),
     models: createClient(ModelService, transport),
     agents: createClient(AgentService, transport),
     harnesses: createClient(HarnessService, transport),
@@ -39,31 +46,3 @@ export function kagentClients(transport: Transport) {
 }
 
 export type KagentClients = ReturnType<typeof kagentClients>;
-
-/** Visits every page; a repeated token means the upstream cursor is broken. */
-export async function eachPage<T>(
-  fetchPage: (token: string) => Promise<{ items: T[]; token: string }>,
-  visit: (items: T[]) => void,
-): Promise<void> {
-  const seen = new Set<string>();
-  let token = "";
-  do {
-    if (seen.has(token)) throw new Error("Upstream pagination repeated a page token");
-    seen.add(token);
-    const page = await fetchPage(token);
-    visit(page.items);
-    token = page.token;
-  } while (token);
-}
-
-/** Runs at most `size` calls at once and rethrows the first failure after all settle. */
-export async function pool<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
-  const queue = [...items];
-  const results = await Promise.allSettled(
-    Array.from({ length: Math.min(size, queue.length) }, async () => {
-      for (let item = queue.shift(); item !== undefined; item = queue.shift()) await run(item);
-    }),
-  );
-  const failure = results.find((result) => result.status === "rejected");
-  if (failure?.status === "rejected") throw failure.reason;
-}

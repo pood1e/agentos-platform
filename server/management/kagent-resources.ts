@@ -1,77 +1,71 @@
 import type { JsonObject } from "@bufbuild/protobuf";
+import { object } from "../../shared/json.js";
+import { listNativeAgents, listNativeTemplates } from "../kagent/catalog.js";
 import type { KagentClients } from "../kagent/clients.js";
-import { object } from "../read-model/decode/messages.js";
-import { userResource } from "./native.js";
+import { userResource } from "../kagent/resources.js";
 
+interface Native {
+  resource?: { value?: JsonObject };
+}
+type NativeRef = { namespace: string; name: string };
+interface WriteRequest {
+  ref: NativeRef;
+  resource: { apiVersion: string; kind: string; value: JsonObject };
+}
+
+/** kagent-owned kinds go through native RPCs so that its admission and ownership rules apply. */
 export function kagentResources(clients: KagentClients, namespace: string) {
-  const operations = {
-    agents: {
-      read: async (name: string) =>
-        (await clients.agents.getAgent({ ref: { namespace, name } })).agent?.resource?.value,
-      list: async () =>
-        (await clients.agents.listAgents({ namespace })).agents.map(
-          (item) => item.resource?.value ?? {},
-        ),
-      save: async (resource: JsonObject, create: boolean) =>
-        (
-          await clients.agents[create ? "createAgent" : "updateAgent"]({
-            ref: { namespace, name: String(object(resource.metadata).name) },
-            resource: {
-              apiVersion: String(resource.apiVersion),
-              kind: "Agent",
-              value: userResource(resource),
-            },
-          })
-        ).agent?.resource?.value,
-      remove: async (name: string, resourceVersion: string) => {
-        await clients.agents.deleteAgent({ ref: { namespace, name }, resourceVersion });
-      },
+  const operations = <T extends Native>(
+    kind: string,
+    native: {
+      get(ref: NativeRef): Promise<T | undefined>;
+      list(): Promise<T[]>;
+      create(request: WriteRequest): Promise<T | undefined>;
+      update(request: WriteRequest): Promise<T | undefined>;
+      remove(ref: NativeRef, resourceVersion: string): Promise<unknown>;
     },
-    templates: {
-      read: async (name: string) =>
-        (await clients.templates.getAgentTemplate({ ref: { namespace, name } })).agentTemplate
-          ?.resource?.value,
-      list: async () =>
-        (await clients.templates.listAgentTemplates({ namespace })).agentTemplates.map(
-          (item) => item.resource?.value ?? {},
-        ),
-      save: async (resource: JsonObject, create: boolean) =>
-        (
-          await clients.templates[create ? "createAgentTemplate" : "updateAgentTemplate"]({
-            ref: { namespace, name: String(object(resource.metadata).name) },
-            resource: {
-              apiVersion: String(resource.apiVersion),
-              kind: "AgentTemplate",
-              value: userResource(resource),
-            },
-          })
-        ).agentTemplate?.resource?.value,
-      remove: async (name: string, resourceVersion: string) => {
-        await clients.templates.deleteAgentTemplate({ ref: { namespace, name }, resourceVersion });
-      },
+  ) => ({
+    read: async (name: string) => (await native.get({ namespace, name }))?.resource?.value,
+    list: async () => (await native.list()).map((item) => item.resource?.value ?? {}),
+    save: async (resource: JsonObject, create: boolean) => {
+      const request = {
+        ref: { namespace, name: String(object(resource.metadata).name) },
+        resource: {
+          apiVersion: String(resource.apiVersion),
+          kind,
+          value: userResource(resource),
+        },
+      };
+      const saved = await (create ? native.create(request) : native.update(request));
+      return saved?.resource?.value;
     },
-    harnesses: {
-      read: async (name: string) =>
-        (await clients.harnesses.getHarness({ ref: { namespace, name } })).harness?.resource?.value,
-      list: async () =>
-        (await clients.harnesses.listHarnesses({ namespace })).harnesses.map(
-          (item) => item.resource?.value ?? {},
-        ),
-      save: async (resource: JsonObject, create: boolean) =>
-        (
-          await clients.harnesses[create ? "createHarness" : "updateHarness"]({
-            ref: { namespace, name: String(object(resource.metadata).name) },
-            resource: {
-              apiVersion: String(resource.apiVersion),
-              kind: "Harness",
-              value: userResource(resource),
-            },
-          })
-        ).harness?.resource?.value,
-      remove: async (name: string, resourceVersion: string) => {
-        await clients.harnesses.deleteHarness({ ref: { namespace, name }, resourceVersion });
-      },
+    remove: async (name: string, resourceVersion: string) => {
+      await native.remove({ namespace, name }, resourceVersion);
     },
+  });
+  const { agents, templates, harnesses } = clients;
+  const kinds = {
+    agents: operations("Agent", {
+      get: async (ref) => (await agents.getAgent({ ref })).agent,
+      list: () => listNativeAgents(clients, namespace),
+      create: async (request) => (await agents.createAgent(request)).agent,
+      update: async (request) => (await agents.updateAgent(request)).agent,
+      remove: (ref, resourceVersion) => agents.deleteAgent({ ref, resourceVersion }),
+    }),
+    templates: operations("AgentTemplate", {
+      get: async (ref) => (await templates.getAgentTemplate({ ref })).agentTemplate,
+      list: () => listNativeTemplates(clients, namespace),
+      create: async (request) => (await templates.createAgentTemplate(request)).agentTemplate,
+      update: async (request) => (await templates.updateAgentTemplate(request)).agentTemplate,
+      remove: (ref, resourceVersion) => templates.deleteAgentTemplate({ ref, resourceVersion }),
+    }),
+    harnesses: operations("Harness", {
+      get: async (ref) => (await harnesses.getHarness({ ref })).harness,
+      list: async () => (await harnesses.listHarnesses({ namespace })).harnesses,
+      create: async (request) => (await harnesses.createHarness(request)).harness,
+      update: async (request) => (await harnesses.updateHarness(request)).harness,
+      remove: (ref, resourceVersion) => harnesses.deleteHarness({ ref, resourceVersion }),
+    }),
   };
-  return (kind: string) => operations[kind as keyof typeof operations];
+  return (kind: string) => kinds[kind as keyof typeof kinds];
 }

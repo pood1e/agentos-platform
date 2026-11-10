@@ -1,11 +1,18 @@
 import { ThreadPrimitive } from "@assistant-ui/react";
-import { PanelRightClose } from "lucide-react";
+import { create } from "@bufbuild/protobuf";
+import { PanelRightClose, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AuthorizationResourceSchema,
+  Permission,
+} from "../../../gen/kagent/api/v1/authorization_pb.js";
 import { useAccess } from "../../lib/access.js";
+import { useResourceAccess } from "../../lib/authorization.js";
+import { authorizationHref } from "../authorization/resource-location.js";
 import { WorkingAgents } from "../chat/AgentPresence.js";
 import { ConversationRuntime } from "../chat/ConversationRuntime.js";
 import { ConversationTranscript } from "../chat/ConversationTranscript.js";
@@ -17,10 +24,19 @@ const started = () => {};
 export function ExecutionPage() {
   const { agent = "", session = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Closing returns to the list that opened the execution; a direct visit has no such entry.
+  const close = () => void (location.key === "default" ? navigate("/chat") : navigate(-1));
   const { t } = useTranslation();
   const access = useAccess();
-  const ref = { namespace: access.data?.workspace ?? "", name: agent };
+  const ref = { namespace: access.data?.workspace?.namespace ?? "", name: agent };
   const chat = useChat(ref, session, started);
+  const sessionScope = session
+    ? create(AuthorizationResourceSchema, { resource: { case: "sessionId", value: session } })
+    : undefined;
+  const sessionAccess = useResourceAccess(sessionScope);
+  const canViewAccess =
+    sessionAccess.isSuccess && sessionAccess.data?.allowedActions.includes(Permission.ACCESS_READ);
   return (
     <aside
       data-testid="execution-view"
@@ -31,12 +47,15 @@ export function ExecutionPage() {
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {chat.conversation?.title || t("task.execution")}
         </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t("common.close")}
-          onClick={() => void navigate("/chat")}
-        >
+        {canViewAccess && sessionScope && (
+          <Button asChild variant="outline" size="sm">
+            <Link to={authorizationHref(sessionScope)}>
+              <ShieldCheck />
+              {t("authorization.title")}
+            </Link>
+          </Button>
+        )}
+        <Button variant="ghost" size="icon-sm" aria-label={t("common.close")} onClick={close}>
           <PanelRightClose />
         </Button>
       </div>

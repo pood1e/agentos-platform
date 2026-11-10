@@ -12,7 +12,6 @@
 | `agentos-agents-manage` | Agent、工具 / Skill 绑定、运行配置与角色起草 |
 | `agentos-skills-manage` | 共享 Skill 目录 |
 | `agentos-mcp-manage` | MCP 连接与凭据 |
-| `agentos-knowledge-manage` | 团队知识写入与清理 |
 | `agentos-models-manage` | 模型连接与凭据 |
 | `agentos-harnesses-manage` | Harness 配置 |
 
@@ -35,19 +34,18 @@ kagent 创建 Session 时固定发起人、Agent、父 / 根关系和权限上�
 | Actor TaskStore / Memory / 原生协作 MCP | Substrate Actor JWT，受众 `kagent-runtime`；原生服务核对 Actor、Session 与执行范围 |
 | Actor 模型 / 业务 MCP | `x-substrate-actor-token` 中目标 HTTP(S) origin 的 Actor JWT；网关验证 JWKS 后向 kagent 查询当前权限与 Session 固定 revision 的目标 |
 | 工具目录发现 | `RemoteMCPServer.spec.discoveryAuth` 的 OAuth2 client credentials 或短期 ServiceAccount TokenRequest；权限限定元数据 |
-| 团队知识嵌入 | kagent 服务端调用指定嵌入 ModelConfig；网关核对原生控制器主体、模型与 `/v1/embeddings` |
 | 外部自动化 | 受限机器 OIDC 身份直接调用原生 A2A；由原生 ResourceScopeRule 约束资源类型与操作 |
 | 语音 worker | API 私有签名的 LiveKit metadata 携带原生短期 Session 凭据；每次操作复验原生授权 |
 
 agentgateway 通过 `runtime.actorJWKS` 直接读取 Substrate HTTPS JWKS，校验 CA 与 SAN；`runtime.actorIssuer` 与原生签发方一致。
 kagent 的 `gatewayAudiences` 登记实际模型和 MCP HTTP(S) origins，包含环境服务独立入口；原生运行时受众与网关受众分别校验。
 
-模型授权限定当前 Session revision 中的 ModelConfig；MCP 授权同时满足静态工具分级与 revision 的已选工具。原生 `/authorize/runtime` 回调逐次查询，返回 `no-store`。
+模型授权限定当前 Session revision 中的 ModelConfig；MCP 授权同时满足静态工具分级与 revision 的已选工具。原生 `/authorize/runtime` 回调逐次查询，返回 `no-store`。授权结果放在 `X-Kagent-Selection` 响应头（MCP Apps 为 `x-agentos-selection`），extAuth 元数据只读响应头，代理的流式响应按原样逐帧转发。
 业务 MCP 的独立路由按目标 origin 校验 Actor JWT 受众，并执行各自的原生授权回调；共享网关仅校验签发方与 Actor 身份。
 环境凭据出口将当前发起人的 IdP access token 作为 RFC 8693 `subject_token`，agentgateway 再交换目标资源令牌；Actor JWT 保持来源证明，目标服务只收到目标凭据。
 
 ## 数据归属
 
 Session、任务、消息、历史与订阅的归属由 kagent 授权过滤。平台 read model 仅投影已经授权的原生结果；浏览器缓存按工作空间与主体分区。
-智能体活动、工作记录与业务指标共享个人或系统执行范围。管理员通过 `system_only` 查询当前工作空间内其他发起人的已授权执行；个人范围维持当前主体的会话归属。分页游标同时绑定主体、智能体、状态和执行范围。
-私人记忆由原生执行身份限定，团队知识使用明确的 `teamNamespace`。会话列表可按原生根 Session 限定；语音凭据仅访问绑定 Session 与对应 Agent。
+智能体活动、工作记录与业务指标共享个人或系统执行范围。管理员通过 `system_only` 查询当前工作空间内其他发起人的已授权执行，控制台的任务历史、智能体团队与工作流执行历史提供「我的 / 系统」切换；个人范围维持当前主体的会话归属。分页游标同时绑定主体、智能体、状态和执行范围。
+Agent 记忆按 Agent 与发起人限定。会话列表可按原生根 Session 限定；语音凭据仅访问绑定 Session 与对应 Agent。

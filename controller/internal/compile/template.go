@@ -25,14 +25,14 @@ func Template(object *unstructured.Unstructured, plans []platform.AccessPlan) er
 			return fmt.Errorf("access plan %s is not ready", plan.Name)
 		}
 		for _, target := range plan.Status.Targets {
-			if target.Engineer != object.GetName() || target.Environment == "" {
+			if target.Identity != object.GetName() || target.Environment == "" {
 				continue
 			}
 			for _, tool := range target.Tools {
 				key := fmt.Sprintf("%s:%t", target.Server, tool.RequireApproval)
 				binding := groups[key]
 				if binding == nil {
-					binding = &kagent.MCPToolBinding{Server: core.TypedLocalObjectReference{Kind: "RemoteMCPServer", Name: target.Server}, RequireApproval: tool.RequireApproval}
+					binding = &kagent.MCPToolBinding{Server: core.TypedObjectReference{Kind: "RemoteMCPServer", Name: target.Server}, RequireApproval: tool.RequireApproval}
 					groups[key] = binding
 				}
 				name := target.Service + "_" + tool.Name

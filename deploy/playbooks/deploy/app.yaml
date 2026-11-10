@@ -1,0 +1,72 @@
+- name: Install application release
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  environment:
+    HELM_PLUGINS: "{{ agentos_cache }}/helm-plugins"
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    site_application_name: "{{ app_release_name[:44] | regex_replace('-$', '') }}"
+    voice_configuration: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('voice', {}) }}"
+  module_defaults:
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+    kubernetes.core.k8s_info:
+      kubeconfig: "{{ kubeconfig_path }}"
+  tasks:
+    - name: Prepare image pull credentials
+      ansible.builtin.include_tasks: registry.yaml
+
+    - name: Configure identity credentials
+      ansible.builtin.include_tasks: tasks/identity-credentials.yaml
+
+    - name: Discover model credentials
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: model-credentials
+        namespace: "{{ agentos_namespace }}"
+      register: application_model_credentials
+      no_log: true
+
+    - name: Require model credentials
+      ansible.builtin.assert:
+        that: application_model_credentials.resources | length > 0 or ansible_check_mode
+      no_log: true
+
+    - name: Provision browser session credentials
+      ansible.builtin.include_tasks: tasks/site-credentials.yaml
+
+    - name: Provision API voice session signing key
+      ansible.builtin.import_tasks: tasks/voice-session-key.yaml
+      when: voice_configuration.get('enabled', false) | bool
+
+    - name: Publish native runtime trust
+      ansible.builtin.include_tasks: tasks/runtime-trust.yaml
+
+    - name: Write application Helm values
+      ansible.builtin.copy:
+        content: >-
+          {{ app_values | to_nice_json }}
+        dest: "{{ agentos_cache }}/application-values.json"
+        mode: "0600"
+      no_log: true
+
+    - name: Deploy verified application chart
+      ansible.builtin.include_tasks: tasks/install-chart.yaml
+      vars:
+        delivery_chart: "{{ app_chart_repository }}/{{ app_chart }}"
+        delivery_release: "{{ app_release_name }}"
+        delivery_namespace: "{{ agentos_namespace }}"
+        delivery_values_file: "{{ agentos_cache }}/application-values.json"
+        delivery_chart_version: "{{ app_chart_version }}"
+        delivery_chart_revision: "{{ app_chart_revision }}"
+        delivery_chart_public_key: "{{ app_chart_public_key }}"
+        delivery_kubeconfig: "{{ kubeconfig_path }}"
+        delivery_timeout: 20m
+
+    - name: Publish authenticated native execution endpoints
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('ansible.builtin.template', 'templates/runtime-ingress.yaml.j2') | from_yaml_all | list }}"

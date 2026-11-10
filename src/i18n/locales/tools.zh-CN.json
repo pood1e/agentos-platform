@@ -1,16 +1,12 @@
 {
   "catalog": {
     "list_agents": {
-      "name": "发现可用工程师",
-      "description": "查询工程师的职责、能力与就绪状态。"
+      "name": "发现可用智能体",
+      "description": "查询工作空间中可见的智能体。"
     },
-    "create_session": {
-      "name": "创建协作会话",
-      "description": "为选定工程师创建独立的任务会话。"
-    },
-    "invoke_session": {
+    "invoke_agent": {
       "name": "委派任务",
-      "description": "将目标交给指定会话，等待结果或在后台执行。"
+      "description": "为智能体创建会话或继续已有会话，并等待结果。"
     },
     "list_sessions": {
       "name": "查看协作会话",
@@ -21,12 +17,12 @@
       "description": "查询工作空间中的 MCP 服务和可用工具。"
     },
     "prepare_role": {
-      "name": "生成工程师配置草稿",
+      "name": "生成指令型智能体草稿",
       "description": "校验提示词、技能和工具绑定，返回可编辑草稿。"
     },
     "transfer_to_agent": {
-      "name": "移交给协作工程师",
-      "description": "将当前工作移交给另一位工程师。"
+      "name": "移交给其他智能体",
+      "description": "将当前工作移交给另一智能体。"
     },
     "list_sandbox_templates": {
       "name": "查看工作空间模板",
@@ -102,7 +98,7 @@
     },
     "list_skills": {
       "name": "查看可用技能",
-      "description": "列出工程师已绑定的技能及适用范围。"
+      "description": "列出智能体已绑定的技能及适用范围。"
     },
     "load_skill": {
       "name": "加载技能",
@@ -122,31 +118,27 @@
     },
     "read_file": {
       "name": "读取工作文件",
-      "description": "读取工程师工作区中的文件内容。"
+      "description": "读取智能体工作区中的文件内容。"
     },
     "write_file": {
       "name": "写入工作文件",
-      "description": "在工程师工作区创建或写入文件。"
+      "description": "在智能体工作区创建或写入文件。"
     },
     "edit_file": {
       "name": "编辑工作文件",
-      "description": "替换工程师工作区文件中的指定内容。"
+      "description": "替换智能体工作区文件中的指定内容。"
     },
     "bash": {
       "name": "执行工作区命令",
-      "description": "在工程师工作区运行技能脚本或命令。"
+      "description": "在智能体工作区运行技能脚本或命令。"
     },
     "list_files": {
       "name": "浏览工作文件",
-      "description": "列出工程师工作区或技能目录中的文件。"
+      "description": "列出智能体工作区或技能目录中的文件。"
     },
     "grep_file": {
       "name": "搜索工作文件",
-      "description": "搜索工程师工作区或技能目录中的文件内容。"
-    },
-    "search_memory": {
-      "name": "检索团队知识",
-      "description": "直接检索团队共享的历史经验，核对适用条件和来源。"
+      "description": "搜索智能体工作区或技能目录中的文件内容。"
     }
   },
   "servers": {
