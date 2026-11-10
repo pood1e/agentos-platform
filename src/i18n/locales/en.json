@@ -1,7 +1,8 @@
 {
   "access": {
     "readOnly": "This conversation is read-only. Start a new chat to query with an Agent.",
-    "readOnlyTools": "Agents can query and analyze. Write operations require permission."
+    "readOnlyTools": "Agents can query and analyze. Write operations require permission.",
+    "denied": "You do not have permission for this action. Ask a workspace access administrator to grant a role under Resource access."
   },
   "navigation": {
     "home": "AgentOS home",
