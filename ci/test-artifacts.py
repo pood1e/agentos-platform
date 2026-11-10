@@ -20,6 +20,34 @@ from artifacts import replace_images
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def commit_source(root, *files):
+    """Commit a release source tree and return the revision development versions count from."""
+    for name in ("package.json", ".github/.release-please-manifest.json", *files):
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, root / name)
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.test",
+            "commit",
+            "-qm",
+            "baseline",
+        ],
+        cwd=root,
+        check=True,
+    )
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    (root / ".github/release-please-config.json").write_text(
+        json.dumps({"bootstrap-sha": revision})
+    )
+    return revision
+
+
 class SourceTest(unittest.TestCase):
     def test_missing_current_source_image_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Missing current-source"):
@@ -34,6 +62,60 @@ class SourceTest(unittest.TestCase):
             ),
             {"spec": {"containers": [{"image": image}]}},
         )
+
+
+class CollectionTest(unittest.TestCase):
+    def test_collection_carries_its_source_release_and_repackages_identically(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("ci", "deploy"):
+                shutil.copytree(
+                    ROOT / name,
+                    root / name,
+                    ignore=shutil.ignore_patterns(".ansible", ".cache", "__pycache__"),
+                )
+            revision = commit_source(root, "LICENSE", "charts/agentos/values.yaml")
+            env = {
+                **os.environ,
+                "CI_REGISTRY_IMAGE": "registry.example.com/agentos",
+                "CI_COMMIT_SHA": revision,
+                "CI_COMMIT_TAG": "",
+            }
+            digests = set()
+            for _ in range(2):
+                result = subprocess.run(
+                    [sys.executable, "ci/package-collection.py"],
+                    cwd=root,
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                (archive,) = (root / "dist").glob("agentos-platform-*.tar.gz")
+                digests.add(hashlib.sha256(archive.read_bytes()).hexdigest())
+            self.assertEqual(len(digests), 1)
+            with tarfile.open(archive) as collection:
+                version = json.load(collection.extractfile("MANIFEST.json"))["collection_info"][
+                    "version"
+                ]
+                self.assertEqual(archive.name, f"agentos-platform-{version}.tar.gz")
+                self.assertFalse([n for n in collection.getnames() if n.startswith("tests/")])
+                for name, source in (
+                    ("playbooks/deploy/files/cosign.pub", "ci/cosign.pub"),
+                    ("playbooks/charts/agentos/values.yaml", "charts/agentos/values.yaml"),
+                ):
+                    self.assertEqual(
+                        collection.extractfile(name).read(), (ROOT / source).read_bytes()
+                    )
+                for name in ("deploy", "environments"):
+                    variables = yaml.safe_load(
+                        collection.extractfile(f"playbooks/{name}/vars.yaml")
+                    )
+                    self.assertEqual(variables["delivery_version"], version)
+                    self.assertEqual(variables["delivery_revision"], revision)
+                    self.assertEqual(
+                        variables["agentos_image_registry"], "registry.example.com/agentos"
+                    )
 
 
 class OCITest(unittest.TestCase):
@@ -172,31 +254,7 @@ class OCITest(unittest.TestCase):
             shutil.copytree(
                 ROOT / "controller/config/crd/bases", root / "controller/config/crd/bases"
             )
-            (root / ".github").mkdir()
-            for name in ("package.json", ".github/.release-please-manifest.json"):
-                shutil.copyfile(ROOT / name, root / name)
-            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-            subprocess.run(["git", "add", "."], cwd=root, check=True)
-            subprocess.run(
-                [
-                    "git",
-                    "-c",
-                    "user.name=Test",
-                    "-c",
-                    "user.email=test@example.test",
-                    "commit",
-                    "-qm",
-                    "baseline",
-                ],
-                cwd=root,
-                check=True,
-            )
-            revision = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=root, text=True
-            ).strip()
-            (root / ".github/release-please-config.json").write_text(
-                json.dumps({"bootstrap-sha": revision})
-            )
+            revision = commit_source(root)
             (root / ".cache").mkdir()
             with tarfile.open(root / "layer.tar", "w"):
                 pass

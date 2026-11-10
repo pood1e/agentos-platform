@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.paths.outputs.code }}
+      collection: ${{ steps.paths.outputs.collection }}
       controller: ${{ steps.paths.outputs.controller }}
       runtime: ${{ steps.paths.outputs.runtime }}
       voice: ${{ steps.paths.outputs.voice }}
@@ -40,6 +41,9 @@ jobs:
               - '**'
               - '!**/*.md'
               - '!LICENSE'
+            collection:
+              - '{deploy/**,ci/{check-collection.sh,collection-dependencies.yaml,collection-requirements.txt,python-requirements.txt},mise.toml,mise.lock,.github/workflows/verify.yaml}'
+              - '!**/*.md'
             controller:
               - '{controller/**,ci/{generate-controller.sh,chart-schemas.py,requirements.txt},mise.toml,mise.lock,.github/workflows/verify.yaml}'
               - '!**/*.md'
@@ -100,7 +104,7 @@ jobs:
             platform-go-${{ runner.os }}-${{ hashFiles('mise.lock', 'controller/go.mod', 'controller/go.sum', 'ci/generate-controller.sh') }}-
       - run: |
           uv venv .cache/venv
-          uv pip install --python .cache/venv/bin/python -r ci/python-requirements.txt -r contracts/requirements.txt
+          uv pip install --python .cache/venv/bin/python -r ci/python-requirements.txt -r ci/collection-requirements.txt -r contracts/requirements.txt
           echo "$PWD/.cache/venv/bin" >> "$GITHUB_PATH"
       - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
@@ -121,6 +125,28 @@ jobs:
           name: python-contracts
           path: dist/contracts/*.whl
           retention-days: 1
+  collection:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.collection == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.18
+          install_args: python uv helm conftest kustomize
+      - run: |
+          uv venv .cache/venv
+          uv pip install --python .cache/venv/bin/python -r ci/python-requirements.txt -r ci/collection-requirements.txt
+          echo "$PWD/.cache/venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        id: collections
+        with:
+          path: deploy/.cache/collections
+          key: collections-${{ runner.os }}-${{ hashFiles('ci/collection-dependencies.yaml') }}
+      - run: ansible-galaxy collection install -r ci/collection-dependencies.yaml -p deploy/.cache/collections
+        if: steps.collections.outputs.cache-hit != 'true'
+      - run: ci/check-collection.sh
   controller:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.controller == 'true'
@@ -186,7 +212,7 @@ jobs:
   required:
     name: Required checks
     if: always()
-    needs: [changes, application, deployment, controller, voice, runtime]
+    needs: [changes, application, deployment, collection, controller, voice, runtime]
     runs-on: ubuntu-24.04
     env:
       RESULTS: ${{ toJSON(needs.*.result) }}

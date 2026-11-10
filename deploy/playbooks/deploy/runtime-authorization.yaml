@@ -1,0 +1,70 @@
+- name: Prepare native Substrate operator identity
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata: {name: agentos-substrate-operator, namespace: ate-system}
+      automountServiceAccountToken: false
+
+- name: Admit platform services to the native Substrate API
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata: {name: agentos-platform-api, namespace: ate-system}
+      spec:
+        podSelector:
+          matchLabels: {app: ate-api-server}
+        policyTypes: [Ingress]
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: "{{ agentos_namespace }}"
+                podSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values: [dataplane, controller]
+            ports: [{port: 443, protocol: TCP}]
+
+- name: Allow native invocation credential verification
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata: {name: "{{ agentos_namespace }}-kagent-invocation"}
+        rules:
+          - apiGroups: [authentication.k8s.io]
+            resources: [tokenreviews]
+            verbs: [create]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata: {name: "{{ agentos_namespace }}-kagent-invocation"}
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: "{{ agentos_namespace }}-kagent-invocation"
+        subjects:
+          - kind: ServiceAccount
+            name: kagent-controller
+            namespace: "{{ agentos_namespace }}"
+
+- name: Publish Kubernetes identity verification keys
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata: {name: "{{ agentos_namespace }}-gateway-identity-discovery"}
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:service-account-issuer-discovery
+      subjects:
+        - kind: Group
+          apiGroup: rbac.authorization.k8s.io
+          name: system:unauthenticated

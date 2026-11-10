@@ -1,0 +1,28 @@
+namespace: agentos
+name: platform
+version: 0.51.8
+readme: README.md
+authors:
+  - AgentOS
+description: AgentOS reference deployment
+license:
+  - Apache-2.0
+tags:
+  - infrastructure
+  - kubernetes
+repository: https://github.com/pood1e/agentos-platform
+issues: https://github.com/pood1e/agentos-platform/issues
+dependencies:
+  kubernetes.core: '==6.6.0'
+  ansible.posix: '==2.2.2'
+  community.library_inventory_filtering_v1: '==1.1.5'
+  community.general: '==13.4.0'
+  community.crypto: '==3.5.0'
+manifest:
+  omit_default_directives: true
+  directives:
+    - include LICENSE README.md requirements.txt meta/runtime.yml
+    - recursive-include docs *
+    - recursive-include playbooks *
+    - recursive-include roles *
+    - global-exclude __pycache__ *.py[cod]

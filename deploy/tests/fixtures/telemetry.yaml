@@ -1,0 +1,12 @@
+traces:
+  endpoint: http://collector.telemetry.svc.cluster.local:4317
+  protocol: grpc
+  timeout: 5s
+metrics:
+  endpoint: http://collector.telemetry.svc.cluster.local:4318/v1/metrics
+  protocol: http/protobuf
+logs:
+  endpoint: http://collector.telemetry.svc.cluster.local:4318/v1/logs
+  protocol: http/protobuf
+resourceAttributes:
+  deployment.environment.name: test

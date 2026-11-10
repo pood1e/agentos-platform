@@ -1,0 +1,146 @@
+- name: Provision OpenFGA
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: [vars.yaml]
+  environment:
+    HELM_PLUGINS: "{{ agentos_cache }}/helm-plugins"
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  module_defaults:
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+    kubernetes.core.k8s_info:
+      kubeconfig: "{{ kubeconfig_path }}"
+    kubernetes.core.k8s_log:
+      kubeconfig: "{{ kubeconfig_path }}"
+  tasks:
+    - name: Issue internal OpenFGA CA
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          - apiVersion: cert-manager.io/v1
+            kind: Issuer
+            metadata: {name: openfga-self-signed, namespace: "{{ agentos_namespace }}"}
+            spec: {selfSigned: {}}
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata: {name: openfga-ca, namespace: "{{ agentos_namespace }}"}
+            spec:
+              isCA: true
+              commonName: openfga-ca
+              secretName: openfga-ca
+              issuerRef: {name: openfga-self-signed, kind: Issuer}
+
+    - name: Wait for internal OpenFGA CA
+      kubernetes.core.k8s_info:
+        api_version: cert-manager.io/v1
+        kind: Certificate
+        name: openfga-ca
+        namespace: "{{ agentos_namespace }}"
+        wait: true
+        wait_condition: {type: Ready, status: "True"}
+        wait_timeout: 300
+
+    - name: Issue OpenFGA service certificate
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          - apiVersion: cert-manager.io/v1
+            kind: Issuer
+            metadata: {name: openfga-ca, namespace: "{{ agentos_namespace }}"}
+            spec: {ca: {secretName: openfga-ca}}
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata: {name: openfga-tls, namespace: "{{ agentos_namespace }}"}
+            spec:
+              secretName: openfga-tls
+              issuerRef: {name: openfga-ca, kind: Issuer}
+              dnsNames:
+                - "openfga.{{ agentos_namespace }}.svc"
+                - "openfga.{{ agentos_namespace }}.svc.cluster.local"
+
+    - name: Wait for OpenFGA service certificate
+      kubernetes.core.k8s_info:
+        api_version: cert-manager.io/v1
+        kind: Certificate
+        name: openfga-tls
+        namespace: "{{ agentos_namespace }}"
+        wait: true
+        wait_condition: {type: Ready, status: "True"}
+        wait_timeout: 300
+
+    - name: Discover OpenFGA API credential
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: openfga-auth
+        namespace: "{{ agentos_namespace }}"
+      register: openfga_auth
+      no_log: true
+
+    - name: Create OpenFGA API credential
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata: {name: openfga-auth, namespace: "{{ agentos_namespace }}"}
+          type: Opaque
+          data:
+            keys: "{{ lookup('password', playbook_dir + '/../.cache/openfga-api-key', length=48, chars=['ascii_letters', 'digits']) | b64encode }}"
+      when: openfga_auth.resources | length == 0
+      no_log: true
+
+    - name: Cache verified OpenFGA chart
+      ansible.builtin.include_tasks: tasks/openfga-chart.yaml
+
+    - name: Read PostgreSQL trust configuration
+      kubernetes.core.k8s_info:
+        api_version: postgresql.cnpg.io/v1
+        kind: Cluster
+        name: openfga-postgres
+        namespace: "{{ agentos_namespace }}"
+      register: openfga_postgres_cluster
+
+    - name: Require PostgreSQL server CA
+      ansible.builtin.assert:
+        that: openfga_postgres_cluster.resources[0].status.certificates.serverCASecret | default('') | length > 0
+
+    - name: Select PostgreSQL server CA
+      ansible.builtin.set_fact:
+        openfga_postgres_ca_secret: "{{ openfga_postgres_cluster.resources[0].status.certificates.serverCASecret }}"
+
+    - name: Restrict OpenFGA API ingress
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata: {name: openfga-api, namespace: "{{ agentos_namespace }}"}
+          spec:
+            podSelector:
+              matchLabels: {app.kubernetes.io/name: openfga, app.kubernetes.io/instance: openfga}
+            policyTypes: [Ingress]
+            ingress:
+              - from:
+                  - podSelector:
+                      matchLabels: {app.kubernetes.io/name: kagent, app.kubernetes.io/component: controller}
+                  - podSelector:
+                      matchLabels: {app.kubernetes.io/name: openfga-bootstrap}
+                ports: [{port: 8080, protocol: TCP}]
+
+    - name: Install OpenFGA
+      kubernetes.core.helm:
+        name: openfga
+        binary_path: "{{ helm_binary }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+        chart_ref: "{{ agentos_cache }}/runtime/openfga-{{ openfga_chart_version }}.tgz"
+        release_namespace: "{{ agentos_namespace }}"
+        release_values: "{{ lookup('template', 'values/openfga.yaml.j2') | from_yaml }}"
+        reset_values: true
+        wait: true
+        timeout: 10m
+
+    - name: Bootstrap native authorization
+      ansible.builtin.include_tasks: tasks/openfga-bootstrap.yaml

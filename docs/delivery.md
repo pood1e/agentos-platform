@@ -1,6 +1,6 @@
 # 构建、发布与 Chart 配置
 
-平台发布 Chart、镜像与契约；参考部署由 [agentos-deploy](https://github.com/pood1e/agentos-deploy) 固定平台版本后签名发布，安装步骤与站点变量见该仓库。
+平台发布 Chart、镜像、契约与参考部署 collection，安装步骤与站点变量见[参考部署](../deploy/README.md)。
 工具版本由 [mise.toml](../mise.toml) / [mise.lock](../mise.lock) 固定，Harness 默认镜像由 kagent fork 发布并在 Chart 值中按摘要固定。
 
 ## 路由与身份
@@ -123,7 +123,7 @@ kagent 使用原生 `TelemetryConfig`，Collector 与遥测存储由站点提供
 
 ## 构建与发布
 
-[GitHub Verify](../.github/workflows/verify.yaml) 提供合并门禁，`Required checks` 汇总结果；文档变更跳过代码检查，运行时和语音按变更范围验证，手动运行执行全量校验。
+[GitHub Verify](../.github/workflows/verify.yaml) 提供合并门禁，`Required checks` 汇总结果；文档变更跳过代码检查，运行时、语音与参考部署按变更范围验证，手动运行执行全量校验。
 [GitLab CI](../.gitlab-ci.yml) 构建、打包和发布制品：
 
 | 作业 | 范围 |
@@ -132,7 +132,7 @@ kagent 使用原生 `TelemetryConfig`，Collector 与遥测存储由站点提供
 | `deployment-check` | Helm 单测与渲染、Conftest、kubeconform、制品验签 |
 | `platform-controller-verify` | 平台控制器 race、真实 API Server 回归与 vet |
 | `build-*`、`voice-verify` | Docker Buildx 镜像、Node / Python 契约与按范围触发的语音验证 |
-| `package-check`、`release` | 校验源码提交，打包四个 Chart，发布并签名不可变摘要 |
+| `package-check`、`release` | 校验源码提交，打包四个 Chart 与参考部署 collection，发布并签名不可变摘要 |
 
 release-please 依据 Conventional Commits 维护版本 PR、变更记录和 tag，发布 PR 使用同一合并门禁。
 GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `source-sync` 环境的文件变量 `AGENTOS_SOURCE_MIRROR_KEY` / `AGENTOS_SOURCE_MIRROR_HOST_KEYS`。
@@ -142,9 +142,10 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 | --- | --- |
 | 镜像 | `$CI_REGISTRY_IMAGE[/组件]@sha256:…`，OCI `org.opencontainers.image.revision` |
 | Chart | `oci://$CI_REGISTRY_IMAGE/charts/{agentos,agentos-controller,agentos-environment,agentos-connections}`，annotation 记录 revision |
+| 参考部署 collection | `$CI_REGISTRY_IMAGE/collections/platform:<版本>`，ORAS annotation 记录 version 与 revision |
 | Node / Python 契约 | 项目 npm / PyPI 注册表，分别用 `gitHead` / wheel `Project-URL: Source` 记录源码；包含角色目录 `authorization.json` |
 
-所有平台镜像从同一提交构建。打包替换镜像摘要并携带精确 `Chart.lock`，发布任务串行校验版本冲突，以 cosign 签名镜像与 Chart，公钥为 [`ci/cosign.pub`](../ci/cosign.pub)。
+所有平台镜像从同一提交构建。打包替换镜像摘要并携带精确 `Chart.lock`；collection 写入同一提交的版本、镜像注册表、平台 Chart 默认值与公钥。发布任务串行校验版本冲突，以 cosign 签名镜像、Chart 与 collection，公钥为 [`ci/cosign.pub`](../ci/cosign.pub)。
 部署方校验摘要及签名中的 `version` / `revision`，Chart 渲染后复验平台镜像。编译、测试与打包作业运行在 shell runner，工具链由 `mise.lock` 锁定，入口为 [`ci/toolchain.sh`](../ci/toolchain.sh)；镜像构建与语音验证运行在 Docker runner，使用 Docker Buildx 与注册表构建缓存。
 
 | CI 变量 | 内容 |
@@ -156,4 +157,4 @@ GitLab `GitHub source sync` 定时快进同步 main 与 tag，使用限定 `sour
 契约包包含 proto、生成绑定、schema 与角色目录。Node 导出路径为 `gen/*`、`gen/schema/*`、`proto/*`、`third_party/*` 和 `authorization.json`，运行时依赖为官方 Protobuf 库。消费者通过 Kubernetes 官方客户端读取 `AccessPlan.status.targets` 的工具决策，同时校验 status 和 `Ready=True` condition 的 `observedGeneration` 与资源代际一致。
 
 契约通过标准包管理器消费：npm 配置项目 scope 注册表与原生令牌，Python 使用项目 PyPI 索引；锁文件固定版本和完整性。
-Chart 与交付校验入口为 `ci/check-charts.sh` 和 `ci/test-artifacts.py`，真实组件验证见 [tests/proofs](../tests/proofs/README.md)。
+Chart 与交付校验入口为 `ci/check-charts.sh` 和 `ci/test-artifacts.py`，参考部署校验入口为 `ci/check-collection.sh`，真实组件验证见 [tests/proofs](../tests/proofs/README.md)。

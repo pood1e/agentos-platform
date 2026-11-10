@@ -10,6 +10,7 @@ gen/
 .env.*
 !.env.example
 .cache/
+.ansible/
 .npm/
 charts/*/charts/
 charts/*/Chart.lock

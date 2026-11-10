@@ -11,6 +11,12 @@ variables:
   tags: [$AGENTOS_CI_RUNNER]
   before_script: [source ci/toolchain.sh]
 
+.agentos-collection:
+  extends: .agentos-ci
+  before_script:
+    - source ci/toolchain.sh
+    - uv pip install --quiet --python .cache/venv/bin/python -r ci/collection-requirements.txt
+
 .agentos-node:
   extends: .agentos-ci
   before_script:

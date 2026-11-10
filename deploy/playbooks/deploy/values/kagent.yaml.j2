@@ -1,0 +1,117 @@
+{% set execution_credentials = {
+  'encryptionKeyFile': '/etc/kagent/execution/key',
+  'oauth': {
+    'tokenEndpoint': oidc_discovery.json.token_endpoint,
+    'clientId': site_identity.clientId,
+    'clientSecretFile': '/etc/kagent/identity/client-secret'
+  }
+} -%}
+{% set identity_ca = site_identity.get('caCertificateRef') -%}
+{% if identity_ca -%}
+{% set unused = execution_credentials.oauth.update({'caFile': '/etc/kagent/identity-ca/ca.crt'}) -%}
+{% endif -%}
+global:
+  watchNamespaces: {{ site_workspace_namespaces | to_json }}
+providers: null
+rbac:
+  discoveryServiceAccountTokens: true
+database:
+  postgres:
+    readWriteConnectionStringSecretRef: {name: kagent-postgres, key: connectionString}
+    ownerConnectionStringSecretRef: {name: kagent-postgres, key: connectionString}
+config:
+  server:
+    auth:
+      mode: oidc
+      oidc:
+        issuer: {{ site_identity.issuer | to_json }}
+        audience: {{ site_identity.audience | to_json }}
+{% if identity_ca %}
+        caFile: /etc/kagent/identity-ca/ca.crt
+{% endif %}
+      serviceAccount: {authority: kubernetes}
+  executionAuthorization:
+{{ kagent_execution_authorization | combine(execution_credentials) | to_nice_yaml(indent=2) | indent(4, true) }}
+{% if kagent_authorization | length %}
+  authorization:
+{{ kagent_authorization | combine({'apiTokenFile': '/etc/kagent/authorization/token', 'caFile': '/etc/kagent/authorization-ca/ca.crt'}) | to_nice_yaml(indent=2) | indent(4, true) }}
+{% endif %}
+  harnessImages:
+    release: "{{ kagent_runtime_version }}"
+    kagent: "{{ harness_defaults.standard.workload.image }}"
+    claude: "{{ harness_defaults.claude.workload.image }}"
+    codex: "{{ harness_defaults.codex.workload.image }}"
+  database:
+    owner: {role: kagent_owner}
+    readWrite: {role: kagent_owner}
+    pool: {maxConns: {{ kagent_postgres_pool_max_conns }}}
+    vectorEnabled: true
+  sandboxes:
+    guestImage: ghcr.io/kagent-dev/kagent/sandbox-guest@sha256:a908c0ff2378fff97a3ca7e2a4441484bae96d073c0958c98afeb197e24901db
+    cpu: "1"
+    memory: 1Gi
+    defaultTtl: 3600s
+    maxTtl: 86400s
+  runtimeDefaults:
+    gatewayUrl: {{ ('https://' ~ site_platform_values.route.hosts.api) | to_json }}
+    telemetry: &telemetry
+{{ {'captureContent': false, 'captureRawApiBodies': false} | combine(kagent_telemetry, recursive=true) | to_nice_yaml(indent=2) | indent(6, true) }}
+    controlPlaneUrl: "http://kagent-controller.{{ agentos_namespace }}.svc.cluster.local:8083"
+  telemetry: *telemetry
+controller:
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 65532
+    seccompProfile: {type: RuntimeDefault}
+  volumes:
+{% if identity_ca %}
+    - name: identity-ca
+      configMap:
+        name: {{ identity_ca.name | to_json }}
+        items: [{key: {{ identity_ca.key | to_json }}, path: ca.crt}]
+{% endif %}
+    - name: execution-credentials
+      secret: {secretName: kagent-execution-credentials, defaultMode: 0440}
+{% if kagent_authorization | length %}
+    - name: authorization-api
+      secret:
+        secretName: {{ kagent_authorization_api_token_secret.name | to_json }}
+        defaultMode: 0440
+        items: [{key: {{ kagent_authorization_api_token_secret.key | to_json }}, path: token}]
+    - name: authorization-ca
+      secret:
+        secretName: {{ kagent_authorization_ca_secret.name | to_json }}
+        items: [{key: {{ kagent_authorization_ca_secret.key | to_json }}, path: ca.crt}]
+{% endif %}
+    - name: identity-client
+      secret:
+        secretName: {{ site_identity_secret | to_json }}
+        defaultMode: 0440
+        items: [{key: client-secret, path: client-secret}]
+  volumeMounts:
+{% if identity_ca %}
+    - {name: identity-ca, mountPath: /etc/kagent/identity-ca, readOnly: true}
+{% endif %}
+    - {name: execution-credentials, mountPath: /etc/kagent/execution, readOnly: true}
+{% if kagent_authorization | length %}
+    - {name: authorization-api, mountPath: /etc/kagent/authorization, readOnly: true}
+    - {name: authorization-ca, mountPath: /etc/kagent/authorization-ca, readOnly: true}
+{% endif %}
+    - {name: identity-client, mountPath: /etc/kagent/identity, readOnly: true}
+  imagePullSecrets: [{name: agentos-registry}]
+  substrateClientCertificate:
+    enabled: true
+substrateWorkerPool:
+  create: true
+  replicas: 3
+  sandboxClass: microvm
+  workerImage: "{{ substrate_microvm_image }}"
+  serviceAccount: {create: false, name: kagent-workers}
+  template:
+    nodeSelector:
+      ate.dev/substrate-version: "v{{ substrate_version }}"
+    resources: {{ substrate_worker_resources | to_json }}
+ui:
+  enabled: false
+kagent-tools:
+  enabled: false

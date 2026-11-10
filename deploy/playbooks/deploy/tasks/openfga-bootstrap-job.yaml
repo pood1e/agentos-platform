@@ -1,0 +1,26 @@
+- name: Remove previous bootstrap job
+  kubernetes.core.k8s:
+    state: absent
+    api_version: batch/v1
+    kind: Job
+    name: openfga-bootstrap
+    namespace: "{{ agentos_namespace }}"
+    wait: true
+
+- name: Run OpenFGA bootstrap command
+  kubernetes.core.k8s:
+    state: present
+    wait: true
+    wait_condition: {type: Complete, status: "True"}
+    wait_timeout: 600
+    definition: "{{ lookup('template', 'templates/openfga-bootstrap-job.yaml.j2') | from_yaml }}"
+  no_log: true
+
+- name: Read OpenFGA bootstrap result
+  kubernetes.core.k8s_log:
+    api_version: batch/v1
+    kind: Job
+    name: openfga-bootstrap
+    namespace: "{{ agentos_namespace }}"
+  register: openfga_bootstrap_log
+  no_log: true

@@ -1,0 +1,14 @@
+{% set platform = {
+  'release': platform_release, 'controllerServiceAccount': native_controller_service_account,
+  'actorIssuer': native.platform_actor_issuer
+} %}
+{% if connected_environments %}
+{% set unused = platform.update({
+  'authentication': {
+    'issuer': platform_identity.issuer, 'audiences': [platform_identity.audience],
+    'jwks': {'remote': {'url': oidc_discovery.json.jwks_uri}}
+  },
+  'writerRole': platform_identity.writerRole
+}) %}
+{% endif %}
+{{ {'platform': platform, 'environments': connected_environments} | to_nice_json }}

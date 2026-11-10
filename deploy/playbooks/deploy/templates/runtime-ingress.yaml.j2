@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagent-public
+  namespace: {{ agentos_namespace }}
+spec:
+  selector:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/component: controller
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http
+      appProtocol: kubernetes.io/h2c
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kagent-public
+  namespace: {{ agentos_namespace }}
+spec:
+  parentRefs:
+{{ site_platform_values.route.parentRefs | to_nice_yaml(indent=2) | indent(4, true) }}
+  hostnames: [{{ site_platform_values.route.hosts.api | to_json }}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /agents/}
+        - path: {type: PathPrefix, value: /lf.a2a.v1.A2AService/}
+        - path: {type: PathPrefix, value: /kagent.api.v1.ExecutionService/}
+        - path: {type: PathPrefix, value: /kagent.api.v1.SessionService/}
+      backendRefs: [{name: kagent-public, port: 8083}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kagent-public
+  namespace: {{ agentos_namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+      app.kubernetes.io/instance: kagent
+      app.kubernetes.io/component: controller
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+{{ site_gateway_peers | to_nice_yaml(indent=2) | indent(8, true) }}
+      ports: [{port: http, protocol: TCP}]
