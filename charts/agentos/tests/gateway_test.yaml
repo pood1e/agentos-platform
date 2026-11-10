@@ -42,7 +42,10 @@ tests:
       value: {group: agentgateway.dev, kind: AgentgatewayBackend, name: agentos-native-authority}
   - equal:
       path: spec.traffic.extAuth.conditional[0].policy.http.responseMetadata.models
-      value: json(response.body)
+      value: json(response.headers['x-kagent-selection'])
+  - equal:
+      path: spec.traffic.extAuth.conditional[1].policy.http.responseMetadata.selection
+      value: json(response.headers['x-kagent-selection'])
   - equal:
       path: spec.traffic.extAuth.conditional[0].policy.http.path
       value: '"/authorize/runtime?workspace=agentos"'

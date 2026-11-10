@@ -26,8 +26,7 @@ export function sessionTools(clients: KagentClients, namespace: string, access: 
     return metadata.modelServers(servers, (server) => policy.catalogServer(server, servers));
   };
   return createMcpHandler(({ authInfo }) => {
-    // The tool set is fixed. Advertising list changes makes 2026-07-28 clients open
-    // subscriptions/listen, which agentgateway 1.7 holds unacknowledged until it times out.
+    // The tool set is fixed, so clients have no list changes to subscribe to.
     const server = new McpServer(
       { name: "team-sessions", version: manifest.version },
       { capabilities: { tools: { listChanged: false } } },

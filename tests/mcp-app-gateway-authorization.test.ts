@@ -52,8 +52,9 @@ it("derives gateway selection from native bindings and ignores forged authorizat
   });
   expect(response.statusCode).toBe(200);
   expect(response.headers["cache-control"]).toBe("no-store");
-  expect(response.json()).toEqual({
-    selection: { server: "lab-views", tools: ["lab-views_show_topology", "lab-views_graph_data"] },
+  expect(JSON.parse(String(response.headers["x-agentos-selection"]))).toEqual({
+    server: "lab-views",
+    tools: ["lab-views_show_topology", "lab-views_graph_data"],
   });
   expect(env.identity).toHaveBeenCalledOnce();
 });

@@ -63,7 +63,7 @@ func RuntimeAuthorization(backend, namespace, server, scope string, subject bool
 		path += "&credential=subject_token"
 	}
 	endpoint := agw.PolicyBackendEndpoint{BackendRef: &gw.BackendObjectReference{Group: ptr.To(gw.Group("agentgateway.dev")), Kind: ptr.To(gw.Kind("AgentgatewayBackend")), Name: gw.ObjectName(backend)}}
-	http := &agw.AgentExtAuthHTTP{Path: ptr.To(literal(path)), AllowedRequestHeaders: []string{"x-substrate-actor-token"}, AddRequestHeaders: map[string]agw.CELExpression{"authorization": "request.headers['x-substrate-actor-token']"}, ResponseMetadata: map[string]agw.CELExpression{"selection": "json(response.body)", "scopes": "json(response.headers['x-kagent-scopes'])"}}
+	http := &agw.AgentExtAuthHTTP{Path: ptr.To(literal(path)), AllowedRequestHeaders: []string{"x-substrate-actor-token"}, AddRequestHeaders: map[string]agw.CELExpression{"authorization": "request.headers['x-substrate-actor-token']"}, ResponseMetadata: map[string]agw.CELExpression{"selection": "json(response.headers['x-kagent-selection'])", "scopes": "json(response.headers['x-kagent-scopes'])"}}
 	if subject {
 		http.AllowedResponseHeaders = []string{"authorization"}
 	}
