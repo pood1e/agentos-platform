@@ -55,7 +55,7 @@ func TestAppsUseCanonicalBackendAndViewerAuthority(t *testing.T) {
 			if got, want := *auth.HTTP.Path, literal("/authorize/mcp-app?server="+string(o.Name[len("apps-mcp-"):])+"&workspace="+p.Namespace); got != want {
 				t.Fatalf("extAuth must bind the gateway namespace: %s", got)
 			}
-			if auth.HTTP.ResponseMetadata["selection"] != "json(response.body).selection" {
+			if auth.HTTP.ResponseMetadata["selection"] != "json(response.headers['x-agentos-selection'])" {
 				t.Fatal("missing native selection")
 			}
 			if slices.Contains(traffic.Transformation.Request.Remove, agw.HeaderName("authorization")) {

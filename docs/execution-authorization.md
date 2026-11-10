@@ -40,7 +40,7 @@ kagent 创建 Session 时固定发起人、Agent、父 / 根关系和权限上�
 agentgateway 通过 `runtime.actorJWKS` 直接读取 Substrate HTTPS JWKS，校验 CA 与 SAN；`runtime.actorIssuer` 与原生签发方一致。
 kagent 的 `gatewayAudiences` 登记实际模型和 MCP HTTP(S) origins，包含环境服务独立入口；原生运行时受众与网关受众分别校验。
 
-模型授权限定当前 Session revision 中的 ModelConfig；MCP 授权同时满足静态工具分级与 revision 的已选工具。原生 `/authorize/runtime` 回调逐次查询，返回 `no-store`。
+模型授权限定当前 Session revision 中的 ModelConfig；MCP 授权同时满足静态工具分级与 revision 的已选工具。原生 `/authorize/runtime` 回调逐次查询，返回 `no-store`。授权结果放在 `X-Kagent-Selection` 响应头（MCP Apps 为 `x-agentos-selection`），extAuth 元数据只读响应头，代理的流式响应按原样逐帧转发。
 业务 MCP 的独立路由按目标 origin 校验 Actor JWT 受众，并执行各自的原生授权回调；共享网关仅校验签发方与 Actor 身份。
 环境凭据出口将当前发起人的 IdP access token 作为 RFC 8693 `subject_token`，agentgateway 再交换目标资源令牌；Actor JWT 保持来源证明，目标服务只收到目标凭据。
 

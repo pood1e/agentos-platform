@@ -12,7 +12,11 @@ import type { McpApps } from "./service.js";
 const validator = createValidator();
 const dnsLabel = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-/** Gateway extAuth authenticates the original viewer again; no caller headers grant selection. */
+/**
+ * Gateway extAuth authenticates the original viewer again; no caller headers grant selection.
+ * The decision is the `x-agentos-selection` response header, which gateway metadata reads
+ * without buffering the proxied response.
+ */
 export function registerAppAuthorization(
   app: FastifyInstance,
   target: (namespace: string) =>
@@ -66,7 +70,8 @@ export function registerAppAuthorization(
           }),
         );
         if (selection.server !== server) return reply.code(403).send();
-        return { selection: toJson(ToolBindingSchema, create(ToolBindingSchema, selection)) };
+        const binding = toJson(ToolBindingSchema, create(ToolBindingSchema, selection));
+        return reply.header("x-agentos-selection", JSON.stringify(binding)).send();
       } catch (error) {
         return reply
           .code(ConnectError.from(error).code === Code.Unauthenticated ? 401 : 403)

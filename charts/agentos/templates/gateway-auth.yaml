@@ -102,7 +102,7 @@ spec:
               addRequestHeaders:
                 authorization: "request.headers['x-substrate-actor-token']"
               responseMetadata:
-                models: json(response.body)
+                models: "json(response.headers['x-kagent-selection'])"
         - condition: "request.path == '/mcp/team-sessions' && 'x-substrate-actor-token' in request.headers"
           policy:
             backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
@@ -112,4 +112,4 @@ spec:
               allowedRequestHeaders: [x-substrate-actor-token]
               addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
               allowedResponseHeaders: [authorization]
-              responseMetadata: {selection: json(response.body), scopes: "json(response.headers['x-kagent-scopes'])"}
+              responseMetadata: {selection: "json(response.headers['x-kagent-selection'])", scopes: "json(response.headers['x-kagent-scopes'])"}

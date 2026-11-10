@@ -1,6 +1,6 @@
 # kagent 协议来源
 
-全部协议来自 [pood1e/kagent 的固定提交 `960a3caac460a84026959084453f42ffb129ac0e`](https://github.com/pood1e/kagent/tree/960a3caac460a84026959084453f42ffb129ac0e/proto)。[`ci/verify-runtime-protos.sh`](../../ci/verify-runtime-protos.sh) 逐份校验协议一致性。
+全部协议来自 [pood1e/kagent 的固定提交 `f86dfd5dea88c7438e9b63168055b50c768f52ac`](https://github.com/pood1e/kagent/tree/f86dfd5dea88c7438e9b63168055b50c768f52ac/proto)。[`ci/verify-runtime-protos.sh`](../../ci/verify-runtime-protos.sh) 逐份校验协议一致性。
 
 `kagent/api/v1/authorization.proto` 提供资源权限查询及角色绑定管理；`kagent/api/v1/task_catalog.proto` 提供授权范围内的任务目录与活动查询；`interactions.proto` 提供 HITL 与工具活动的共享类型；`kagent/runtime/v1` 提供原生持久化协议。
 
