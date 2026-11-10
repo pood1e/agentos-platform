@@ -1,7 +1,8 @@
 {
   "access": {
     "readOnly": "当前会话只读，可新建对话发起查询。",
-    "readOnlyTools": "可让 Agent 查询和分析，写操作需要相应权限。"
+    "readOnlyTools": "可让 Agent 查询和分析，写操作需要相应权限。",
+    "denied": "没有执行此操作的权限，请联系工作空间授权管理员在「资源授权」中授予角色。"
   },
   "navigation": {
     "home": "AgentOS 工作台首页",
