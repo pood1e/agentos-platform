@@ -1,3 +1,6 @@
+# Parent-domain cookies, such as a site-wide oauth2-proxy session, reach every console origin.
+large_client_header_buffers 4 32k;
+
 map $args $sandbox_policy {
   default "";
   "" "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${AGENTOS_MCP_IMAGE_ORIGINS}; media-src 'self' data:; font-src 'none'; connect-src 'none'; worker-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors ${AGENTOS_CONSOLE_ORIGIN}";
