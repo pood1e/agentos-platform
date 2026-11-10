@@ -79,6 +79,7 @@ describe("team sessions", () => {
     const client = new Client({ name: "team-sessions-test", version: "1.0.0" });
     try {
       await client.connect(new StreamableHTTPClientTransport(new URL("/mcp", address)));
+      expect(client.getServerCapabilities()?.tools).toEqual({ listChanged: false });
       expect((await client.listTools()).tools.map((tool) => tool.name)).toContain("prepare_role");
       const prepared = await client.callTool({
         name: "prepare_role",
