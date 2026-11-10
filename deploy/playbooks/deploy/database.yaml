@@ -15,6 +15,7 @@
   tasks:
     - name: Install database operator
       ansible.builtin.import_tasks: database/operator.yaml
+      when: cnpg_operator_managed | bool
 
     - name: Ensure database namespaces
       kubernetes.core.k8s:

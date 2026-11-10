@@ -226,6 +226,7 @@
 
     - name: Prepare microVM runtime
       ansible.builtin.import_tasks: microvm/tasks.yaml
+      when: substrate_sandbox_class == 'microvm'
 
     - name: Configure native Substrate access policies
       ansible.builtin.script:

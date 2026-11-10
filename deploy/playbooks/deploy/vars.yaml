@@ -17,6 +17,7 @@ app_release_name: agentos
 app_chart_version: "{{ delivery_version }}"
 app_chart_revision: "{{ delivery_revision }}"
 app_chart_public_key: "{{ delivery_public_key }}"
+cnpg_operator_managed: true
 cnpg_chart_version: 0.29.1
 openfga_chart_version: 0.3.19
 openfga_chart_checksum: 75b97b9b328b269c2f576b24ebaa9dd11e5909a57f4db5f53f0038c822639cb4
@@ -41,7 +42,11 @@ helm_version: v4.3.1
 helm_checksum: sha256:0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
 substrate_version: 1.0.0
 substrate_object_store: {access_key: rustfsadmin, secret_key: rustfsadmin}
-substrate_microvm_image: ghcr.io/kagent-dev/substrate/ateworker-microvm@sha256:5d30804e8c00e87dc26b99d88caac6d4a3d6edb63e4ebad25acb0739e0b078f9
+substrate_sandbox_class: microvm
+substrate_worker_images:
+  microvm: ghcr.io/kagent-dev/substrate/ateworker-microvm@sha256:5d30804e8c00e87dc26b99d88caac6d4a3d6edb63e4ebad25acb0739e0b078f9
+  gvisor: ghcr.io/kagent-dev/substrate/ateworker-gvisor@sha256:ba3b63e1d307f7dc5e5191d586811c8736bd3f69ec6209f5f4ea061fed5ffeee
+runtime_check_image: python:3.14.8-slim-trixie@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
 substrate_worker_resources:
   requests: {cpu: 500m, memory: 4Gi}
   limits: {cpu: "4", memory: 4Gi}

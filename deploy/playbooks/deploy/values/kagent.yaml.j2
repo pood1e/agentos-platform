@@ -104,8 +104,8 @@ controller:
 substrateWorkerPool:
   create: true
   replicas: 3
-  sandboxClass: microvm
-  workerImage: "{{ substrate_microvm_image }}"
+  sandboxClass: {{ substrate_sandbox_class | to_json }}
+  workerImage: {{ substrate_worker_images[substrate_sandbox_class] | to_json }}
   serviceAccount: {create: false, name: kagent-workers}
   template:
     nodeSelector:

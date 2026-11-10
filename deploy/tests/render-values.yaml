@@ -35,7 +35,13 @@
         path: "{{ item }}"
         state: directory
         mode: "0700"
-      loop: ["{{ output }}", "{{ output }}/telemetry", "{{ output }}/private-identity", "{{ output }}/authorization", "{{ output }}/multi-workspace"]
+      loop:
+        - "{{ output }}"
+        - "{{ output }}/telemetry"
+        - "{{ output }}/private-identity"
+        - "{{ output }}/authorization"
+        - "{{ output }}/multi-workspace"
+        - "{{ output }}/gvisor"
 
     - name: Cache verified OpenFGA chart for validation
       ansible.builtin.include_tasks: ../playbooks/deploy/tasks/openfga-chart.yaml
@@ -141,10 +147,18 @@
       vars:
         kagent_telemetry: "{{ lookup('ansible.builtin.file', 'fixtures/telemetry.yaml') | from_yaml }}"
 
+    - name: Render gVisor runtime values
+      ansible.builtin.template:
+        src: ../playbooks/deploy/values/kagent.yaml.j2
+        dest: "{{ output }}/gvisor/kagent-values.yaml"
+        mode: "0600"
+      vars:
+        substrate_sandbox_class: gvisor
+
     - name: Record immutable runtime pins
       ansible.builtin.copy:
         content: >-
-          {{ {'test': {'controllerImage': kagent_controller_image, 'microvmImage': substrate_microvm_image,
+          {{ {'test': {'controllerImage': kagent_controller_image, 'workerImages': substrate_worker_images,
                        'runtimeVersion': kagent_runtime_version}} | to_nice_json }}
         dest: "{{ output }}/test-data.json"
         mode: "0600"

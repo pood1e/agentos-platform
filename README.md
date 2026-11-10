@@ -9,7 +9,7 @@ Agent 执行、会话、任务持久化与 HITL 使用 kagent；方案包提供�
 
 ## 部署
 
-平台发布 Chart、镜像、契约与参考部署 collection，Chart 值与制品验签见[构建与配置](docs/delivery.md)。[参考部署](deploy/README.md)安装 K3s、运行时与同版本平台 Chart，运行节点需支持 KVM。
+平台发布 Chart、镜像、契约与参考部署 collection，Chart 值与制品验签见[构建与配置](docs/delivery.md)。[参考部署](deploy/README.md)安装 K3s、运行时与同版本平台 Chart；microVM 运行时需节点支持 KVM，无嵌套虚拟化的节点使用 gVisor。
 目标系统接入见[环境接入](docs/environments.md)；kagent 运行时由 [pood1e/kagent](https://github.com/pood1e/kagent/tree/main) 的固定提交构建并发布镜像，Substrate 使用 [kagent-dev/substrate `v1.0.0`](https://github.com/kagent-dev/substrate/releases/tag/v1.0.0)。
 
 ## 开发
