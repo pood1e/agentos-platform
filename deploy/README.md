@@ -1,6 +1,6 @@
 # AgentOS 参考部署
 
-Ansible collection `agentos.platform`，在支持 KVM 的 Ubuntu 主机（amd64 或 arm64）安装单节点 K3s、Agent Substrate、kagent、agentgateway 与 [AgentOS 平台](https://github.com/pood1e/agentos-platform) Chart，并接入目标环境。
+Ansible collection `agentos.platform`，在 Ubuntu 主机（amd64 或 arm64）安装单节点 K3s、Agent Substrate、kagent、agentgateway 与 [AgentOS 平台](https://github.com/pood1e/agentos-platform) Chart，并接入目标环境。
 collection 随平台同版本发布，安装同一源码提交的平台 Chart 与镜像；上游版本与运行时镜像摘要见 [playbooks/deploy/vars.yaml](playbooks/deploy/vars.yaml)。
 
 | 入口 | 作用 |
@@ -56,6 +56,8 @@ ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/va
 | `kagent_postgres_resources` | 原生 PostgreSQL 的 Kubernetes requests 与 limits，默认请求 100m / 256Mi，上限 1 CPU / 1Gi |
 | `kagent_postgres_pool_max_conns` | 每个 kagent 控制器的 PostgreSQL 连接上限，默认 16；与 Substrate 连接及数据库 `max_connections` 统一分配容量 |
 | `substrate_worker_resources` | 每个 microVM worker 的 Kubernetes requests 与 limits，默认请求 500m / 4Gi，上限 4 CPU / 4Gi；limits 即该 worker 分配给 Agent 运行时的容量，需大于最大运行时规格与开销之和 |
+| `substrate_sandbox_class` | Agent 运行时的沙箱类：`microvm`（默认，节点需支持 KVM）或 `gvisor`（无嵌套虚拟化的节点），worker 镜像取 `substrate_worker_images` 中同类的固定摘要 |
+| `runtime_check_image` | 安装后运行时自检的镜像，默认官方 Python 镜像摘要；无法访问 Docker Hub 的站点改用镜像站的同一摘要 |
 | `kagent_execution_authorization` | 原生 `ExecutionAuthorizationConfig` 的 `scopeClaim`、`rules` 与 `gatewayAudiences`；资源规则使用原生 `ResourceScopeRule`，覆盖本站启用的 API 与运行时资源 |
 
 collection 固化 `delivery_version`、`delivery_revision` 与 `agentos_image_registry`，即所属平台的版本、源码提交与镜像注册表路径；方案 Chart 依赖同一平台版本。

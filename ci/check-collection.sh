@@ -22,7 +22,8 @@ AGENTOS_KUSTOMIZE_OVERLAY="$PWD/playbooks/deploy/kustomize/atelet" \
   -f .cache/check/atelet-values.yaml > .cache/check/native-atelet.yaml
 helm template openfga ".cache/check/runtime/openfga-$(pin openfga_chart_version).tgz" \
   --namespace agentos -f .cache/check/openfga-values.yaml > .cache/check/native-openfga.yaml
-for scenario in .cache/check .cache/check/telemetry .cache/check/private-identity .cache/check/authorization; do
+for scenario in .cache/check .cache/check/telemetry .cache/check/private-identity .cache/check/authorization \
+  .cache/check/gvisor; do
   AGENTOS_KUSTOMIZE_OVERLAY="$PWD/playbooks/deploy/kustomize/kagent" \
     AGENTOS_PATCHED_IMAGE="$(pin kagent_controller_image)" \
     helm template kagent ".cache/check/runtime/kagent-$(pin kagent_runtime_version).tgz" --post-renderer agentos-kustomize \

@@ -5,7 +5,7 @@ metadata:
   namespace: "{{ agentos_namespace }}"
 spec:
   workload:
-    image: python:3.14.8-slim-trixie@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
+    image: "{{ runtime_check_image }}"
   substrate:
     workerPoolRef:
       name: kagent-default
