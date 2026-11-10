@@ -20,32 +20,39 @@ function pick(schema: RJSFSchema, keys: string[]): RJSFSchema {
   };
 }
 
+/** Labels resolve `<name>_<parent>` before `<name>`, so a field name reused under another parent gets its own label. */
 export function localizedSchema(
   schema: RJSFSchema,
   t: TFunction,
   name = "",
   prefix = "management.fields",
+  parent = "",
 ): RJSFSchema {
   const next: RJSFSchema = {
     ...schema,
-    title: t(`${prefix}.${name}`, { defaultValue: name }),
+    title: t(`${prefix}.${name}`, { context: parent || undefined, defaultValue: name }),
     description: undefined,
   };
   if (next.format && !["uri", "email", "date", "date-time"].includes(next.format))
     delete next.format;
   // Kubernetes patterns use Go's POSIX space class; AJV compiles ECMAScript patterns.
   if (next.pattern) next.pattern = next.pattern.replaceAll("[:space:]", "\\t\\n\\v\\f\\r ");
+  // Quantities are patterned int-or-string values, entered as text such as 500m or 4Gi.
+  if (next["x-kubernetes-int-or-string"] && next.pattern) {
+    delete next.anyOf;
+    next.type = "string";
+  }
   for (const key of Object.keys(next))
     if (key.startsWith("x-")) delete (next as Record<string, unknown>)[key];
   if (next.properties)
     next.properties = Object.fromEntries(
       Object.entries(next.properties).map(([key, value]) => [
         key,
-        typeof value === "object" ? localizedSchema(value, t, key, prefix) : value,
+        typeof value === "object" ? localizedSchema(value, t, key, prefix, name) : value,
       ]),
     );
   if (typeof next.items === "object" && !Array.isArray(next.items))
-    next.items = localizedSchema(next.items, t, "target", prefix);
+    next.items = localizedSchema(next.items, t, "target", prefix, name);
   return next;
 }
 
