@@ -53,7 +53,7 @@ deny contains "Agent telemetry differs from the configured signals" if object.ge
 
 deny contains "native Harness release differs from the runtime version" if kagent.config.harnessImages.release != data.test.runtimeVersion
 
-deny contains "the microVM image differs from the deployment pin" if kagent.substrateWorkerPool.workerImage != data.test.microvmImage
+deny contains "the worker image differs from the pin of its sandbox class" if kagent.substrateWorkerPool.workerImage != data.test.workerImages[kagent.substrateWorkerPool.sandboxClass]
 
 deny contains "the controller watches an unrelated namespace" if kagent.global.watchNamespaces != ["agentos"]
 
