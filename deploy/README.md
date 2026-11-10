@@ -43,7 +43,7 @@ ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/va
 | `agentos_domain` | 控制台域名，DNS / 证书覆盖该域及通配子域 |
 | `dns_zone` | Cloudflare DNS 区域，用于记录与 ACME DNS-01 |
 | `app_chart`、`app_chart_repository`、`app_chart_version` | 应用 Chart，默认同版本平台 Chart；业务部署选择方案 Chart |
-| `app_chart_revision`、`app_chart_public_key` | 应用源码提交与签名公钥，默认取同版本平台 |
+| `app_chart_revision`、`app_chart_public_key` | 应用源码提交与签名公钥，默认取同版本平台；公钥为空时应用 Chart 只校验版本与源码提交 |
 | `app_values` | 应用 Chart 值，方案 Chart 的平台配置位于 `app_values.agentos`，字段见[平台交付文档](https://github.com/pood1e/agentos-platform/blob/main/docs/delivery.md) |
 | `app_release_name`、`agentos_namespace` | release 与命名空间，均默认 `agentos` |
 | `agentos_cache` | 缓存目录，默认 `$XDG_CACHE_HOME/agentos` 或 `~/.cache/agentos` |
