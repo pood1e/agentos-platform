@@ -1,4 +1,4 @@
-import { createClient, type Transport } from "@connectrpc/connect";
+import { createClient, type Interceptor, type Transport } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { A2AService } from "../../gen/a2a_pb.js";
 import { AgentTemplateService } from "../../gen/kagent/api/v1/agent_templates_pb.js";
@@ -15,10 +15,16 @@ import { WorkflowService } from "../../gen/kagent/api/v1/workflows_pb.js";
 import { rpcMetrics } from "../shared/telemetry.js";
 import { nativeCredentials } from "./context.js";
 
+/** kagent serves A2A 1.0 and treats an A2A call without A2A-Version as 0.3, which it rejects. */
+export const a2aVersion: Interceptor = (next) => (request) => {
+  if (request.service.typeName === A2AService.typeName) request.header.set("a2a-version", "1.0");
+  return next(request);
+};
+
 export function kagentTransport(baseUrl: string): Transport {
   return createGrpcTransport({
     baseUrl,
-    interceptors: [rpcMetrics("client"), nativeCredentials],
+    interceptors: [rpcMetrics("client"), nativeCredentials, a2aVersion],
   });
 }
 
