@@ -15,6 +15,7 @@
     apply: true
     server_side_apply:
       field_manager: agentos-crds
+      force_conflicts: true
     wait: true
     wait_condition: {type: Established, status: "True"}
     wait_timeout: 60
