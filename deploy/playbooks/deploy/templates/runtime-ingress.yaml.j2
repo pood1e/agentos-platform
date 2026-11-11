@@ -21,8 +21,11 @@ metadata:
   namespace: {{ agentos_namespace }}
 spec:
   parentRefs:
-{{ site_platform_values.route.parentRefs | to_nice_yaml(indent=2) | indent(4, true) }}
-  hostnames: [{{ site_platform_values.route.hosts.api | to_json }}]
+{{ site_platform_values.route.api.parentRefs | to_nice_yaml(indent=2) | indent(4, true) }}
+{% set api_host = site_platform_values.route.api.origin | urlsplit('hostname') %}
+{% if api_host is not match('^[0-9.]+$') %}
+  hostnames: [{{ api_host | to_json }}]
+{% endif %}
   rules:
     - matches:
         - path: {type: PathPrefix, value: /agents/}

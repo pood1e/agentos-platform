@@ -21,7 +21,7 @@
   valueFrom: {secretKeyRef: {name: {{ .Values.voice.sessionSecretRef }}, key: key}}
 - {name: LIVEKIT_URL, value: {{ .Values.voice.livekitURL | quote }}}
 - name: AGENTOS_LIVEKIT_URL
-  value: {{ default (printf "wss://%s/livekit" .Values.route.hosts.console) .Values.voice.publicURL | quote }}
+  value: {{ default (printf "%s/livekit" (replace "https://" "wss://" .Values.route.console.origin)) .Values.voice.publicURL | quote }}
 - name: LIVEKIT_API_KEY
   valueFrom: {secretKeyRef: {name: {{ .Values.voice.secretRef }}, key: api-key}}
 - name: LIVEKIT_API_SECRET

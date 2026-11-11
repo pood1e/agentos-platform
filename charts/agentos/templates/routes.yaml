@@ -1,5 +1,5 @@
 {{- $name := include "agentos.name" . -}}
-{{- $hosts := .Values.route.hosts -}}
+{{- $route := .Values.route -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -7,8 +7,8 @@ metadata:
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:
-  parentRefs: {{ toYaml .Values.route.parentRefs | nindent 4 }}
-  hostnames: [{{ $hosts.console | quote }}]
+  parentRefs: {{ toYaml $route.console.parentRefs | nindent 4 }}
+  {{- include "agentos.routeHostnames" $route.console.origin | nindent 2 }}
   rules:
     - backendRefs: [{name: {{ $name }}-web, port: 4180}]
 ---
@@ -19,15 +19,15 @@ metadata:
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:
-  parentRefs: {{ toYaml .Values.route.parentRefs | nindent 4 }}
-  hostnames: [{{ $hosts.api | quote }}]
+  parentRefs: {{ toYaml $route.api.parentRefs | nindent 4 }}
+  {{- include "agentos.routeHostnames" $route.api.origin | nindent 2 }}
   rules:
     - backendRefs: [{name: {{ include "agentos.apiService" . }}, port: 8080}]
     - matches: [{path: {type: PathPrefix, value: /environments}}]
       backendRefs: [{name: {{ $name }}-gateway, port: 8080}]
-{{- if $hosts.sandbox }}
-{{- if has $hosts.sandbox (list $hosts.console $hosts.api) }}{{ fail "route.hosts.sandbox must be a separate host" }}{{ end }}
-{{- if ne (regexReplaceAll ":0*443$" $.Values.mcpApps.sandboxOrigin "") (printf "https://%s" $hosts.sandbox) }}{{ fail "route.hosts.sandbox must match mcpApps.sandboxOrigin" }}{{ end }}
+{{- if $route.sandbox.origin }}
+{{- if has $route.sandbox.origin (list $route.console.origin $route.api.origin) }}{{ fail "route.sandbox.origin must be a separate origin" }}{{ end }}
+{{- if ne (regexReplaceAll ":0*443$" $.Values.mcpApps.sandboxOrigin "") (regexReplaceAll ":0*443$" $route.sandbox.origin "") }}{{ fail "route.sandbox.origin must match mcpApps.sandboxOrigin" }}{{ end }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -36,8 +36,8 @@ metadata:
   labels:
     {{- include "agentos.labels" . | nindent 4 }}
 spec:
-  parentRefs: {{ toYaml .Values.route.parentRefs | nindent 4 }}
-  hostnames: [{{ $hosts.sandbox | quote }}]
+  parentRefs: {{ toYaml (required "route.sandbox.parentRefs is required" $route.sandbox.parentRefs) | nindent 4 }}
+  {{- include "agentos.routeHostnames" $route.sandbox.origin | nindent 2 }}
   rules:
     - matches: [{path: {type: Exact, value: /mcp-app-sandbox}}]
       backendRefs: [{name: {{ $name }}-web, port: 8081}]
