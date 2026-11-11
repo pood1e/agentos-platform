@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.53.0](https://github.com/pood1e/agentos-platform/compare/v0.52.1...v0.53.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **environments:** AccessPlan and agentos-connections values rename environments[].gateway.nodePort to port.
+
+### Features
+
+* **deploy:** reuse a site-provided agentgateway ([f0050f6](https://github.com/pood1e/agentos-platform/commit/f0050f66b985166221567bcd17adced0c2deb8a2))
+* **environments:** reach the environment gateway at a configurable address ([f0050f6](https://github.com/pood1e/agentos-platform/commit/f0050f66b985166221567bcd17adced0c2deb8a2))
+
 ## [0.52.1](https://github.com/pood1e/agentos-platform/compare/v0.52.0...v0.52.1) (2026-11-11)
 
 
