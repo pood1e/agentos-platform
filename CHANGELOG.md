@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.54.0](https://github.com/pood1e/agentos-platform/compare/v0.53.0...v0.54.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deploy:** OpenFGA no longer uses openfga-postgres; existing sites restore the openfga database into kagent-postgres once before upgrading.
+
+### Features
+
+* **deploy:** host the OpenFGA database on the platform PostgreSQL cluster ([7d487ca](https://github.com/pood1e/agentos-platform/commit/7d487ca58dd9fa28b8b6db9880b452448cc445d6))
+
+
+### Bug Fixes
+
+* **deploy:** keep platform database storage and admit a site CNPG operator ([7d487ca](https://github.com/pood1e/agentos-platform/commit/7d487ca58dd9fa28b8b6db9880b452448cc445d6))
+
 ## [0.53.0](https://github.com/pood1e/agentos-platform/compare/v0.52.1...v0.53.0) (2026-11-11)
 
 
