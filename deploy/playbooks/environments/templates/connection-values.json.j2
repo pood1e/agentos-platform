@@ -2,7 +2,7 @@
   'name': environment_name, 'governance': environment_governance, 'issuer': environment_issuer, 'resource': gateway_resource,
   'tokenEndpointURL': oidc_discovery.json.token_endpoint, 'jwksURL': oidc_discovery.json.jwks_uri,
   'discoveryAuth': environment_discovery_auth | combine({'oauth2': {'tokenEndpoint': oidc_discovery.json.token_endpoint}}, recursive=true),
-  'gateway': {'address': ansible_host, 'host': gateway_server_name, 'nodePort': gateway_node_port | int, 'ca': gateway_certificate.resources[0].data['ca.crt'] | b64decode},
+  'gateway': {'address': gateway_address, 'host': gateway_server_name, 'port': gateway_port | int, 'ca': gateway_certificate.resources[0].data['ca.crt'] | b64decode},
   'toolsets': toolsets, 'identities': engineer_identities, 'titles': {}, 'apis': environment_apis
 } %}
 {% for project, connector in environment_connectors.items() %}

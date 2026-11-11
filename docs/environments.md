@@ -15,6 +15,7 @@ flowchart LR
 ## 组成
 
 `agentos-environment` Chart 在目标集群部署环境网关、证书声明、身份路由和网络策略；`agentos-connections` Chart 在平台工作空间登记环境 CA、准入配置、服务目录与身份视图。
+平台按 `gateway.address` 与 `gateway.port` 访问环境网关，以 `gateway.host` 校验 TLS 身份；平台与环境同集群时直连环境网关的集群内 Service。
 参考部署的环境剧本、站点变量与身份变更流程见[参考部署环境接入](../deploy/docs/environments.md)。
 
 配置取自方案 Chart 的 `global.agentos`，环境治理、工具分级与身份档案只维护一份。保留身份 `catalog` 用于服务工具发现与浏览器环境 API。

@@ -91,7 +91,7 @@ tests:
           tokenEndpoint: https://identity.example.test/token
           clientId: agentos-catalog
           clientSecretRef: {name: lab-catalog, key: client-secret}
-      gateway: {address: 192.0.2.1, host: environment.test, nodePort: 31000}
+      gateway: {address: 192.0.2.1, host: environment.test, port: 31000}
       apis:
       - service: example.Service
         readMethods: [ListResources]

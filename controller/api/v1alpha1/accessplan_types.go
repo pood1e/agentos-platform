@@ -43,12 +43,13 @@ type Identity struct {
 }
 
 // EnvironmentGateway is the TLS gateway exposed by a connected environment.
+// Address and Port locate the gateway; Host is its TLS identity.
 type EnvironmentGateway struct {
 	Address string `json:"address"`
 	Host    string `json:"host"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
-	NodePort int32 `json:"nodePort"`
+	Port int32 `json:"port"`
 }
 
 // Environment declares one external environment's authorization boundary.

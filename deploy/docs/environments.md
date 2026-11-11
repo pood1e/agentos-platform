@@ -14,7 +14,7 @@
 
 ## 站点变量
 
-`environments` 组每台主机声明一套环境，`ansible_host` 为平台访问网关的地址。
+`environments` 组每台主机声明一套环境，`ansible_host` 为环境网关所在节点地址。
 
 | 变量 | 说明 |
 | --- | --- |
@@ -25,6 +25,7 @@
 | `environment_kubeconfig` | 默认 `<agentos_cache>/environments/<name>/kubeconfig.yaml` |
 | `gateway_server_name` | 默认 `<environment>-mcp.<domain>`，用于证书 SAN 与上游 SNI |
 | `gateway_resource` | 默认 `https://<gateway_server_name>:31000/mcp`，作为 OAuth audience |
+| `gateway_address`、`gateway_port` | 平台访问环境网关的地址与端口，默认 `ansible_host` 与 NodePort `31000`；平台与环境同集群时使用 `mcp-gateway.<gateway_namespace>.svc` 与 `8443` |
 | `agentgateway_managed` | 是否安装 agentgateway CRD 与控制器，默认 `true`；集群已有控制器时设为 `false`，控制器需监听 `gateway_namespace` |
 | `agentos_values_file` | 包含 `global.agentos` 与平台 `identity` 的方案 Chart 值文件 |
 | `environment_connectors` | 连接器后端定义 |

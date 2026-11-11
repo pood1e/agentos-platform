@@ -116,7 +116,7 @@
                     ]
                   },
                   "gateway": {
-                    "description": "EnvironmentGateway is the TLS gateway exposed by a connected environment.",
+                    "description": "EnvironmentGateway is the TLS gateway exposed by a connected environment.\nAddress and Port locate the gateway; Host is its TLS identity.",
                     "properties": {
                       "address": {
                         "type": "string"
@@ -124,14 +124,14 @@
                       "host": {
                         "type": "string"
                       },
-                      "nodePort": {
+                      "port": {
                         "format": "int32",
                         "maximum": 65535,
                         "minimum": 1,
                         "type": "integer"
                       }
                     },
-                    "required": ["address", "host", "nodePort"],
+                    "required": ["address", "host", "port"],
                     "type": "object"
                   },
                   "governance": {
