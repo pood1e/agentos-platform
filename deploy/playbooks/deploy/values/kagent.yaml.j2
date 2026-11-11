@@ -53,7 +53,7 @@ config:
     defaultTtl: 3600s
     maxTtl: 86400s
   runtimeDefaults:
-    gatewayUrl: {{ ('https://' ~ site_platform_values.route.hosts.api) | to_json }}
+    gatewayUrl: {{ site_platform_values.route.api.origin | to_json }}
     telemetry: &telemetry
 {{ {'captureContent': false, 'captureRawApiBodies': false} | combine(kagent_telemetry, recursive=true) | to_nice_yaml(indent=2) | indent(6, true) }}
     controlPlaneUrl: "http://kagent-controller.{{ agentos_namespace }}.svc.cluster.local:8083"

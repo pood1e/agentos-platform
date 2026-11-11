@@ -31,7 +31,7 @@ tests:
   - failedTemplate: {errorPattern: console}
 - it: rejects routes without a site gateway
   set:
-    route.parentRefs: []
+    route.console.parentRefs: []
   asserts:
   - failedTemplate: {}
 - it: requires the site identity provider

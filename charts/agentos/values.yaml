@@ -68,11 +68,9 @@ mcpApps:
   sandboxOrigin: ""
   imageOrigins: []
 route:
-  parentRefs: []
-  hosts:
-    console: ""
-    api: ""
-    sandbox: ""
+  console: {origin: "", parentRefs: []}
+  api: {origin: "", parentRefs: []}
+  sandbox: {origin: "", parentRefs: []}
   from:
     - namespaceSelector:
         matchLabels:

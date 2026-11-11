@@ -11,6 +11,7 @@
     timeout: 10
   register: oidc_discovery
   check_mode: false
+  environment: "{{ {'SSL_CERT_FILE': identity_ca_file} if identity_ca_file | default('') | length > 0 else {} }}"
 
 - name: Verify identity provider endpoints
   ansible.builtin.assert:

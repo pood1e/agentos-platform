@@ -25,6 +25,8 @@ flowchart LR
 环境令牌的 audience 为 `gateway_resource`。平台网关调用 kagent `/authorize/runtime`，核验当前发起人、祖先权限、静态工具分级和 Session 固定 revision 的目标。kagent 仅向该受信网关导出当前 IdP access token，agentgateway 使用原生 OAuthTokenExchange 交换环境资源令牌并保留用户 `sub`。
 路径 `/mcp/<identity>/<service>` 校验 `azp == agentos-<identity>`；环境网关发布 RFC 9728 受保护资源元数据。
 
+私有 CA 签发的身份提供方由 `environment.caCertificateRef` 供环境网关拉取 JWKS，参考部署以 `identity_ca_file` 校验 OIDC Discovery。
+
 目录 `RemoteMCPServer.spec.discoveryAuth.oauth2` 配置独立 client credentials：`tokenEndpoint`、`clientId`、`clientSecretRef` 和可选 `caCertificateRef`。原生控制器实时读取 Secret 与 CA，发现认证限定初始化和 `tools/list`。执行使用独立 Actor JWT；目录凭据仅用于元数据请求。身份提供方的 JWKS 与令牌交换复用该 CA 引用，环境网关使用独立的 `<environment>-gateway-ca`。
 
 每个环境服务使用独立的 `<environment>-<service>-mcp-gateway` Service 地址，目录与身份视图共享该服务的 origin。RemoteMCPServer 地址、Service origin 与 Actor JWT audience 保持一致。

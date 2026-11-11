@@ -6,7 +6,7 @@ templates: ['*.yaml']
 tests:
 - it: omits the optional sandbox route
   set:
-    route.hosts.sandbox: ''
+    route.sandbox.origin: ''
   template: routes.yaml
   asserts:
   - hasDocuments: {count: 2}
@@ -46,13 +46,13 @@ tests:
   - failedTemplate: {errorPattern: imageOrigins}
 - it: rejects a sandbox on the console host
   set:
-    route.hosts.sandbox: agentos.example.test
+    route.sandbox.origin: https://agentos.example.test
   template: routes.yaml
   asserts:
-  - failedTemplate: {errorMessage: route.hosts.sandbox must be a separate host}
+  - failedTemplate: {errorMessage: route.sandbox.origin must be a separate origin}
 - it: supports an externally hosted isolated sandbox
   set:
-    route.hosts.sandbox: ''
+    route.sandbox.origin: ''
     mcpApps.sandboxOrigin: https://apps.example.test
   asserts:
   - template: routes.yaml
@@ -73,7 +73,7 @@ tests:
   - failedTemplate: {errorPattern: jwksURL}
 - it: rejects an App sandbox sharing the API origin
   set:
-    route.hosts.sandbox: ''
+    route.sandbox.origin: ''
     mcpApps.sandboxOrigin: https://api.agentos.example.test
   template: web-deployment.yaml
   asserts:
@@ -83,10 +83,10 @@ tests:
     mcpApps.sandboxOrigin: https://other.example.test
   template: routes.yaml
   asserts:
-  - failedTemplate: {errorMessage: route.hosts.sandbox must match mcpApps.sandboxOrigin}
+  - failedTemplate: {errorMessage: route.sandbox.origin must match mcpApps.sandboxOrigin}
 - it: keeps ordinary MCP identity configuration unchanged when Apps are disabled
   set:
-    route.hosts.sandbox: ''
+    route.sandbox.origin: ''
     mcpApps.sandboxOrigin: ''
     identity.jwksURL: ''
   asserts:
@@ -126,16 +126,31 @@ tests:
     equal: {path: spec.platform.appJWTProvider.jwks.remote.jwksPath, value: '/keys?version=2'}
 - it: rejects the API origin with an explicit default TLS port
   set:
-    route.hosts.sandbox: ''
+    route.sandbox.origin: ''
     mcpApps.sandboxOrigin: https://api.agentos.example.test:443
   template: web-deployment.yaml
   asserts:
   - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
 - it: rejects a return origin using an equivalent TLS port
   set:
-    route.hosts.sandbox: ''
+    route.sandbox.origin: ''
     identity.returnOrigins: ['https://external.example.test:0443']
     mcpApps.sandboxOrigin: https://external.example.test
   template: web-deployment.yaml
   asserts:
   - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
+- it: binds IP origins to their listeners without hostnames
+  set:
+    route.console: {origin: 'https://192.0.2.10:8443', parentRefs: [{name: edge, sectionName: console}]}
+    route.api: {origin: 'https://192.0.2.10:8444', parentRefs: [{name: edge, sectionName: api}]}
+    route.sandbox: {origin: 'https://192.0.2.10:8445', parentRefs: [{name: edge, sectionName: sandbox}]}
+    mcpApps.sandboxOrigin: https://192.0.2.10:8445
+  template: routes.yaml
+  asserts:
+  - notExists: {path: spec.hostnames}
+  - equal: {path: 'spec.parentRefs[0].sectionName', value: console}
+    documentIndex: 0
+  - equal: {path: 'spec.parentRefs[0].sectionName', value: api}
+    documentIndex: 1
+  - equal: {path: 'spec.parentRefs[0].sectionName', value: sandbox}
+    documentIndex: 2

@@ -52,7 +52,7 @@ class CapacityTest(unittest.TestCase):
                             "audience": "agentos",
                             "clientId": "agentos",
                         },
-                        "route": {"hosts": {"api": "api.example"}},
+                        "route": {"api": {"origin": "https://api.example", "parentRefs": []}},
                     },
                     "oidc_discovery": {"json": {"token_endpoint": "https://id.example/token"}},
                     "capacity": resources,
