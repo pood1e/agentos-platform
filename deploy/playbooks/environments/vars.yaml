@@ -42,6 +42,7 @@ environment_release: agentos-environment
 connections_release: "{{ platform_release }}-connections"
 environment_chart_repository: "oci://{{ agentos_image_registry }}/charts"
 environment_chart_version: "{{ delivery_version }}"
+agentgateway_managed: true
 agentgateway_version: v1.7.0
 gateway_charts:
   - name: agentgateway

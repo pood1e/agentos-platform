@@ -25,6 +25,7 @@
 | `environment_kubeconfig` | 默认 `<agentos_cache>/environments/<name>/kubeconfig.yaml` |
 | `gateway_server_name` | 默认 `<environment>-mcp.<domain>`，用于证书 SAN 与上游 SNI |
 | `gateway_resource` | 默认 `https://<gateway_server_name>:31000/mcp`，作为 OAuth audience |
+| `agentgateway_managed` | 是否安装 agentgateway CRD 与控制器，默认 `true`；集群已有控制器时设为 `false`，控制器需监听 `gateway_namespace` |
 | `agentos_values_file` | 包含 `global.agentos` 与平台 `identity` 的方案 Chart 值文件 |
 | `environment_connectors` | 连接器后端定义 |
 | `platform_cidr` | 允许访问环境网关的平台地址段 |

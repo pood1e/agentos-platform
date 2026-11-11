@@ -41,11 +41,18 @@
           field_manager: agentos-platform
       when: gateway_api.resources | length == 0
 
+    - name: Require the site agentgateway
+      ansible.builtin.import_tasks: tasks/site-agentgateway.yaml
+      vars:
+        agentgateway_kubeconfig: "{{ kubeconfig_path }}"
+      when: not (agentgateway_managed | bool)
+
     - name: Install agentgateway CRDs
       kubernetes.core.helm:
         name: agentgateway-crds
         chart_ref: oci://cr.agentgateway.dev/charts/agentgateway-crds
         chart_version: "{{ agentgateway_version }}"
+      when: agentgateway_managed | bool
 
     - name: Install agentgateway controller
       kubernetes.core.helm:
@@ -71,3 +78,4 @@
           resources:
             requests: {cpu: 100m, memory: 128Mi}
             limits: {cpu: "1", memory: 512Mi}
+      when: agentgateway_managed | bool

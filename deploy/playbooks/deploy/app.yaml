@@ -66,6 +66,16 @@
         delivery_kubeconfig: "{{ kubeconfig_path }}"
         delivery_timeout: 20m
 
+    - name: Wait for the platform gateway
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: Gateway
+        namespace: "{{ agentos_namespace }}"
+        name: "{{ site_application_name }}-gateway"
+        wait: true
+        wait_condition: {type: Programmed, status: "True"}
+        wait_timeout: 300
+
     - name: Publish authenticated native execution endpoints
       kubernetes.core.k8s:
         state: present
