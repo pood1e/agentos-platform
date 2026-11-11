@@ -54,6 +54,7 @@ ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/va
 | `openfga_bootstrap_subject` | 初始管理员的 OIDC `sub`；站点以当前工作空间 UID 建立成员与管理员绑定 |
 | `kagent_authorization_api_token_secret`、`kagent_authorization_ca_secret` | OpenFGA API 凭据和 CA 的 Secret `{name, key}`，默认分别为 `openfga-auth/keys` 与 `openfga-ca/tls.crt` |
 | `cnpg_operator_managed` | 是否由 collection 安装 CloudNativePG Operator，默认 `true`；站点已有 Operator 时设为 `false`，数据库资源由站点 Operator 管理 |
+| `agentgateway_managed` | 是否由 collection 安装 agentgateway CRD 与控制器，默认 `true`；集群已有控制器时设为 `false`，collection 校验 GatewayClass 已接受且控制器不低于 `agentgateway_version`，站点控制器需监听 AgentOS 命名空间 |
 | `kagent_postgres_resources` | 原生 PostgreSQL 的 Kubernetes requests 与 limits，默认请求 100m / 256Mi，上限 1 CPU / 1Gi |
 | `kagent_postgres_pool_max_conns` | 每个 kagent 控制器的 PostgreSQL 连接上限，默认 16；与 Substrate 连接及数据库 `max_connections` 统一分配容量 |
 | `substrate_worker_resources` | 每个 microVM worker 的 Kubernetes requests 与 limits，默认请求 500m / 4Gi，上限 4 CPU / 4Gi；limits 即该 worker 分配给 Agent 运行时的容量，需大于最大运行时规格与开销之和 |

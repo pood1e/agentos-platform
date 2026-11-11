@@ -1,0 +1,31 @@
+- name: Read the site agentgateway class
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ agentgateway_kubeconfig }}"
+    api_version: gateway.networking.k8s.io/v1
+    kind: GatewayClass
+    name: agentgateway
+  register: site_agentgateway_class
+
+- name: Read the site agentgateway controller
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ agentgateway_kubeconfig }}"
+    kind: Deployment
+    label_selectors: [app.kubernetes.io/name=agentgateway]
+  register: site_agentgateway_controller
+
+- name: Require a compatible site agentgateway
+  ansible.builtin.assert:
+    that:
+      - site_agentgateway_class.resources | map(attribute='status.conditions', default=[]) | flatten
+        | selectattr('type', 'equalto', 'Accepted') | selectattr('status', 'equalto', 'True') | list | length == 1
+      - site_agentgateway_versions | select('version', agentgateway_version | regex_replace('^v', ''), '>=')
+        | list | length > 0
+    fail_msg: >-
+      agentgateway_managed is false, so the cluster must run an accepted agentgateway GatewayClass
+      whose controller is {{ agentgateway_version }} or later.
+    quiet: true
+  vars:
+    site_agentgateway_versions: >-
+      {{ site_agentgateway_controller.resources | map(attribute='metadata.labels') | map('dict2items') | flatten
+         | selectattr('key', 'equalto', 'app.kubernetes.io/version') | map(attribute='value')
+         | map('regex_replace', '^v', '') | list }}

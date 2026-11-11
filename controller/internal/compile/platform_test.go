@@ -16,7 +16,7 @@ func gatewayPlan(t *testing.T) *platform.AccessPlan {
 	t.Helper()
 	plan := planFor(t, "approval")
 	plan.Spec.Platform = &platform.PlatformGateway{Name: "gateway", ActorIssuer: "https://actors.test", ActorJWKSBackend: "actor-jwks", NativeAuthorityBackend: "native-authority", WriterRole: "writer"}
-	source := `{"name":"lab","governance":"approval","issuer":"https://idp.test","resource":"https://tools.test/mcp","jwksURL":"https://idp.test/keys","gateway":{"address":"192.0.2.1","host":"tools.test","nodePort":443},"discoveryAuth":{"oauth2":{"tokenEndpoint":"https://idp.test/token","clientId":"agentos-catalog","clientSecretRef":{"name":"catalog","key":"client-secret"}}}}`
+	source := `{"name":"lab","governance":"approval","issuer":"https://idp.test","resource":"https://tools.test/mcp","jwksURL":"https://idp.test/keys","gateway":{"address":"192.0.2.1","host":"tools.test","port":443},"discoveryAuth":{"oauth2":{"tokenEndpoint":"https://idp.test/token","clientId":"agentos-catalog","clientSecretRef":{"name":"catalog","key":"client-secret"}}}}`
 	if err := json.Unmarshal([]byte(source), &plan.Spec.Environments[0]); err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestEnvironmentGatewayRejectsIncompleteTrust(t *testing.T) {
 		{"issuer", func(p *platform.AccessPlan) { p.Spec.Environments[0].Issuer = "" }},
 		{"insecure JWKS", func(p *platform.AccessPlan) { p.Spec.Environments[0].JWKSURL = "http://idp.test/keys" }},
 		{"resource", func(p *platform.AccessPlan) { p.Spec.Environments[0].Resource = "" }},
-		{"port", func(p *platform.AccessPlan) { p.Spec.Environments[0].Gateway.NodePort = 0 }},
+		{"port", func(p *platform.AccessPlan) { p.Spec.Environments[0].Gateway.Port = 0 }},
 		{"discovery", func(p *platform.AccessPlan) { p.Spec.Environments[0].DiscoveryAuth = nil }},
 		{"client secret", func(p *platform.AccessPlan) { p.Spec.Environments[0].DiscoveryAuth.OAuth2.ClientSecretRef.Key = "" }},
 		{"token endpoint", func(p *platform.AccessPlan) {

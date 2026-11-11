@@ -13,6 +13,12 @@
     wait: true
     timeout: 10m
 
+- name: Require the cluster agentgateway
+  ansible.builtin.import_tasks: ../../deploy/tasks/site-agentgateway.yaml
+  vars:
+    agentgateway_kubeconfig: "{{ kubeconfig }}"
+  when: not (agentgateway_managed | bool)
+
 - name: Install environment agentgateway CRDs
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig }}"
@@ -24,6 +30,7 @@
     reset_values: true
     wait: true
     timeout: 10m
+  when: agentgateway_managed | bool
 
 - name: Install environment agentgateway controller
   kubernetes.core.helm:
@@ -54,6 +61,7 @@
         seccompProfile: { type: RuntimeDefault }
     wait: true
     timeout: 10m
+  when: agentgateway_managed | bool
 
 - name: Install environment resources
   ansible.builtin.import_tasks: install-chart.yaml

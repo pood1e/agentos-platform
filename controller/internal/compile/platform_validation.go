@@ -22,7 +22,7 @@ func validatePlatformEnvironment(gateway *platform.PlatformGateway, environment 
 			return fmt.Errorf("%s must be an absolute HTTPS URL", field.name)
 		}
 	}
-	if environment.Gateway.Address == "" || environment.Gateway.Host == "" || environment.Gateway.NodePort < 1 || environment.Gateway.NodePort > 65535 {
+	if environment.Gateway.Address == "" || environment.Gateway.Host == "" || environment.Gateway.Port < 1 || environment.Gateway.Port > 65535 {
 		return fmt.Errorf("environment gateway requires its address, TLS host and valid port")
 	}
 	discovery := environment.DiscoveryAuth

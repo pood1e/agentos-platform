@@ -16,6 +16,8 @@ environment_cache: "{{ agentos_cache }}/environments/{{ environment_name }}"
 kubeconfig: "{{ environment_kubeconfig | default(environment_cache ~ '/kubeconfig.yaml') }}"
 gateway_namespace: mcp
 gateway_node_port: 31000
+gateway_address: "{{ ansible_host }}"
+gateway_port: "{{ gateway_node_port }}"
 environment_issuer: ""
 environment_discovery_auth: {}
 gateway_server_name: "{{ environment_name }}-mcp.{{ environment_domain }}"
@@ -42,6 +44,7 @@ environment_release: agentos-environment
 connections_release: "{{ platform_release }}-connections"
 environment_chart_repository: "oci://{{ agentos_image_registry }}/charts"
 environment_chart_version: "{{ delivery_version }}"
+agentgateway_managed: true
 agentgateway_version: v1.7.0
 gateway_charts:
   - name: agentgateway

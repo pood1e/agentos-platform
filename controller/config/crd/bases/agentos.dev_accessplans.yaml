@@ -4592,14 +4592,15 @@ spec:
                         rule: (has(self.oauth2)?1:0)+(has(self.serviceAccount)?1:0)
                           == 1
                     gateway:
-                      description: EnvironmentGateway is the TLS gateway exposed by
-                        a connected environment.
+                      description: |-
+                        EnvironmentGateway is the TLS gateway exposed by a connected environment.
+                        Address and Port locate the gateway; Host is its TLS identity.
                       properties:
                         address:
                           type: string
                         host:
                           type: string
-                        nodePort:
+                        port:
                           format: int32
                           maximum: 65535
                           minimum: 1
@@ -4607,7 +4608,7 @@ spec:
                       required:
                       - address
                       - host
-                      - nodePort
+                      - port
                       type: object
                     governance:
                       enum:
