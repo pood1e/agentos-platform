@@ -38,18 +38,26 @@ capabilities: {drop: [ALL]}
 {{- end -}}
 
 {{- define "agentos.origins" -}}
-{{- $hosts := .Values.route.hosts -}}
+{{- $route := .Values.route -}}
 {{- $sandbox := regexReplaceAll ":0*443$" .Values.mcpApps.sandboxOrigin "" -}}
-{{- range concat (list (printf "https://%s" $hosts.console) (printf "https://%s" $hosts.api)) .Values.identity.returnOrigins -}}
+{{- range concat (list $route.console.origin $route.api.origin) .Values.identity.returnOrigins -}}
 {{- if and $sandbox (eq $sandbox (regexReplaceAll ":0*443$" . "")) -}}
 {{- fail "mcpApps.sandboxOrigin must be an isolated origin" -}}
 {{- end -}}
 {{- end -}}
 {{- dict
-  "console" (printf "https://%s" (required "route.hosts.console is required" $hosts.console))
-  "api" (printf "https://%s" (required "route.hosts.api is required" $hosts.api))
+  "console" (required "route.console.origin is required" $route.console.origin)
+  "api" (required "route.api.origin is required" $route.api.origin)
   "sandbox" $sandbox
   | toJson -}}
+{{- end -}}
+
+{{/* Route hostnames for a public origin; an IP origin is selected by its listener. */}}
+{{- define "agentos.routeHostnames" -}}
+{{- $host := regexReplaceAll "^https://([^/:]+)(:[0-9]+)?$" . "${1}" -}}
+{{- if not (regexMatch "^[0-9.]+$" $host) -}}
+hostnames: [{{ $host | quote }}]
+{{- end -}}
 {{- end -}}
 
 {{- define "agentos.workloadAuthName" -}}

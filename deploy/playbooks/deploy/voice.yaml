@@ -9,6 +9,7 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     voice_configuration: "{{ (app_values | default({})).get('agentos', app_values | default({})).get('voice', {}) }}"
     voice_platform_values: "{{ (app_values | default({})).get('agentos', app_values | default({})) }}"
+    voice_console_host: "{{ voice_platform_values.route.console.origin | urlsplit('hostname') }}"
   module_defaults:
     kubernetes.core.k8s:
       kubeconfig: "{{ kubeconfig_path }}"
@@ -79,8 +80,8 @@
               kind: HTTPRoute
               metadata: {name: agentos-livekit, namespace: "{{ agentos_namespace }}"}
               spec:
-                parentRefs: "{{ voice_platform_values.route.parentRefs }}"
-                hostnames: ["{{ voice_platform_values.route.hosts.console }}"]
+                parentRefs: "{{ voice_platform_values.route.console.parentRefs }}"
+                hostnames: "{{ [] if voice_console_host is match('^[0-9.]+$') else [voice_console_host] }}"
                 rules:
                   - matches: [{path: {type: PathPrefix, value: /livekit}}]
                     filters:

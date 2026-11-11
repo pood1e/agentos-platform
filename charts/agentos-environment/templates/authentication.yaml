@@ -15,7 +15,14 @@ spec:
       providers:
         - issuer: {{ .Values.environment.issuer | quote }}
           audiences: [{{ .Values.environment.resource | quote }}]
+          {{- if .Values.environment.caCertificateRef }}
+          jwks:
+            remote:
+              backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: identity-jwks}
+              jwksPath: {{ (urlParse .Values.environment.jwksURL).path | quote }}
+          {{- else }}
           jwks: {remote: {url: {{ .Values.environment.jwksURL | quote }}}}
+          {{- end }}
           validation: {requiredClaims: [sub, exp, aud]}
       mcp:
         provider: Keycloak

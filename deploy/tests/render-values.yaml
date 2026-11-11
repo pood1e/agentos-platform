@@ -11,8 +11,9 @@
     app_values:
       identity: {issuer: 'https://identity.example.test', audience: agentos-api, clientId: agentos-web}
       route: &route
-        parentRefs: [{name: agentos-public}]
-        hosts: {api: api.example.test}
+        console: {origin: 'https://agentos.example.test', parentRefs: [{name: agentos-public}]}
+        api: {origin: 'https://api.example.test', parentRefs: [{name: agentos-public}]}
+        sandbox: {origin: '', parentRefs: []}
         from:
           - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
             podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}

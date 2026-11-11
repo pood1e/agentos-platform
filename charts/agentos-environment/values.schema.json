@@ -27,6 +27,15 @@
         "jwksURL": {
           "pattern": "^https://[^/]+",
           "type": "string"
+        },
+        "caCertificateRef": {
+          "description": "ConfigMap key holding the identity provider CA for JWKS retrieval.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "key": {"type": "string", "minLength": 1}
+          }
         }
       },
       "required": ["name", "governance", "issuer", "resource", "jwksURL"]

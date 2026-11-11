@@ -770,34 +770,61 @@
     "route": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["parentRefs", "hosts", "from"],
+      "required": ["console", "api", "sandbox", "from"],
       "properties": {
-        "parentRefs": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["name"]
-          }
-        },
-        "hosts": {
+        "console": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["console", "api", "sandbox"],
+          "required": ["origin", "parentRefs"],
           "properties": {
-            "console": {
+            "origin": {
               "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9.-]+$",
-              "minLength": 1
+              "pattern": "^https://([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*|[0-9]{1,3}(\\.[0-9]{1,3}){3})(:[0-9]{1,5})?$"
             },
-            "api": {
+            "parentRefs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["origin", "parentRefs"],
+          "properties": {
+            "origin": {
               "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9.-]+$",
-              "minLength": 1
+              "pattern": "^https://([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*|[0-9]{1,3}(\\.[0-9]{1,3}){3})(:[0-9]{1,5})?$"
             },
-            "sandbox": {
+            "parentRefs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "sandbox": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["origin", "parentRefs"],
+          "properties": {
+            "origin": {
               "type": "string",
-              "pattern": "^$|^[a-z0-9][a-z0-9.-]+$"
+              "pattern": "^$|^https://([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*|[0-9]{1,3}(\\.[0-9]{1,3}){3})(:[0-9]{1,5})?$"
+            },
+            "parentRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name"]
+              }
             }
           }
         },

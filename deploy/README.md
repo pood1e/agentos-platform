@@ -91,7 +91,7 @@ collection 固化 `delivery_version`、`delivery_revision` 与 `agentos_image_re
 
 运行时控制面直接连接 `kagent-controller:8083`。其 NetworkPolicy 允许同命名空间的业务网关、平台 API/dataplane、controller，以及 `ate-system` 的 `atenet-egress` 访问，策略随原生 kagent release 管理。站点授予 controller 创建 TokenReview 的权限，并保留 K3s 内置的 NetworkPolicy 控制器。
 
-站点在 `route.hosts.api` 发布原生 `/agents/` A2A HTTP，以及 A2A、Session、Execution 的 gRPC 服务，使用 h2c Service 转发至原生控制面。入口 NetworkPolicy 复用 `route.from`，默认仅允许 K3s Traefik；原生 OIDC、资源权限与执行归属共同约束外部调用。
+站点在 `route.api.origin` 发布原生 `/agents/` A2A HTTP，以及 A2A、Session、Execution 的 gRPC 服务，使用 h2c Service 转发至原生控制面。入口 NetworkPolicy 复用 `route.from`，默认仅允许 K3s Traefik；原生 OIDC、资源权限与执行归属共同约束外部调用。
 
 MCP 发现凭据由各 RemoteMCPServer 的原生 `discoveryAuth` 管理，controller 按引用的 ServiceAccount 签发短期 Token。站点按 Kubernetes 官方方式向网关开放 ServiceAccount issuer discovery 与公开 JWKS，TLS 信任使用集群 CA。
 
