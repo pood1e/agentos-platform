@@ -74,8 +74,8 @@ tests:
   - template: web-deployment.yaml
     documentIndex: 0
     contains:
-      path: spec.template.spec.containers[0].args
-      content: --provider-ca-file=/etc/agentos/identity/ca.crt
+      path: spec.template.spec.containers[0].env
+      content: {name: SSL_CERT_DIR, value: /etc/ssl/certs:/etc/agentos/identity}
   - template: web-deployment.yaml
     documentIndex: 0
     contains:
