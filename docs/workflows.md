@@ -27,10 +27,17 @@ AgentSystem 文档 → WorkflowService 候选编译 → 不可变 ConfigMap
 | 定义 | 所有者 |
 | --- | --- |
 | Agent 模型、工具、子 Agent 路由与并行 | kagent AgentSystem |
-| 调度、批次认领、整体时限、恢复和兜底 | Temporal / 业务服务 |
+| 定时执行 | kagent ScheduledRun（创建者身份） |
+| 批次认领、整体时限、恢复和兜底 | Temporal / 业务服务 |
 | 业务审批、变更授权与恢复验证 | 工单 / 变更服务 |
 | 团队协作与业务全景展示 | Pack.workflows |
 
 Temporal 业务流程由业务服务 SDK 代码及版本管理交付，执行参数由所属领域 API 管理。Agent 子流程与业务全景分别读取各自的权威定义。
+
+## 定时任务
+
+`/schedules` 管理调用者在当前工作空间的原生 ScheduledRun：Cron 与时区、执行指令、执行时限、暂停、立即执行和执行记录。每次触发由 kagent 新建 Session，以创建者身份和后台委托执行；创建时固定的权限上限在每次执行前复验，权限收回后停止执行。
+
+方案在 `Pack.schedules` 中提供推荐模板（Agent 引用与 `ScheduledRunConfig`），用户启用后成为自己的定时任务。创建需要 ScheduledRun 资源规则，以及目标 Agent 与 Session 的创建权限。
 
 协议和实现入口见[代码导航](code-navigation.md)。

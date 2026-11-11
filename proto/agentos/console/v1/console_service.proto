@@ -19,6 +19,7 @@ import "kagent/api/v1/common.proto";
 import "kagent/api/v1/harnesses.proto";
 import "kagent/api/v1/interactions.proto";
 import "kagent/api/v1/models.proto";
+import "kagent/api/v1/scheduled_runs.proto";
 import "kagent/api/v1/sessions.proto";
 import "kagent/api/v1/tools.proto";
 
@@ -65,6 +66,17 @@ service ConsoleService {
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
   // Tool bindings and execution confirmation requirements.
   rpc ExplainTools(ExplainToolsRequest) returns (ExplainToolsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The caller's native schedules for Agents in this workspace. Each firing runs as the creator.
+  rpc ListScheduledRuns(.kagent.api.v1.ListScheduledRunsRequest) returns (.kagent.api.v1.ListScheduledRunsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc CreateScheduledRun(.kagent.api.v1.CreateScheduledRunRequest) returns (.kagent.api.v1.CreateScheduledRunResponse);
+  rpc UpdateScheduledRun(.kagent.api.v1.UpdateScheduledRunRequest) returns (.kagent.api.v1.UpdateScheduledRunResponse);
+  rpc DeleteScheduledRun(.kagent.api.v1.DeleteScheduledRunRequest) returns (.kagent.api.v1.DeleteScheduledRunResponse);
+  rpc TriggerScheduledRun(.kagent.api.v1.TriggerScheduledRunRequest) returns (.kagent.api.v1.TriggerScheduledRunResponse);
+  rpc ListScheduledRunExecutions(.kagent.api.v1.ListScheduledRunExecutionsRequest) returns (.kagent.api.v1.ListScheduledRunExecutionsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import {
   Blocks,
   BookOpen,
+  CalendarClock,
   Cpu,
   GitBranch,
   ListChecks,
@@ -23,6 +24,7 @@ import {
 const sections = [
   { path: "/chat", label: "navigation.chat", icon: MessageCircle },
   { path: "/tasks", label: "task.listTitle", icon: ListChecks },
+  { path: "/schedules", label: "schedule.title", icon: CalendarClock },
   { path: "/agents", label: "navigation.agents", icon: Users },
   { path: "/workflows", label: "workflow.title", icon: GitBranch },
 ];

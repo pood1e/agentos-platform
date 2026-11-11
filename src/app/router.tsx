@@ -32,6 +32,12 @@ const workspaceRoutes = [
         }),
       },
       {
+        path: "schedules",
+        lazy: async () => ({
+          Component: (await import("../features/schedules/SchedulesPage.js")).SchedulesPage,
+        }),
+      },
+      {
         path: "executions/:agent/:session",
         lazy: async () => ({
           Component: (await import("../features/tasks/ExecutionPage.js")).ExecutionPage,
