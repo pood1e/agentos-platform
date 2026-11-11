@@ -23,6 +23,10 @@ import {
   TaskExecutionSchema,
   TaskRelation,
 } from "../../gen/kagent/api/v1/execution_pb.js";
+import type {
+  ScheduledRun,
+  ScheduledRunExecution,
+} from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { type Session, SessionSchema } from "../../gen/kagent/api/v1/sessions_pb.js";
 import type { TaskCatalogView } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { agentKey } from "../../server/kagent/resources.js";
@@ -54,6 +58,8 @@ export class FakeKagent {
   readonly received: Message[] = [];
   readonly listed: { tenant: string; incremental: boolean; returned: number }[] = [];
   readonly fetched: string[] = [];
+  readonly scheduledRuns = new Map<string, ScheduledRun>();
+  readonly scheduledExecutions = new Map<string, ScheduledRunExecution[]>();
   readonly catalogReads: { method: string; returned: number; view?: TaskCatalogView }[] = [];
   private requests = new Map<string, string>();
   private updates = new EventEmitter().setMaxListeners(0);

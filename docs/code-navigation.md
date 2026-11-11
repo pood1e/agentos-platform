@@ -21,7 +21,7 @@
 | 业务 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
 | 业务 | `server/management` | 原生资源 CRUD、模型 / MCP 连接与运行配置 |
 | 业务 | `server/management/workflows` | 原生工作流目录、候选校验、不可变发布、布局和来源回收 |
-| 业务 | `server/console` | 控制台 RPC、原生发送 / HITL / 取消、会话订阅与角色管理 |
+| 业务 | `server/console` | 控制台 RPC、原生发送 / HITL / 取消、定时任务、会话订阅与角色管理 |
 | 业务 | `server/mcp-apps` | 原生归属校验、视图投影与查看者工具回调 |
 | 业务 | `server/team-sessions` | 角色工具目录、起草 MCP 与发现认证 |
 | 平台 | `server/platform` | 工作空间目标、逐请求准入与服务分发 |
@@ -48,6 +48,7 @@
 | `src/features/agents` | 通用 Agent 目录、模板编辑、模型与运行时选择、工具绑定与方案业务全景 |
 | `src/features/chat` | 聊天、MCP App 宿主、听写、朗读与语音通话 |
 | `src/features/tasks` | 任务历史与只读执行记录 |
+| `src/features/schedules` | 定时任务、方案推荐模板与执行记录 |
 | `src/features/authorization` | 原生角色目录、按账号 / 组汇总的角色标签与资源直接授权管理 |
 | `src/features/shared` | 跨功能的资源列表、对话框、运行时选择器、审批与工具展示 |
 | `src/{lib,i18n}` | RPC、连接状态与展示文案 |

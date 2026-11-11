@@ -5,6 +5,7 @@ package agentos.console.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "kagent/api/v1/common.proto";
+import "kagent/api/v1/scheduled_runs.proto";
 
 // Presentation supplied by a solution pack. Every field is optional and falls back to the platform default.
 message Pack {
@@ -13,12 +14,31 @@ message Pack {
     message: "Workflow IDs must be unique"
     expression: "this.workflows.all(w, this.workflows.filter(v, v.id == w.id).size() == 1)"
   };
+  option (buf.validate.message).cel = {
+    id: "pack.schedules"
+    message: "Schedule template names must be unique"
+    expression: "this.schedules.all(s, this.schedules.filter(t, t.config.name == s.config.name).size() == 1)"
+  };
   string title = 1 [(buf.validate.field).string.max_len = 40];
   repeated RolePresentation roles = 2 [(buf.validate.field).repeated.max_items = 64];
   repeated ToolBrand tools = 3 [(buf.validate.field).repeated.max_items = 64];
   // i18next resources by language code, merged over the platform resources by namespace.
   map<string, google.protobuf.Struct> locales = 4 [(buf.validate.field).map.max_pairs = 8];
   repeated CollaborationWorkflow workflows = 5 [(buf.validate.field).repeated.max_items = 16];
+  repeated ScheduleTemplate schedules = 6 [(buf.validate.field).repeated.max_items = 16];
+}
+
+// Recommended automation. Users enable a template as their own native ScheduledRun.
+message ScheduleTemplate {
+  kagent.api.v1.ResourceReference agent = 1 [(buf.validate.field).required = true];
+  kagent.api.v1.ScheduledRunConfig config = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "schedule.name"
+      message: "Schedule templates require a name"
+      expression: "this.name != ''"
+    }
+  ];
 }
 
 // A presentation of collaboration, with text keys resolved in Pack.locales.

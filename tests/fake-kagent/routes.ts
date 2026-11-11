@@ -12,6 +12,7 @@ import { millis } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
 import type { FakeKagent } from "./kagent.js";
 import { page, resourceRoutes } from "./resource-routes.js";
+import { scheduledRunRoutes } from "./scheduled-runs.js";
 import { taskCatalogRoutes } from "./task-catalog.js";
 import { workflowRoutes } from "./workflows.js";
 
@@ -20,6 +21,7 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
   workflowRoutes(fake, router);
   taskCatalogRoutes(fake, router);
   resourceRoutes(fake, router);
+  scheduledRunRoutes(fake, router);
   router.service(SystemService, {
     getCurrentUser: () => ({ principalId: "user:operator", claims: { roles: [] } }),
   });

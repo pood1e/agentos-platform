@@ -18,6 +18,7 @@ import { conversationWatch } from "./conversation-watch.js";
 import { conversationCommands } from "./conversations.js";
 import { messageCommands } from "./messages.js";
 import { roleCommands } from "./roles.js";
+import { scheduleCommands } from "./schedules.js";
 import { chatTarget, executionTarget, viewer, visibleGraph } from "./visibility.js";
 
 /** Speech RPCs, provided by the voice feature where the deployment enables it. */
@@ -85,6 +86,7 @@ export function consoleService({
   });
   const renewable = async () =>
     (await clients.execution.getDelegationCredentialStatus({})).renewable;
+  const schedules = scheduleCommands(clients, namespace, renewable);
   return {
     ...voice,
     getAppResource: (request, context) => {
@@ -146,5 +148,13 @@ export function consoleService({
     createRole: (request) => roles.createRole(required(request.role), request.harness),
     updateRole: (request) => roles.updateRole(required(request.role)),
     explainTools: (request) => roles.explain(request.identity),
+    listScheduledRuns: (request, context) =>
+      nativeSignal.run(context.signal, () => schedules.list(request)),
+    createScheduledRun: (request, context) => schedules.create(request, identityOf(context)),
+    updateScheduledRun: (request) => schedules.update(request),
+    deleteScheduledRun: (request) => schedules.remove(request),
+    triggerScheduledRun: (request) => schedules.trigger(request),
+    listScheduledRunExecutions: (request, context) =>
+      nativeSignal.run(context.signal, () => schedules.executions(request)),
   };
 }
