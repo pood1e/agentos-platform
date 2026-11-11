@@ -4,6 +4,7 @@ environment:
   issuer: ''
   resource: ''
   jwksURL: ''
+  caCertificateRef: {}
 gateway:
   address: ''
   host: ''

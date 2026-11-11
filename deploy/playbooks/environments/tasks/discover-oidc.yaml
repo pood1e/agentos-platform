@@ -9,6 +9,7 @@
     return_content: true
     follow_redirects: none
     timeout: 10
+    ca_path: "{{ identity_ca_file | default(omit) }}"
   register: oidc_discovery
   check_mode: false
 

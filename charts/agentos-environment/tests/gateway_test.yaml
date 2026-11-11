@@ -87,3 +87,16 @@ tests:
   - equal:
       path: spec.connectors.kubernetes.targets[0].auth.oauthTokenExchange.url
       value: https://identity.example.test/realms/env-approval/protocol/openid-connect/token
+- it: retrieves the identity provider JWKS through its private CA
+  set:
+    environment.jwksURL: https://192.0.2.10:8446/realms/operations/protocol/openid-connect/certs
+    environment.caCertificateRef: {name: identity-ca, key: ca.crt}
+  asserts:
+  - template: identity-jwks.yaml
+    equal: {path: spec.static, value: {host: 192.0.2.10, port: 8446}}
+  - template: identity-jwks.yaml
+    equal: {path: 'spec.policies.tls.caCertificateRefs[0].name', value: identity-ca}
+  - template: authentication.yaml
+    documentIndex: 0
+    equal: {path: 'spec.traffic.jwtAuthentication.providers[0].jwks.remote.jwksPath', value: /realms/operations/protocol/openid-connect/certs}
+

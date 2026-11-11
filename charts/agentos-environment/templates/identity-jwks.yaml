@@ -1,0 +1,16 @@
+{{- with .Values.environment.caCertificateRef }}
+{{- $endpoint := urlParse $.Values.environment.jwksURL -}}
+{{- $address := regexFind "^\\[[^]]+\\]|^[^:]+" $endpoint.host | trimAll "[]" -}}
+{{- $port := regexFind ":[0-9]+$" $endpoint.host | trimPrefix ":" -}}
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: identity-jwks
+  labels: {{ include "agentos-environment.labels" $ | nindent 4 }}
+spec:
+  static: {host: {{ $address | quote }}, port: {{ $port | default "443" | int }}}
+  policies:
+    tls:
+      sni: {{ $address | quote }}
+      caCertificateRefs: [{name: {{ required "environment.caCertificateRef.name is required" .name }}, kind: ConfigMap, key: {{ required "environment.caCertificateRef.key is required" .key }}}]
+{{- end }}
