@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/pood1e/agentos-platform/compare/v0.52.0...v0.52.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deploy:** let the gateway read service account keys on K3s ([78e2048](https://github.com/pood1e/agentos-platform/commit/78e204800791082e2ede35974e3b0f2de2362810))
+
 ## [0.52.0](https://github.com/pood1e/agentos-platform/compare/v0.51.8...v0.52.0) (2026-11-10)
 
 
