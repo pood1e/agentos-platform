@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.1](https://github.com/pood1e/agentos-platform/compare/v0.56.0...v0.56.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **charts:** trust a private identity CA in the console proxy ([9222149](https://github.com/pood1e/agentos-platform/commit/9222149144e86003f170d809b933208f12e77424))
+
 ## [0.56.0](https://github.com/pood1e/agentos-platform/compare/v0.55.0...v0.56.0) (2026-11-11)
 
 
