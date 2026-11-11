@@ -58,7 +58,7 @@ api:
 ```
 
 两个 release 使用同一 OIDC 主体规范，并在各自原生授权存储中建立工作空间成员绑定。中心 API 从各实例的原生 `ListWorkspaces` 汇总当前用户可见目录；委托凭据登记到当前工作空间的 kagent 实例。
-`runtime.actorIssuer` / `runtime.actorJWKS` 固定 Substrate 身份源；`runtime.kubernetesIssuer` 与集群签发方一致；`runtime.kubernetesJWKS` 使用原生 HTTPS Backend 连接可供网关读取的 Kubernetes 公钥端点。参考部署为该公开公钥授予 `system:service-account-issuer-discovery` 只读权限。网关 origin 同步登记到 kagent `gatewayAudiences`。
+`runtime.actorIssuer` / `runtime.actorJWKS` 固定 Substrate 身份源；`runtime.kubernetesIssuer` 与集群签发方一致；`runtime.kubernetesJWKS` 使用原生 HTTPS Backend 匿名读取 Kubernetes 公钥端点。参考部署的 K3s 仅对 `/openid/v1/jwks` 开放匿名认证，并为其授予 `system:service-account-issuer-discovery` 只读权限。网关 origin 同步登记到 kagent `gatewayAudiences`。
 
 ## 模型连接
 
