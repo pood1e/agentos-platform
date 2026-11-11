@@ -28,8 +28,16 @@ func appViews(plan *platform.AccessPlan, targets []platform.CompiledTarget) ([]c
 			return nil, fmt.Errorf("MCP Apps require nonempty viewer audiences")
 		}
 	}
+	// Environment views belong to the plan that publishes the environment gateway.
+	served := map[string]bool{"": true}
+	for _, environment := range plan.Spec.Environments {
+		served[environment.Name] = environment.Gateway != nil
+	}
 	var resources []client.Object
 	for _, target := range targets {
+		if !served[target.Environment] {
+			continue
+		}
 		var read []string
 		for _, tool := range target.Tools {
 			if !tool.Write {
