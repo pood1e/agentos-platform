@@ -99,7 +99,7 @@
       kubernetes.core.k8s_info:
         api_version: postgresql.cnpg.io/v1
         kind: Cluster
-        name: openfga-postgres
+        name: kagent-postgres
         namespace: "{{ agentos_namespace }}"
       register: openfga_postgres_cluster
 
