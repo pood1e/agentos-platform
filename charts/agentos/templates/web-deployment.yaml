@@ -61,13 +61,13 @@ spec:
             - --api-route=^/agentos\.
             - --request-logging=false
             - --silence-ping-logging=true
-            {{- with .Values.identity.caCertificateRef }}
-            - --provider-ca-file=/etc/agentos/identity/ca.crt
-            - --use-system-trust-store=true
-            {{- end }}
           env:
             - name: OAUTH2_PROXY_COOKIE_SECRET
               valueFrom: {secretKeyRef: {name: {{ $name }}-sessions, key: web}}
+            {{- if .Values.identity.caCertificateRef }}
+            {{- /* oauth2-proxy legacy flags carry no provider CA; Go adds every certificate in these directories to its roots. */}}
+            - {name: SSL_CERT_DIR, value: /etc/ssl/certs:/etc/agentos/identity}
+            {{- end }}
           ports: [{name: http, containerPort: 4180}]
           readinessProbe:
             httpGet: {path: /ping, port: http}
