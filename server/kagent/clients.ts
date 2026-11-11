@@ -7,6 +7,7 @@ import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.j
 import { ExecutionService } from "../../gen/kagent/api/v1/execution_pb.js";
 import { HarnessService } from "../../gen/kagent/api/v1/harnesses_pb.js";
 import { ModelService } from "../../gen/kagent/api/v1/models_pb.js";
+import { ScheduledRunService } from "../../gen/kagent/api/v1/scheduled_runs_pb.js";
 import { SessionService } from "../../gen/kagent/api/v1/sessions_pb.js";
 import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
@@ -42,6 +43,7 @@ export function kagentClients(transport: Transport) {
     a2a: createClient(A2AService, transport),
     templates: createClient(AgentTemplateService, transport),
     tools: createClient(ToolService, transport),
+    scheduledRuns: createClient(ScheduledRunService, transport),
   };
 }
 

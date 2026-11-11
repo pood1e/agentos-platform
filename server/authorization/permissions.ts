@@ -35,6 +35,10 @@ const selfService = new Set(
     ConsoleService.method.respondInteraction,
     ConsoleService.method.cancelTask,
     ConsoleService.method.startVoiceSession,
+    ConsoleService.method.createScheduledRun,
+    ConsoleService.method.updateScheduledRun,
+    ConsoleService.method.deleteScheduledRun,
+    ConsoleService.method.triggerScheduledRun,
   ].map(key),
 );
 

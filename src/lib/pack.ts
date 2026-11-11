@@ -5,6 +5,7 @@ import {
   CollaborationWorkflowSchema,
   type Pack,
   PackSchema,
+  ScheduleTemplateSchema,
 } from "../../gen/agentos/console/v1/pack_pb.js";
 import i18n from "../i18n/index.js";
 
@@ -21,6 +22,13 @@ export function parsePack(json: JsonValue): Pack {
     throw new Error("Workflow IDs must be unique");
   for (const workflow of pack.workflows) {
     const result = validator.validate(CollaborationWorkflowSchema, workflow);
+    if (result.kind !== "valid") throw new Error(String(result.error));
+  }
+  const names = pack.schedules.map((schedule) => schedule.config?.name);
+  if (new Set(names).size !== names.length)
+    throw new Error("Schedule template names must be unique");
+  for (const schedule of pack.schedules) {
+    const result = validator.validate(ScheduleTemplateSchema, schedule);
     if (result.kind !== "valid") throw new Error(String(result.error));
   }
   pack.tools = pack.tools.filter((tool) => {

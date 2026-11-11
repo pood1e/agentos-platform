@@ -54,7 +54,7 @@ Agent 以 `harnessRef` 与可选 `modelConfigRef` 选择运行时；单次原生
 
 `standard` Harness 执行 `AgentTemplate.workflowFrom` 引用的声明式工作流。文档中的 `template:model` 与 `template:tools` 分别使用模板模型及已授权 MCP 绑定；CEL、并行分析与工具调用由原生运行时编排。工作流与指令通过方案 Preset 中同命名空间的 ConfigMap 发布。
 `/agents` 目录展示原生授权可见的各种 Agent，模板和 Harness 决定其能力。角色编辑管理指令型 AgentTemplate，声明式工作流使用 `/workflows` 独立入口；方案协作图的 `agent` 引用绑定原生运行记录。会话、任务及执行参与者统一采用原生 Agent 身份。
-工作流作为独立自动化能力提供编辑、候选编译和不可变发布；原生 Agent 提供执行身份，工程师是可选参与者。定义、运行及 Temporal 分层见[工作流](workflows.md)。
+工作流作为独立自动化能力提供编辑、候选编译和不可变发布；原生 Agent 提供执行身份，工程师是可选参与者。定时任务直接使用原生 ScheduledRun，以创建者身份触发。定义、运行、定时及 Temporal 分层见[工作流](workflows.md)。
 协作 MCP 直接连接 kagent `/mcp`；角色起草使用平台业务 MCP。
 
 环境连接、MCP Apps 与语音分别见[环境接入](environments.md)、[MCP Apps](mcp-app.md)和[语音](speech.md)。执行身份见[执行授权](execution-authorization.md)，源码入口见[代码导航](code-navigation.md)。
