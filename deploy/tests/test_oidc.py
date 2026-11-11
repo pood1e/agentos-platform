@@ -154,9 +154,9 @@ class OIDCDiscoveryTest(unittest.TestCase):
                 }
             },
             "gateway_resource": "https://environment.test/mcp",
-            "ansible_host": "192.0.2.1",
             "gateway_server_name": "environment.test",
-            "gateway_node_port": 31000,
+            "gateway_address": "192.0.2.1",
+            "gateway_port": 31000,
             "gateway_certificate": {
                 "resources": [{"data": {"ca.crt": base64.b64encode(b"CA").decode()}}]
             },

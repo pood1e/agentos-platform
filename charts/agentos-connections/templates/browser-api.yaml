@@ -9,7 +9,7 @@ metadata:
     {{- include "agentos-connections.labels" $ | nindent 4 }}
     agentos.dev/browser-environment: {{ $environment.name }}
 spec:
-  static: {host: {{ $environment.gateway.address | quote }}, port: {{ $environment.gateway.nodePort }}}
+  static: {host: {{ $environment.gateway.address | quote }}, port: {{ $environment.gateway.port }}}
   policies:
     {{- include "agentos-connections.browserBackend" (dict "environment" $environment "identity" "catalog") | nindent 4 }}
 {{- $services := dict }}

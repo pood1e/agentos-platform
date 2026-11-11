@@ -19,7 +19,7 @@ func platformView(plan *platform.AccessPlan, environment platform.Environment, t
 		identity = "catalog"
 	}
 	backend := &agw.AgentgatewayBackend{ObjectMeta: metadata(plan.Namespace, target.Server), Spec: agw.AgentgatewayBackendSpec{
-		MCP: &agw.MCPBackend{PrefixMode: agw.PrefixAlways, SessionRouting: agw.Stateless, Targets: []agw.McpTargetSelector{{Name: gw.SectionName(target.Service), Static: &agw.McpTarget{Host: ptr.To(environment.Gateway.Address), Port: environment.Gateway.NodePort, Path: ptr.To("/mcp/" + identity + "/" + target.Project), Protocol: ptr.To(agw.MCPProtocol("StreamableHTTP")), Policies: environmentTransport(environment, target)}}}},
+		MCP: &agw.MCPBackend{PrefixMode: agw.PrefixAlways, SessionRouting: agw.Stateless, Targets: []agw.McpTargetSelector{{Name: gw.SectionName(target.Service), Static: &agw.McpTarget{Host: ptr.To(environment.Gateway.Address), Port: environment.Gateway.Port, Path: ptr.To("/mcp/" + identity + "/" + target.Project), Protocol: ptr.To(agw.MCPProtocol("StreamableHTTP")), Policies: environmentTransport(environment, target)}}}},
 		Policies: &agw.BackendFull{MCP: &agw.BackendMCP{Authorization: toolAuthorization(allowed, target.Catalog)},
 			Transformation: &agw.Transformation{Request: &agw.Transform{Remove: []agw.HeaderName{"x-substrate-actor-token", "cookie", "x-forwarded-access-token"}}}},
 	}}
