@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.1](https://github.com/pood1e/agentos-platform/compare/v0.54.0...v0.54.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deploy:** take over chart CRD fields that Helm installed ([4c3d5f1](https://github.com/pood1e/agentos-platform/commit/4c3d5f176a919e81a6550a409b8902e7ca354cea))
+
 ## [0.54.0](https://github.com/pood1e/agentos-platform/compare/v0.53.0...v0.54.0) (2026-11-11)
 
 
