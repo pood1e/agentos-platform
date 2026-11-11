@@ -16,7 +16,9 @@
       spec:
         instances: 1
         imageName: "{{ postgres_image }}"
-        storage: {size: 2Gi, storageClass: local-path}
+        storage: >-
+          {{ database_cluster.resources[0].spec.storage if database_cluster.resources | length > 0
+             else {'size': '2Gi', 'storageClass': 'local-path'} }}
         resources: "{{ kagent_postgres_resources }}"
         bootstrap: >-
           {{ database_cluster.resources[0].spec.bootstrap if database_cluster.resources | length > 0
@@ -73,5 +75,5 @@
             ports: [{port: 5432, protocol: TCP}]
           - from:
               - namespaceSelector:
-                  matchLabels: {kubernetes.io/metadata.name: cnpg-system}
+                  matchLabels: {kubernetes.io/metadata.name: "{{ cnpg_operator_namespace }}"}
             ports: [{port: 8000, protocol: TCP}, {port: 5432, protocol: TCP}]

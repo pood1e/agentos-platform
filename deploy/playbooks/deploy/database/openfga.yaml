@@ -55,5 +55,5 @@
             ports: [{port: 5432, protocol: TCP}]
           - from:
               - namespaceSelector:
-                  matchLabels: {kubernetes.io/metadata.name: cnpg-system}
+                  matchLabels: {kubernetes.io/metadata.name: "{{ cnpg_operator_namespace }}"}
             ports: [{port: 8000, protocol: TCP}, {port: 5432, protocol: TCP}]

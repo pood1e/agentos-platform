@@ -53,7 +53,7 @@ ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/va
 | `kagent_telemetry` | 可选 kagent 原生 `TelemetryConfig`，应用于控制面与运行时默认值 |
 | `openfga_bootstrap_subject` | 初始管理员的 OIDC `sub`；站点以当前工作空间 UID 建立成员与管理员绑定 |
 | `kagent_authorization_api_token_secret`、`kagent_authorization_ca_secret` | OpenFGA API 凭据和 CA 的 Secret `{name, key}`，默认分别为 `openfga-auth/keys` 与 `openfga-ca/tls.crt` |
-| `cnpg_operator_managed` | 是否由 collection 安装 CloudNativePG Operator，默认 `true`；站点已有 Operator 时设为 `false`，数据库资源由站点 Operator 管理 |
+| `cnpg_operator_managed`、`cnpg_operator_namespace` | 是否由 collection 安装 CloudNativePG Operator 及其命名空间，默认 `true` 与 `cnpg-system`；站点已有 Operator 时设为 `false` 并填写其命名空间，数据库资源由站点 Operator 管理，网络策略放行该命名空间 |
 | `agentgateway_managed` | 是否由 collection 安装 agentgateway CRD 与控制器，默认 `true`；集群已有控制器时设为 `false`，collection 校验 GatewayClass 已接受且控制器不低于 `agentgateway_version`，站点控制器需监听 AgentOS 命名空间 |
 | `kagent_postgres_resources` | 原生 PostgreSQL 的 Kubernetes requests 与 limits，默认请求 100m / 256Mi，上限 1 CPU / 1Gi |
 | `kagent_postgres_pool_max_conns` | 每个 kagent 控制器的 PostgreSQL 连接上限，默认 16；与 Substrate 连接及数据库 `max_connections` 统一分配容量 |
