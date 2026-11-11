@@ -25,15 +25,19 @@ identity:
   audience: agentos-platform
   writerRole: operations-writer
   secretRef: agentos-identity
-  returnOrigins: [https://controller.example.com]
+  from:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keycloak}}
+      podSelector: {matchLabels: {app: keycloak}}
 ```
 
-机密客户端登记 `https://<console>/oauth2/callback` 与 `https://<api>/delegation/callback`，支持授权码、PKCE 与 `offline_access`。
+机密客户端登记 `https://<console>/oauth2/callback`，支持授权码与 PKCE。
 访问令牌的 `aud` 包含 `audience`，`roles` 声明携带 `writerRole` 与应用角色；`identity.secretRef` 的 `client-secret` 保存客户端密钥。
-`returnOrigins` 登记 console 之外的委派返回源。console 自动发起离线授权，其他客户端使用 `GetAccessProfile.delegation_url`。
+同一客户端开启 JWT Authorization Grant（RFC 7523），信任 kagent 断言签发方 `http://kagent-controller.<namespace>.svc.cluster.local:8083/delegation`，公钥位于签发方的 `/jwks.json`。
+需要后台执行的用户以 IdP subject 关联该签发方；`identity.from` 指定读取公钥的 IdP Pod。
+console 加载时自动登记后台委托，其他客户端以用户 Bearer 调用 `ConsoleService.RegisterDelegationCredential`。
 应用角色目录由契约包的 `authorization.json` 描述，权限和凭据生命周期见[执行授权](execution-authorization.md)。
 
-kagent 配置 OIDC AuthProvider、ScopeRule、OAuthTokenSource 与持久凭据加密 Secret。平台 API 将离线授权交给原生凭据服务，kagent PostgreSQL 与密钥由站点统一备份。
+kagent 配置 OIDC AuthProvider、ScopeRule、断言授权与持久凭据加密 Secret；断言私钥 `kagent-delegation-assertion` 由安装器生成。kagent PostgreSQL 与密钥由站点统一备份。
 api 与 dataplane 使用独立 ServiceAccount / NetworkPolicy；dataplane 提供 `8080` 业务 MCP，原生协作 MCP 直连 kagent。
 
 ## 多工作空间

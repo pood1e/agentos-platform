@@ -202,6 +202,9 @@ message ResourceScopeRule {
   }];
 }
 
+// OAuthCredentialConfig renews registered delegations with RFC 7523 JWT bearer
+// assertions. The identity provider trusts assertion_issuer through the
+// controller's /delegation/jwks.json and maps each subject to a linked user.
 message OAuthCredentialConfig {
   string token_endpoint = 1 [(buf.validate.field).string = {
     uri: true
@@ -210,6 +213,12 @@ message OAuthCredentialConfig {
   string client_id = 2 [(buf.validate.field).string.min_len = 1];
   string client_secret_file = 3;
   string ca_file = 4;
+  string assertion_issuer = 5 [(buf.validate.field).string = {
+    uri: true
+    pattern: "^https?://[^/?#@]+(/[^?#]*)?$"
+  }];
+  // File containing one unencrypted PKCS#8 Ed25519 PEM key shared by all replicas.
+  string assertion_key_file = 6 [(buf.validate.field).string.min_len = 1];
 }
 
 // HarnessImagesConfig supplies release defaults for built-in Harnesses. Empty

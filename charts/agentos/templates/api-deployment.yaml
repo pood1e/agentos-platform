@@ -1,1 +1,1 @@
-{{ include "agentos.platformDeployment" (dict "root" . "component" "api" "env" (include "agentos.apiEnv" .) "ports" (ternary (list (dict "name" "voice" "containerPort" 9093)) list .Values.voice.enabled) "mounts" (include "agentos.identityMounts" .) "volumes" (include "agentos.identityVolumes" .)) }}
+{{ include "agentos.platformDeployment" (dict "root" . "component" "api" "env" (include "agentos.apiEnv" .) "ports" (ternary (list (dict "name" "voice" "containerPort" 9093)) list .Values.voice.enabled)) }}

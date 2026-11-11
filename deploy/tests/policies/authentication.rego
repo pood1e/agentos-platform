@@ -24,6 +24,19 @@ native_authority if {
 	startswith(authority.oauth.tokenEndpoint, "https://")
 	authority.oauth.clientId != ""
 	authority.oauth.clientSecretFile == "/etc/kagent/identity/client-secret"
+	authority.oauth.assertionIssuer == "http://kagent-controller.agentos.svc.cluster.local:8083/delegation"
+	authority.oauth.assertionKeyFile == "/etc/kagent/delegation/key.pem"
+}
+
+deny contains "native delegation assertion key must be controller-only" if not native_assertion_key_volume
+
+native_assertion_key_volume if {
+	volume := native_controller.spec.template.spec.volumes[_]
+	volume.name == "delegation-assertion"
+	volume.secret == {"secretName": "kagent-delegation-assertion", "defaultMode": 288}
+	container := native_controller.spec.template.spec.containers[_]
+	container.name == "controller"
+	container.volumeMounts[_] == {"name": "delegation-assertion", "mountPath": "/etc/kagent/delegation", "readOnly": true}
 }
 
 deny contains "native execution key must be controller-only" if not native_execution_key_volume

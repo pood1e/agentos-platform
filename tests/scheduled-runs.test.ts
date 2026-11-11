@@ -75,6 +75,10 @@ it("keeps schedules inside the workspace and behind background delegation", asyn
     await expect(
       client.createScheduledRun({ agent, requestId: "r3", config }),
     ).rejects.toMatchObject({ code: Code.FailedPrecondition, rawMessage: "delegation.required" });
+    expect((await client.getAccessProfile({})).profile?.delegated).toBe(false);
+    await client.registerDelegationCredential({});
+    expect((await client.getAccessProfile({})).profile?.delegated).toBe(true);
+    await client.createScheduledRun({ agent, requestId: "r4", config });
   } finally {
     await env.close();
   }

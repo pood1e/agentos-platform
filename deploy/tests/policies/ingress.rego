@@ -18,6 +18,20 @@ deny contains "native execution ingress must use the public API host" if public_
 
 deny contains "native public ingress must trust only the site gateway" if public_resource("NetworkPolicy").spec.ingress != [{"from": [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "kube-system"}}, "podSelector": {"matchLabels": {"app.kubernetes.io/name": "traefik"}}}], "ports": [{"port": "http", "protocol": "TCP"}]}]
 
+delegation_keys := file.contents if {
+	some file in input
+	file.contents.kind == "NetworkPolicy"
+	file.contents.metadata.name == "kagent-delegation-keys"
+}
+
+deny contains "native delegation keys must be readable only by the identity provider" if {
+	delegation_keys.spec.podSelector.matchLabels != native_controller.spec.selector.matchLabels
+}
+
+deny contains "native delegation keys must be readable only by the identity provider" if delegation_keys.spec.ingress != [{"from": [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "keycloak"}}, "podSelector": {"matchLabels": {"app": "keycloak"}}}], "ports": [{"port": "http", "protocol": "TCP"}]}]
+
+deny contains "native delegation keys are unreachable for the identity provider" if not delegation_keys
+
 deny contains "native execution ingress is incomplete" if {
 	some kind in ["Service", "HTTPRoute", "NetworkPolicy"]
 	not public_resource(kind)

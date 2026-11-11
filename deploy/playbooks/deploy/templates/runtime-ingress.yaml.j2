@@ -50,3 +50,20 @@ spec:
     - from:
 {{ site_gateway_peers | to_nice_yaml(indent=2) | indent(8, true) }}
       ports: [{port: http, protocol: TCP}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kagent-delegation-keys
+  namespace: {{ agentos_namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+      app.kubernetes.io/instance: kagent
+      app.kubernetes.io/component: controller
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+{{ site_identity.from | to_nice_yaml(indent=2) | indent(8, true) }}
+      ports: [{port: http, protocol: TCP}]

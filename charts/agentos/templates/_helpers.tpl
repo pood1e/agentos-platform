@@ -40,7 +40,7 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.origins" -}}
 {{- $route := .Values.route -}}
 {{- $sandbox := regexReplaceAll ":0*443$" .Values.mcpApps.sandboxOrigin "" -}}
-{{- range concat (list $route.console.origin $route.api.origin) .Values.identity.returnOrigins -}}
+{{- range list $route.console.origin $route.api.origin -}}
 {{- if and $sandbox (eq $sandbox (regexReplaceAll ":0*443$" . "")) -}}
 {{- fail "mcpApps.sandboxOrigin must be an isolated origin" -}}
 {{- end -}}

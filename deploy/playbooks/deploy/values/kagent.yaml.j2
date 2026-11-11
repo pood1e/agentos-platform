@@ -3,7 +3,9 @@
   'oauth': {
     'tokenEndpoint': oidc_discovery.json.token_endpoint,
     'clientId': site_identity.clientId,
-    'clientSecretFile': '/etc/kagent/identity/client-secret'
+    'clientSecretFile': '/etc/kagent/identity/client-secret',
+    'assertionIssuer': kagent_delegation_issuer,
+    'assertionKeyFile': '/etc/kagent/delegation/key.pem'
   }
 } -%}
 {% set identity_ca = site_identity.get('caCertificateRef') -%}
@@ -72,6 +74,8 @@ controller:
 {% endif %}
     - name: execution-credentials
       secret: {secretName: kagent-execution-credentials, defaultMode: 0440}
+    - name: delegation-assertion
+      secret: {secretName: kagent-delegation-assertion, defaultMode: 0440}
 {% if kagent_authorization | length %}
     - name: authorization-api
       secret:
@@ -93,6 +97,7 @@ controller:
     - {name: identity-ca, mountPath: /etc/kagent/identity-ca, readOnly: true}
 {% endif %}
     - {name: execution-credentials, mountPath: /etc/kagent/execution, readOnly: true}
+    - {name: delegation-assertion, mountPath: /etc/kagent/delegation, readOnly: true}
 {% if kagent_authorization | length %}
     - {name: authorization-api, mountPath: /etc/kagent/authorization, readOnly: true}
     - {name: authorization-ca, mountPath: /etc/kagent/authorization-ca, readOnly: true}
