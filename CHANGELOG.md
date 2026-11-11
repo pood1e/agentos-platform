@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.56.0](https://github.com/pood1e/agentos-platform/compare/v0.55.0...v0.56.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **charts:** route.hosts and route.parentRefs are replaced by route.console, route.api and route.sandbox, each with origin and parentRefs.
+
+### Features
+
+* **charts:** publish each console surface at its own origin and listener ([3904c53](https://github.com/pood1e/agentos-platform/commit/3904c53fa1cf28dc00bc9df7f04fee2ee2ef0bae))
+* **environments:** trust a private identity provider CA ([3904c53](https://github.com/pood1e/agentos-platform/commit/3904c53fa1cf28dc00bc9df7f04fee2ee2ef0bae))
+
 ## [0.55.0](https://github.com/pood1e/agentos-platform/compare/v0.54.1...v0.55.0) (2026-11-11)
 
 
