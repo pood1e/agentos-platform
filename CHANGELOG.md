@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.55.0](https://github.com/pood1e/agentos-platform/compare/v0.54.1...v0.55.0) (2026-11-11)
+
+
+### Features
+
+* **console:** manage native scheduled runs from the workbench ([8339ee3](https://github.com/pood1e/agentos-platform/commit/8339ee3f1959250c0799b817fe296e29f7be7630))
+
+
+### Bug Fixes
+
+* **mcp-apps:** bind app views to the plan that serves the target ([8339ee3](https://github.com/pood1e/agentos-platform/commit/8339ee3f1959250c0799b817fe296e29f7be7630))
+
 ## [0.54.1](https://github.com/pood1e/agentos-platform/compare/v0.54.0...v0.54.1) (2026-11-11)
 
 
