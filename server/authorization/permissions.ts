@@ -29,6 +29,7 @@ const requirements = new Map<string, Capability>([
 /** Commands on the caller's own work; native authority decides them per resource. */
 const selfService = new Set(
   [
+    ConsoleService.method.registerDelegationCredential,
     ConsoleService.method.sendMessage,
     ConsoleService.method.callAppTool,
     ConsoleService.method.deleteSession,

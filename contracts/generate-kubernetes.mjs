@@ -74,12 +74,21 @@ save("agentos-environment", {
   ...object(
     {
       environment: object(
-        Object.fromEntries(
-          ["name", "governance", "issuer", "resource", "jwksURL"].map((name) => [
-            name,
-            environment.properties[name],
-          ]),
-        ),
+        {
+          ...Object.fromEntries(
+            ["name", "governance", "issuer", "resource", "jwksURL"].map((name) => [
+              name,
+              environment.properties[name],
+            ]),
+          ),
+          caCertificateRef: {
+            description: "ConfigMap key holding the identity provider CA for JWKS retrieval.",
+            type: "object",
+            additionalProperties: false,
+            properties: { name: text, key: text },
+          },
+        },
+        ["name", "governance", "issuer", "resource", "jwksURL"],
       ),
       gateway: inputGateway,
       ...common,

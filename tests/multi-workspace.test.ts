@@ -17,7 +17,6 @@ import {
   AuthorizationService,
   WorkspaceAuthorizationReferenceSchema,
 } from "../gen/kagent/api/v1/authorization_pb.js";
-import { delegationWorkspace } from "../server/authorization/delegation.js";
 import { authorizationService } from "../server/authorization/service.js";
 import { kagentClients } from "../server/kagent/clients.js";
 import { accessProfile, workspaceContext } from "../server/platform/access.js";
@@ -263,20 +262,6 @@ it("uses namespace and UID in browser routes", () => {
   expect(workspaceURL(workspace)).toBe("/w/alpha/alpha-uid/chat");
   expect(workspaceFromPath("/w/alpha/alpha-uid/chat")).toMatchObject(workspace);
   expect(workspaceFromPath("/w/alpha/%2e%2e/chat")).toBeUndefined();
-});
-
-it("binds delegation return addresses to a configured workspace", () => {
-  const origins = ["https://console.example.test"];
-  const namespaces = new Set(["alpha"]);
-  expect(
-    delegationWorkspace("https://console.example.test/w/alpha/alpha-uid/chat", origins, namespaces),
-  ).toEqual({ namespace: "alpha", uid: "alpha-uid" });
-  for (const url of [
-    "https://foreign.example.test/w/alpha/alpha-uid/chat",
-    "https://console.example.test/w/beta/beta-uid/chat",
-    "https://console.example.test/chat",
-  ])
-    expect(delegationWorkspace(url, origins, namespaces)).toBeUndefined();
 });
 
 it("rejects malformed or duplicate target configuration", () => {

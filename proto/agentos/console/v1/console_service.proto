@@ -16,6 +16,7 @@ import "agentos/mcp/v1/app.proto";
 import "buf/validate/validate.proto";
 import "kagent/api/v1/agents.proto";
 import "kagent/api/v1/common.proto";
+import "kagent/api/v1/execution.proto";
 import "kagent/api/v1/harnesses.proto";
 import "kagent/api/v1/interactions.proto";
 import "kagent/api/v1/models.proto";
@@ -28,6 +29,8 @@ service ConsoleService {
   rpc GetAccessProfile(GetAccessProfileRequest) returns (GetAccessProfileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Registers the caller's background-execution delegation in this workspace.
+  rpc RegisterDelegationCredential(.kagent.api.v1.RegisterDelegationCredentialRequest) returns (.kagent.api.v1.RegisterDelegationCredentialResponse);
   rpc GetSpeechCapabilities(GetSpeechCapabilitiesRequest) returns (GetSpeechCapabilitiesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

@@ -44,8 +44,6 @@ export interface ConsoleDependencies {
   defaultHarness: string;
   voice?: VoiceConsole;
   entryAgent: string;
-  /** Where browsers obtain the offline grant for background execution. */
-  delegationUrl: string;
 }
 
 function required(role?: RoleDefinition): RoleDefinition {
@@ -71,7 +69,6 @@ export function consoleService({
   defaultHarness,
   voice = voiceDisabled,
   entryAgent,
-  delegationUrl,
 }: ConsoleDependencies): ServiceImpl<typeof ConsoleService> {
   const cancel = cancellationCommands(projection, clients);
   const messages = messageCommands(projection, clients, namespace);
@@ -100,9 +97,10 @@ export function consoleService({
     async getAccessProfile(_request, context) {
       const profile = clone(AccessProfileSchema, context.values.get(accessProfile));
       profile.delegated = await renewable();
-      profile.delegationUrl = delegationUrl;
       return { profile };
     },
+    registerDelegationCredential: (request) =>
+      clients.execution.registerDelegationCredential(request, { timeoutMs: 30_000 }),
     listAgents: (request, context) =>
       nativeSignal.run(context.signal, async () => ({
         agents: await projection.agentSummaries(viewer(identityOf(context), request.systemOnly)),

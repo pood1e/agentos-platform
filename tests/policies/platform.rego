@@ -116,9 +116,9 @@ deny contains "team-sessions uses a different HTTP port" if {
 	backend.spec.mcp.targets[0].static.port != 8080
 }
 
-deny contains "OIDC requires native client and delegation secret references" if {
-	some name, key in {"AGENTOS_OIDC_CLIENT_SECRET": "client-secret", "AGENTOS_COOKIE_SECRET": "delegation"}
-	object.get(object.get(object.get(object.get(api_environment, name, {}), "valueFrom", {}), "secretKeyRef", {}), "key", "") != key
+deny contains "identity client credentials stay with the console proxy and kagent" if {
+	some name in {"AGENTOS_OIDC_CLIENT_SECRET", "AGENTOS_COOKIE_SECRET"}
+	api_environment[name]
 }
 
 deny contains "speech credentials are projected into a platform process" if {
@@ -129,7 +129,7 @@ deny contains "speech credentials are projected into a platform process" if {
 
 deny contains sprintf("required %s environment %s is absent", [component, name]) if {
 	some component, names in {
-		"api": {"AGENTOS_OIDC_ISSUER", "AGENTOS_API_ORIGIN", "AGENTOS_WORKSPACES"},
+		"api": {"AGENTOS_OIDC_WRITER_ROLE", "AGENTOS_WORKSPACES"},
 		"dataplane": {"KAGENT_URL", "AGENTOS_CONTROLLER_SUBJECT"},
 	}
 	some name in names

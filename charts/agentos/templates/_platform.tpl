@@ -24,16 +24,7 @@ app.kubernetes.io/component: {{ .component }}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
 {{- if eq .component "api" }}
-{{- with $identity.caCertificateRef }}
-- {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos/identity/ca.crt}
-{{- end }}
-- {name: AGENTOS_OIDC_ISSUER, value: {{ required "identity.issuer is required" $identity.issuer | quote }}}
-- {name: AGENTOS_OIDC_CLIENT_ID, value: {{ required "identity.clientId is required" $identity.clientId | quote }}}
-- {name: AGENTOS_OIDC_AUDIENCE, value: {{ required "identity.audience is required" $identity.audience | quote }}}
 - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" $identity.writerRole | quote }}}
-- name: AGENTOS_OIDC_CLIENT_SECRET
-  valueFrom:
-    secretKeyRef: {name: {{ $identity.secretRef }}, key: client-secret}
 {{- end }}
 {{ include "agentos.telemetryEnv" . }}
 {{- end -}}

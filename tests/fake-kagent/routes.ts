@@ -32,6 +32,10 @@ export const kagentRoutes = (fake: FakeKagent) => (router: ConnectRouter) => {
       revoked: !fake.renewable,
     }),
     getDelegationCredentialStatus: () => ({ renewable: fake.renewable }),
+    registerDelegationCredential() {
+      fake.renewable = true;
+      return {};
+    },
     issueSessionCredential(request) {
       const credential = `kagent-session.${randomUUID()}`;
       fake.credentials.set(credential, request.sessionId);

@@ -9,7 +9,13 @@
     agentos_image_registry: registry.example.com/agentos
     harness_defaults: "{{ lookup('ansible.builtin.file', 'fixtures/harnesses.yaml') | from_yaml }}"
     app_values:
-      identity: {issuer: 'https://identity.example.test', audience: agentos-api, clientId: agentos-web}
+      identity:
+        issuer: https://identity.example.test
+        audience: agentos-api
+        clientId: agentos-web
+        from:
+          - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: keycloak}}
+            podSelector: {matchLabels: {app: keycloak}}
       route: &route
         console: {origin: 'https://agentos.example.test', parentRefs: [{name: agentos-public}]}
         api: {origin: 'https://api.example.test', parentRefs: [{name: agentos-public}]}

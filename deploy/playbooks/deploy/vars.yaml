@@ -54,13 +54,13 @@ substrate_worker_resources:
 kubectl_ate_checksums:
   amd64: sha256:ee4e98780aa37453c2086e8d83b061d5780a97fdc4ac50849cc013aa5e58535a
   arm64: sha256:a934f7be9df842be4e120d383e16ce8dcfe9dc42c4ae990eeb141437e66dfade
-kagent_runtime_version: 0.0.0-dev.gf86dfd5dea88c7438e9b63168055b50c768f52ac
+kagent_runtime_version: 0.0.0-dev.gd5840b3d1809684234a0be61baa78d5f6c676304
 kagent_charts:
   - name: kagent
-    checksum: d6bba5ae04918923713318d0713b268e4b7a2ae36e867100f65d47d0fe3a6062
+    checksum: c0703de9c9e6b30e51b5bb0123984b224f588200984171b11b520d731c22f8db
   - name: kagent-crds
-    checksum: 0fc772cb3b6824e1241947d18a691435a3d5d9a77d05f2915caeb51c6ea49e56
-kagent_controller_image: ghcr.io/pood1e/kagent/controller@sha256:9bca0b085ad54ab41a6be22bf4c129c6005eedc8217b63c36ef8f7b4514ff311
+    checksum: efb3bbbe98d07c0187bcb41c9a19dacc86efc659f4f0ed881fc10fe328bfd97a
+kagent_controller_image: ghcr.io/pood1e/kagent/controller@sha256:11e6e0fdaf1363316e12217e06c5166872c3f8e3601965090ac7d5f400f07ebd
 kubeconfig_path: "{{ agentos_cache }}/kubeconfig.yaml"
 helm_binary: "{{ agentos_cache }}/helm/linux-amd64/helm"
 cert_manager_version: v1.21.2
@@ -89,3 +89,5 @@ site_gateway_peers: >-
                                             'podSelector': {'matchLabels': {'app.kubernetes.io/name': 'traefik'}}}]) }}
 site_identity: "{{ site_platform_values.get('identity', {}) }}"
 site_identity_secret: "{{ site_identity.get('secretRef', 'agentos-identity') }}"
+# RFC 7523 assertion issuer; identity providers read its keys from <issuer>/jwks.json.
+kagent_delegation_issuer: "http://kagent-controller.{{ agentos_namespace }}.svc.cluster.local:8083/delegation"

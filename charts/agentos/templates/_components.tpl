@@ -4,12 +4,6 @@
 {{- $home := dict "namespace" .Release.Namespace "release" $name "entryAgent" .Values.entryAgent "harness" .Values.defaultHarness "kagentURL" (include "agentos.kagentEndpoint" .) -}}
 - name: AGENTOS_WORKSPACES
   value: {{ concat (list $home) .Values.api.workspaces | toJson | quote }}
-- {name: AGENTOS_API_ORIGIN, value: {{ $origins.api | quote }}}
-- name: AGENTOS_DELEGATION_ORIGINS
-  value: {{ prepend .Values.identity.returnOrigins $origins.console | uniq | toJson | quote }}
-- name: AGENTOS_COOKIE_SECRET
-  valueFrom:
-    secretKeyRef: {name: {{ $name }}-sessions, key: delegation}
 {{- with $origins.sandbox }}
 - {name: AGENTOS_SANDBOX_ORIGIN, value: {{ . | quote }}}
 {{- end }}
