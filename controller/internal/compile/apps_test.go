@@ -3,20 +3,33 @@ package compile
 import (
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"cel.dev/cel-go/cel"
 	agw "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
 	platform "github.com/pood1e/agentos-platform/controller/api/v1alpha1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gw "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func appsPlan(t *testing.T) *platform.AccessPlan {
 	t.Helper()
-	p := planFor(t, "approval")
-	p.Spec.Platform = &platform.PlatformGateway{Name: "gateway", AppAuthorityBackend: "app-authority", AppJWTProvider: &agw.JWTProvider{Issuer: "https://identity.test", Audiences: []string{"platform"}, JWKS: agw.JWKS{Remote: &agw.RemoteJWKS{PolicyBackendEndpoint: backendReference("viewer-jwks"), JwksPath: ptr.To("/keys")}}}}
+	p := gatewayPlan(t)
+	p.Spec.Platform.AppAuthorityBackend = "app-authority"
+	p.Spec.Platform.AppJWTProvider = &agw.JWTProvider{Issuer: "https://identity.test", Audiences: []string{"platform"}, JWKS: agw.JWKS{Remote: &agw.RemoteJWKS{PolicyBackendEndpoint: backendReference("viewer-jwks"), JwksPath: ptr.To("/keys")}}}
 	return p
+}
+
+func appResources(r Result) []client.Object {
+	var views []client.Object
+	for _, o := range r.Resources {
+		if strings.HasPrefix(o.GetName(), "apps-mcp-") {
+			views = append(views, o)
+		}
+	}
+	return views
 }
 
 func TestAppsUseCanonicalBackendAndViewerAuthority(t *testing.T) {
@@ -30,7 +43,7 @@ func TestAppsUseCanonicalBackendAndViewerAuthority(t *testing.T) {
 		t.Fatal("compilation mutated viewer trust")
 	}
 	routes, policies := 0, 0
-	for _, o := range r.Resources {
+	for _, o := range appResources(r) {
 		switch o := o.(type) {
 		case *gw.HTTPRoute:
 			routes++
@@ -94,8 +107,26 @@ func TestAppsRequireCompleteViewerTrust(t *testing.T) {
 	p.Spec.Platform.AppAuthorityBackend = ""
 	p.Spec.Platform.AppJWTProvider = nil
 	r, err := Plan(p)
-	if err != nil || len(r.Resources) != 0 {
+	if err != nil || len(appResources(r)) != 0 {
 		t.Fatalf("disabled Apps altered ordinary connections: %+v, %v", r.Resources, err)
+	}
+}
+
+func TestAppsBelongToTheEnvironmentGatewayPlan(t *testing.T) {
+	p := appsPlan(t)
+	p.Spec.Environments[0].Gateway = nil
+	p.Spec.Platform.DiscoveryServiceAccount = "discovery"
+	p.Spec.Servers = map[string]platform.Toolset{"canonical": {ReadOnly: []string{"read"}}}
+	r, err := Plan(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, o := range appResources(r) {
+		names = append(names, o.GetName())
+	}
+	if !reflect.DeepEqual(names, []string{"apps-mcp-canonical", "apps-mcp-canonical"}) {
+		t.Fatalf("App views must follow the plan that serves the target: %v", names)
 	}
 }
 
