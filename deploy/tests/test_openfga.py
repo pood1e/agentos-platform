@@ -14,37 +14,34 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OpenFGADeploymentTest(unittest.TestCase):
-    def test_database_cluster_is_isolated_and_preserves_bootstrap(self):
+    def test_platform_cluster_hosts_openfga_and_keeps_existing_storage(self):
         deploy = ROOT / "playbooks/deploy"
-        tasks = yaml.safe_load((deploy / "database/openfga.yaml").read_text())
-        cluster = next(
-            task for task in tasks if task["name"] == "Converge OpenFGA PostgreSQL cluster"
-        )
-        definition = cluster["kubernetes.core.k8s"]["definition"]
+        tasks = yaml.safe_load((deploy / "database/cluster.yaml").read_text())
+        cluster = next(task for task in tasks if task["name"] == "Converge PostgreSQL cluster")
         image = yaml.safe_load((deploy / "vars.yaml").read_text())["postgres_image"]
-        initial = {
-            "initdb": {
-                "database": "openfga",
-                "owner": "openfga_owner",
-                "secret": {"name": "openfga-postgres-app"},
-            }
+        default_storage = {"size": "2Gi", "storageClass": "local-path"}
+        existing = {
+            "bootstrap": {"recovery": {"source": "backup"}},
+            "storage": {"size": "5Gi", "storageClass": "local-path", "resizeInUseVolumes": True},
         }
-        for existing in (None, {"recovery": {"source": "backup"}}):
-            with self.subTest(existing=existing), tempfile.TemporaryDirectory() as directory:
+        for current in (None, existing):
+            with self.subTest(current=current), tempfile.TemporaryDirectory() as directory:
                 output = Path(directory)
                 playbook = [
                     {
-                        "name": "Render OpenFGA PostgreSQL",
+                        "name": "Render platform PostgreSQL",
                         "hosts": "localhost",
                         "connection": "local",
                         "gather_facts": False,
                         "vars": {
+                            **cluster["vars"],
                             "agentos_namespace": "agentos",
                             "postgres_image": image,
-                            "openfga_database_cluster": {
-                                "resources": [{"spec": {"bootstrap": existing}}] if existing else []
+                            "kagent_postgres_resources": {},
+                            "database_cluster": {
+                                "resources": [{"spec": current}] if current else []
                             },
-                            "definition": definition,
+                            "definition": cluster["kubernetes.core.k8s"]["definition"],
                         },
                         "tasks": [
                             {
@@ -65,10 +62,24 @@ class OpenFGADeploymentTest(unittest.TestCase):
                     text=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                actual = yaml.safe_load((output / "cluster.yaml").read_text())
-                self.assertEqual(actual["metadata"]["name"], "openfga-postgres")
-                self.assertEqual(actual["spec"]["bootstrap"], existing or initial)
-                self.assertEqual(actual["spec"]["imageName"], image)
+                spec = yaml.safe_load((output / "cluster.yaml").read_text())["spec"]
+                self.assertEqual(
+                    spec["storage"], current["storage"] if current else default_storage
+                )
+                self.assertEqual(spec["imageName"], image)
+                self.assertIn(
+                    {
+                        "name": "openfga_owner",
+                        "login": True,
+                        "passwordSecret": {"name": "openfga-postgres-app"},
+                    },
+                    spec["managed"]["roles"],
+                )
+        database = yaml.safe_load((deploy / "database/openfga.yaml").read_text())[0]
+        self.assertEqual(
+            database["kubernetes.core.k8s"]["definition"]["spec"],
+            {"cluster": {"name": "kagent-postgres"}, "name": "openfga", "owner": "openfga_owner"},
+        )
 
     def test_bootstrap_job_uses_pinned_cli_with_trusted_authentication(self):
         job = yaml.safe_load((ROOT / ".cache/check/openfga-bootstrap-job.yaml").read_text())

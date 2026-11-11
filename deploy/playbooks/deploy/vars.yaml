@@ -18,6 +18,7 @@ app_chart_version: "{{ delivery_version }}"
 app_chart_revision: "{{ delivery_revision }}"
 app_chart_public_key: "{{ delivery_public_key }}"
 cnpg_operator_managed: true
+cnpg_operator_namespace: cnpg-system
 cnpg_chart_version: 0.29.1
 openfga_chart_version: 0.3.19
 openfga_chart_checksum: 75b97b9b328b269c2f576b24ebaa9dd11e5909a57f4db5f53f0038c822639cb4
