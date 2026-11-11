@@ -6,7 +6,7 @@
     chart_ref: cloudnative-pg
     chart_repo_url: https://cloudnative-pg.github.io/charts
     chart_version: "{{ cnpg_chart_version }}"
-    release_namespace: cnpg-system
+    release_namespace: "{{ cnpg_operator_namespace }}"
     create_namespace: true
     reset_values: true
     wait: true

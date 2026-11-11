@@ -53,7 +53,7 @@ ansible-playbook agentos.platform.install -i <site>/inventory.yaml -e @<site>/va
 | `kagent_telemetry` | 可选 kagent 原生 `TelemetryConfig`，应用于控制面与运行时默认值 |
 | `openfga_bootstrap_subject` | 初始管理员的 OIDC `sub`；站点以当前工作空间 UID 建立成员与管理员绑定 |
 | `kagent_authorization_api_token_secret`、`kagent_authorization_ca_secret` | OpenFGA API 凭据和 CA 的 Secret `{name, key}`，默认分别为 `openfga-auth/keys` 与 `openfga-ca/tls.crt` |
-| `cnpg_operator_managed` | 是否由 collection 安装 CloudNativePG Operator，默认 `true`；站点已有 Operator 时设为 `false`，数据库资源由站点 Operator 管理 |
+| `cnpg_operator_managed`、`cnpg_operator_namespace` | 是否由 collection 安装 CloudNativePG Operator 及其命名空间，默认 `true` 与 `cnpg-system`；站点已有 Operator 时设为 `false` 并填写其命名空间，数据库资源由站点 Operator 管理，网络策略放行该命名空间 |
 | `agentgateway_managed` | 是否由 collection 安装 agentgateway CRD 与控制器，默认 `true`；集群已有控制器时设为 `false`，collection 校验 GatewayClass 已接受且控制器不低于 `agentgateway_version`，站点控制器需监听 AgentOS 命名空间 |
 | `kagent_postgres_resources` | 原生 PostgreSQL 的 Kubernetes requests 与 limits，默认请求 100m / 256Mi，上限 1 CPU / 1Gi |
 | `kagent_postgres_pool_max_conns` | 每个 kagent 控制器的 PostgreSQL 连接上限，默认 16；与 Substrate 连接及数据库 `max_connections` 统一分配容量 |
@@ -85,7 +85,7 @@ collection 固化 `delivery_version`、`delivery_revision` 与 `agentos_image_re
 
 `kagent_execution_authorization` 直接采用[原生配置](https://github.com/pood1e/kagent/blob/f86dfd5dea88c7438e9b63168055b50c768f52ac/proto/kagent/config/v1/config.proto)；`rules` 声明资源、动词与允许的角色，`gatewayAudiences` 逐项列出模型与 MCP 网关的精确 HTTP(S) origin，并包含每个环境服务的 `http://<environment>-<project>-mcp-gateway.<namespace>.svc.cluster.local:8080`，与对应 Actor 凭据的受众一致。部署填入加密密钥和 OAuth Secret 路径。示例见[原生执行权限测试值](tests/fixtures/execution-authorization.yaml)，站点按启用的资源与网关补齐允许清单；`SessionAllCreators` 授予平台管理角色读取其他发起人的 Session，与控制台系统执行视图一致。
 
-站点从已校验的 kagent Chart 读取原生授权模型，在独立 OpenFGA PostgreSQL 集群和 store 中安装模型；store、model ID 与已引导的工作空间 UID 保存在 `openfga-state` ConfigMap。每个新工作空间首次授予初始主体成员与授权管理员角色，业务角色和管理员轮换通过原生绑定接口配置。升级按模型摘要更新，已有工作空间的绑定由授权接口管理。collection 为 kagent 配置该 store，并从独立 Secret 挂载 OpenFGA API 凭据与 CA。
+站点从已校验的 kagent Chart 读取原生授权模型，在平台 PostgreSQL 集群 `kagent-postgres` 的 `openfga` 库和 store 中安装模型；store、model ID 与已引导的工作空间 UID 保存在 `openfga-state` ConfigMap。每个新工作空间首次授予初始主体成员与授权管理员角色，业务角色和管理员轮换通过原生绑定接口配置。升级按模型摘要更新，已有工作空间的绑定由授权接口管理。collection 为 kagent 配置该 store，并从独立 Secret 挂载 OpenFGA API 凭据与 CA。
 
 `TaskStore` 与 `ToolInventory` 使用绑定 Actor 的原生运行时入口，示例规则采用认证身份许可。TaskStore 持久化与终态清理由 Actor / Session 绑定和派发预约约束，执行准入与撤权另由原生权限链维护。
 

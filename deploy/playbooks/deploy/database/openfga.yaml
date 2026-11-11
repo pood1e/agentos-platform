@@ -1,59 +1,22 @@
-- name: Discover OpenFGA PostgreSQL cluster
-  kubernetes.core.k8s_info:
-    api_version: postgresql.cnpg.io/v1
-    kind: Cluster
-    name: openfga-postgres
-    namespace: "{{ agentos_namespace }}"
-  register: openfga_database_cluster
-
-- name: Converge OpenFGA PostgreSQL cluster
+- name: Converge the OpenFGA database
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: postgresql.cnpg.io/v1
-      kind: Cluster
-      metadata: {name: openfga-postgres, namespace: "{{ agentos_namespace }}"}
+      kind: Database
+      metadata: {name: openfga, namespace: "{{ agentos_namespace }}"}
       spec:
-        instances: 1
-        imageName: "{{ postgres_image }}"
-        storage: {size: 2Gi, storageClass: local-path}
-        resources:
-          requests: {cpu: 100m, memory: 256Mi}
-          limits: {cpu: '1', memory: 1Gi}
-        bootstrap: >-
-          {{ openfga_database_cluster.resources[0].spec.bootstrap
-             if openfga_database_cluster.resources | length > 0
-             else {'initdb': {'database': 'openfga', 'owner': 'openfga_owner', 'secret': {'name': 'openfga-postgres-app'}}} }}
+        cluster: {name: kagent-postgres}
+        name: openfga
+        owner: openfga_owner
 
-- name: Wait for OpenFGA PostgreSQL readiness
+- name: Wait for the OpenFGA database
   kubernetes.core.k8s_info:
     api_version: postgresql.cnpg.io/v1
-    kind: Cluster
-    name: openfga-postgres
+    kind: Database
+    name: openfga
     namespace: "{{ agentos_namespace }}"
-    wait: true
-    wait_condition: {type: Ready, status: "True"}
-    wait_timeout: 900
-
-- name: Restrict OpenFGA PostgreSQL ingress
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: networking.k8s.io/v1
-      kind: NetworkPolicy
-      metadata: {name: openfga-database, namespace: "{{ agentos_namespace }}"}
-      spec:
-        podSelector:
-          matchLabels: {cnpg.io/cluster: openfga-postgres}
-        policyTypes: [Ingress]
-        ingress:
-          - from:
-              - podSelector:
-                  matchLabels: {app.kubernetes.io/name: openfga, app.kubernetes.io/instance: openfga}
-              - podSelector:
-                  matchLabels: {cnpg.io/cluster: openfga-postgres}
-            ports: [{port: 5432, protocol: TCP}]
-          - from:
-              - namespaceSelector:
-                  matchLabels: {kubernetes.io/metadata.name: cnpg-system}
-            ports: [{port: 8000, protocol: TCP}, {port: 5432, protocol: TCP}]
+  register: openfga_database
+  until: openfga_database.resources[0].status.applied | default(false)
+  retries: 60
+  delay: 5

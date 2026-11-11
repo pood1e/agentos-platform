@@ -80,7 +80,7 @@
     - name: Configure PostgreSQL cluster
       ansible.builtin.import_tasks: database/cluster.yaml
 
-    - name: Configure OpenFGA PostgreSQL cluster
+    - name: Configure OpenFGA database
       ansible.builtin.import_tasks: database/openfga.yaml
 
     - name: Read application credentials
@@ -129,6 +129,6 @@
           data:
             uri: >-
               {{ ('postgres://openfga_owner:' + (openfga_database_credentials.resources[0].data.password | b64decode)
-                + '@openfga-postgres-rw.' + agentos_namespace
+                + '@kagent-postgres-rw.' + agentos_namespace
                 + '.svc:5432/openfga?sslmode=verify-full&sslrootcert=/etc/openfga/postgres/ca.crt') | b64encode }}
       no_log: true
