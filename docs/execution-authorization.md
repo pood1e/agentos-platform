@@ -5,7 +5,7 @@
 浏览器登录、Cookie 与访问令牌刷新由 oauth2-proxy 和站点 IdP 维护。平台逐次将原始 Bearer 凭据传给 kagent；`SystemService.GetCurrentUser` 提供规范主体和有效 scope。
 应用角色映射为 proto `Capability`，契约包的 `authorization.json` 由同一协议生成。
 
-私有 IdP 的信任根通过 `identity.caCertificateRef` 引用当前命名空间的 ConfigMap key；浏览器登录与 API 后台委托使用同一 CA。站点安装器将其同步接入 kagent 原生 OIDC 与 OAuth 续期配置。
+私有 IdP 的信任根通过 `identity.caCertificateRef` 引用当前命名空间的 ConfigMap key，供浏览器登录使用；站点安装器将其同步接入 kagent 原生 OIDC 与断言授权配置。
 
 | 应用角色 | 管理范围 |
 | --- | --- |
@@ -22,8 +22,9 @@ kagent 的 OIDC `ResourceScopeRule` 按资源类型与操作授予原生权限�
 kagent 创建 Session 时固定发起人、Agent、父 / 根关系和权限上限。委派继承祖先上限，运行时每次解析当前委托凭据和 scope；授权提升用于新会话，撤权沿原生父链生效。
 原生 `TaskExecution` 记录可信父任务、根任务、同步 / 后台关系及 HITL 续接引用。messageId 幂等、忙碌、删除围栏与取消传播均由原生执行服务维护。
 
-后台委托通过 `/delegation/start` 的 Authorization Code、PKCE、state、nonce 和 `offline_access` 建立。回调将 refresh token 交给原生 `ExecutionService.RegisterDelegationCredential`。
-凭据与刷新预约存于 kagent，采用原生 32 字节密钥加密和带租约的 CAS 轮换。永久刷新拒绝撤销授权树，临时故障阻止后续凭据出口；数据库事务仅覆盖本地状态更新。
+用户以自身 Bearer 调用 `ConsoleService.RegisterDelegationCredential` 登记后台委托，console 加载时自动登记。
+kagent 以 Ed25519 密钥签发一次性 RFC 7523 断言，在 IdP 令牌端点换取该用户的访问令牌并核对主体一致；IdP 仅接受已关联断言签发方的用户。
+委托主体与当前令牌存于 kagent，采用原生 32 字节密钥加密，续期使用带租约的 CAS。IdP 永久拒绝时撤销授权树，临时故障阻止后续凭据出口；数据库事务仅覆盖本地状态更新。
 
 原生 HITL 回复、继续执行和工具调用分别复验当前权限。控制台提交原生确认 / 提问响应，业务审批规则与审批人资格由方案包维护。
 

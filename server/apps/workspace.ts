@@ -40,13 +40,12 @@ export async function workspaceRuntime(
   options: {
     kube: KubeConfig;
     app: FastifyInstance;
-    origin: string;
     writerRole: string;
     /** The first configured workspace also hosts the optional voice feature. */
     home: boolean;
   },
 ) {
-  const { kube, app, origin, writerRole, home } = options;
+  const { kube, app, writerRole, home } = options;
   const { namespace, release, entryAgent, harness } = target;
   const clients = kagentClients(kagentTransport(target.kagentURL));
   const access = await toolBindings(kube, namespace, app.log);
@@ -94,7 +93,6 @@ export async function workspaceRuntime(
       defaultHarness: harness,
       voice: voice?.console,
       entryAgent,
-      delegationUrl: `${origin}/delegation/start`,
     }),
     management: managementService({
       access,

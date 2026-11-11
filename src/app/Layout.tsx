@@ -4,6 +4,7 @@ import {
   TransportProvider,
   useTransport,
 } from "@connectrpc/connect-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Activity, LoaderCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useMemo } from "react";
@@ -13,6 +14,7 @@ import { Toaster } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAccess } from "../lib/access.js";
 import { useOutage } from "../lib/connection.js";
+import { consoleClient } from "../lib/console.js";
 import { applyPackLocales, usePack } from "../lib/pack.js";
 import { Navigation } from "./Navigation.js";
 import { Topbar } from "./Topbar.js";
@@ -26,13 +28,16 @@ export function Layout({ children }: { children?: ReactNode }) {
     if (access.error instanceof ConnectError && access.error.code === Code.Unauthenticated)
       window.location.reload();
   }, [access.error]);
+  const queryClient = useQueryClient();
+  const delegation = useMutation({
+    mutationFn: () => consoleClient.registerDelegationCredential({}, { timeoutMs: 30_000 }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["access-profile"] }),
+  });
+  const { mutate: delegate, status: delegationStatus } = delegation;
   useEffect(() => {
-    // Background execution needs the user's offline grant; the API origin completes it.
-    if (!access.data || access.data.delegated || !access.data.delegationUrl) return;
-    const delegation = new URL(access.data.delegationUrl);
-    delegation.searchParams.set("return_to", window.location.href);
-    window.location.assign(delegation);
-  }, [access.data]);
+    // Background execution continues under the user's registered delegation; one attempt per load.
+    if (access.data && !access.data.delegated && delegationStatus === "idle") delegate();
+  }, [access.data, delegate, delegationStatus]);
   const transport = useTransport();
   const scope = JSON.stringify([access.data?.workspace?.uid, access.data?.subject]);
   const scopedTransport = useMemo(

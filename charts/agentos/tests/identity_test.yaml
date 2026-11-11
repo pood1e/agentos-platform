@@ -1,41 +1,20 @@
-suite: browser sessions, delegation and the site identity provider
+suite: browser sessions and the site identity provider
 values:
 - ../../../tests/fixtures/chart-values.yaml
 release: {name: agentos, namespace: agentos}
 templates: ['*.yaml']
 tests:
-- it: verifies bearer tokens from the site identity provider and delegates on the API host
-  asserts:
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: AGENTOS_OIDC_ISSUER, value: https://identity.example.test/realms/operations}
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_OIDC_CLIENT_SECRET
-        valueFrom: {secretKeyRef: {name: agentos-identity, key: client-secret}}
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: AGENTOS_API_ORIGIN, value: https://api.agentos.example.test}
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content:
-        name: AGENTOS_COOKIE_SECRET
-        valueFrom: {secretKeyRef: {name: agentos-sessions, key: delegation}}
-- it: registers additional frontends as delegation return origins
-  set:
-    identity.returnOrigins: [https://controller.example.test]
+- it: keeps the identity client credential out of the API
   template: api-deployment.yaml
   asserts:
   - contains:
       path: spec.template.spec.containers[0].env
+      content: {name: AGENTOS_OIDC_WRITER_ROLE, value: operator}
+  - notContains:
+      path: spec.template.spec.containers[0].env
       content:
-        name: AGENTOS_DELEGATION_ORIGINS
-        value: '["https://agentos.example.test","https://controller.example.test"]'
+        name: AGENTOS_OIDC_CLIENT_SECRET
+        valueFrom: {secretKeyRef: {name: agentos-identity, key: client-secret}}
 - it: holds browser sessions in front of the API and strips client authorization headers
   template: web-config.yaml
   asserts:
@@ -57,20 +36,10 @@ tests:
   - equal: {path: spec.parentRefs, value: [{name: site, sectionName: https}]}
   - documentIndex: 1
     equal: {path: spec.hostnames, value: [api.agentos.example.test]}
-- it: trusts the same private IdP CA for browser login and background authorization
+- it: trusts a private IdP CA for browser login
   set:
     identity.caCertificateRef: {name: identity-ca, key: issuer.pem}
   asserts:
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.containers[0].env
-      content: {name: NODE_EXTRA_CA_CERTS, value: /etc/agentos/identity/ca.crt}
-  - template: api-deployment.yaml
-    contains:
-      path: spec.template.spec.volumes
-      content:
-        name: identity-ca
-        configMap: {name: identity-ca, items: [{key: issuer.pem, path: ca.crt}]}
   - template: web-deployment.yaml
     documentIndex: 0
     contains:

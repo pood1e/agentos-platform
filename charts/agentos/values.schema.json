@@ -632,7 +632,7 @@
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["issuer", "clientId", "audience", "writerRole", "secretRef", "returnOrigins"],
+      "required": ["issuer", "clientId", "audience", "writerRole", "secretRef"],
       "properties": {
         "issuer": {
           "type": "string",
@@ -654,12 +654,12 @@
           "type": "string",
           "minLength": 1
         },
-        "returnOrigins": {
+        "from": {
+          "description": "Identity provider pods that read the kagent delegation assertion keys.",
           "type": "array",
-          "uniqueItems": true,
+          "minItems": 1,
           "items": {
-            "type": "string",
-            "pattern": "^https://[a-z0-9][a-z0-9.-]+(:[0-9]+)?$"
+            "type": "object"
           }
         },
         "caCertificateRef": {

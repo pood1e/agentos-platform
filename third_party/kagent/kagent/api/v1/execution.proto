@@ -18,7 +18,8 @@ service ExecutionService {
   rpc RevokeSessionAuthority(RevokeSessionAuthorityRequest) returns (RevokeSessionAuthorityResponse);
   // Derives the Session from a verified Actor JWT, including its live Actor UID.
   rpc GetRuntimeAuthority(GetRuntimeAuthorityRequest) returns (GetRuntimeAuthorityResponse);
-  // Exchanges and verifies the refresh credential before binding it to the caller.
+  // Records the caller's consent once the identity provider accepts a native
+  // assertion for the caller's subject.
   rpc RegisterDelegationCredential(RegisterDelegationCredentialRequest) returns (RegisterDelegationCredentialResponse);
   rpc RevokeDelegationCredential(RevokeDelegationCredentialRequest) returns (RevokeDelegationCredentialResponse);
   rpc GetDelegationCredentialStatus(GetDelegationCredentialStatusRequest) returns (GetDelegationCredentialStatusResponse);
@@ -79,10 +80,8 @@ message GetRuntimeAuthorityResponse {
   repeated string effective_scopes = 2;
 }
 message RegisterDelegationCredentialRequest {
-  string refresh_token = 1 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 16384
-  }];
+  reserved 1;
+  reserved "refresh_token";
 }
 message RegisterDelegationCredentialResponse {}
 message RevokeDelegationCredentialRequest {}

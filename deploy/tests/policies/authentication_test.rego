@@ -17,6 +17,8 @@ authentication_fixture := {
 			"tokenEndpoint": "https://identity.example.test/token",
 			"clientId": "agentos-web",
 			"clientSecretFile": "/etc/kagent/identity/client-secret",
+			"assertionIssuer": "http://kagent-controller.agentos.svc.cluster.local:8083/delegation",
+			"assertionKeyFile": "/etc/kagent/delegation/key.pem",
 		},
 	},
 }

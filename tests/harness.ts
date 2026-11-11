@@ -111,7 +111,6 @@ export function consoleDependencies(
     access,
     defaultHarness: "standard",
     entryAgent: "assistant",
-    delegationUrl: "",
     ...overrides,
   };
 }

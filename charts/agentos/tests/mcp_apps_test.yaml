@@ -131,14 +131,6 @@ tests:
   template: web-deployment.yaml
   asserts:
   - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
-- it: rejects a return origin using an equivalent TLS port
-  set:
-    route.sandbox.origin: ''
-    identity.returnOrigins: ['https://external.example.test:0443']
-    mcpApps.sandboxOrigin: https://external.example.test
-  template: web-deployment.yaml
-  asserts:
-  - failedTemplate: {errorMessage: mcpApps.sandboxOrigin must be an isolated origin}
 - it: binds IP origins to their listeners without hostnames
   set:
     route.console: {origin: 'https://192.0.2.10:8443', parentRefs: [{name: edge, sectionName: console}]}

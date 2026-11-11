@@ -1,7 +1,5 @@
-import { discovery } from "openid-client";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
-import { registerDelegation } from "../authorization/delegation.js";
 import { authorizationService } from "../authorization/service.js";
 import { registerConsole } from "../console/app.js";
 import { registerAppAuthorization } from "../mcp-apps/http.js";
@@ -17,14 +15,7 @@ const kube = platformKube();
 const targets = workspaceTargets();
 const homeNamespace = targets[0].namespace;
 const app = platformApp();
-const origin = requiredEnv("AGENTOS_API_ORIGIN");
 const writerRole = requiredEnv("AGENTOS_OIDC_WRITER_ROLE");
-const oauth = await discovery(
-  new URL(requiredEnv("AGENTOS_OIDC_ISSUER")),
-  requiredEnv("AGENTOS_OIDC_CLIENT_ID"),
-  requiredEnv("AGENTOS_OIDC_CLIENT_SECRET"),
-);
-oauth.timeout = 10;
 const runtimes = new Map(
   await Promise.all(
     targets.map(
@@ -34,7 +25,6 @@ const runtimes = new Map(
           await workspaceRuntime(target, {
             kube,
             app,
-            origin,
             writerRole,
             home: target.namespace === homeNamespace,
           }),
@@ -47,13 +37,6 @@ if (!home) throw new Error("Home workspace unavailable");
 const perWorkspace = <T>(select: (runtime: WorkspaceRuntime) => T) =>
   new Map([...runtimes].map(([namespace, runtime]) => [namespace, select(runtime)]));
 
-await registerDelegation(app, {
-  origin,
-  returnOrigins: JSON.parse(requiredEnv("AGENTOS_DELEGATION_ORIGINS")),
-  client: oauth,
-  key: Buffer.from(requiredEnv("AGENTOS_COOKIE_SECRET"), "base64"),
-  clients: perWorkspace((runtime) => runtime.clients),
-});
 registerAppAuthorization(app, (namespace) => runtimes.get(namespace));
 await registerConsole(app, {
   authorization: authorizationService(

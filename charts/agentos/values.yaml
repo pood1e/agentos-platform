@@ -63,7 +63,6 @@ identity:
   audience: ""
   writerRole: ""
   secretRef: agentos-identity
-  returnOrigins: []
 mcpApps:
   sandboxOrigin: ""
   imageOrigins: []
@@ -104,7 +103,7 @@ harnesses:
   standard:
     kagent: {}
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:f9ad2d358ecd5f38316bc2f9a3e2ca73bb07e3dcbd1c5a84d3bbe586865af29d
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:f817fe0ba13e7c64003754d755b275b5621eea44b491578086eb856f2e069607
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -120,7 +119,7 @@ harnesses:
           name: knowledge-embedding
         ttlDays: 3650
     workload:
-      image: ghcr.io/pood1e/kagent/standard-harness@sha256:f9ad2d358ecd5f38316bc2f9a3e2ca73bb07e3dcbd1c5a84d3bbe586865af29d
+      image: ghcr.io/pood1e/kagent/standard-harness@sha256:f817fe0ba13e7c64003754d755b275b5621eea44b491578086eb856f2e069607
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -132,7 +131,7 @@ harnesses:
   codex:
     codex: {}
     workload:
-      image: ghcr.io/pood1e/kagent/codex-harness@sha256:0090ee7a57b36e47da224c7b910859e95cf59d5427b02c15457fa93b3bdb830c
+      image: ghcr.io/pood1e/kagent/codex-harness@sha256:578adad4c834886f496c1048a63e848570b4ce87cce95b1c61acd19b860af21f
     env:
       - name: GOMEMLIMIT
         value: 768MiB
@@ -144,7 +143,7 @@ harnesses:
   claude:
     claude: {}
     workload:
-      image: ghcr.io/pood1e/kagent/claude-harness@sha256:e9d2b22738215bdb799a0bc8e70d2ecd037478c1ff40ba0dffad0ce366924940
+      image: ghcr.io/pood1e/kagent/claude-harness@sha256:b316b2adb74f1bb96c96d89ce0fa12d9064c63e07c1ef5d40400d14124782e25
     env:
       - name: GOMEMLIMIT
         value: 768MiB
