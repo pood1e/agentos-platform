@@ -1,6 +1,6 @@
 namespace: agentos
 name: platform
-version: 0.56.1
+version: 0.57.0
 readme: README.md
 authors:
   - AgentOS
