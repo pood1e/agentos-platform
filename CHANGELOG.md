@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.57.0](https://github.com/pood1e/agentos-platform/compare/v0.56.1...v0.57.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **auth:** identity.returnOrigins and AccessProfile.delegation_url are removed, and the collection requires identity.from. The identity provider must accept RFC 7523 assertions from http://kagent-controller.<namespace>.svc.cluster.local:8083/delegation for the AgentOS client, with delegating users linked by subject. Delete the delegation_credential rows once; users register again.
+
+### Features
+
+* **auth:** delegate background execution through assertion grants ([b50003a](https://github.com/pood1e/agentos-platform/commit/b50003a2f34ca6af53fbc3c6f1c176a36c80c751))
+
 ## [0.56.1](https://github.com/pood1e/agentos-platform/compare/v0.56.0...v0.56.1) (2026-11-11)
 
 
