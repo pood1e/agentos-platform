@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.59.0](https://github.com/pood1e/agentos-platform/compare/v0.58.0...v0.59.0) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** Agent memory is shared by everyone the Agent admits; knowledge saved in one user's sessions is recalled and listed for the whole team. The API serves kagent.runtime.v1.MemoryService List and DeleteEntry per workspace, and DeleteEntry needs the Agent management capability.
+
+### Features
+
+* **api:** route Agent memory listing and curation to kagent ([8bd9aac](https://github.com/pood1e/agentos-platform/commit/8bd9aac1a77131cbbfd6b74d8501388d0e06afd0))
+
 ## [0.58.0](https://github.com/pood1e/agentos-platform/compare/v0.57.0...v0.58.0) (2026-11-13)
 
 
