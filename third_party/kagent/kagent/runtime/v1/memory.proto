@@ -8,9 +8,10 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/kagent-dev/kagent/go/api/gen/kagent/runtime/v1;runtimev1";
 
-// Memory is scoped to an Agent and a user. Actor calls derive both from the
-// persisted session bound to the verified Actor JWT. User calls select an
-// Agent and use the authenticated user's identity.
+// Memory belongs to an Agent and is shared by every caller the Agent admits.
+// Actor calls use the Agent of the persisted session bound to the verified Actor
+// JWT. User calls select an Agent and need its read permission to list or search
+// and its update permission to add or delete.
 service MemoryService {
   // Accepts an Actor JWT or user authentication.
   rpc AddSession(MemoryServiceAddSessionRequest) returns (MemoryServiceAddSessionResponse);
@@ -18,11 +19,11 @@ service MemoryService {
   rpc AddSessionBatch(MemoryServiceAddSessionBatchRequest) returns (MemoryServiceAddSessionBatchResponse);
   // Accepts an Actor JWT or user authentication.
   rpc Search(MemoryServiceSearchRequest) returns (MemoryServiceSearchResponse);
-  // Accepts an Actor JWT or user authentication on the same RPC endpoint.
+  // Accepts user authentication.
   rpc List(MemoryServiceListRequest) returns (MemoryServiceListResponse);
-  // Accepts an Actor JWT or user authentication on the same RPC endpoint.
+  // Accepts user authentication.
   rpc Delete(MemoryServiceDeleteRequest) returns (MemoryServiceDeleteResponse);
-  // Accepts an Actor JWT or user authentication on the same RPC endpoint.
+  // Accepts user authentication.
   rpc DeleteEntry(MemoryServiceDeleteEntryRequest) returns (MemoryServiceDeleteEntryResponse);
 }
 
@@ -88,9 +89,7 @@ message MemoryServiceSearchResponse {
 }
 
 message MemoryServiceListRequest {
-  // User calls must supply the Agent key, "namespace/name".
-  // Actor calls ignore this field and use the Agent
-  // from their persisted session.
+  // The Agent key, "namespace/name".
   string agent_name = 1;
 }
 
@@ -99,9 +98,7 @@ message MemoryServiceListResponse {
 }
 
 message MemoryServiceDeleteRequest {
-  // User calls must supply the Agent key, "namespace/name".
-  // Actor calls ignore this field and use the Agent
-  // from their persisted session.
+  // The Agent key, "namespace/name".
   string agent_name = 1;
 }
 
@@ -110,9 +107,7 @@ message MemoryServiceDeleteResponse {
 }
 
 message MemoryServiceDeleteEntryRequest {
-  // User calls must supply the Agent key, "namespace/name".
-  // Actor calls ignore this field and use the Agent
-  // from their persisted session.
+  // The Agent key, "namespace/name".
   string agent_name = 1;
   string id = 2 [(buf.validate.field).string = {
     min_len: 1
