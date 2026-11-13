@@ -96,7 +96,7 @@ describe("history cursors", () => {
       expect(second.conversations[0]?.contextId).not.toBe(first.conversations[0]?.contextId);
       expect(second.nextPageToken).toBe("");
       await expect(
-        env.projection.conversations(reader, "agentos/role-builder", {
+        env.projection.conversations(reader, "agentos/coordinator", {
           ...request,
           pageToken: first.nextPageToken,
         }),

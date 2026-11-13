@@ -75,7 +75,7 @@ export function conversationWatch({
     signal: AbortSignal,
   ) {
     const { contextId } = request;
-    conversationTarget(namespace, entryAgent, request.agent, identity, contextId);
+    conversationTarget(namespace, entryAgent, request.agent, contextId);
     let observed: Observation | undefined;
     let members: { at: number; value: AgentInfo[] } | undefined;
     let changedHere = false;

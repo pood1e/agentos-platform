@@ -72,7 +72,7 @@ describe("localized user interface", () => {
     );
     expect(toolText("env-sim-keycloak_keycloak_user_role_assign").name).toBe("授予环境角色");
     expect(toolText("grafana.query_loki").name).toBe("查询日志");
-    expect(toolServerLabel("agentos/team-sessions")).toBe("角色起草");
+    expect(toolServerLabel("agentos/kagent-collaboration")).toBe("会话与工作空间");
     expect(toolText("unknown_internal_name")).toEqual({
       name: "unknown_internal_name",
       description: "",

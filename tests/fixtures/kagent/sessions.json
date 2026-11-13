@@ -91,19 +91,6 @@
     "agent": { "ref": { "namespace": "agentos", "name": "knowledge" } }
   },
   {
-    "id": "01a13307-bec0-770e-b5a5-f19651bbe3fc",
-    "creator": "agentos",
-    "preparedRevision": "8a5dc621a245c0e1c7df20d8f9c850307ddea770eaa193319e33f8626c9359c8",
-    "a2aAuthority": "session-01a13307-bec0-770e-b5a5-f19651bbe3fc.agentos.actors.resources.substrate.ate.dev",
-    "state": "RUNTIME_STATE_READY",
-    "operation": "RUNTIME_OPERATION_NONE",
-    "createdAt": "2026-10-13T02:11:48.034092Z",
-    "updatedAt": "2026-10-13T02:11:48.048386483Z",
-    "name": "新增一个“服务健康工程师”",
-    "contextId": "01a13307-bec0-770e-b5a5-f19651bbe3fc",
-    "agent": { "ref": { "namespace": "agentos", "name": "role-builder" } }
-  },
-  {
     "id": "01a13309-e1fc-7f0a-a274-21ac47fe36ca",
     "creator": "agentos",
     "preparedRevision": "8fc6f26751c35a20405c2eebacb0deec1d69ae2c35f2ad28c44dfc9bda05e1ad",

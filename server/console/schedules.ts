@@ -1,5 +1,4 @@
 import { Code } from "@connectrpc/connect";
-import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
 import type {
   CreateScheduledRunRequest,
   DeleteScheduledRunRequest,
@@ -51,8 +50,8 @@ export function scheduleCommands(
       );
       return response;
     },
-    async create(request: CreateScheduledRunRequest, identity: UserIdentity) {
-      executionTarget(namespace, request.agent, identity);
+    async create(request: CreateScheduledRunRequest) {
+      executionTarget(namespace, request.agent);
       await delegated();
       return native.createScheduledRun(request, options).catch(explained);
     },

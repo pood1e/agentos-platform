@@ -19,7 +19,7 @@ controller_peers(selector) := {
 	{"podSelector": {"matchLabels": {"agentos.dev/gateway": "business"}}},
 	{"podSelector": {
 		"matchLabels": {"app.kubernetes.io/name": "agentos"},
-		"matchExpressions": [{"key": "app.kubernetes.io/component", "operator": "In", "values": ["api", "dataplane"]}],
+		"matchExpressions": [{"key": "app.kubernetes.io/component", "operator": "In", "values": ["api"]}],
 	}},
 	{
 		"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "ate-system"}},

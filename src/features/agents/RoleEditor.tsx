@@ -1,7 +1,7 @@
 import { clone } from "@bufbuild/protobuf";
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { Blocks, BookOpen, LoaderCircle, NotebookPen, Play, Save, X } from "lucide-react";
-import { type ChangeEvent, useCallback, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,6 @@ import {
 import { defaultModelConfig } from "../../../shared/kagent-resources.js";
 import { useCapability } from "../../lib/access.js";
 import { errorKey } from "../../lib/errors.js";
-import { RoleBuilderPanel } from "./RoleBuilder.js";
 import { RoleIdentityFields } from "./RoleIdentityFields.js";
 import { RoleRuntime } from "./RoleRuntime.js";
 import { RoleSection as Section } from "./RoleSection.js";
@@ -85,21 +84,6 @@ export function RoleEditor({
         }),
       );
     };
-  // Builder drafts never rename an existing role or replace its stored version.
-  const applyDraft = useCallback(
-    (next: RoleDefinition) =>
-      setDraft((current) =>
-        role
-          ? editRole(next, (value) => {
-              value.name = current.name;
-              value.displayName = current.displayName;
-              value.resourceVersion = current.resourceVersion;
-              value.modelConfig = current.modelConfig;
-            })
-          : next,
-      ),
-    [role],
-  );
   async function save() {
     if (!editable) return;
     try {
@@ -208,7 +192,6 @@ export function RoleEditor({
                   />
                 </div>
               </form>
-              {editable && <RoleBuilderPanel onDraft={applyDraft} defaultOpen={!role} />}
             </div>
           </Section>
           <Section value="skills">

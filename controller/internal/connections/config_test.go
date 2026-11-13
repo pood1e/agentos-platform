@@ -78,30 +78,14 @@ func TestMCPSettings(t *testing.T) {
 	for _, object := range objects {
 		switch object := object.(type) {
 		case *agw.AgentgatewayPolicy:
-			transform := object.Spec.Traffic.Transformation.Conditional[0]
-			if transform.Condition != "request.path != '/mcp/team-sessions'" || len(transform.Policy.Request.Remove) != 1 || transform.Policy.Request.Remove[0] != "authorization" {
+			transform := object.Spec.Traffic.Transformation
+			if len(transform.Conditional) != 0 || transform.Request == nil || len(transform.Request.Remove) != 1 || transform.Request.Remove[0] != "authorization" {
 				t.Fatalf("MCP initiator credential isolation lost: %+v", transform)
 			}
 		case *kagent.RemoteMCPServer:
 			if object.Spec.URL != "http://mcp.test:8080/mcp/tools" || object.Spec.Description != "Operations tools" ||
-				object.Spec.Timeout.Duration != 10*time.Minute || object.Spec.ActorJWT == nil || object.Spec.ActorJWT.Audiences[0] != "http://mcp.test:8080" || object.Spec.DiscoveryAuth == nil || object.Spec.DiscoveryAuth.ServiceAccount.ServiceAccountRef.Name != "gateway-discovery" {
+				object.Spec.Timeout.Duration != 10*time.Minute || object.Spec.ActorJWT == nil || object.Spec.ActorJWT.Audiences[0] != "http://mcp.test:8080" || object.Spec.DiscoveryAuth == nil || object.Spec.DiscoveryAuth.ServiceAccount.ServiceAccountRef.Name != "gateway-discovery" || object.Spec.DiscoveryAuth.ServiceAccount.Audience != "agentos-mcp-discovery" {
 				t.Fatalf("MCP settings lost: %+v", object)
-			}
-		}
-	}
-}
-
-func TestTeamDiscoveryCredential(t *testing.T) {
-	config := Config(platform.PlatformGateway{Name: "gateway", MCPURL: "http://mcp.test:8080", DiscoveryServiceAccount: "gateway-discovery"})
-	objects, err := config.MCP(&agw.AgentgatewayBackend{ObjectMeta: metav1.ObjectMeta{Name: "team-sessions", Namespace: "team"}, Spec: agw.AgentgatewayBackendSpec{MCP: &agw.MCPBackend{}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, object := range objects {
-		if remote, ok := object.(*kagent.RemoteMCPServer); ok {
-			auth := remote.Spec.DiscoveryAuth.ServiceAccount
-			if auth.ServiceAccountRef.Name != "gateway-discovery" || auth.Audience != "agentos-mcp-discovery" {
-				t.Fatalf("discovery identity = %+v", auth)
 			}
 		}
 	}

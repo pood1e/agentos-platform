@@ -12,34 +12,23 @@ runtime_peer(peer) if peer.podSelector.matchLabels["agentos.dev/gateway"] == "bu
 
 runtime_peer(peer) if peer.namespaceSelector.matchLabels["kubernetes.io/metadata.name"] == "ate-system"
 
-ingress_peers(deployment) := [peer |
-	some ingress in object.get(ingress_policy(deployment).spec, "ingress", [])
-	some peer in ingress.from
-]
-
 deny contains sprintf("%s lacks an ingress policy", [workload.metadata.name]) if {
 	some workload in workloads
 	not ingress_policy(workload)
 }
 
-deny contains "only the dataplane admits gateways and Agent runtimes" if {
+deny contains "the API admits gateways or Agent runtimes" if {
 	some ingress in object.get(ingress_policy(api).spec, "ingress", [])
 	some peer in ingress.from
 	runtime_peer(peer)
 	not app_authority_ingress(ingress, peer)
 }
 
-deny contains "the dataplane admits console or external clients" if {
-	some peer in ingress_peers(dataplane)
-	not runtime_peer(peer)
-}
-
-deny contains sprintf("gateway NetworkPolicy excludes the %s", [component]) if {
+deny contains "gateway NetworkPolicy excludes the API" if {
 	some policy in objects
 	policy.kind == "NetworkPolicy"
 	endswith(policy.metadata.name, "-gateway")
-	some component in ["api", "dataplane"]
-	not platform_peer(policy, component)
+	not platform_peer(policy, "api")
 }
 
 platform_peer(policy, component) if {

@@ -30,7 +30,6 @@ export const fixtureIds = {
   dispatchRoot: "01a130dd-0e64-7b51-905e-22cfa972b980",
   inspection: "01a130dd-8a0c-7e3a-b122-4a7f18df2e4c",
   background: "01a130de-59b6-77b2-8e04-21a814d48ec9",
-  builder: "01a13307-c0af-7ed4-b9f7-ee38d77b0a98",
   chat: "01a13309-e4a9-72f5-b164-5b98e3dc052b",
   chatContext: "01a13309-e1fc-7f0a-a274-21ac47fe36ca",
   chatRoot: "01a1330a-6edd-70a7-8d53-79b3d6516067",

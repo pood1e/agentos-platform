@@ -11,8 +11,6 @@ plugins:
     types:
       - agentos.governance.v1.EnvironmentApi
       - agentos.console.v1.Pack
-      - agentos.console.v1.RoleDefinition
       - agentos.console.v1.SpeechTranscription
       - agentos.console.v1.SpeechSynthesis
-      - kagent.api.v1.ListToolServersRequest
     opt: [target=json-bundle]

@@ -238,7 +238,6 @@ it("requires an explicit execution identity for environment tool bindings", () =
       ],
     ]),
   );
-  expect(policy.usable("analysis", "ownerless")).toBe(false);
   expect(
     policy.bindings(
       "analysis",

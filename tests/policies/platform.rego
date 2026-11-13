@@ -13,15 +13,12 @@ platform(component) := resource if {
 
 api := platform("api")
 
-dataplane := platform("dataplane")
-
-workloads := [api, dataplane]
+workloads := [api]
 
 environment_of(deployment) := {entry.name: entry | some entry in deployment.spec.template.spec.containers[0].env}
 
 api_environment := environment_of(api)
 
-dataplane_environment := environment_of(dataplane)
 hostname(url) := split(split(split(url, "://")[1], "/")[0], ":")[0]
 
 resource_exists(kind, name) if {
@@ -96,26 +93,6 @@ deny contains sprintf("the platform chart renders site resource %s/%s", [resourc
 	resource.kind in {"Namespace", "Middleware", "Ingress"}
 }
 
-deny contains "collaboration must run in the dataplane" if {
-	some resource in objects
-	resource.kind == "Deployment"
-	endswith(resource.metadata.name, "-team-sessions")
-}
-
-deny contains "team-sessions does not target the dataplane" if {
-	some backend in objects
-	backend.kind == "AgentgatewayBackend"
-	backend.metadata.name == "team-sessions"
-	backend.spec.mcp.targets[0].static.host != dataplane.metadata.name
-}
-
-deny contains "team-sessions uses a different HTTP port" if {
-	some backend in objects
-	backend.kind == "AgentgatewayBackend"
-	backend.metadata.name == "team-sessions"
-	backend.spec.mcp.targets[0].static.port != 8080
-}
-
 deny contains "identity client credentials stay with the console proxy and kagent" if {
 	some name in {"AGENTOS_OIDC_CLIENT_SECRET", "AGENTOS_COOKIE_SECRET"}
 	api_environment[name]
@@ -127,35 +104,17 @@ deny contains "speech credentials are projected into a platform process" if {
 	startswith(volume.name, "speech")
 }
 
-deny contains sprintf("required %s environment %s is absent", [component, name]) if {
-	some component, names in {
-		"api": {"AGENTOS_OIDC_WRITER_ROLE", "AGENTOS_WORKSPACES"},
-		"dataplane": {"KAGENT_URL", "AGENTOS_CONTROLLER_SUBJECT"},
-	}
-	some name in names
-	not environment_of(platform(component))[name]
-}
-
-deny contains "the dataplane lacks a second replica or its disruption budget" if {
-	dataplane.spec.replicas < 2
-}
-
-deny contains "the dataplane lacks a second replica or its disruption budget" if {
-	not disruption_budget(dataplane)
-}
-
-disruption_budget(deployment) if {
-	some budget in objects
-	budget.kind == "PodDisruptionBudget"
-	budget.spec.selector.matchLabels == deployment.spec.selector.matchLabels
-	budget.spec.maxUnavailable == 1
+deny contains sprintf("required API environment %s is absent", [name]) if {
+	some name in {"AGENTOS_OIDC_WRITER_ROLE", "AGENTOS_WORKSPACES"}
+	not api_environment[name]
 }
 
 deny contains "native collaboration endpoint differs from the native control plane" if {
 	some remote in objects
 	remote.kind == "RemoteMCPServer"
 	remote.metadata.name == "kagent-collaboration"
-	remote.spec.url != concat("", [dataplane_environment.KAGENT_URL.value, "/mcp"])
+	home := json.unmarshal(api_environment.AGENTOS_WORKSPACES.value)[0]
+	remote.spec.url != concat("", [home.kagentURL, "/mcp"])
 }
 
 deny contains "native collaboration lacks runtime caller credentials" if {
@@ -165,10 +124,10 @@ deny contains "native collaboration lacks runtime caller credentials" if {
 	remote.spec.tokenPassthrough != true
 }
 
-deny contains sprintf("%s lacks native discovery credentials", [remote.metadata.name]) if {
+deny contains "native collaboration lacks discovery credentials" if {
 	some remote in objects
 	remote.kind == "RemoteMCPServer"
-	remote.metadata.name in {"team-sessions", "kagent-collaboration"}
+	remote.metadata.name == "kagent-collaboration"
 	not remote.spec.discoveryAuth.serviceAccount.audience
 }
 
@@ -178,7 +137,3 @@ deny contains "platform process owns execution persistence or authority" if {
 	startswith(entry.name, "AGENTOS_EXECUTION_")
 }
 
-deny contains "business dataplane exposes a runtime proxy port" if {
-	some port in dataplane.spec.template.spec.containers[0].ports
-	port.containerPort != 8080
-}

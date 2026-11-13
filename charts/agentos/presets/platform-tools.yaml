@@ -1,6 +1,3 @@
-team-sessions:
-  readOnly: [list_role_tools, prepare_role]
-  write: []
 kagent-collaboration:
   readOnly: [list_agents, list_sessions, invoke_agent]
   write: []

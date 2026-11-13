@@ -209,7 +209,7 @@ describe("listings", () => {
     expect(chats.conversations.map((item) => item.contextId)).toEqual([ids.chatContext]);
     expect(chats.conversations[0]?.title).toBe("检查服务健康");
     expect(
-      (await env.projection.conversations(reader, "agentos/role-builder", page)).totalSize,
+      (await env.projection.conversations(reader, "agentos/service-health", page)).totalSize,
     ).toBe(1);
   });
 

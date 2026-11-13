@@ -1,5 +1,4 @@
-import { create, fromJson, toJson } from "@bufbuild/protobuf";
-import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import { create } from "@bufbuild/protobuf";
 import { Role, type Task } from "../../../gen/a2a_pb.js";
 import {
   type ChatMessage,
@@ -8,20 +7,11 @@ import {
   type Conversation,
   ConversationSchema,
 } from "../../../gen/agentos/console/v1/conversation_pb.js";
-import {
-  type RoleDefinition,
-  RoleDefinitionSchema,
-} from "../../../gen/agentos/console/v1/role_pb.js";
-import { ActivityState } from "../../../gen/agentos/execution/v1/state_pb.js";
 import type { ResourceReference } from "../../../gen/kagent/api/v1/common_pb.js";
-import { object } from "../../../shared/json.js";
-import { roleBuilderAgent } from "../../../shared/kagent-resources.js";
 import { agentKey } from "../../kagent/resources.js";
 import { pool } from "../../shared/async.js";
-import { toolCalls } from "../calls.js";
 import type { TaskEntry } from "../entry.js";
 import type { TaskGraph } from "../graph.js";
-import { approvals } from "../interactions.js";
 import { busy, taskTree } from "../tree.js";
 import { agentSummary } from "./agents.js";
 import { chatParts } from "./chat-parts.js";
@@ -87,29 +77,6 @@ async function messages(fullTask: FullTask, graph: TaskGraph, entries: TaskEntry
   });
 }
 
-async function roleDraft(
-  fullTask: FullTask,
-  entry: TaskEntry,
-): Promise<RoleDefinition | undefined> {
-  const call = entry.calls.findLast(
-    (item) => item.name === "prepare_role" && item.state === ActivityState.SUCCEEDED,
-  );
-  const task = call && (await fullTask(entry));
-  if (!task) return undefined;
-  const output = toolCalls(task, entry.agentId, approvals(task)).find(
-    (item) => item.id === call.id,
-  )?.output;
-  try {
-    return output
-      ? fromJson(RoleDefinitionSchema, object(toJson(ValueSchema, output)), {
-          ignoreUnknownFields: true,
-        })
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function conversation(
   graph: TaskGraph,
   agent: Pick<ResourceReference, "namespace" | "name"> | undefined,
@@ -153,7 +120,5 @@ export async function conversation(
         runs.filter((run) => run.agentId === id).flatMap((run) => graph.entry(run.taskId) ?? []),
       ),
     ),
-    roleDraft:
-      member?.templateName === roleBuilderAgent ? await roleDraft(fullTask, latest) : undefined,
   });
 }

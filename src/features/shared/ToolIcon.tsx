@@ -10,7 +10,7 @@ interface ToolBrand extends Brand {
 const platform: ToolBrand[] = [
   {
     match:
-      /kagent|team-sessions|invoke_agent|list_sessions|list_agents|session_checkpoints?|fork_session|list_role_tools|prepare_role|transfer_to_agent|(?:save|load|preload|prefetch)_memory|(?:list|load)_skill|^(?:ask_user|read_file|write_file|edit_file|bash|list_files|grep_file)$/i,
+      /kagent|invoke_agent|list_sessions|list_agents|session_checkpoints?|fork_session|transfer_to_agent|(?:save|load|preload|prefetch)_memory|(?:list|load)_skill|^(?:ask_user|read_file|write_file|edit_file|bash|list_files|grep_file)$/i,
     name: "kagent",
     icon: "/icons/kagent.svg",
   },

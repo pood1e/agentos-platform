@@ -62,7 +62,7 @@ it("starts and lists an inline Agent without a business role", async () => {
   }
 });
 
-it("preserves workspace, privileged-role, native authorization and delegation gates", async () => {
+it("preserves workspace, native authorization and delegation gates", async () => {
   const env = await environment([]);
   const client = consoleClient(env, {}, () =>
     create(UserIdentitySchema, { subject: operator.subject }),
@@ -70,13 +70,9 @@ it("preserves workspace, privileged-role, native authorization and delegation ga
   const request = { messageId: "direct-agent-denied", text: "Inspect" };
   const createSession = vi.spyOn(env.clients.sessions, "createSession");
   try {
-    for (const agent of [
-      { namespace: "foreign", name: "inspection" },
-      { namespace: "agentos", name: "role-builder" },
-    ])
-      await expect(client.sendMessage({ ...request, agent })).rejects.toMatchObject({
-        code: Code.NotFound,
-      });
+    await expect(
+      client.sendMessage({ ...request, agent: { namespace: "foreign", name: "inspection" } }),
+    ).rejects.toMatchObject({ code: Code.NotFound });
     await expect(
       client.sendMessage({ ...request, agent: { namespace: "agentos", name: "" } }),
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
