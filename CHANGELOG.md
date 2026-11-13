@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.58.0](https://github.com/pood1e/agentos-platform/compare/v0.57.0...v0.58.0) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* the role-builder Agent, the team-sessions MCP server and the dataplane are removed. The dataplane and systemAgents.roleBuilder values are gone and Conversation.role_draft is reserved; sites overriding gateway.mcps with team-sessions drop that entry.
+
+### Code Refactoring
+
+* remove role drafting and the dataplane ([ac2b26b](https://github.com/pood1e/agentos-platform/commit/ac2b26be0100315afff8ffb93bdf82cdfd3fd674))
+
 ## [0.57.0](https://github.com/pood1e/agentos-platform/compare/v0.56.1...v0.57.0) (2026-11-11)
 
 
