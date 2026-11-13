@@ -9,6 +9,7 @@ import {
   ManagementService,
   SaveConnectionRequestSchema,
 } from "../../gen/agentos/management/v1/management_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { can } from "../../shared/permissions.js";
 
 const key = (method: DescMethod) => `${method.parent.typeName}/${method.name}`;
@@ -24,7 +25,11 @@ const requirements = new Map<string, Capability>([
   [key(ManagementService.method.deleteSkill), Capability.SKILLS_MANAGE],
   [key(ManagementService.method.saveHarness), Capability.HARNESSES_MANAGE],
   [key(ManagementService.method.deleteHarness), Capability.HARNESSES_MANAGE],
+  [key(MemoryService.method.deleteEntry), Capability.AGENTS_MANAGE],
 ]);
+
+/** Reads whose native authority decides access per resource. */
+const nativeReads = new Set([key(MemoryService.method.list)]);
 
 /** Commands on the caller's own work; native authority decides them per resource. */
 const selfService = new Set(
@@ -65,6 +70,7 @@ function requiredCapability(method: DescMethod, message: unknown) {
 export function mayCall(principal: UserIdentity, method: DescMethod, message: unknown) {
   if (
     method.idempotency === MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS ||
+    nativeReads.has(key(method)) ||
     selfService.has(key(method))
   )
     return true;

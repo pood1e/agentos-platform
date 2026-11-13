@@ -3,6 +3,7 @@ import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import { LRUCache } from "lru-cache";
 import { userIdentity } from "../authorization/identity.js";
 import { memberWorkspace } from "../authorization/workspaces.js";
+import { agentMemory } from "../console/memory.js";
 import { consoleService } from "../console/service.js";
 import { toolBindings } from "../governance/access-plans.js";
 import { kagentClients, kagentTransport } from "../kagent/clients.js";
@@ -103,6 +104,7 @@ export async function workspaceRuntime(
       gatewayName: `${release}-gateway`,
       speech,
     }),
+    memory: agentMemory(clients.memory, namespace),
     voice,
   };
 }

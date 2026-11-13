@@ -1,5 +1,6 @@
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { authorizationService } from "../authorization/service.js";
 import { registerConsole } from "../console/app.js";
 import { registerAppAuthorization } from "../mcp-apps/http.js";
@@ -52,6 +53,10 @@ await registerConsole(app, {
   management: workspaceService(
     ManagementService,
     perWorkspace((runtime) => runtime.management),
+  ),
+  memory: workspaceService(
+    MemoryService,
+    perWorkspace((runtime) => runtime.memory),
   ),
 });
 registerHealth(app, () => home.access.healthy());
