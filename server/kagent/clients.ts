@@ -13,6 +13,7 @@ import { SystemService } from "../../gen/kagent/api/v1/system_pb.js";
 import { TaskCatalogService } from "../../gen/kagent/api/v1/task_catalog_pb.js";
 import { ToolService } from "../../gen/kagent/api/v1/tools_pb.js";
 import { WorkflowService } from "../../gen/kagent/api/v1/workflows_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { rpcMetrics } from "../shared/telemetry.js";
 import { nativeCredentials } from "./context.js";
 
@@ -44,6 +45,7 @@ export function kagentClients(transport: Transport) {
     templates: createClient(AgentTemplateService, transport),
     tools: createClient(ToolService, transport),
     scheduledRuns: createClient(ScheduledRunService, transport),
+    memory: createClient(MemoryService, transport),
   };
 }
 

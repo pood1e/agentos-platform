@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { ConsoleService } from "../../gen/agentos/console/v1/console_service_pb.js";
 import { ManagementService } from "../../gen/agentos/management/v1/management_pb.js";
 import { AuthorizationService } from "../../gen/kagent/api/v1/authorization_pb.js";
+import { MemoryService } from "../../gen/kagent/runtime/v1/memory_pb.js";
 import { consoleErrors } from "../shared/rpc-errors.js";
 import { rpcMetrics } from "../shared/telemetry.js";
 
@@ -12,6 +13,7 @@ export interface ConsoleRoutes {
   service: ServiceImpl<typeof ConsoleService>;
   management?: ServiceImpl<typeof ManagementService>;
   authorization?: ServiceImpl<typeof AuthorizationService>;
+  memory?: ServiceImpl<typeof MemoryService>;
   context?: Interceptor;
 }
 
@@ -27,6 +29,7 @@ export async function registerConsole(app: FastifyInstance, routes: ConsoleRoute
       router.service(ConsoleService, routes.service, { writeMaxBytes: 17 * 1024 * 1024 });
       if (routes.management) router.service(ManagementService, routes.management);
       if (routes.authorization) router.service(AuthorizationService, routes.authorization);
+      if (routes.memory) router.service(MemoryService, routes.memory);
     },
   });
 }
