@@ -31,19 +31,7 @@ gateway_peer := {"podSelector": {"matchLabels": {"agentos.dev/gateway": "busines
 
 test_gateways_reaching_the_api_are_rejected if {
 	messages := deny with input as [{"contents": fixture_workload("api")}, {"contents": fixture_ingress("api", [gateway_peer])}]
-	"only the dataplane admits gateways and Agent runtimes" in messages
-}
-
-test_console_traffic_to_the_dataplane_is_rejected if {
-	web := {"podSelector": {"matchLabels": {"app.kubernetes.io/component": "web"}}}
-	messages := deny with input as [{"contents": fixture_workload("dataplane")}, {"contents": fixture_ingress("dataplane", [web])}]
-	"the dataplane admits console or external clients" in messages
-}
-
-test_a_single_dataplane_replica_is_rejected if {
-	single := object.union(fixture_workload("dataplane"), {"spec": {"replicas": 1}})
-	messages := deny with input as [{"contents": single}]
-	"the dataplane lacks a second replica or its disruption budget" in messages
+	"the API admits gateways or Agent runtimes" in messages
 }
 
 test_actor_key_discovery_requires_verified_direct_tls if {

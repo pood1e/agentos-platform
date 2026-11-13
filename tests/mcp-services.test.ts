@@ -89,7 +89,6 @@ describe("MCP services and credential bindings", () => {
     );
     expect(builtins.map((item) => object(item.resource?.value?.metadata).name)).toEqual([
       "kagent-collaboration",
-      "team-sessions",
     ]);
     for (const connection of builtins) {
       expect(connection.tools.length).toBeGreaterThan(0);

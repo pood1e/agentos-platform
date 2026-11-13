@@ -21,12 +21,6 @@ spec:
   - mcp:
       server:
         kind: RemoteMCPServer
-        name: team-sessions
-      tools: [list_role_tools, prepare_role]
-      requireApproval: false
-  - mcp:
-      server:
-        kind: RemoteMCPServer
         name: kagent-collaboration
       tools: [list_agents, list_sessions, invoke_agent]
       requireApproval: false

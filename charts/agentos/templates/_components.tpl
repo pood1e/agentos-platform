@@ -49,15 +49,3 @@
   resources: [configmaps]
   verbs: [get, list, create, update, patch, delete]
 {{- end -}}
-
-{{- define "agentos.dataplaneEnv" -}}
-- {name: KAGENT_URL, value: {{ include "agentos.kagentEndpoint" . | quote }}}
-- {name: KAGENT_NAMESPACE, value: {{ .Release.Namespace | quote }}}
-- {name: AGENTOS_CONTROLLER_SUBJECT, value: "system:serviceaccount:{{ .Release.Namespace }}:{{ include "agentos.name" . }}-discovery"}
-{{- end -}}
-
-{{- define "agentos.dataplaneRules" -}}
-- apiGroups: [agentos.dev]
-  resources: [accessplans]
-  verbs: [get, list, watch]
-{{- end -}}

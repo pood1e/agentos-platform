@@ -120,9 +120,7 @@ export class FakeResources {
           metadata: {
             name,
             annotations: {
-              "agentos.dev/system-connection": String(
-                ["team-sessions", "kagent-collaboration"].includes(name),
-              ),
+              "agentos.dev/system-connection": String(name === "kagent-collaboration"),
             },
           },
           spec: {

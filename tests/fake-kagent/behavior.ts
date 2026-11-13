@@ -1,12 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  create,
-  enumToJson,
-  fromJson,
-  type JsonValue,
-  toJson,
-  toJsonString,
-} from "@bufbuild/protobuf";
+import { create, enumToJson, fromJson, type JsonValue, toJsonString } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import {
@@ -21,7 +14,6 @@ import {
   TaskState,
   TaskStateSchema,
 } from "../../gen/a2a_pb.js";
-import { RoleDefinitionSchema } from "../../gen/agentos/console/v1/role_pb.js";
 import { hitlPayload } from "../../server/read-model/decode/hitl.js";
 import { messageText, partTypeKey, timelineKey } from "../../server/read-model/decode/messages.js";
 import { terminal } from "../../server/read-model/state.js";
@@ -131,28 +123,6 @@ export async function execute(fake: FakeKagent, task: Task, message: Message) {
   if (fake.tasks.get(task.id) !== task || task.status?.state === TaskState.CANCELED) return;
   const agentName = fake.sessions.get(task.contextId)?.agent?.ref?.name;
   const text = messageText(message);
-  if (agentName === "role-builder") {
-    const draft = create(RoleDefinitionSchema, {
-      name: "readonly-helper",
-      displayName: "巡检助手",
-      description: "只读检查服务运行状态",
-      systemPrompt: "使用只读工具检查工作负载健康，报告证据与来源。",
-      tools: [
-        { server: "kagent-tool-server", tools: ["k8s_get_resources"], requireApproval: false },
-        { server: "kagent-collaboration", tools: ["list_agents"] },
-      ],
-    });
-    return finish(
-      fake,
-      task,
-      "智能体草稿已准备。",
-      activity(
-        "prepare_role",
-        toJson(RoleDefinitionSchema, draft),
-        toJson(RoleDefinitionSchema, draft),
-      ),
-    );
-  }
   if (
     agentName === "assistant" &&
     /configmap/i.test(text) &&

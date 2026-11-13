@@ -1,9 +1,7 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { UserIdentity } from "../../gen/agentos/authorization/v1/identity_pb.js";
-import { Capability } from "../../gen/agentos/authorization/v1/permission_pb.js";
 import type { ResourceReference } from "../../gen/kagent/api/v1/common_pb.js";
-import { roleBuilderAgent } from "../../shared/kagent-resources.js";
-import { can, isAdministrator } from "../../shared/permissions.js";
+import { isAdministrator } from "../../shared/permissions.js";
 import type { Viewer } from "../read-model/listings.js";
 import type { TaskQueries } from "../read-model/queries.js";
 import { notFound } from "../shared/errors.js";
@@ -51,28 +49,16 @@ export async function visibleGraph(
 
 type AgentRef = Pick<ResourceReference, "namespace" | "name"> | undefined;
 
-const chatAgent = (namespace: string, entry: string, ref: AgentRef, identity: UserIdentity) =>
-  ref?.namespace === namespace &&
-  (ref.name === entry ||
-    (ref.name === roleBuilderAgent && can(identity, Capability.AGENTS_MANAGE)));
+const chatAgent = (namespace: string, entry: string, ref: AgentRef) =>
+  ref?.namespace === namespace && ref.name === entry;
 
 /** A new execution uses the native Session's resource authorization and owner. */
-export function executionTarget(namespace: string, ref: AgentRef, identity: UserIdentity) {
-  if (
-    ref?.namespace !== namespace ||
-    !ref.name ||
-    (ref.name === roleBuilderAgent && !can(identity, Capability.AGENTS_MANAGE))
-  )
-    throw notFound("chat.invalidConversation");
+export function executionTarget(namespace: string, ref: AgentRef) {
+  if (ref?.namespace !== namespace || !ref.name) throw notFound("chat.invalidConversation");
 }
 
-export function chatTarget(
-  namespace: string,
-  entry: string,
-  ref: AgentRef,
-  identity: UserIdentity,
-) {
-  if (!chatAgent(namespace, entry, ref, identity)) throw notFound("chat.invalidConversation");
+export function chatTarget(namespace: string, entry: string, ref: AgentRef) {
+  if (!chatAgent(namespace, entry, ref)) throw notFound("chat.invalidConversation");
 }
 
 /** Existing Agent sessions are read-only views, with ownership checked by visibleGraph. */
@@ -80,10 +66,9 @@ export function conversationTarget(
   namespace: string,
   entry: string,
   ref: AgentRef,
-  identity: UserIdentity,
   contextId: string,
 ) {
-  if (chatAgent(namespace, entry, ref, identity)) return;
+  if (chatAgent(namespace, entry, ref)) return;
   if (ref?.namespace === namespace && contextId) return;
   throw notFound("chat.invalidConversation");
 }

@@ -1,3 +1,5 @@
+{{- if .Values.voice.enabled }}
+# The API reviews the voice worker's token.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -5,15 +7,10 @@ metadata:
   labels: {{ include "agentos.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "agentos.dataplaneService" . }}
-    namespace: {{ .Release.Namespace }}
-  {{- if .Values.voice.enabled }}
-  # The API reviews the voice worker's token.
-  - kind: ServiceAccount
     name: {{ include "agentos.apiService" . }}
     namespace: {{ .Release.Namespace }}
-  {{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "agentos.workloadAuthName" . }}
+{{- end }}

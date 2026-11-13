@@ -119,19 +119,19 @@ export function consoleService({
     },
     listConversations(request, context) {
       const identity = identityOf(context);
-      chatTarget(namespace, entryAgent, request.agent, identity);
+      chatTarget(namespace, entryAgent, request.agent);
       return nativeSignal.run(context.signal, () =>
         projection.conversations(viewer(identity), agentKey(request.agent), request),
       );
     },
-    deleteSession: (request, context) => conversations.remove(request, identityOf(context)),
+    deleteSession: (request) => conversations.remove(request),
     async *watchConversation(request, context) {
       yield* watchConversation(request, identityOf(context), context.signal);
     },
     async sendMessage(request, context) {
       const identity = identityOf(context);
-      if (request.contextId) chatTarget(namespace, entryAgent, request.agent, identity);
-      else executionTarget(namespace, request.agent, identity);
+      if (request.contextId) chatTarget(namespace, entryAgent, request.agent);
+      else executionTarget(namespace, request.agent);
       if (!(await renewable())) throw precondition("delegation.required");
       return messages.send(request, identity);
     },
@@ -148,7 +148,7 @@ export function consoleService({
     explainTools: (request) => roles.explain(request.identity),
     listScheduledRuns: (request, context) =>
       nativeSignal.run(context.signal, () => schedules.list(request)),
-    createScheduledRun: (request, context) => schedules.create(request, identityOf(context)),
+    createScheduledRun: (request) => schedules.create(request),
     updateScheduledRun: (request) => schedules.update(request),
     deleteScheduledRun: (request) => schedules.remove(request),
     triggerScheduledRun: (request) => schedules.trigger(request),

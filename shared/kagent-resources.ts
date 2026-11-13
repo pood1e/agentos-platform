@@ -3,7 +3,6 @@ import type { ToolServer } from "../gen/kagent/api/v1/tools_pb.js";
 export const kagentApiVersion = "api.kagent.dev/v1alpha3";
 export const defaultModelConfig = "default-model-config";
 export const displayNameAnnotation = "agentos.dev/display-name";
-export const roleBuilderAgent = "role-builder";
 
 /** Native tool server references are `namespace/name`. */
 export const toolServerName = (server: Pick<ToolServer, "ref">) =>

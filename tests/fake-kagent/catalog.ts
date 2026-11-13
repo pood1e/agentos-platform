@@ -23,7 +23,6 @@ export const toolServers = (): ToolServer[] => [
     "k8s_get_resource_yaml",
   ]),
   server("remediation-tools", ["k8s_apply_manifest"]),
-  server("team-sessions", ["list_role_tools", "prepare_role"]),
   server("kagent-collaboration", ["list_agents", "list_sessions", "invoke_agent"]),
   server("grafana-mcp", ["grafana_query_loki"]),
 ];

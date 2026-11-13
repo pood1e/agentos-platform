@@ -8,7 +8,7 @@ import { StopTask } from "./StopTask.js";
 import { SpeechInput } from "./speech/SpeechControls.js";
 import type { Chat } from "./use-chat.js";
 
-export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: boolean }) {
+export function ChatComposer({ chat }: { chat: Chat }) {
   const { t } = useTranslation();
   const access = useAccess();
   const dictating = useAuiState((state) => state.composer.dictation != null);
@@ -23,7 +23,7 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
     );
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 space-y-2 p-3 sm:p-4">
-      {!builder && !access.data.write && (
+      {!access.data.write && (
         <p className="text-xs text-muted-foreground">{t("access.readOnlyTools")}</p>
       )}
       {chat.error && (
@@ -36,8 +36,8 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
       )}
       <ComposerPrimitive.Root className="flex w-full flex-col gap-2 rounded-2xl border bg-card p-2 shadow-xs focus-within:border-ring">
         <ComposerPrimitive.Input
-          aria-label={t(builder ? "configuration.requirement" : "chat.message")}
-          placeholder={t(builder ? "configuration.builderPlaceholder" : "chat.placeholder")}
+          aria-label={t("chat.message")}
+          placeholder={t("chat.placeholder")}
           maxLength={8000}
           rows={2}
           className="max-h-40 min-h-12 w-full resize-none bg-transparent px-2 py-1 text-sm leading-6 outline-none placeholder:text-muted-foreground"
@@ -60,8 +60,8 @@ export function ChatComposer({ chat, builder = false }: { chat: Chat; builder?: 
             <ComposerPrimitive.Send asChild disabled={dictating}>
               <Button
                 size="icon-sm"
-                aria-label={t(builder ? "configuration.generate" : "chat.send")}
-                title={t(builder ? "configuration.generate" : "chat.send")}
+                aria-label={t("chat.send")}
+                title={t("chat.send")}
                 className="self-end rounded-full"
               >
                 {chat.sending ? <LoaderCircle className="motion-safe:animate-spin" /> : <ArrowUp />}

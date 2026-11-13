@@ -45,11 +45,11 @@ tests:
     equal:
       path: spec.strategy
       value: {type: RollingUpdate, rollingUpdate: {maxSurge: 1, maxUnavailable: 0}}
-  - template: dataplane-deployment.yaml
+  - template: api-deployment.yaml
     equal: {path: spec.minReadySeconds, value: 5}
-  - template: dataplane-deployment.yaml
+  - template: api-deployment.yaml
     equal: {path: spec.template.spec.terminationGracePeriodSeconds, value: 60}
-  - template: dataplane-deployment.yaml
+  - template: api-deployment.yaml
     equal:
       path: spec.template.spec.containers[0].lifecycle.preStop
       value: {sleep: {seconds: 5}}
@@ -57,54 +57,30 @@ tests:
     equal:
       path: spec.template.spec.containers[0].startupProbe
       value: {httpGet: {path: /healthz, port: http}, periodSeconds: 2, failureThreshold: 90}
-- it: runs each entry point from the same image with optional telemetry initialization
+- it: runs the entry point from the platform image with optional telemetry initialization
   asserts:
   - template: api-deployment.yaml
     equal:
       path: spec.template.spec.containers[0].command
       value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/api.js]
-  - template: dataplane-deployment.yaml
-    equal:
-      path: spec.template.spec.containers[0].command
-      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/dataplane.js]
-  - template: dataplane-deployment.yaml
-    equal:
-      path: spec.template.spec.containers[0].command
-      value: [node, --import, ./build/server/apps/telemetry.js, build/server/apps/dataplane.js]
-  - template: dataplane-deployment.yaml
+  - template: api-deployment.yaml
     equal:
       path: spec.template.spec.containers[0].image
       value: registry.example.com/agentos@sha256:0000000000000000000000000000000000000000000000000000000000000000
-- it: keeps two dataplane replicas available during voluntary disruption
-  asserts:
-  - template: dataplane-deployment.yaml
-    equal: {path: spec.replicas, value: 2}
-  - template: dataplane-poddisruptionbudget.yaml
-    equal: {path: spec.maxUnavailable, value: 1}
-  - template: dataplane-poddisruptionbudget.yaml
-    equal:
-      path: spec.selector.matchLabels
-      value: {app.kubernetes.io/name: agentos, app.kubernetes.io/instance: agentos, app.kubernetes.io/component: dataplane}
-- it: rejects a single dataplane replica
-  set:
-    dataplane.replicas: 1
-  template: dataplane-deployment.yaml
-  asserts:
-  - failedTemplate: {errorPattern: 'dataplane.replicas'}
 - it: exports platform metrics only when an endpoint is configured
   asserts:
   - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
       content: {name: OTEL_SDK_DISABLED, value: 'true'}
-  - template: dataplane-deployment.yaml
+  - template: api-deployment.yaml
     contains:
       path: spec.template.spec.containers[0].env
-      content: {name: OTEL_SERVICE_NAME, value: agentos-dataplane}
+      content: {name: OTEL_SERVICE_NAME, value: agentos-api}
 - it: exports metrics over OTLP with the configured protocol
   set:
     telemetry.metrics: {endpoint: 'http://collector.telemetry.svc.cluster.local:4318/v1/metrics', protocol: http/protobuf}
-  template: dataplane-deployment.yaml
+  template: api-deployment.yaml
   asserts:
   - contains:
       path: spec.template.spec.containers[0].env

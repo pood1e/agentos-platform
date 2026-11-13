@@ -10,6 +10,9 @@ templates:
 tests:
 - it: grants only TokenReview creation under a namespace-qualified name
   template: workload-auth-role.yaml
+  set:
+    voice.enabled: true
+    voice.image: registry.example.com/voice@sha256:1111111111111111111111111111111111111111111111111111111111111111
   asserts:
   - equal:
       path: metadata.name
@@ -20,8 +23,11 @@ tests:
       - apiGroups: [authentication.k8s.io]
         resources: [tokenreviews]
         verbs: [create]
-- it: binds the verifier to this release's dataplane identity
+- it: binds the verifier to this release's API identity for voice workers
   template: workload-auth-rolebinding.yaml
+  set:
+    voice.enabled: true
+    voice.image: registry.example.com/voice@sha256:1111111111111111111111111111111111111111111111111111111111111111
   asserts:
   - equal:
       path: roleRef
@@ -33,5 +39,9 @@ tests:
       path: subjects
       value:
       - kind: ServiceAccount
-        name: platform-dataplane
+        name: platform-api
         namespace: operations
+- it: grants no token review without voice
+  asserts:
+  - hasDocuments:
+      count: 0

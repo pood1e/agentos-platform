@@ -27,7 +27,7 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/component
                 operator: In
-                values: [api, dataplane]
+                values: [api]
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: ate-system}
           podSelector:

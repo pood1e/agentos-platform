@@ -61,11 +61,11 @@ Git 来源填写完整 `git.url` 与固定 `git.commit`，S3 来源填写原生�
 ```
 
 示例见[方案 Chart](../tests/fixtures/solution-chart)。未修改预置随方案升级更新，用户编辑后保留，详见[控制器](kubernetes-controller.md)。
-`systemAgents.assistant.systemPrompt` 与 `systemAgents.roleBuilder.systemPrompt` 可覆盖系统提示词，支持模板表达式。
+`systemAgents.assistant.systemPrompt` 可覆盖系统提示词，支持模板表达式。
 
 ## 角色与展示
 
-`Agent` 标签 `agentos.dev/role` 是角色键，用于文案、头像与身份档案。平台保留 `assistant` 和 `role-builder`；`entryAgent` 选择默认聊天入口。
+`Agent` 标签 `agentos.dev/role` 是角色键，用于文案、头像与身份档案。平台保留 `assistant`；`entryAgent` 选择默认聊天入口。
 执行拓扑取自原生 task / session。默认按 task 分组，`agentos.dev/task-scope: session` 将多轮展示为一个任务。
 用户编辑的 `agentos.dev/display-name` / `agentos.dev/description` 优先于方案文案。
 

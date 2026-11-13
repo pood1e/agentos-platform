@@ -21,10 +21,9 @@ func Config(gateway platform.PlatformGateway) agentgateway.Config {
 		Gateway:  gw.ParentReference{Name: gw.ObjectName(gateway.Name), SectionName: ptr.To(gw.SectionName("http"))},
 		ModelURL: gateway.URL,
 		MCPURL:   gateway.MCPURL,
-		MCPPolicy: &agw.Traffic{Transformation: &agw.TransformationOrConditional{Conditional: []agw.TransformationConditional{{
-			Condition: "request.path != '/mcp/team-sessions'",
-			Policy:    agw.Transformation{Request: &agw.Transform{Remove: []agw.HeaderName{"authorization"}}},
-		}}}},
+		MCPPolicy: &agw.Traffic{Transformation: &agw.TransformationOrConditional{
+			Request: &agw.Transform{Remove: []agw.HeaderName{"authorization"}},
+		}},
 		ModelTemplate: func(parent *agw.AgentgatewayModel) (*kagent.ModelConfig, error) {
 			model := &kagent.ModelConfig{}
 			if source := parent.Annotations["agentos.dev/model-config"]; source != "" {

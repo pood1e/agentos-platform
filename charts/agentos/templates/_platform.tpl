@@ -23,9 +23,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- $identity := $root.Values.identity -}}
 - {name: AGENTOS_HOST, value: '0.0.0.0'}
 - {name: AGENTOS_PORT, value: '8080'}
-{{- if eq .component "api" }}
 - {name: AGENTOS_OIDC_WRITER_ROLE, value: {{ required "identity.writerRole is required" $identity.writerRole | quote }}}
-{{- end }}
 {{ include "agentos.telemetryEnv" . }}
 {{- end -}}
 

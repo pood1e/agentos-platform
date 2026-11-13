@@ -17,13 +17,12 @@
 
 | 层 | 路径 | 内容 |
 | --- | --- | --- |
-| 入口 | `server/apps` | api、dataplane、可选遥测与工作空间组合根 |
+| 入口 | `server/apps` | api、可选遥测与工作空间组合根 |
 | 业务 | `server/voice`、`voice/agentos_voice` | 可选语音会话与 LiveKit worker |
 | 业务 | `server/management` | 原生资源 CRUD、模型 / MCP 连接与运行配置 |
 | 业务 | `server/management/workflows` | 原生工作流目录、候选校验、不可变发布、布局和来源回收 |
 | 业务 | `server/console` | 控制台 RPC、原生发送 / HITL / 取消、定时任务、会话订阅与角色管理 |
 | 业务 | `server/mcp-apps` | 原生归属校验、视图投影与查看者工具回调 |
-| 业务 | `server/team-sessions` | 角色工具目录、起草 MCP 与发现认证 |
 | 平台 | `server/platform` | 工作空间目标、逐请求准入与服务分发 |
 | 投影 | `server/read-model` | 原生分页、可信执行树投影、历史与订阅 |
 | 投影 | `server/authorization` | 原生身份投影、资源授权 RPC、应用能力与委托授权入口 |

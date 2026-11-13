@@ -3,7 +3,6 @@ syntax = "proto3";
 package agentos.console.v1;
 
 import "a2a.proto";
-import "agentos/console/v1/role.proto";
 import "agentos/console/v1/agent.proto";
 import "agentos/console/v1/task.proto";
 import "agentos/execution/v1/state.proto";
@@ -46,13 +45,15 @@ message ChatMessagePart {
 
 // Empty context_id describes a conversation that has not started yet.
 message Conversation {
+  reserved 7;
+  reserved "role_draft";
+
   string context_id = 1;
   bool ready = 2;
   bool busy = 3;
   agentos.execution.v1.ActivityState state = 4;
   repeated ChatMessage messages = 5;
   repeated Interaction interactions = 6;
-  RoleDefinition role_draft = 7;
   string title = 8;
   bool operate = 9;
   repeated agentos.execution.v1.TaskRun runs = 10;

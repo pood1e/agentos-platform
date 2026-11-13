@@ -232,7 +232,7 @@
       ansible.builtin.script:
         cmd: >-
           runtime/access-policies.py
-          {{ agentos_namespace | quote }} {{ app_release_name | quote }}
+          {{ agentos_namespace | quote }}
           {{ ('check' if ansible_check_mode else 'apply') | quote }}
         executable: /usr/bin/python3
       environment:

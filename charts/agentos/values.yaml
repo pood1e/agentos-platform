@@ -24,15 +24,6 @@ api:
     limits:
       cpu: "1"
       memory: 768Mi
-dataplane:
-  replicas: 2
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: "1"
-      memory: 512Mi
 telemetry:
   metrics:
     endpoint: ""
@@ -155,8 +146,6 @@ harnesses:
 systemAgents:
   assistant:
     systemPrompt: ""
-  roleBuilder:
-    systemPrompt: ""
 gateway:
   parameters:
     image:
@@ -209,21 +198,7 @@ gateway:
             secretRef:
               name: model-credentials
               key: api-key
-  mcps:
-    - name: team-sessions
-      spec:
-        mcp:
-          prefixMode: Never
-          targets:
-            - name: team-sessions
-              static:
-                host: '{{ include "agentos.dataplaneService" . }}'
-                port: 8080
-                path: /mcp
-                policies:
-                  http:
-                    requestTimeout: 10m
-                protocol: StreamableHTTP
+  mcps: []
 controller:
   image: registry.example.com/agentos/platform-controller:0.39.0
   imagePullSecrets: []
