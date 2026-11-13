@@ -18,13 +18,6 @@ deny contains sprintf("%s has a redundant display-name annotation", [template.me
 	template.metadata.annotations["agentos.dev/display-name"]
 }
 
-deny contains "the assistant's collaboration tools differ from the native entry contract" if {
-	some template in templates
-	template.metadata.name == "assistant"
-	bindings := [binding.mcp | some binding in template.spec.tools; binding.mcp.server.name == "team-sessions"]
-	bindings != [{"server": {"kind": "RemoteMCPServer", "name": "team-sessions"}, "tools": ["list_role_tools", "prepare_role"], "requireApproval": false}]
-}
-
 deny contains "the assistant lacks its native collaboration binding" if {
 	some template in templates
 	template.metadata.name == "assistant"
@@ -32,7 +25,7 @@ deny contains "the assistant lacks its native collaboration binding" if {
 	bindings != [{"server": {"kind": "RemoteMCPServer", "name": "kagent-collaboration"}, "tools": ["list_agents", "list_sessions", "invoke_agent"], "requireApproval": false}]
 }
 
-actual_bindings(template) := [binding | some group in template.spec.tools; not group.mcp.server.name in {"team-sessions", "kagent-collaboration"}; some tool in group.mcp.tools; binding := {"server": group.mcp.server.name, "tool": tool, "review": group.mcp.requireApproval}]
+actual_bindings(template) := [binding | some group in template.spec.tools; group.mcp.server.name != "kagent-collaboration"; some tool in group.mcp.tools; binding := {"server": group.mcp.server.name, "tool": tool, "review": group.mcp.requireApproval}]
 
 expected_bindings(template) := {binding |
 	some plan in objects

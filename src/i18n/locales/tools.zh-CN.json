@@ -12,14 +12,6 @@
       "name": "查看协作会话",
       "description": "列出当前用户可访问的会话。"
     },
-    "list_role_tools": {
-      "name": "发现可配置工具",
-      "description": "查询工作空间中的 MCP 服务和可用工具。"
-    },
-    "prepare_role": {
-      "name": "生成指令型智能体草稿",
-      "description": "校验提示词、技能和工具绑定，返回可编辑草稿。"
-    },
     "transfer_to_agent": {
       "name": "移交给其他智能体",
       "description": "将当前工作移交给另一智能体。"
@@ -143,7 +135,6 @@
   },
   "servers": {
     "kagent-api": "kagent 工作空间",
-    "team-sessions": "角色起草",
     "kagent-collaboration": "会话与工作空间"
   }
 }

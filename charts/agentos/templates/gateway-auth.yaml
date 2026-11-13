@@ -1,6 +1,5 @@
 {{- $name := include "agentos.name" . -}}
 {{- $models := printf "http://%s-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace -}}
-{{- $mcps := printf "http://%s-mcp-gateway.%s.svc.cluster.local:8080" $name .Release.Namespace -}}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -81,8 +80,7 @@ spec:
             {{- end }}
             (has(jwt.iss) && jwt.iss == '{{ .Values.runtime.actorIssuer }}' && 'x-substrate-actor-token' in request.headers && (
               (request.path.startsWith('/v1/') && (jwt.aud == '{{ $models }}' || '{{ $models }}' in jwt.aud)) ||
-              (request.path == '/mcp/team-sessions' && (jwt.aud == '{{ $mcps }}' || '{{ $mcps }}' in jwt.aud)) ||
-              (request.path.startsWith('/mcp/') && request.path != '/mcp/team-sessions')
+              request.path.startsWith('/mcp/')
             )) ||
             (has(jwt.iss) && jwt.iss == '{{ .Values.runtime.kubernetesIssuer }}' && !('x-substrate-actor-token' in request.headers) && (
               (request.path.startsWith('/mcp/') && jwt.sub == 'system:serviceaccount:{{ .Release.Namespace }}:{{ $name }}-discovery' &&
@@ -103,13 +101,3 @@ spec:
                 authorization: "request.headers['x-substrate-actor-token']"
               responseMetadata:
                 models: "json(response.headers['x-kagent-selection'])"
-        - condition: "request.path == '/mcp/team-sessions' && 'x-substrate-actor-token' in request.headers"
-          policy:
-            backendRef: {group: agentgateway.dev, kind: AgentgatewayBackend, name: {{ $name }}-native-authority}
-            failureMode: FailClosed
-            http:
-              path: {{ printf "/authorize/runtime?server=%s%%2Fteam-sessions&scope=agentos-agents-manage&credential=subject_token" .Release.Namespace | toJson | quote }}
-              allowedRequestHeaders: [x-substrate-actor-token]
-              addRequestHeaders: {authorization: "request.headers['x-substrate-actor-token']"}
-              allowedResponseHeaders: [authorization]
-              responseMetadata: {selection: "json(response.headers['x-kagent-selection'])", scopes: "json(response.headers['x-kagent-scopes'])"}

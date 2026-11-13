@@ -19,7 +19,6 @@
                       "../console/**",
                       "../management/**",
                       "../mcp-apps/**",
-                      "../team-sessions/**",
                       "../voice/**",
                       "../apps/**"
                     ],
@@ -49,7 +48,6 @@
                       "../console/**",
                       "../management/**",
                       "../mcp-apps/**",
-                      "../team-sessions/**",
                       "../voice/**",
                       "../apps/**"
                     ],
@@ -83,8 +81,6 @@
                       "../../management/**",
                       "../mcp-apps/**",
                       "../../mcp-apps/**",
-                      "../team-sessions/**",
-                      "../../team-sessions/**",
                       "../voice/**",
                       "../../voice/**",
                       "../apps/**",
@@ -100,7 +96,7 @@
       }
     },
     {
-      "includes": ["**/server/console/**", "**/server/mcp-apps/**", "**/server/team-sessions/**"],
+      "includes": ["**/server/console/**", "**/server/mcp-apps/**"],
       "linter": {
         "rules": {
           "style": {

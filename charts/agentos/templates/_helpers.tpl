@@ -22,9 +22,6 @@ capabilities: {drop: [ALL]}
 {{- define "agentos.apiService" -}}
 {{- printf "%s-api" (include "agentos.name" .) -}}
 {{- end -}}
-{{- define "agentos.dataplaneService" -}}
-{{- printf "%s-dataplane" (include "agentos.name" .) -}}
-{{- end -}}
 {{- define "agentos.actorJWKSBackend" -}}
 {{- printf "%s-actor-jwks" (include "agentos.name" .) -}}
 {{- end -}}

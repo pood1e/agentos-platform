@@ -13,7 +13,7 @@ tests:
       of: Preset
   - lengthEqual:
       path: spec.resources
-      count: 4
+      count: 2
   - equal:
       path: spec.resources[0].kind
       value: AgentTemplate
@@ -25,4 +25,4 @@ tests:
       of: Preset
   - lengthEqual:
       path: spec.resources
-      count: 4
+      count: 2

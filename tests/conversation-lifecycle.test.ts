@@ -3,7 +3,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { DeleteSessionRequestSchema } from "../gen/kagent/api/v1/sessions_pb.js";
 import { conversationCommands } from "../server/console/conversations.js";
-import { environment, operator } from "./harness.js";
+import { environment } from "./harness.js";
 
 it("delegates deletion admission and history removal to the native API", async () => {
   const env = await environment([]);
@@ -14,7 +14,7 @@ it("delegates deletion admission and history removal to the native API", async (
   );
   const remove = conversationCommands(env.projection, env.clients, "agentos", "assistant").remove;
   const deleted = vi.spyOn(env.clients.sessions, "deleteSession");
-  await remove(create(DeleteSessionRequestSchema, { sessionId: session.id }), operator);
+  await remove(create(DeleteSessionRequestSchema, { sessionId: session.id }));
   expect(deleted).toHaveBeenCalledExactlyOnceWith(
     create(DeleteSessionRequestSchema, { sessionId: session.id }),
     { timeoutMs: 30_000 },
@@ -37,7 +37,6 @@ it.each([Code.Aborted, Code.FailedPrecondition])(
     await expect(
       conversationCommands(env.projection, env.clients, "agentos", "assistant").remove(
         create(DeleteSessionRequestSchema, { sessionId: session.id }),
-        operator,
       ),
     ).rejects.toMatchObject({ code: Code.FailedPrecondition, rawMessage: "chat.deleteBusy" });
     expect(env.fake.sessions.has(session.id)).toBe(true);
@@ -53,7 +52,6 @@ it("preserves native ownership denial before issuing a delete", async () => {
   await expect(
     conversationCommands(env.projection, env.clients, "agentos", "assistant").remove(
       create(DeleteSessionRequestSchema, { sessionId: "foreign" }),
-      operator,
     ),
   ).rejects.toMatchObject({ code: Code.NotFound });
   expect(deleted).not.toHaveBeenCalled();
@@ -72,7 +70,6 @@ it("refuses to delete a session from an earlier Namespace incarnation", async ()
   await expect(
     conversationCommands(env.projection, env.clients, "agentos", "assistant").remove(
       create(DeleteSessionRequestSchema, { sessionId: session.id }),
-      operator,
     ),
   ).rejects.toMatchObject({ code: Code.NotFound });
   expect(deleted).not.toHaveBeenCalled();

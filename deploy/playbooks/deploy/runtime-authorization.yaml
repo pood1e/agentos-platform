@@ -24,10 +24,7 @@
                   matchLabels:
                     kubernetes.io/metadata.name: "{{ agentos_namespace }}"
                 podSelector:
-                  matchExpressions:
-                    - key: app.kubernetes.io/component
-                      operator: In
-                      values: [dataplane, controller]
+                  matchLabels: {app.kubernetes.io/component: controller}
             ports: [{port: 443, protocol: TCP}]
 
 - name: Allow native invocation credential verification

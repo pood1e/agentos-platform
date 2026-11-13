@@ -54,7 +54,7 @@ export class ToolBindings {
     );
   }
 
-  usable(identity: string, server: string) {
+  private usable(identity: string, server: string) {
     const target = this.targets.get(server);
     return Boolean(
       target &&

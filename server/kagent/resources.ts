@@ -4,11 +4,10 @@ import {
   ResourceReferenceSchema,
 } from "../../gen/kagent/api/v1/common_pb.js";
 import { object, text } from "../../shared/json.js";
-import { roleBuilderAgent } from "../../shared/kagent-resources.js";
 import { userOwned } from "../shared/kubernetes.js";
 
 /** Platform Agents whose templates stay out of role and task directories. */
-export const systemTemplates = new Set(["assistant", roleBuilderAgent]);
+export const systemTemplates = new Set(["assistant"]);
 
 export const isWorkflowTemplate = (spec: JsonValue | undefined) =>
   object(spec).workflowFrom !== undefined;

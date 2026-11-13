@@ -4,9 +4,8 @@ import json
 import subprocess
 import sys
 
-namespace, release, mode, *additional_spaces = sys.argv[1:]
+namespace, mode, *additional_spaces = sys.argv[1:]
 controller = f"user:spiffe://cluster.local/ns/{namespace}/sa/kagent-controller"
-dataplane = f"user:system:serviceaccount:{namespace}:{release}-dataplane"
 
 
 def invoke(*args, document=None):
@@ -52,11 +51,5 @@ for atespace in [namespace, *additional_spaces]:
         if mode == "check":
             continue
         invoke("create", "atespace", atespace)
-    reconcile(
-        ["-a", atespace],
-        [
-            {"role": "editor", "members": [controller]},
-            {"role": "viewer", "members": [dataplane]},
-        ],
-    )
+    reconcile(["-a", atespace], [{"role": "editor", "members": [controller]}])
 print(json.dumps({"changed": changed}))

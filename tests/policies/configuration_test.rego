@@ -23,7 +23,7 @@ test_native_actor_jwks_requires_full_tls_verification if {
 	}
 }
 
-test_native_actor_jwks_rejects_the_removed_proxy if {
-	provider := {"jwks": {"remote": {"jwksPath": "/keys/actor", "backendRef": {"name": "dataplane", "port": 9092}}}}
+test_native_actor_jwks_rejects_service_references if {
+	provider := {"jwks": {"remote": {"jwksPath": "/keys/actor", "backendRef": {"name": "actor-proxy", "port": 9092}}}}
 	not actor_jwks_direct(provider) with input as []
 }

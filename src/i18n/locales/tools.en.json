@@ -12,14 +12,6 @@
       "name": "List collaboration sessions",
       "description": "List sessions accessible to the current user."
     },
-    "list_role_tools": {
-      "name": "Discover configurable tools",
-      "description": "Discover MCP servers and available tools in the workspace."
-    },
-    "prepare_role": {
-      "name": "Prepare an instruction Agent draft",
-      "description": "Validate the prompt, skills and tool bindings and return an editable draft."
-    },
     "transfer_to_agent": {
       "name": "Hand off to an Agent",
       "description": "Hand the current work over to another Agent."
@@ -143,7 +135,6 @@
   },
   "servers": {
     "kagent-api": "kagent workspaces",
-    "team-sessions": "Role drafting",
     "kagent-collaboration": "Sessions and workspaces"
   }
 }

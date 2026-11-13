@@ -482,26 +482,6 @@
       },
       "required": ["replicas", "resources", "workspaces", "delegates"]
     },
-    "dataplane": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "replicas": {
-          "type": "integer",
-          "minimum": 2
-        },
-        "resources": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": {
-              "type": ["string", "number"]
-            }
-          }
-        }
-      },
-      "required": ["replicas", "resources"]
-    },
     "telemetry": {
       "type": "object",
       "additionalProperties": false,
@@ -589,15 +569,6 @@
       "additionalProperties": false,
       "properties": {
         "assistant": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "systemPrompt": {
-              "type": "string"
-            }
-          }
-        },
-        "roleBuilder": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1045,7 +1016,6 @@
     "imagePullSecrets",
     "kagent",
     "api",
-    "dataplane",
     "telemetry",
     "speech",
     "route",
