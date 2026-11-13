@@ -9,7 +9,7 @@
 
 | 应用角色 | 管理范围 |
 | --- | --- |
-| `agentos-agents-manage` | Agent、工具 / Skill 绑定与运行配置 |
+| `agentos-agents-manage` | Agent、工具 / Skill 绑定、运行配置与 Agent 记忆整理 |
 | `agentos-skills-manage` | 共享 Skill 目录 |
 | `agentos-mcp-manage` | MCP 连接与凭据 |
 | `agentos-models-manage` | 模型连接与凭据 |
